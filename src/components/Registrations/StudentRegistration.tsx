@@ -26,7 +26,7 @@ const StudentRegistration = () => {
     confirmPassword: ''
   });
 
-  const totalSteps = 7;
+  const totalSteps = 3;
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
