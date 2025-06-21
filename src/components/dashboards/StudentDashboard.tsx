@@ -1,11 +1,12 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Download, Users, Trophy, Calendar, MessageCircle, LogOut } from 'lucide-react';
+import { BookOpen, Download, Users, Trophy, Calendar, MessageCircle, LogOut, Code, FileText } from 'lucide-react';
+import CodeCompiler from '../CodeCompiler';
+import ExamsSection from '../ExamsSection';
 
 interface StudentDashboardProps {
   user: { role: string; name: string };
@@ -50,12 +51,14 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="internships">Internships</TabsTrigger>
             <TabsTrigger value="training">Training</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
+            <TabsTrigger value="compiler">Compiler</TabsTrigger>
+            <TabsTrigger value="exams">Exams</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
@@ -247,6 +250,36 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                   <p className="text-gray-500 mb-4">No projects uploaded yet</p>
                   <Button>Upload Project</Button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="compiler">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Code className="h-5 w-5" />
+                  Code Compiler
+                </CardTitle>
+                <CardDescription>Practice coding in multiple programming languages</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CodeCompiler />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="exams">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Exams & Assessments
+                </CardTitle>
+                <CardDescription>Take exams and track your progress</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ExamsSection />
               </CardContent>
             </Card>
           </TabsContent>
