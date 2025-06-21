@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -217,20 +218,20 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
           <div>
             <Label htmlFor="fullName">Full Name (as per SSC certificate) *</Label>
             <Input {...register('fullName')} id="fullName" />
-            {typeof errors.fullName?.message === 'string' && (
-              <p className="text-red-500 text-sm">{errors.fullName.message}</p>
+            {errors.fullName?.message && (
+              <p className="text-red-500 text-sm">{String(errors.fullName.message)}</p>
             )}
           </div>
 
           <div>
             <Label htmlFor="dateOfBirth">Date of Birth *</Label>
             <Input type="date" {...register('dateOfBirth')} id="dateOfBirth" />
-            {typeof errors.dateOfBirth?.message === 'string' && (
-              <p className="text-red-500 text-sm">{errors.dateOfBirth.message}</p>
+            {errors.dateOfBirth?.message && (
+              <p className="text-red-500 text-sm">{String(errors.dateOfBirth.message)}</p>
             )}
           </div>
             <Label>Gender *</Label>
-            <RadioGroup onValueChange={(value) => setValue('gender', value as any)}>
+            <RadioGroup onValueChange={(value) => setValue('gender', value as any)} defaultValue={watch('gender')}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="male" id="male" />
                 <Label htmlFor="male">Male</Label>
@@ -244,23 +245,23 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                 <Label htmlFor="other">Other</Label>
               </div>
             </RadioGroup>
-              {typeof errors.gender?.message === 'string' && (
-                <p className="text-red-500 text-sm">{errors.gender.message}</p>
+              {errors.gender?.message && (
+                <p className="text-red-500 text-sm">{String(errors.gender.message)}</p>
               )}
 
               <div>
                 <Label htmlFor="email">Email *</Label>
                 <Input type="email" {...register('email')} id="email" />
-                {typeof errors.email?.message === 'string' && (
-                  <p className="text-red-500 text-sm">{errors.email.message}</p>
+                {errors.email?.message && (
+                  <p className="text-red-500 text-sm">{String(errors.email.message)}</p>
                 )}
               </div>
 
               <div>
                 <Label htmlFor="phone">Phone *</Label>
                 <Input {...register('phone')} id="phone" />
-                {typeof errors.phone?.message === 'string' && (
-                  <p className="text-red-500 text-sm">{errors.phone.message}</p>
+                {errors.phone?.message && (
+                  <p className="text-red-500 text-sm">{String(errors.phone.message)}</p>
                 )}
               </div>
           <div>
@@ -270,8 +271,8 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
           <div>
           <Label htmlFor="address">Address *</Label>
           <Textarea {...register('address')} id="address" />
-          {typeof errors.address?.message === 'string' && (
-            <p className="text-red-500 text-sm">{errors.address.message}</p>
+          {errors.address?.message && (
+            <p className="text-red-500 text-sm">{String(errors.address.message)}</p>
           )}
         </div>
         </CardContent>
@@ -296,13 +297,13 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
               Father's Name {selectedRole === 'job-seeker' ? '*' : ''}
             </Label>
             <Input {...register('fatherName')} id="fatherName" />
-            {typeof errors.fatherName?.message === 'string' && (
-              <p className="text-red-500 text-sm">{errors.fatherName.message}</p>
+            {errors.fatherName?.message && (
+              <p className="text-red-500 text-sm">{String(errors.fatherName.message)}</p>
             )}
           </div>
           <div>
             <Label>Marital Status *</Label>
-            <RadioGroup onValueChange={(value) => setValue('maritalStatus', value as any)}>
+            <RadioGroup onValueChange={(value) => setValue('maritalStatus', value as any)} defaultValue={watch('maritalStatus')}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="single" id="single" />
                 <Label htmlFor="single">Single</Label>
@@ -312,15 +313,15 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                 <Label htmlFor="married">Married</Label>
               </div>
             </RadioGroup>
-          {typeof errors.maritalStatus?.message === 'string' && (
-            <p className="text-red-500 text-sm">{errors.maritalStatus.message}</p>
+          {errors.maritalStatus?.message && (
+            <p className="text-red-500 text-sm">{String(errors.maritalStatus.message)}</p>
           )}
           </div>
           <div>
             <Label htmlFor="nationality">Nationality *</Label>
             <Input {...register('nationality')} id="nationality" />
-            {typeof errors.nationality?.message === 'string' && (
-              <p className="text-red-500 text-sm">{errors.nationality.message}</p>
+            {errors.nationality?.message && (
+              <p className="text-red-500 text-sm">{String(errors.nationality.message)}</p>
             )}
           </div>
 
@@ -331,8 +332,8 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
               id="languagesKnown"
               placeholder="e.g., English, Hindi, Telugu"
             />
-            {typeof errors.languagesKnown?.message === 'string' && (
-              <p className="text-red-500 text-sm">{errors.languagesKnown.message}</p>
+            {errors.languagesKnown?.message && (
+              <p className="text-red-500 text-sm">{String(errors.languagesKnown.message)}</p>
             )}
           </div>
 
@@ -345,7 +346,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
           {selectedRole === 'job-seeker' && (
             <div>
               <Label htmlFor="jobCategory">Looking for Job Category *</Label>
-              <Select onValueChange={(value) => setValue('jobCategory' as any, value)}>
+              <Select onValueChange={(value) => setValue('jobCategory' as any, value)} defaultValue={watch('jobCategory')}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select job category" />
                 </SelectTrigger>
@@ -360,7 +361,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                   <SelectItem value="Business">Business</SelectItem>
                 </SelectContent>
               </Select>
-              {(errors as any).jobCategory && <p className="text-red-500 text-sm">{(errors as any).jobCategory.message}</p>}
+              {errors.jobCategory && <p className="text-red-500 text-sm">{String(errors.jobCategory.message)}</p>}
             </div>
           )}
         </CardContent>
@@ -400,13 +401,13 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                 <Label>Institute Name *</Label>
                 <Input {...register(`education.${index}.instituteName`)} />
                 {errors.education?.[index]?.instituteName && (
-                  <p className="text-red-500 text-sm">{errors.education[index].instituteName?.message}</p>
+                  <p className="text-red-500 text-sm">{String(errors.education[index]?.instituteName?.message)}</p>
                 )}
               </div>
 
               <div>
                 <Label>Stream/Course *</Label>
-                <Select onValueChange={(value) => setValue(`education.${index}.stream`, value)}>
+                <Select onValueChange={(value) => setValue(`education.${index}.stream`, value)} defaultValue={watch(`education.${index}.stream`)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select stream" />
                   </SelectTrigger>
@@ -420,7 +421,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                   </SelectContent>
                 </Select>
                 {errors.education?.[index]?.stream && (
-                  <p className="text-red-500 text-sm">{errors.education[index].stream?.message}</p>
+                  <p className="text-red-500 text-sm">{String(errors.education[index]?.stream?.message)}</p>
                 )}
               </div>
 
@@ -428,7 +429,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                 <Label>Year of Passing *</Label>
                 <Input {...register(`education.${index}.yearOfPassing`)} type="number" min="1950" max="2030" />
                 {errors.education?.[index]?.yearOfPassing && (
-                  <p className="text-red-500 text-sm">{errors.education[index].yearOfPassing?.message}</p>
+                  <p className="text-red-500 text-sm">{String(errors.education[index]?.yearOfPassing?.message)}</p>
                 )}
               </div>
             </div>
@@ -542,19 +543,19 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
           <div>
             <Label htmlFor="username">Username *</Label>
             <Input {...register('username')} id="username" />
-            {errors.username && <p className="text-red-500 text-sm">{errors.username.message}</p>}
+            {errors.username && <p className="text-red-500 text-sm">{String(errors.username.message)}</p>}
           </div>
 
           <div>
             <Label htmlFor="password">Password *</Label>
             <Input type="password" {...register('password')} id="password" />
-            {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+            {errors.password && <p className="text-red-500 text-sm">{String(errors.password.message)}</p>}
           </div>
 
           <div>
             <Label htmlFor="confirmPassword">Re-enter Password *</Label>
             <Input type="password" {...register('confirmPassword')} id="confirmPassword" />
-            {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword.message}</p>}
+            {errors.confirmPassword && <p className="text-red-500 text-sm">{String(errors.confirmPassword.message)}</p>}
           </div>
         </CardContent>
       </CollapsibleContent>
