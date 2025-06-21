@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -339,7 +340,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                   <SelectItem value="Business">Business</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.jobCategory && <p className="text-red-500 text-sm">{errors.jobCategory.message}</p>}
+              {(errors as any).jobCategory && <p className="text-red-500 text-sm">{(errors as any).jobCategory.message}</p>}
             </div>
           )}
         </CardContent>
@@ -379,7 +380,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                 <Label>Institute Name *</Label>
                 <Input {...register(`education.${index}.instituteName`)} />
                 {errors.education?.[index]?.instituteName && (
-                  <p className="text-red-500 text-sm">{errors.education[index].instituteName.message}</p>
+                  <p className="text-red-500 text-sm">{errors.education[index].instituteName?.message}</p>
                 )}
               </div>
 
@@ -399,7 +400,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                   </SelectContent>
                 </Select>
                 {errors.education?.[index]?.stream && (
-                  <p className="text-red-500 text-sm">{errors.education[index].stream.message}</p>
+                  <p className="text-red-500 text-sm">{errors.education[index].stream?.message}</p>
                 )}
               </div>
 
@@ -407,7 +408,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                 <Label>Year of Passing *</Label>
                 <Input {...register(`education.${index}.yearOfPassing`)} type="number" min="1950" max="2030" />
                 {errors.education?.[index]?.yearOfPassing && (
-                  <p className="text-red-500 text-sm">{errors.education[index].yearOfPassing.message}</p>
+                  <p className="text-red-500 text-sm">{errors.education[index].yearOfPassing?.message}</p>
                 )}
               </div>
             </div>
@@ -590,3 +591,4 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
 };
 
 export default DynamicRegistrationForm;
+
