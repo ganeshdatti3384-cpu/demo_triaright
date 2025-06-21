@@ -9,7 +9,11 @@ import Footer from '../components/Footer';
 import AuthModal from '../components/AuthModal';
 
 const Index = () => {
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login', userType: 'student' });
+  const [authModal, setAuthModal] = useState<{ isOpen: boolean; type: 'login' | 'register'; userType: string }>({ 
+    isOpen: false, 
+    type: 'login', 
+    userType: 'student' 
+  });
 
   const openAuthModal = (type: 'login' | 'register', userType: string) => {
     setAuthModal({ isOpen: true, type, userType });
