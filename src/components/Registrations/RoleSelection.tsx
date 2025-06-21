@@ -110,15 +110,6 @@ const RoleSelection = ({ onRoleSelect }) => {
           );
         })}
       </div>
-
-      <div className="text-center mt-8">
-        <p className="text-gray-500">
-          Already have an account?{' '}
-          <a href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-            Sign in here
-          </a>
-        </p>
-      </div>
     </div>
   );
 };

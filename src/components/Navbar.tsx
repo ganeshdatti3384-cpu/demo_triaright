@@ -51,7 +51,7 @@ const handleRegisterClick = () => {
           {/* Logo */}
           <div className="flex-shrink-0">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              EduCareer Hub
+              Triaright Hub
             </h1>
           </div>
 

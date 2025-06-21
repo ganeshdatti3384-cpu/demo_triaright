@@ -81,26 +81,29 @@ const Footer = () => {
             {/* Company Info */}
             <div className="lg:col-span-2">
               <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
-                EduCareer Hub
+                Triaright Hub
               </h3>
               <p className="text-gray-400 mb-6 max-w-md">
                 Empowering careers through comprehensive education. Your one-stop platform 
-                for learning, growing, and succeeding in today's competitive job market.
+                for learning, growing, and succeeding in today's competitive job market, Since 2010. 
               </p>
               
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Mail className="h-5 w-5 text-blue-400" />
-                  <span className="text-gray-400">contact@educareerhub.com</span>
+                  <span className="text-gray-400">info@triaright.com</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Phone className="h-5 w-5 text-blue-400" />
-                  <span className="text-gray-400">+1 (555) 123-4567</span>
+                  <p className="truncate text-gray-400">+91 90593 73300</p><br />
+                  <p className="truncate text-gray-400">+91 83410 44141</p>       
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3" >
                   <MapPin className="h-5 w-5 text-blue-400" />
-                  <span className="text-gray-400">123 Education Street, Learning City, LC 12345</span>
-                </div>
+                  <p className="max-w-[200px] text-gray-400">
+                    #7-1-58, 401, Surekha Chambers,<br />
+                    Ameerpet, Hyderabad, Telangana 500016
+                  </p>                </div>
               </div>
 
               <div className="flex space-x-4 mt-6">
@@ -151,33 +154,35 @@ const Footer = () => {
               </ul>
             </div>
 
-            {/* Support */}
+            {/* Contact Us */}
             <div>
-              <h4 className="text-lg font-semibold mb-6">Support</h4>
-              <ul className="space-y-3">
-                {support.map((item, index) => (
-                  <li key={index}>
-                    <a 
-                      href={item.href}
-                      className="text-gray-400 hover:text-white transition-colors"
-                    >
-                      {item.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <h4 className="text-lg font-semibold mb-6">Contact Us</h4>
+              <div className="space-y-4 text-sm text-gray-400">
+                <div>
+                  <p className="font-semibold text-white">Business Collaboration:</p>
+                  <p className="truncate">business@triaright.com</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-white">Human Resources:</p>
+                  <p className="truncate">hr@triaright.com</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-white">Leadership / Escalations:</p>
+                  <p className="truncate">kk@triaright.com</p>
+                </div>
+              </div>
             </div>
+
           </div>
         </div>
       </div>
-
       {/* Bottom Bar */}
       <Separator className="bg-gray-800" />
       <div className="py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-400 text-sm mb-4 md:mb-0">
-              © 2024 EduCareer Hub. All rights reserved.
+              ©  2025 TriaRight. All Rights Reserved.
             </div>
             <div className="flex space-x-6 text-sm">
               <a href="#privacy" className="text-gray-400 hover:text-white transition-colors">
