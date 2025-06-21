@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,17 +6,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthModalProps {
   isOpen: boolean;
   type: 'login' | 'register';
   userType: string;
   onClose: () => void;
+  onAuthSuccess: (userRole: string, userName: string) => void;
 }
 
-const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
+const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModalProps) => {
+  const [currentType, setCurrentType] = useState<'login' | 'register'>(type);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -37,8 +37,45 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
     website: ''
   });
 
+  const { toast } = useToast();
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!formData.email || !formData.password) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (currentType === 'register' && formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Simulate authentication
+    const userName = currentType === 'login' ? 
+      formData.email.split('@')[0] : 
+      `${formData.firstName} ${formData.lastName}`;
+
+    toast({
+      title: "Success",
+      description: `${currentType === 'login' ? 'Logged in' : 'Registered'} successfully!`,
+    });
+
+    onAuthSuccess(userType, userName);
   };
 
   const getUserTypeTitle = () => {
@@ -55,7 +92,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
   };
 
   const renderLoginForm = () => (
-    <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="email">Email Address</Label>
         <Input
@@ -64,6 +101,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
           placeholder="Enter your email"
           value={formData.email}
           onChange={(e) => handleInputChange('email', e.target.value)}
+          required
         />
       </div>
       
@@ -75,6 +113,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
           placeholder="Enter your password"
           value={formData.password}
           onChange={(e) => handleInputChange('password', e.target.value)}
+          required
         />
       </div>
 
@@ -83,7 +122,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
         <Label htmlFor="remember" className="text-sm">Remember me</Label>
       </div>
 
-      <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+      <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
         Sign In as {getUserTypeTitle()}
       </Button>
 
@@ -92,11 +131,11 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
           Forgot your password?
         </a>
       </div>
-    </div>
+    </form>
   );
 
   const renderStudentRegistration = () => (
-    <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="firstName">First Name</Label>
@@ -105,6 +144,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
             placeholder="First name"
             value={formData.firstName}
             onChange={(e) => handleInputChange('firstName', e.target.value)}
+            required
           />
         </div>
         <div>
@@ -114,6 +154,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
             placeholder="Last name"
             value={formData.lastName}
             onChange={(e) => handleInputChange('lastName', e.target.value)}
+            required
           />
         </div>
       </div>
@@ -126,6 +167,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
           placeholder="Enter your email"
           value={formData.email}
           onChange={(e) => handleInputChange('email', e.target.value)}
+          required
         />
       </div>
 
@@ -215,14 +257,14 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
         </Label>
       </div>
 
-      <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+      <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
         Create Student Account
       </Button>
-    </div>
+    </form>
   );
 
   const renderEmployerRegistration = () => (
-    <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="firstName">First Name</Label>
@@ -231,6 +273,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
             placeholder="First name"
             value={formData.firstName}
             onChange={(e) => handleInputChange('firstName', e.target.value)}
+            required
           />
         </div>
         <div>
@@ -240,6 +283,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
             placeholder="Last name"
             value={formData.lastName}
             onChange={(e) => handleInputChange('lastName', e.target.value)}
+            required
           />
         </div>
       </div>
@@ -252,6 +296,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
           placeholder="Enter your work email"
           value={formData.email}
           onChange={(e) => handleInputChange('email', e.target.value)}
+          required
         />
       </div>
 
@@ -324,14 +369,14 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
         </Label>
       </div>
 
-      <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+      <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
         Create Employer Account
       </Button>
-    </div>
+    </form>
   );
 
   const renderCollegeRegistration = () => (
-    <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="collegeName">Institution Name</Label>
         <Input
@@ -350,6 +395,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
             placeholder="First name"
             value={formData.firstName}
             onChange={(e) => handleInputChange('firstName', e.target.value)}
+            required
           />
         </div>
         <div>
@@ -359,6 +405,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
             placeholder="Last name"
             value={formData.lastName}
             onChange={(e) => handleInputChange('lastName', e.target.value)}
+            required
           />
         </div>
       </div>
@@ -371,6 +418,7 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
           placeholder="Enter official email"
           value={formData.email}
           onChange={(e) => handleInputChange('email', e.target.value)}
+          required
         />
       </div>
 
@@ -422,10 +470,10 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
         </Label>
       </div>
 
-      <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+      <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
         Register Institution
       </Button>
-    </div>
+    </form>
   );
 
   const renderRegistrationForm = () => {
@@ -446,10 +494,10 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            {type === 'login' ? 'Sign In' : 'Create Account'}
+            {currentType === 'login' ? 'Sign In' : 'Create Account'}
           </DialogTitle>
           <p className="text-gray-600">
-            {type === 'login' 
+            {currentType === 'login' 
               ? `Welcome back! Sign in to your ${getUserTypeTitle().toLowerCase()} account.`
               : `Join our platform as a ${getUserTypeTitle().toLowerCase()}.`
             }
@@ -457,20 +505,17 @@ const AuthModal = ({ isOpen, type, userType, onClose }: AuthModalProps) => {
         </DialogHeader>
 
         <div className="mt-6">
-          {type === 'login' ? renderLoginForm() : renderRegistrationForm()}
+          {currentType === 'login' ? renderLoginForm() : renderRegistrationForm()}
         </div>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            {type === 'login' ? "Don't have an account? " : "Already have an account? "}
+            {currentType === 'login' ? "Don't have an account? " : "Already have an account? "}
             <button 
               className="text-blue-600 hover:underline font-semibold"
-              onClick={() => {
-                // Switch between login and register
-                console.log('Switch auth type');
-              }}
+              onClick={() => setCurrentType(currentType === 'login' ? 'register' : 'login')}
             >
-              {type === 'login' ? 'Sign up' : 'Sign in'}
+              {currentType === 'login' ? 'Sign up' : 'Sign in'}
             </button>
           </p>
         </div>
