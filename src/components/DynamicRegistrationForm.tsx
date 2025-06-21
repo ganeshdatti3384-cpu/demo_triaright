@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -73,6 +74,10 @@ const jobSeekerSchema = z.object({
   path: ["confirmPassword"],
 });
 
+type BaseFormData = z.infer<typeof baseSchema>;
+type JobSeekerFormData = z.infer<typeof jobSeekerSchema>;
+type FormData = BaseFormData | JobSeekerFormData;
+
 interface DynamicRegistrationFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -103,7 +108,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
     setValue,
     reset,
     formState: { errors }
-  } = useForm({
+  } = useForm<any>({
     resolver: zodResolver(schema),
     defaultValues: {
       role: selectedRole,
@@ -111,7 +116,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
       projects: [],
       certifications: [],
       internships: [],
-      experience: [],
+      ...(selectedRole === 'job-seeker' && { experience: [] }),
     }
   });
 
@@ -175,7 +180,14 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
   const handleRoleChange = (role: 'student' | 'job-seeker') => {
     setSelectedRole(role);
     setValue('role', role);
-    reset();
+    reset({
+      role: role,
+      education: [{ instituteName: '', stream: '', yearOfPassing: '' }],
+      projects: [],
+      certifications: [],
+      internships: [],
+      ...(role === 'job-seeker' && { experience: [] }),
+    });
   };
 
   const renderBasicInformation = () => (
@@ -312,7 +324,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
           {selectedRole === 'job-seeker' && (
             <div>
               <Label htmlFor="jobCategory">Looking for Job Category *</Label>
-              <Select onValueChange={(value) => setValue('jobCategory', value)}>
+              <Select onValueChange={(value) => setValue('jobCategory' as any, value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select job category" />
                 </SelectTrigger>
@@ -485,7 +497,7 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                   <Upload className="h-4 w-4" />
                   <span>Upload Resume</span>
                 </Button>
-                <Input type="file" accept=".pdf,.doc,.docx" {...register('resume')} className="hidden" />
+                <Input type="file" accept=".pdf,.doc,.docx" {...register('resume' as any)} className="hidden" />
               </div>
             </div>
           </CardContent>
