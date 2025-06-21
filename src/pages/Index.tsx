@@ -6,7 +6,7 @@ import FeaturesSection from '../components/FeaturesSection';
 import AboutSection from '../components/AboutSection';
 import PartnersSection from '../components/PartnersSection';
 import Footer from '../components/Footer';
-import AuthModal from '../components/AuthModal';
+import DynamicRegistrationForm from '../components/DynamicRegistrationForm';
 import StudentDashboard from '../components/dashboards/StudentDashboard';
 import JobSeekerDashboard from '../components/dashboards/JobSeekerDashboard';
 import EmployeeDashboard from '../components/dashboards/EmployeeDashboard';
@@ -16,25 +16,20 @@ import AdminDashboard from '../components/dashboards/AdminDashboard';
 import SuperAdminDashboard from '../components/dashboards/SuperAdminDashboard';
 
 const Index = () => {
-  const [authModal, setAuthModal] = useState<{ isOpen: boolean; type: 'login' | 'register'; userType: string }>({ 
-    isOpen: false, 
-    type: 'login', 
-    userType: 'student' 
-  });
-
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [user, setUser] = useState<{ role: string; name: string } | null>(null);
 
-  const openAuthModal = (type: 'login' | 'register', userType: string) => {
-    setAuthModal({ isOpen: true, type, userType });
+  const openRegistrationForm = () => {
+    setShowRegistrationForm(true);
   };
 
-  const closeAuthModal = () => {
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+  const closeRegistrationForm = () => {
+    setShowRegistrationForm(false);
   };
 
-  const handleAuthSuccess = (userRole: string, userName: string) => {
-    setUser({ role: userRole, name: userName });
-    closeAuthModal();
+  const handleRegistrationSuccess = (data: any) => {
+    setUser({ role: data.role, name: data.fullName });
+    closeRegistrationForm();
   };
 
   const handleLogout = () => {
@@ -65,19 +60,17 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar onOpenAuth={openAuthModal} />
-      <Hero onOpenAuth={openAuthModal} />
+      <Navbar onOpenAuth={openRegistrationForm} />
+      <Hero onOpenAuth={openRegistrationForm} />
       <FeaturesSection />
       <AboutSection />
       <PartnersSection />
       <Footer />
       
-      <AuthModal 
-        isOpen={authModal.isOpen}
-        type={authModal.type}
-        userType={authModal.userType}
-        onClose={closeAuthModal}
-        onAuthSuccess={handleAuthSuccess}
+      <DynamicRegistrationForm 
+        isOpen={showRegistrationForm}
+        onClose={closeRegistrationForm}
+        onSuccess={handleRegistrationSuccess}
       />
     </div>
   );
