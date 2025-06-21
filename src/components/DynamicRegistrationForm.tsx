@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, ChevronDown, Upload } from 'lucide-react';
 
-const baseSchema = z.object({
+const baseFields = {
   role: z.enum(['student', 'job-seeker']),
   profilePicture: z.any().optional(),
   fullName: z.string().min(1, 'Full name is required'),
@@ -52,12 +51,15 @@ const baseSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
+};
+
+const baseSchema = z.object(baseFields).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
-const jobSeekerSchema = baseSchema.extend({
+const jobSeekerSchema = z.object({
+  ...baseFields,
   jobCategory: z.string().min(1, 'Job category is required'),
   experience: z.array(z.object({
     companyName: z.string(),
@@ -66,6 +68,9 @@ const jobSeekerSchema = baseSchema.extend({
     responsibilities: z.string(),
   })).optional(),
   resume: z.any().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 interface DynamicRegistrationFormProps {
