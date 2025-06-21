@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ interface AuthModalProps {
 const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModalProps) => {
   const [currentType, setCurrentType] = useState<'login' | 'register'>(type);
   const [formData, setFormData] = useState({
-    email: '',
+    email: currentType === 'login' ? 'aks' : '',
     password: '',
     confirmPassword: '',
     firstName: '',
@@ -65,7 +66,17 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
       return;
     }
 
-    // Simulate authentication
+    // Simulate authentication - accept "aks" as valid login
+    if (currentType === 'login' && formData.email === 'aks') {
+      toast({
+        title: "Success",
+        description: "Logged in successfully as aks!",
+      });
+      onAuthSuccess(userType, 'aks');
+      return;
+    }
+
+    // For registration or other login attempts
     const userName = currentType === 'login' ? 
       formData.email.split('@')[0] : 
       `${formData.firstName} ${formData.lastName}`;
@@ -97,8 +108,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Label htmlFor="email">Email Address</Label>
         <Input
           id="email"
-          type="email"
-          placeholder="Enter your email"
+          type="text"
+          placeholder="Enter your email or username"
           value={formData.email}
           onChange={(e) => handleInputChange('email', e.target.value)}
           required
@@ -513,7 +524,15 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
             {currentType === 'login' ? "Don't have an account? " : "Already have an account? "}
             <button 
               className="text-blue-600 hover:underline font-semibold"
-              onClick={() => setCurrentType(currentType === 'login' ? 'register' : 'login')}
+              onClick={() => {
+                setCurrentType(currentType === 'login' ? 'register' : 'login');
+                setFormData(prev => ({ 
+                  ...prev, 
+                  email: currentType === 'register' ? 'aks' : '',
+                  password: '',
+                  confirmPassword: ''
+                }));
+              }}
             >
               {currentType === 'login' ? 'Sign up' : 'Sign in'}
             </button>
