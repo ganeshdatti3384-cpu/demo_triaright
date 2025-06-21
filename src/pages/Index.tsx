@@ -6,7 +6,7 @@ import FeaturesSection from '../components/FeaturesSection';
 import AboutSection from '../components/AboutSection';
 import PartnersSection from '../components/PartnersSection';
 import Footer from '../components/Footer';
-import DynamicRegistrationForm from '../components/DynamicRegistrationForm';
+import LoginDialog from '../components/LoginDialog';
 import StudentDashboard from '../components/dashboards/StudentDashboard';
 import JobSeekerDashboard from '../components/dashboards/JobSeekerDashboard';
 import EmployeeDashboard from '../components/dashboards/EmployeeDashboard';
@@ -16,20 +16,21 @@ import AdminDashboard from '../components/dashboards/AdminDashboard';
 import SuperAdminDashboard from '../components/dashboards/SuperAdminDashboard';
 
 const Index = () => {
-  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [user, setUser] = useState<{ role: string; name: string } | null>(null);
 
-  const openRegistrationForm = () => {
-    setShowRegistrationForm(true);
+  const openLoginDialog = () => {
+    setShowLoginDialog(true);
   };
 
-  const closeRegistrationForm = () => {
-    setShowRegistrationForm(false);
+  const closeLoginDialog = () => {
+    setShowLoginDialog(false);
   };
 
-  const handleRegistrationSuccess = (data: any) => {
-    setUser({ role: data.role, name: data.fullName });
-    closeRegistrationForm();
+  const handleLoginSuccess = (userName: string) => {
+    // For now, default to student role for the demo user
+    setUser({ role: 'student', name: userName });
+    closeLoginDialog();
   };
 
   const handleLogout = () => {
@@ -60,17 +61,17 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar onOpenAuth={openRegistrationForm} />
-      <Hero onOpenAuth={openRegistrationForm} />
+      <Navbar onOpenAuth={openLoginDialog} />
+      <Hero onOpenAuth={openLoginDialog} />
       <FeaturesSection />
       <AboutSection />
       <PartnersSection />
       <Footer />
       
-      <DynamicRegistrationForm 
-        isOpen={showRegistrationForm}
-        onClose={closeRegistrationForm}
-        onSuccess={handleRegistrationSuccess}
+      <LoginDialog 
+        isOpen={showLoginDialog}
+        onClose={closeLoginDialog}
+        onLoginSuccess={handleLoginSuccess}
       />
     </div>
   );
