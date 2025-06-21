@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,7 +58,7 @@ const baseSchema = z.object(baseFields).refine((data) => data.password === data.
   path: ["confirmPassword"],
 });
 
-const jobSeekerSchema = z.object({
+const jobSeekerFields = {
   ...baseFields,
   jobCategory: z.string().min(1, 'Job category is required'),
   experience: z.array(z.object({
@@ -70,7 +68,9 @@ const jobSeekerSchema = z.object({
     responsibilities: z.string(),
   })).optional(),
   resume: z.any().optional(),
-}).refine((data) => data.password === data.confirmPassword, {
+};
+
+const jobSeekerSchema = z.object(jobSeekerFields).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
@@ -591,4 +591,3 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
 };
 
 export default DynamicRegistrationForm;
-
