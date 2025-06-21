@@ -31,23 +31,58 @@ const baseSchema = z.object({
   path: ["confirmPassword"],
 });
 
-const studentSchema = baseSchema.extend({
+const studentSchema = z.object({
+  profileImage: z.any().optional(),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
   college: z.string().min(1, 'College is required'),
   course: z.string().min(1, 'Course is required'),
   year: z.string().min(1, 'Academic year is required'),
   skills: z.string().optional(),
+  terms: z.boolean().refine(val => val === true, 'You must agree to the terms and conditions'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
-const employerSchema = baseSchema.extend({
+
+
+const employerSchema = z.object({
+  profileImage: z.any().optional(),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
   companyName: z.string().min(1, 'Company name is required'),
   designation: z.string().min(1, 'Designation is required'),
   website: z.string().optional(),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
+  terms: z.boolean().refine(val => val === true, 'You must agree to the terms and conditions'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
-const collegeSchema = baseSchema.extend({
+const collegeSchema = z.object({
+  profileImage: z.any().optional(),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
   collegeName: z.string().min(1, 'Institution name is required'),
   address: z.string().min(1, 'Address is required'),
   website: z.string().optional(),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
+  terms: z.boolean().refine(val => val === true, 'You must agree to the terms and conditions'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 type StudentFormData = z.infer<typeof studentSchema>;
