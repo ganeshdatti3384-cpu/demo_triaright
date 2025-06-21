@@ -24,14 +24,6 @@ const Footer = () => {
     { name: 'Success Stories', href: '#stories' }
   ];
 
-  const userTypes = [
-    { name: 'Students', href: '#students' },
-    { name: 'Job Seekers', href: '#job-seekers' },
-    { name: 'Employers', href: '#employers' },
-    { name: 'Colleges', href: '#colleges' },
-    { name: 'Employees', href: '#employees' }
-  ];
-
   const support = [
     { name: 'Help Center', href: '#help' },
     { name: 'Contact Support', href: '#contact' },
@@ -77,7 +69,7 @@ const Footer = () => {
       {/* Main Footer Content */}
       <div className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-5 gap-8">
+          <div className="grid lg:grid-cols-4 gap-8">
             {/* Company Info */}
             <div className="lg:col-span-2">
               <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
@@ -131,23 +123,6 @@ const Footer = () => {
                       className="text-gray-400 hover:text-white transition-colors"
                     >
                       {link.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* User Types */}
-            <div>
-              <h4 className="text-lg font-semibold mb-6">For Users</h4>
-              <ul className="space-y-3">
-                {userTypes.map((type, index) => (
-                  <li key={index}>
-                    <a 
-                      href={type.href}
-                      className="text-gray-400 hover:text-white transition-colors"
-                    >
-                      {type.name}
                     </a>
                   </li>
                 ))}
