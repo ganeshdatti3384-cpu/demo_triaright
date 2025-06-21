@@ -67,9 +67,9 @@ const Footer = () => {
       </div>
 
       {/* Main Footer Content */}
-      <div className="py-16">
+      <div className="py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-4 gap-8">
+          <div className="grid lg:grid-cols-4 gap-6">
             {/* Company Info */}
             <div className="lg:col-span-2">
               <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
@@ -98,18 +98,7 @@ const Footer = () => {
                   </p>                </div>
               </div>
 
-              <div className="flex space-x-4 mt-6">
-                {socialLinks.map((social, index) => (
-                  <a
-                    key={index}
-                    href={social.href}
-                    className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
-                    aria-label={social.label}
-                  >
-                    <social.icon className="h-5 w-5" />
-                  </a>
-                ))}
-              </div>
+              
             </div>
 
             {/* Quick Links */}
@@ -159,7 +148,19 @@ const Footer = () => {
             <div className="text-gray-400 text-sm mb-4 md:mb-0">
               ©  2025 TriaRight. All Rights Reserved.
             </div>
-            <div className="flex space-x-6 text-sm">
+            <div className="flex space-x-4 ">
+                {socialLinks.map((social, index) => (
+                  <a
+                    key={index}
+                    href={social.href}
+                    className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
+                    aria-label={social.label}
+                  >
+                    <social.icon className="h-5 w-5" />
+                  </a>
+                ))}
+              </div>
+            <div className="flex space-x-4 text-sm">
               <a href="#privacy" className="text-gray-400 hover:text-white transition-colors">
                 Privacy Policy
               </a>
