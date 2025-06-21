@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -213,20 +214,21 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
               <Input type="file" accept="image/*" {...register('profilePicture')} className="hidden" />
             </div>
           </div>
-
           <div>
             <Label htmlFor="fullName">Full Name (as per SSC certificate) *</Label>
             <Input {...register('fullName')} id="fullName" />
-            {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName.message}</p>}
+            {typeof errors.fullName?.message === 'string' && (
+              <p className="text-red-500 text-sm">{errors.fullName.message}</p>
+            )}
           </div>
 
           <div>
             <Label htmlFor="dateOfBirth">Date of Birth *</Label>
             <Input type="date" {...register('dateOfBirth')} id="dateOfBirth" />
-            {errors.dateOfBirth && <p className="text-red-500 text-sm">{errors.dateOfBirth.message}</p>}
+            {typeof errors.dateOfBirth?.message === 'string' && (
+              <p className="text-red-500 text-sm">{errors.dateOfBirth.message}</p>
+            )}
           </div>
-
-          <div>
             <Label>Gender *</Label>
             <RadioGroup onValueChange={(value) => setValue('gender', value as any)}>
               <div className="flex items-center space-x-2">
@@ -242,31 +244,36 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                 <Label htmlFor="other">Other</Label>
               </div>
             </RadioGroup>
-            {errors.gender && <p className="text-red-500 text-sm">{errors.gender.message}</p>}
-          </div>
+              {typeof errors.gender?.message === 'string' && (
+                <p className="text-red-500 text-sm">{errors.gender.message}</p>
+              )}
 
-          <div>
-            <Label htmlFor="email">Email *</Label>
-            <Input type="email" {...register('email')} id="email" />
-            {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
-          </div>
+              <div>
+                <Label htmlFor="email">Email *</Label>
+                <Input type="email" {...register('email')} id="email" />
+                {typeof errors.email?.message === 'string' && (
+                  <p className="text-red-500 text-sm">{errors.email.message}</p>
+                )}
+              </div>
 
-          <div>
-            <Label htmlFor="phone">Phone *</Label>
-            <Input {...register('phone')} id="phone" />
-            {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
-          </div>
-
+              <div>
+                <Label htmlFor="phone">Phone *</Label>
+                <Input {...register('phone')} id="phone" />
+                {typeof errors.phone?.message === 'string' && (
+                  <p className="text-red-500 text-sm">{errors.phone.message}</p>
+                )}
+              </div>
           <div>
             <Label htmlFor="alternatePhone">Alternate Phone</Label>
             <Input {...register('alternatePhone')} id="alternatePhone" />
           </div>
-
           <div>
-            <Label htmlFor="address">Address *</Label>
-            <Textarea {...register('address')} id="address" />
-            {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
-          </div>
+          <Label htmlFor="address">Address *</Label>
+          <Textarea {...register('address')} id="address" />
+          {typeof errors.address?.message === 'string' && (
+            <p className="text-red-500 text-sm">{errors.address.message}</p>
+          )}
+        </div>
         </CardContent>
       </CollapsibleContent>
     </Collapsible>
@@ -285,11 +292,14 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
       <CollapsibleContent>
         <CardContent className="space-y-4 pt-4">
           <div>
-            <Label htmlFor="fatherName">Father's Name {selectedRole === 'job-seeker' ? '*' : ''}</Label>
+            <Label htmlFor="fatherName">
+              Father's Name {selectedRole === 'job-seeker' ? '*' : ''}
+            </Label>
             <Input {...register('fatherName')} id="fatherName" />
-            {errors.fatherName && <p className="text-red-500 text-sm">{errors.fatherName.message}</p>}
+            {typeof errors.fatherName?.message === 'string' && (
+              <p className="text-red-500 text-sm">{errors.fatherName.message}</p>
+            )}
           </div>
-
           <div>
             <Label>Marital Status *</Label>
             <RadioGroup onValueChange={(value) => setValue('maritalStatus', value as any)}>
@@ -302,20 +312,30 @@ const DynamicRegistrationForm = ({ isOpen, onClose, onSuccess }: DynamicRegistra
                 <Label htmlFor="married">Married</Label>
               </div>
             </RadioGroup>
-            {errors.maritalStatus && <p className="text-red-500 text-sm">{errors.maritalStatus.message}</p>}
+          {typeof errors.maritalStatus?.message === 'string' && (
+            <p className="text-red-500 text-sm">{errors.maritalStatus.message}</p>
+          )}
           </div>
-
           <div>
             <Label htmlFor="nationality">Nationality *</Label>
             <Input {...register('nationality')} id="nationality" />
-            {errors.nationality && <p className="text-red-500 text-sm">{errors.nationality.message}</p>}
+            {typeof errors.nationality?.message === 'string' && (
+              <p className="text-red-500 text-sm">{errors.nationality.message}</p>
+            )}
           </div>
 
           <div>
             <Label htmlFor="languagesKnown">Languages Known *</Label>
-            <Input {...register('languagesKnown')} id="languagesKnown" placeholder="e.g., English, Hindi, Telugu" />
-            {errors.languagesKnown && <p className="text-red-500 text-sm">{errors.languagesKnown.message}</p>}
+            <Input
+              {...register('languagesKnown')}
+              id="languagesKnown"
+              placeholder="e.g., English, Hindi, Telugu"
+            />
+            {typeof errors.languagesKnown?.message === 'string' && (
+              <p className="text-red-500 text-sm">{errors.languagesKnown.message}</p>
+            )}
           </div>
+
 
           <div>
             <Label htmlFor="hobbies">Hobbies</Label>
