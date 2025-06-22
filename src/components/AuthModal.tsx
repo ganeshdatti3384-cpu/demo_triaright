@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,88 +16,47 @@ interface AuthModalProps {
   onAuthSuccess: (userRole: string, userName: string) => void;
 }
 
-interface LoginFormData {
-  email: string;
-  password: string;
-  remember?: boolean;
-}
-
-interface StudentRegistrationData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  college: string;
-  course: string;
-  year: string;
-  skills: string;
-  password: string;
-  confirmPassword: string;
-  terms: boolean;
-}
-
-interface EmployerRegistrationData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  companyName: string;
-  designation: string;
-  phone: string;
-  website: string;
-  password: string;
-  confirmPassword: string;
-  terms: boolean;
-}
-
-interface CollegeRegistrationData {
-  collegeName: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  website: string;
-  password: string;
-  terms: boolean;
-}
-
 const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModalProps) => {
   const [currentType, setCurrentType] = useState<'login' | 'register'>(type);
-  const { toast } = useToast();
-
-  const loginForm = useForm<LoginFormData>({
-    defaultValues: {
-      email: currentType === 'login' ? 'aks@example.com' : '',
-      password: currentType === 'login' ? 'password123' : '',
-      remember: false
-    }
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    college: '',
+    course: '',
+    year: '',
+    skills: '',
+    experience: '',
+    companyName: '',
+    designation: '',
+    collegeName: '',
+    address: '',
+    website: ''
   });
 
-  const studentForm = useForm<StudentRegistrationData>();
-  const employerForm = useForm<EmployerRegistrationData>();
-  const collegeForm = useForm<CollegeRegistrationData>();
+  const { toast } = useToast();
 
-  const handleLoginSubmit = (data: LoginFormData) => {
-    // Accept "aks@example.com" with "password123" as valid login
-    if (data.email === 'aks@example.com' && data.password === 'password123') {
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!formData.email || !formData.password) {
       toast({
-        title: "Success",
-        description: "Logged in successfully as aks!",
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
       });
-      onAuthSuccess(userType, 'aks');
       return;
     }
 
-    // For other attempts, show error
-    toast({
-      title: "Error",
-      description: "Invalid credentials. Use aks@example.com with password123",
-      variant: "destructive"
-    });
-  };
-
-  const handleStudentRegistration = (data: StudentRegistrationData) => {
-    if (data.password !== data.confirmPassword) {
+    if (currentType === 'register' && formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
         description: "Passwords do not match.",
@@ -107,66 +65,17 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
       return;
     }
 
-    if (!data.terms) {
-      toast({
-        title: "Error",
-        description: "Please agree to the terms and conditions.",
-        variant: "destructive"
-      });
-      return;
-    }
+    // Simulate authentication
+    const userName = currentType === 'login' ? 
+      formData.email.split('@')[0] : 
+      `${formData.firstName} ${formData.lastName}`;
 
     toast({
       title: "Success",
-      description: "Student account created successfully!",
+      description: `${currentType === 'login' ? 'Logged in' : 'Registered'} successfully!`,
     });
 
-    onAuthSuccess(userType, `${data.firstName} ${data.lastName}`);
-  };
-
-  const handleEmployerRegistration = (data: EmployerRegistrationData) => {
-    if (data.password !== data.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!data.terms) {
-      toast({
-        title: "Error",
-        description: "Please agree to the terms and conditions.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    toast({
-      title: "Success",
-      description: "Employer account created successfully!",
-    });
-
-    onAuthSuccess(userType, `${data.firstName} ${data.lastName}`);
-  };
-
-  const handleCollegeRegistration = (data: CollegeRegistrationData) => {
-    if (!data.terms) {
-      toast({
-        title: "Error",
-        description: "Please agree to the terms and conditions.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    toast({
-      title: "Success",
-      description: "Institution account created successfully!",
-    });
-
-    onAuthSuccess(userType, data.collegeName);
+    onAuthSuccess(userType, userName);
   };
 
   const getUserTypeTitle = () => {
@@ -183,18 +92,17 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
   };
 
   const renderLoginForm = () => (
-    <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="email">Email Address</Label>
         <Input
           id="email"
           type="email"
           placeholder="Enter your email"
-          {...loginForm.register('email', { required: 'Email is required' })}
+          value={formData.email}
+          onChange={(e) => handleInputChange('email', e.target.value)}
+          required
         />
-        {loginForm.formState.errors.email && (
-          <p className="text-red-500 text-sm">{loginForm.formState.errors.email.message}</p>
-        )}
       </div>
       
       <div>
@@ -203,15 +111,14 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           id="password"
           type="password"
           placeholder="Enter your password"
-          {...loginForm.register('password', { required: 'Password is required' })}
+          value={formData.password}
+          onChange={(e) => handleInputChange('password', e.target.value)}
+          required
         />
-        {loginForm.formState.errors.password && (
-          <p className="text-red-500 text-sm">{loginForm.formState.errors.password.message}</p>
-        )}
       </div>
 
       <div className="flex items-center space-x-2">
-        <Checkbox id="remember" {...loginForm.register('remember')} />
+        <Checkbox id="remember" />
         <Label htmlFor="remember" className="text-sm">Remember me</Label>
       </div>
 
@@ -228,29 +135,27 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
   );
 
   const renderStudentRegistration = () => (
-    <form onSubmit={studentForm.handleSubmit(handleStudentRegistration)} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="firstName">First Name</Label>
           <Input
             id="firstName"
             placeholder="First name"
-            {...studentForm.register('firstName', { required: 'First name is required' })}
+            value={formData.firstName}
+            onChange={(e) => handleInputChange('firstName', e.target.value)}
+            required
           />
-          {studentForm.formState.errors.firstName && (
-            <p className="text-red-500 text-sm">{studentForm.formState.errors.firstName.message}</p>
-          )}
         </div>
         <div>
           <Label htmlFor="lastName">Last Name</Label>
           <Input
             id="lastName"
             placeholder="Last name"
-            {...studentForm.register('lastName', { required: 'Last name is required' })}
+            value={formData.lastName}
+            onChange={(e) => handleInputChange('lastName', e.target.value)}
+            required
           />
-          {studentForm.formState.errors.lastName && (
-            <p className="text-red-500 text-sm">{studentForm.formState.errors.lastName.message}</p>
-          )}
         </div>
       </div>
 
@@ -260,17 +165,10 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           id="email"
           type="email"
           placeholder="Enter your email"
-          {...studentForm.register('email', { 
-            required: 'Email is required',
-            pattern: {
-              value: /^\S+@\S+$/i,
-              message: 'Invalid email address'
-            }
-          })}
+          value={formData.email}
+          onChange={(e) => handleInputChange('email', e.target.value)}
+          required
         />
-        {studentForm.formState.errors.email && (
-          <p className="text-red-500 text-sm">{studentForm.formState.errors.email.message}</p>
-        )}
       </div>
 
       <div>
@@ -278,7 +176,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Input
           id="phone"
           placeholder="Enter your phone number"
-          {...studentForm.register('phone')}
+          value={formData.phone}
+          onChange={(e) => handleInputChange('phone', e.target.value)}
         />
       </div>
 
@@ -287,7 +186,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Input
           id="college"
           placeholder="Enter your college name"
-          {...studentForm.register('college')}
+          value={formData.college}
+          onChange={(e) => handleInputChange('college', e.target.value)}
         />
       </div>
 
@@ -297,12 +197,13 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           <Input
             id="course"
             placeholder="e.g., Computer Science"
-            {...studentForm.register('course')}
+            value={formData.course}
+            onChange={(e) => handleInputChange('course', e.target.value)}
           />
         </div>
         <div>
           <Label htmlFor="year">Academic Year</Label>
-          <Select onValueChange={(value) => studentForm.setValue('year', value)}>
+          <Select onValueChange={(value) => handleInputChange('year', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select year" />
             </SelectTrigger>
@@ -322,7 +223,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Textarea
           id="skills"
           placeholder="List your technical skills, programming languages, interests..."
-          {...studentForm.register('skills')}
+          value={formData.skills}
+          onChange={(e) => handleInputChange('skills', e.target.value)}
         />
       </div>
 
@@ -332,17 +234,9 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           id="password"
           type="password"
           placeholder="Create a password"
-          {...studentForm.register('password', { 
-            required: 'Password is required',
-            minLength: {
-              value: 6,
-              message: 'Password must be at least 6 characters'
-            }
-          })}
+          value={formData.password}
+          onChange={(e) => handleInputChange('password', e.target.value)}
         />
-        {studentForm.formState.errors.password && (
-          <p className="text-red-500 text-sm">{studentForm.formState.errors.password.message}</p>
-        )}
       </div>
 
       <div>
@@ -351,15 +245,13 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           id="confirmPassword"
           type="password"
           placeholder="Confirm your password"
-          {...studentForm.register('confirmPassword', { required: 'Please confirm your password' })}
+          value={formData.confirmPassword}
+          onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
         />
-        {studentForm.formState.errors.confirmPassword && (
-          <p className="text-red-500 text-sm">{studentForm.formState.errors.confirmPassword.message}</p>
-        )}
       </div>
 
       <div className="flex items-center space-x-2">
-        <Checkbox id="terms" {...studentForm.register('terms')} />
+        <Checkbox id="terms" />
         <Label htmlFor="terms" className="text-sm">
           I agree to the Terms of Service and Privacy Policy
         </Label>
@@ -372,29 +264,27 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
   );
 
   const renderEmployerRegistration = () => (
-    <form onSubmit={employerForm.handleSubmit(handleEmployerRegistration)} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="firstName">First Name</Label>
           <Input
             id="firstName"
             placeholder="First name"
-            {...employerForm.register('firstName', { required: 'First name is required' })}
+            value={formData.firstName}
+            onChange={(e) => handleInputChange('firstName', e.target.value)}
+            required
           />
-          {employerForm.formState.errors.firstName && (
-            <p className="text-red-500 text-sm">{employerForm.formState.errors.firstName.message}</p>
-          )}
         </div>
         <div>
           <Label htmlFor="lastName">Last Name</Label>
           <Input
             id="lastName"
             placeholder="Last name"
-            {...employerForm.register('lastName', { required: 'Last name is required' })}
+            value={formData.lastName}
+            onChange={(e) => handleInputChange('lastName', e.target.value)}
+            required
           />
-          {employerForm.formState.errors.lastName && (
-            <p className="text-red-500 text-sm">{employerForm.formState.errors.lastName.message}</p>
-          )}
         </div>
       </div>
 
@@ -404,17 +294,10 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           id="email"
           type="email"
           placeholder="Enter your work email"
-          {...employerForm.register('email', { 
-            required: 'Email is required',
-            pattern: {
-              value: /^\S+@\S+$/i,
-              message: 'Invalid email address'
-            }
-          })}
+          value={formData.email}
+          onChange={(e) => handleInputChange('email', e.target.value)}
+          required
         />
-        {employerForm.formState.errors.email && (
-          <p className="text-red-500 text-sm">{employerForm.formState.errors.email.message}</p>
-        )}
       </div>
 
       <div>
@@ -422,7 +305,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Input
           id="companyName"
           placeholder="Enter company name"
-          {...employerForm.register('companyName')}
+          value={formData.companyName}
+          onChange={(e) => handleInputChange('companyName', e.target.value)}
         />
       </div>
 
@@ -431,7 +315,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Input
           id="designation"
           placeholder="e.g., HR Manager, Recruiter"
-          {...employerForm.register('designation')}
+          value={formData.designation}
+          onChange={(e) => handleInputChange('designation', e.target.value)}
         />
       </div>
 
@@ -440,7 +325,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Input
           id="phone"
           placeholder="Enter your phone number"
-          {...employerForm.register('phone')}
+          value={formData.phone}
+          onChange={(e) => handleInputChange('phone', e.target.value)}
         />
       </div>
 
@@ -449,7 +335,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Input
           id="website"
           placeholder="https://yourcompany.com"
-          {...employerForm.register('website')}
+          value={formData.website}
+          onChange={(e) => handleInputChange('website', e.target.value)}
         />
       </div>
 
@@ -459,17 +346,9 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           id="password"
           type="password"
           placeholder="Create a password"
-          {...employerForm.register('password', { 
-            required: 'Password is required',
-            minLength: {
-              value: 6,
-              message: 'Password must be at least 6 characters'
-            }
-          })}
+          value={formData.password}
+          onChange={(e) => handleInputChange('password', e.target.value)}
         />
-        {employerForm.formState.errors.password && (
-          <p className="text-red-500 text-sm">{employerForm.formState.errors.password.message}</p>
-        )}
       </div>
 
       <div>
@@ -478,15 +357,13 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           id="confirmPassword"
           type="password"
           placeholder="Confirm your password"
-          {...employerForm.register('confirmPassword', { required: 'Please confirm your password' })}
+          value={formData.confirmPassword}
+          onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
         />
-        {employerForm.formState.errors.confirmPassword && (
-          <p className="text-red-500 text-sm">{employerForm.formState.errors.confirmPassword.message}</p>
-        )}
       </div>
 
       <div className="flex items-center space-x-2">
-        <Checkbox id="terms" {...employerForm.register('terms')} />
+        <Checkbox id="terms" />
         <Label htmlFor="terms" className="text-sm">
           I agree to the Terms of Service and Privacy Policy
         </Label>
@@ -499,17 +376,15 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
   );
 
   const renderCollegeRegistration = () => (
-    <form onSubmit={collegeForm.handleSubmit(handleCollegeRegistration)} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="collegeName">Institution Name</Label>
         <Input
           id="collegeName"
           placeholder="Enter institution name"
-          {...collegeForm.register('collegeName', { required: 'Institution name is required' })}
+          value={formData.collegeName}
+          onChange={(e) => handleInputChange('collegeName', e.target.value)}
         />
-        {collegeForm.formState.errors.collegeName && (
-          <p className="text-red-500 text-sm">{collegeForm.formState.errors.collegeName.message}</p>
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -518,22 +393,20 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           <Input
             id="firstName"
             placeholder="First name"
-            {...collegeForm.register('firstName', { required: 'First name is required' })}
+            value={formData.firstName}
+            onChange={(e) => handleInputChange('firstName', e.target.value)}
+            required
           />
-          {collegeForm.formState.errors.firstName && (
-            <p className="text-red-500 text-sm">{collegeForm.formState.errors.firstName.message}</p>
-          )}
         </div>
         <div>
           <Label htmlFor="lastName">Contact Person Last Name</Label>
           <Input
             id="lastName"
             placeholder="Last name"
-            {...collegeForm.register('lastName', { required: 'Last name is required' })}
+            value={formData.lastName}
+            onChange={(e) => handleInputChange('lastName', e.target.value)}
+            required
           />
-          {collegeForm.formState.errors.lastName && (
-            <p className="text-red-500 text-sm">{collegeForm.formState.errors.lastName.message}</p>
-          )}
         </div>
       </div>
 
@@ -543,17 +416,10 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           id="email"
           type="email"
           placeholder="Enter official email"
-          {...collegeForm.register('email', { 
-            required: 'Email is required',
-            pattern: {
-              value: /^\S+@\S+$/i,
-              message: 'Invalid email address'
-            }
-          })}
+          value={formData.email}
+          onChange={(e) => handleInputChange('email', e.target.value)}
+          required
         />
-        {collegeForm.formState.errors.email && (
-          <p className="text-red-500 text-sm">{collegeForm.formState.errors.email.message}</p>
-        )}
       </div>
 
       <div>
@@ -561,7 +427,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Input
           id="phone"
           placeholder="Enter contact number"
-          {...collegeForm.register('phone')}
+          value={formData.phone}
+          onChange={(e) => handleInputChange('phone', e.target.value)}
         />
       </div>
 
@@ -570,7 +437,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Textarea
           id="address"
           placeholder="Enter complete address"
-          {...collegeForm.register('address')}
+          value={formData.address}
+          onChange={(e) => handleInputChange('address', e.target.value)}
         />
       </div>
 
@@ -579,7 +447,8 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
         <Input
           id="website"
           placeholder="https://yourinstitution.edu"
-          {...collegeForm.register('website')}
+          value={formData.website}
+          onChange={(e) => handleInputChange('website', e.target.value)}
         />
       </div>
 
@@ -589,21 +458,13 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
           id="password"
           type="password"
           placeholder="Create a password"
-          {...collegeForm.register('password', { 
-            required: 'Password is required',
-            minLength: {
-              value: 6,
-              message: 'Password must be at least 6 characters'
-            }
-          })}
+          value={formData.password}
+          onChange={(e) => handleInputChange('password', e.target.value)}
         />
-        {collegeForm.formState.errors.password && (
-          <p className="text-red-500 text-sm">{collegeForm.formState.errors.password.message}</p>
-        )}
       </div>
 
       <div className="flex items-center space-x-2">
-        <Checkbox id="terms" {...collegeForm.register('terms')} />
+        <Checkbox id="terms" />
         <Label htmlFor="terms" className="text-sm">
           I agree to the Terms of Service and Privacy Policy
         </Label>
@@ -652,18 +513,7 @@ const AuthModal = ({ isOpen, type, userType, onClose, onAuthSuccess }: AuthModal
             {currentType === 'login' ? "Don't have an account? " : "Already have an account? "}
             <button 
               className="text-blue-600 hover:underline font-semibold"
-              onClick={() => {
-                setCurrentType(currentType === 'login' ? 'register' : 'login');
-                // Reset forms when switching
-                loginForm.reset({
-                  email: currentType === 'register' ? 'aks@example.com' : '',
-                  password: currentType === 'register' ? 'password123' : '',
-                  remember: false
-                });
-                studentForm.reset();
-                employerForm.reset();
-                collegeForm.reset();
-              }}
+              onClick={() => setCurrentType(currentType === 'login' ? 'register' : 'login')}
             >
               {currentType === 'login' ? 'Sign up' : 'Sign in'}
             </button>

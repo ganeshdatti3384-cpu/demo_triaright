@@ -6,7 +6,7 @@ import FeaturesSection from '../components/FeaturesSection';
 import AboutSection from '../components/AboutSection';
 import PartnersSection from '../components/PartnersSection';
 import Footer from '../components/Footer';
-import LoginDialog from '../components/LoginDialog';
+import AuthModal from '../components/AuthModal';
 import StudentDashboard from '../components/dashboards/StudentDashboard';
 import JobSeekerDashboard from '../components/dashboards/JobSeekerDashboard';
 import EmployeeDashboard from '../components/dashboards/EmployeeDashboard';
@@ -16,21 +16,25 @@ import AdminDashboard from '../components/dashboards/AdminDashboard';
 import SuperAdminDashboard from '../components/dashboards/SuperAdminDashboard';
 
 const Index = () => {
-  const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [authModal, setAuthModal] = useState<{ isOpen: boolean; type: 'login' | 'register'; userType: string }>({ 
+    isOpen: false, 
+    type: 'login', 
+    userType: 'student' 
+  });
+
   const [user, setUser] = useState<{ role: string; name: string } | null>(null);
 
-  const openLoginDialog = () => {
-    setShowLoginDialog(true);
+  const openAuthModal = (type: 'login' | 'register', userType: string) => {
+    setAuthModal({ isOpen: true, type, userType });
   };
 
-  const closeLoginDialog = () => {
-    setShowLoginDialog(false);
+  const closeAuthModal = () => {
+    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
   };
 
-  const handleLoginSuccess = (userName: string) => {
-    // For now, default to student role for the demo user
-    setUser({ role: 'student', name: userName });
-    closeLoginDialog();
+  const handleAuthSuccess = (userRole: string, userName: string) => {
+    setUser({ role: userRole, name: userName });
+    closeAuthModal();
   };
 
   const handleLogout = () => {
@@ -61,17 +65,19 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar onOpenAuth={openLoginDialog} />
-      <Hero onOpenAuth={openLoginDialog} />
+      <Navbar onOpenAuth={openAuthModal} />
+      <Hero onOpenAuth={openAuthModal} />
       <FeaturesSection />
       <AboutSection />
       <PartnersSection />
       <Footer />
       
-      <LoginDialog 
-        isOpen={showLoginDialog}
-        onClose={closeLoginDialog}
-        onLoginSuccess={handleLoginSuccess}
+      <AuthModal 
+        isOpen={authModal.isOpen}
+        type={authModal.type}
+        userType={authModal.userType}
+        onClose={closeAuthModal}
+        onAuthSuccess={handleAuthSuccess}
       />
     </div>
   );

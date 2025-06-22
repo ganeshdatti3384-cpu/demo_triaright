@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ChevronDown, Menu, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
   onOpenAuth: (type: 'login' | 'register', userType: string) => void;
@@ -16,7 +15,6 @@ interface NavbarProps {
 
 const Navbar = ({ onOpenAuth }: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const navigate = useNavigate();
 
   const courseTypes = [
     { name: 'Live Courses', description: 'Interactive real-time learning' },
@@ -41,22 +39,21 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
   const loginOptions = [
     'Job Seeker', 'Student', 'Admin', 'Super Admin', 'Employee', 'Employer', 'Colleges'
   ];
-const handleRegisterClick = () => {
-    navigate('/register', { replace: true });
-  };
+
+  const registerOptions = [
+    'Job Seeker', 'Student', 'Employee', 'Employer', 'Colleges'
+  ];
+
   return (
     <nav className="bg-white/90 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-              <a href="/" className="flex items-center space-x-2">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Triaright Hub
-                </h1>
-              </a>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              EduCareer Hub
+            </h1>
           </div>
-
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
@@ -151,12 +148,25 @@ const handleRegisterClick = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button
-              onClick={handleRegisterClick}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              Register
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex items-center space-x-1">
+                  <span>Register</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48 bg-white border shadow-lg">
+                {registerOptions.map((option) => (
+                  <DropdownMenuItem 
+                    key={option} 
+                    onClick={() => onOpenAuth('register', option.toLowerCase().replace(' ', '-'))}
+                    className="cursor-pointer"
+                  >
+                    {option}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Mobile menu button */}
