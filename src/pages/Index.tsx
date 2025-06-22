@@ -17,9 +17,11 @@ import SuperAdminDashboard from '../components/dashboards/SuperAdminDashboard';
 
 const Index = () => {
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>('student');
   const [user, setUser] = useState<{ role: string; name: string } | null>(null);
 
-  const openLoginDialog = () => {
+  const openLoginDialog = (type: 'login' | 'register', userType: string) => {
+    setSelectedRole(userType);
     setShowLoginDialog(true);
   };
 
@@ -28,8 +30,7 @@ const Index = () => {
   };
 
   const handleLoginSuccess = (userName: string) => {
-    // For now, default to student role for the demo user
-    setUser({ role: 'student', name: userName });
+    setUser({ role: selectedRole, name: userName });
     closeLoginDialog();
   };
 
@@ -72,6 +73,7 @@ const Index = () => {
         isOpen={showLoginDialog}
         onClose={closeLoginDialog}
         onLoginSuccess={handleLoginSuccess}
+        selectedRole={selectedRole}
       />
     </div>
   );

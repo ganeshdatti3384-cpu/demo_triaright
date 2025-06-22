@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,7 @@ interface LoginDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (userName: string) => void;
+  selectedRole: string;
 }
 
 interface LoginFormData {
@@ -20,7 +21,7 @@ interface LoginFormData {
   remember?: boolean;
 }
 
-const LoginDialog = ({ isOpen, onClose, onLoginSuccess }: LoginDialogProps) => {
+const LoginDialog = ({ isOpen, onClose, onLoginSuccess, selectedRole }: LoginDialogProps) => {
   const { toast } = useToast();
 
   const {
@@ -35,12 +36,25 @@ const LoginDialog = ({ isOpen, onClose, onLoginSuccess }: LoginDialogProps) => {
     }
   });
 
+  const getRoleDisplayName = (role: string) => {
+    const roleMap: { [key: string]: string } = {
+      'student': 'Student',
+      'job-seeker': 'Job Seeker',
+      'employee': 'Employee',
+      'employer': 'Employer',
+      'colleges': 'College',
+      'admin': 'Admin',
+      'super-admin': 'Super Admin'
+    };
+    return roleMap[role] || 'Student';
+  };
+
   const onSubmit = (data: LoginFormData) => {
     // Accept "aks@example.com" with "password123" as valid login
     if (data.email === 'aks@example.com' && data.password === 'password123') {
       toast({
         title: "Success",
-        description: "Logged in successfully!",
+        description: `Logged in successfully as ${getRoleDisplayName(selectedRole)}!`,
       });
       onLoginSuccess('aks');
       onClose();
@@ -60,11 +74,11 @@ const LoginDialog = ({ isOpen, onClose, onLoginSuccess }: LoginDialogProps) => {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Sign In
+            Sign In as {getRoleDisplayName(selectedRole)}
           </DialogTitle>
-          <p className="text-gray-600">
-            Welcome back! Sign in to your account.
-          </p>
+          <DialogDescription className="text-gray-600">
+            Welcome back! Sign in to your {getRoleDisplayName(selectedRole).toLowerCase()} account.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-6">
