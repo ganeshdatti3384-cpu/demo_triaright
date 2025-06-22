@@ -1,32 +1,208 @@
+
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 import Footer from '../components/Footer';
-import RoleSelection from '../components/Registrations/RoleSelection';
-import StudentRegistration from '../components/Registrations/StudentRegistration';
-import JobSeekerRegistration from '../components/Registrations/JobSeekerRegistration';
 import Navbar from '@/components/Navbar';
 
-const Register = () => {
-  const [selectedRole, setSelectedRole] = useState(null);
+const registrationSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email address'),
+  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
+  address: z.string().min(1, 'Address is required'),
+  state: z.string().min(1, 'State is required'),
+  userType: z.enum(['trainer', 'jobseeker', 'student', 'employer', 'college']),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
-  const renderRegistrationForm = () => {
-    switch (selectedRole) {
-      case 'student':
-        return <StudentRegistration />;
-      case 'jobseeker':
-        return <JobSeekerRegistration />;
-      default:
-        return <RoleSelection onRoleSelect={setSelectedRole} />;
-    }
+type RegistrationFormData = z.infer<typeof registrationSchema>;
+
+const Register = () => {
+  const { toast } = useToast();
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors }
+  } = useForm<RegistrationFormData>({
+    resolver: zodResolver(registrationSchema),
+  });
+
+  const onSubmit = (data: RegistrationFormData) => {
+    console.log('Registration data:', data);
+    toast({
+      title: "Registration Successful!",
+      description: "Your account has been created successfully.",
+    });
   };
+
+  const indianStates = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+  ];
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
         throw new Error('Function not implemented.');
-      } } />
-      <main className="flex-1 bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          {renderRegistrationForm()}
+      }} />
+      <main className="flex-1 bg-gray-50 py-8">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Register
+              </CardTitle>
+              <p className="text-center text-gray-600">Create your account to get started</p>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <div>
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input
+                    id="name"
+                    {...register('name')}
+                    placeholder="Enter your full name"
+                  />
+                  {errors.name && (
+                    <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    {...register('email')}
+                    placeholder="Enter your email address"
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="phoneNumber">Phone Number *</Label>
+                  <Input
+                    id="phoneNumber"
+                    {...register('phoneNumber')}
+                    placeholder="Enter your phone number"
+                  />
+                  {errors.phoneNumber && (
+                    <p className="text-red-500 text-sm mt-1">{errors.phoneNumber.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    {...register('password')}
+                    placeholder="Enter your password"
+                  />
+                  {errors.password && (
+                    <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    {...register('confirmPassword')}
+                    placeholder="Confirm your password"
+                  />
+                  {errors.confirmPassword && (
+                    <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="address">Address *</Label>
+                  <Input
+                    id="address"
+                    {...register('address')}
+                    placeholder="Enter your address"
+                  />
+                  {errors.address && (
+                    <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="state">State *</Label>
+                  <Select onValueChange={(value) => setValue('state', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {indianStates.map((state) => (
+                        <SelectItem key={state} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.state && (
+                    <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="userType">I am registering as *</Label>
+                  <Select onValueChange={(value) => setValue('userType', value as any)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="jobseeker">Job Seeker</SelectItem>
+                      <SelectItem value="trainer">Trainer</SelectItem>
+                      <SelectItem value="employer">Employer</SelectItem>
+                      <SelectItem value="college">College</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.userType && (
+                    <p className="text-red-500 text-sm mt-1">{errors.userType.message}</p>
+                  )}
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  Register
+                </Button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600">
+                  Already have an account?{' '}
+                  <a href="/" className="text-blue-600 hover:underline font-semibold">
+                    Sign in
+                  </a>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
       <Footer />
