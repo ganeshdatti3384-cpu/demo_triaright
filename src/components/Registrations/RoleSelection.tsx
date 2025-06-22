@@ -35,22 +35,6 @@ const RoleSelection = ({ onRoleSelect }) => {
       color: 'orange',
       features: ['Recruitment management', 'Employee database', 'Application tracking', 'Interview scheduling']
     },
-    {
-      id: 'admin',
-      title: 'Admin',
-      description: 'Administrative access to platform management',
-      icon: Shield,
-      color: 'red',
-      features: ['User management', 'Course administration', 'Exam scheduling', 'System oversight']
-    },
-    {
-      id: 'superadmin',
-      title: 'Super Admin',
-      description: 'Full platform control and analytics',
-      icon: Crown,
-      color: 'indigo',
-      features: ['Complete dashboard access', 'User type management', 'System analytics', 'Platform control']
-    }
   ];
 
   const getColorClasses = (color) => {
@@ -66,13 +50,13 @@ const RoleSelection = ({ onRoleSelect }) => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">Join Triaright</h1>
         <p className="text-xl text-gray-600">Choose your role to get started with the perfect experience</p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {roles.map((role) => {
           const Icon = role.icon;
           const colorClasses = getColorClasses(role.color);
