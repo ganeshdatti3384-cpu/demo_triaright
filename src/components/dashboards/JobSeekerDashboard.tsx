@@ -5,7 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Briefcase, LogOut, Filter } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Search, Download, Briefcase, LogOut, Filter, BookOpen, Video, Users, Shield, Star } from 'lucide-react';
 
 interface JobSeekerDashboardProps {
   user: { role: string; name: string };
@@ -14,6 +17,7 @@ interface JobSeekerDashboardProps {
 
 const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
   const [activeTab, setActiveTab] = useState('jobs');
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   const jobs = [
     { id: 1, title: 'Frontend Developer', company: 'Tech Solutions', location: 'Remote', salary: '₹8-12 LPA', type: 'Full-time', applied: false },
@@ -26,6 +30,22 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
     { id: 2, title: 'React Developer', company: 'WebTech Co', appliedDate: '2024-01-10', status: 'Under Review' },
     { id: 3, title: 'Software Engineer', company: 'Global Tech', appliedDate: '2024-01-05', status: 'Rejected' },
   ];
+
+  const courses = [
+    { id: 1, title: 'React Masterclass', type: 'Live', instructor: 'John Doe', duration: '8 weeks', price: '₹15,000', enrolled: false },
+    { id: 2, title: 'Node.js Fundamentals', type: 'Recorded', instructor: 'Jane Smith', duration: '6 weeks', price: '₹8,000', enrolled: true },
+    { id: 3, title: 'Full Stack Development', type: 'Live', instructor: 'Mike Johnson', duration: '12 weeks', price: '₹25,000', enrolled: false },
+  ];
+
+  const myCourses = courses.filter(course => course.enrolled);
+
+  const internships = [
+    { id: 1, title: 'Frontend Developer Intern', company: 'Tech Corp', duration: '3 months', stipend: '₹15,000/month', type: 'Remote', applied: false },
+    { id: 2, title: 'Backend Developer Intern', company: 'StartupXYZ', duration: '6 months', stipend: '₹20,000/month', type: 'On-site', applied: true },
+    { id: 3, title: 'Full Stack Intern', company: 'WebTech', duration: '4 months', stipend: '₹18,000/month', type: 'Hybrid', applied: false },
+  ];
+
+  const myInternships = internships.filter(internship => internship.applied);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -51,11 +71,13 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="jobs">Browse Jobs</TabsTrigger>
-            <TabsTrigger value="applications">My Applications</TabsTrigger>
+            <TabsTrigger value="my-jobs">My Jobs</TabsTrigger>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
+            <TabsTrigger value="internships">Internships</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="feedback">Feedback</TabsTrigger>
+            <TabsTrigger value="assistance">Job Assistance</TabsTrigger>
           </TabsList>
 
           <TabsContent value="jobs" className="space-y-6">
@@ -107,9 +129,9 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
             </div>
           </TabsContent>
 
-          <TabsContent value="applications" className="space-y-6">
+          <TabsContent value="my-jobs" className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">My Applications</h2>
+              <h2 className="text-2xl font-bold">My Job Applications</h2>
               <div className="text-sm text-gray-600">
                 Total Applications: {applications.length}
               </div>
@@ -145,72 +167,463 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
             </div>
           </TabsContent>
 
+          <TabsContent value="courses" className="space-y-6">
+            <Tabs defaultValue="browse" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="browse">Browse Courses</TabsTrigger>
+                <TabsTrigger value="my-courses">My Courses</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="browse" className="space-y-4">
+                <div className="flex gap-4 mb-6">
+                  <Button variant="outline" size="sm">
+                    <Video className="h-4 w-4 mr-2" />
+                    Live Courses
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Recorded Courses
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {courses.map((course) => (
+                    <Card key={course.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg">{course.title}</CardTitle>
+                          <Badge variant={course.type === 'Live' ? 'default' : 'secondary'}>
+                            {course.type}
+                          </Badge>
+                        </div>
+                        <CardDescription>By {course.instructor}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600">Duration: {course.duration}</p>
+                          <p className="text-lg font-semibold text-blue-600">{course.price}</p>
+                          <Button 
+                            className="w-full"
+                            disabled={course.enrolled}
+                          >
+                            {course.enrolled ? 'Enrolled' : 'Enroll Now'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="my-courses" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {myCourses.map((course) => (
+                    <Card key={course.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{course.title}</CardTitle>
+                        <CardDescription>By {course.instructor}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-blue-600 h-2 rounded-full" style={{ width: '45%' }}></div>
+                          </div>
+                          <p className="text-sm text-gray-600">Progress: 45%</p>
+                          <Button variant="outline" className="w-full">
+                            Continue Learning
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
+          <TabsContent value="internships" className="space-y-6">
+            <Tabs defaultValue="browse" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="browse">Browse Internships</TabsTrigger>
+                <TabsTrigger value="my-internships">My Internships</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="browse" className="space-y-4">
+                <div className="grid grid-cols-1 gap-6">
+                  {internships.map((internship) => (
+                    <Card key={internship.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="text-xl font-semibold mb-2">{internship.title}</h3>
+                            <p className="text-gray-600 mb-2">{internship.company}</p>
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              <Badge variant="outline">{internship.duration}</Badge>
+                              <Badge variant="outline">{internship.type}</Badge>
+                              <Badge variant="secondary">{internship.stipend}</Badge>
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <Button
+                              className={internship.applied ? "bg-green-600 hover:bg-green-700" : ""}
+                              disabled={internship.applied}
+                            >
+                              {internship.applied ? 'Applied' : 'Apply Now'}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="my-internships" className="space-y-4">
+                <div className="space-y-4">
+                  {myInternships.map((internship) => (
+                    <Card key={internship.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-lg">{internship.title}</h3>
+                            <p className="text-gray-600">{internship.company}</p>
+                            <p className="text-sm text-gray-500 mt-1">Duration: {internship.duration}</p>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="default">Applied</Badge>
+                            <Button variant="outline" size="sm" className="mt-2 block">
+                              View Details
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
           <TabsContent value="profile">
             <Card>
               <CardHeader>
                 <CardTitle>Profile Management</CardTitle>
-                <CardDescription>Manage your resume and personal information</CardDescription>
+                <CardDescription>Manage your profile and personal information</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Resume</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Last updated: January 15, 2024</span>
-                        <div className="space-x-2">
-                          <Button variant="outline" size="sm">
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </Button>
-                          <Button size="sm">Update Resume</Button>
+                  <Button onClick={() => setShowEditProfile(true)} className="w-full">
+                    Edit Profile
+                  </Button>
+
+                  {showEditProfile && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                          <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Edit Profile</h2>
+                            <Button variant="outline" onClick={() => setShowEditProfile(false)}>
+                              Close
+                            </Button>
+                          </div>
+
+                          <form className="space-y-8">
+                            {/* Profile Picture Upload */}
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                📂 Profile Picture Upload
+                              </h3>
+                              <div className="flex items-center space-x-4">
+                                <Avatar className="h-20 w-20">
+                                  <AvatarImage src="" />
+                                  <AvatarFallback>JS</AvatarFallback>
+                                </Avatar>
+                                <Button variant="outline">Choose File</Button>
+                              </div>
+                            </div>
+
+                            {/* Personal Details */}
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                🧑 Personal Details
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="fullName">Full Name *</Label>
+                                  <Input id="fullName" placeholder="Enter full name" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="dob">Date of Birth *</Label>
+                                  <Input id="dob" type="date" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="gender">Gender *</Label>
+                                  <Select>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select gender" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="male">Male</SelectItem>
+                                      <SelectItem value="female">Female</SelectItem>
+                                      <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="maritalStatus">Marital Status</Label>
+                                  <Select>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="single">Single</SelectItem>
+                                      <SelectItem value="married">Married</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <Label htmlFor="address">Address *</Label>
+                                  <Input id="address" placeholder="Enter address" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="nationality">Nationality</Label>
+                                  <Input id="nationality" placeholder="Enter nationality" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="languages">Languages Known</Label>
+                                  <Input id="languages" placeholder="E.g., English, Hindi" />
+                                </div>
+                                <div className="md:col-span-2">
+                                  <Label htmlFor="hobbies">Hobbies</Label>
+                                  <Input id="hobbies" placeholder="Enter hobbies" />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Education Details */}
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                🎓 Education Details
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="instituteName">Institute Name *</Label>
+                                  <Input id="instituteName" placeholder="College/University name" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="stream">Stream/Course *</Label>
+                                  <Input id="stream" placeholder="Enter stream/course" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="yearOfPass">Year of Pass *</Label>
+                                  <Input id="yearOfPass" placeholder="E.g., 2023" />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Project Section */}
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                💻 Project Section
+                              </h3>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="projectName">Project Name</Label>
+                                  <Input id="projectName" placeholder="Name of your project" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="githubLink">GitHub Link</Label>
+                                  <Input id="githubLink" placeholder="https://github.com/..." />
+                                </div>
+                                <div>
+                                  <Label htmlFor="projectDescription">Description</Label>
+                                  <textarea
+                                    id="projectDescription"
+                                    className="w-full p-2 border border-gray-300 rounded-md h-24"
+                                    placeholder="Brief description of your project"
+                                  ></textarea>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Certifications */}
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                📜 Certifications
+                              </h3>
+                              <div>
+                                <Label htmlFor="certifications">List of Certifications and Credentials</Label>
+                                <textarea
+                                  id="certifications"
+                                  className="w-full p-2 border border-gray-300 rounded-md h-24"
+                                  placeholder="List your certifications and credentials"
+                                ></textarea>
+                              </div>
+                            </div>
+
+                            {/* Internships */}
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                🧳 Internships
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="companyName">Company Name</Label>
+                                  <Input id="companyName" placeholder="Company where you interned" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="internshipRole">Role</Label>
+                                  <Input id="internshipRole" placeholder="Your position/role" />
+                                </div>
+                                <div className="md:col-span-2">
+                                  <Label htmlFor="responsibilities">Responsibilities</Label>
+                                  <textarea
+                                    id="responsibilities"
+                                    className="w-full p-2 border border-gray-300 rounded-md h-24"
+                                    placeholder="Brief description of your responsibilities"
+                                  ></textarea>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Account Credentials */}
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                👤 Account Credentials
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="username">Username</Label>
+                                  <Input id="username" placeholder="Choose a username" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="newPassword">New Password</Label>
+                                  <Input id="newPassword" type="password" placeholder="Enter new password" />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end space-x-4">
+                              <Button variant="outline" onClick={() => setShowEditProfile(false)}>
+                                Cancel
+                              </Button>
+                              <Button type="submit">
+                                Save Changes
+                              </Button>
+                            </div>
+                          </form>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Profile Information</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Button variant="outline" className="w-full">
-                        Edit Profile
-                      </Button>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="feedback">
+          <TabsContent value="assistance" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="border-2 border-blue-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-blue-700">
+                    <Users className="h-6 w-6 mr-2" />
+                    Job Assistance
+                  </CardTitle>
+                  <CardDescription>Get personalized help with your job search</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Resume Review & Optimization</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Interview Preparation</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Career Counseling</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Job Matching Services</span>
+                    </div>
+                    <Button className="w-full mt-4">
+                      Request Assistance
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-green-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-green-700">
+                    <Shield className="h-6 w-6 mr-2" />
+                    Job Assurance Program
+                  </CardTitle>
+                  <CardDescription>Guaranteed job placement with our premium program</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">100% Job Placement Guarantee</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Dedicated Career Coach</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Industry Connections</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Money Back Guarantee</span>
+                    </div>
+                    <Button className="w-full mt-4 bg-green-600 hover:bg-green-700">
+                      Join Assurance Program
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Submit Feedback</CardTitle>
-                <CardDescription>Help us improve our platform</CardDescription>
+                <CardTitle>How Our Job Assistance Works</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Feedback Type</label>
-                    <select className="w-full mt-1 p-2 border border-gray-300 rounded-md">
-                      <option>Platform Experience</option>
-                      <option>Job Recommendations</option>
-                      <option>Application Process</option>
-                      <option>Other</option>
-                    </select>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-blue-600 font-bold">1</span>
+                    </div>
+                    <h3 className="font-semibold mb-2">Profile Assessment</h3>
+                    <p className="text-sm text-gray-600">We analyze your skills and career goals</p>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium">Your Feedback</label>
-                    <textarea
-                      className="w-full mt-1 p-2 border border-gray-300 rounded-md h-32"
-                      placeholder="Please share your feedback..."
-                    ></textarea>
+                  <div className="text-center">
+                    <div className="bg-purple-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-purple-600 font-bold">2</span>
+                    </div>
+                    <h3 className="font-semibold mb-2">Skill Enhancement</h3>
+                    <p className="text-sm text-gray-600">Personalized training recommendations</p>
                   </div>
-                  <Button className="w-full">Submit Feedback</Button>
+                  <div className="text-center">
+                    <div className="bg-green-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-green-600 font-bold">3</span>
+                    </div>
+                    <h3 className="font-semibold mb-2">Job Matching</h3>
+                    <p className="text-sm text-gray-600">Connect with relevant opportunities</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-orange-600 font-bold">4</span>
+                    </div>
+                    <h3 className="font-semibold mb-2">Placement</h3>
+                    <p className="text-sm text-gray-600">Secure your dream job</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
