@@ -41,7 +41,6 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
                 alt="TriaRight" 
                 className="h-8 w-auto"
               />
-              <h1 className="text-xl font-bold text-gray-900">College Partnership Portal</h1>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user.name}</span>
