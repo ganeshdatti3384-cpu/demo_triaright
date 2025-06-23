@@ -589,7 +589,7 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
               </Card>
             </div>
 
-            <Card>
+{/*             <Card>
               <CardHeader>
                 <CardTitle>Common Inclusions</CardTitle>
               </CardHeader>
@@ -604,7 +604,7 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                   <li>Mock Interviews with Real‑Time Feedback</li>
                 </ul>
               </CardContent>
-            </Card>
+            </Card> */}
 
             <Card>
               <CardHeader>
