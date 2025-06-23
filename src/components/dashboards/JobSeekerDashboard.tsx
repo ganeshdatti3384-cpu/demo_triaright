@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -130,6 +129,7 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
               ))}
             </div>
           </TabsContent>
+
           <TabsContent value="my-jobs" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">My Job Applications</h2>
@@ -530,17 +530,13 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                     <Users className="h-6 w-6 mr-2" />
                     Job Assistance
                   </CardTitle>
-                  <CardDescription>Get personalized help with your job search</CardDescription>
+                  <CardDescription>₹500 Lifetime Access – Personalized Job Search Support</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2">
                       <Star className="h-4 w-4 text-yellow-500" />
                       <span className="text-sm">Resume Review & Optimization</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm">Interview Preparation</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Star className="h-4 w-4 text-yellow-500" />
@@ -551,7 +547,7 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                       <span className="text-sm">Job Matching Services</span>
                     </div>
                     <Button className="w-full mt-4">
-                      Request Assistance
+                      Request Assistance – ₹500
                     </Button>
                   </div>
                 </CardContent>
@@ -563,26 +559,28 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                     <Shield className="h-6 w-6 mr-2" />
                     Job Assurance Program
                   </CardTitle>
-                  <CardDescription>Guaranteed job placement with our premium program</CardDescription>
+                  <CardDescription>Guaranteed placement with tailored tracks</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm">100% Job Placement Guarantee</span>
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-semibold text-green-700">IT Track – 1 Year Program</h4>
+                      <p className="text-sm text-gray-600 mb-2">Fee: ₹30,000 (one-time)</p>
+                      <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                        <li>Intensive Training</li>
+                        <li>Placement Support</li>
+                      </ul>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm">Dedicated Career Coach</span>
+
+                    <div>
+                      <h4 className="font-semibold text-green-700">Non‑IT Track – 100‑Day Program</h4>
+                      <p className="text-sm text-gray-600 mb-2">Fee: ₹10,000 (one-time)</p>
+                      <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                        <li>Targeted Training</li>
+                        <li>Job Assistance</li>
+                      </ul>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm">Industry Connections</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm">Money Back Guarantee</span>
-                    </div>
+
                     <Button className="w-full mt-4 bg-green-600 hover:bg-green-700">
                       Join Assurance Program
                     </Button>
@@ -590,6 +588,23 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                 </CardContent>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Common Inclusions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="list-disc list-inside text-sm text-gray-700 space-y-2">
+                  <li>Personalized Skill Assessment</li>
+                  <li>Résumé Building & LinkedIn Optimization</li>
+                  <li>Soft Skills & Communication Training</li>
+                  <li>Domain‑Specific Technical Training</li>
+                  <li>Weekly Progress Reviews</li>
+                  <li>Direct Interview Opportunities</li>
+                  <li>Mock Interviews with Real‑Time Feedback</li>
+                </ul>
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
