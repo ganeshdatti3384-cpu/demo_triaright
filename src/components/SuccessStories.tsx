@@ -93,9 +93,13 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">
-              TriaRight - Success Stories
-            </h1>
+             <div className="flex items-center">
+              <img 
+                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                alt="TriaRight Logo" 
+                className="h-10 w-auto"
+              />
+            </div>
           </div>
         </div>
       </header>
