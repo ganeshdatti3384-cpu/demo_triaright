@@ -75,7 +75,7 @@ const Index = () => {
       duration: "12 weeks",
       students: 2500,
       rating: 4.8,
-      image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300&h=200&fit=crop"
+      image: "https://images.unsplash.com/photo-1498050108755-2616b612b786?w=300&h=200&fit=crop"
     },
     {
       id: 2,
@@ -420,7 +420,10 @@ const Index = () => {
       <LoginDialog 
         isOpen={showLogin} 
         onClose={() => setShowLogin(false)} 
-        onLogin={handleLogin}
+        onLoginSuccess={(userName: string) => {
+          handleLogin({ name: userName, role: 'student' });
+        }}
+        selectedRole="student"
       />
 
       <RegisterDialog 
