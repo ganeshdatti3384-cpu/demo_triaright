@@ -39,7 +39,7 @@ const EmployeeDashboard = ({ user, onLogout }: EmployeeDashboardProps) => {
                 alt="TriaRight" 
                 className="h-8 w-auto"
               />
-              <h1 className="text-xl font-bold text-gray-900">Employee Portal</h1>
+{/*               <h1 className="text-xl font-bold text-gray-900">Employee Portal</h1> */}
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user.name}</span>
