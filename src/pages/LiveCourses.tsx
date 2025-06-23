@@ -111,9 +111,9 @@ const courses = [
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Recorded Courses</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Live Courses</h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Learn at your own pace with our comprehensive recorded courses. Access lifetime content and build your skills with industry-expert instructors.
+             Join interactive live sessions with expert instructors, ask questions in real-time, and participate in group discussions.
             </p>
           </div>
         </div>
