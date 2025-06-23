@@ -13,83 +13,66 @@ const LiveCourses = () => {
   const courses = [
     {
       id: 1,
-      title: "Full Stack Web Development",
-      description: "Master HTML, CSS, JavaScript, React, Node.js and MongoDB",
-      duration: "40 hours",
-      students: "2,500+",
+      title: 'Web Development',
+      description: 'Master HTML, CSS, JavaScript, React and build modern web applications',
+      icon: Code,
+      duration: '12 weeks',
+      students: '2,500+',
       rating: 4.8,
-      price: "₹2,999",
-      originalPrice: "₹4,999",
-      image: "/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png",
-      lessons: 45,
-      level: "Beginner to Advanced"
+      color: 'bg-blue-500'
     },
     {
       id: 2,
-      title: "Python Programming & Data Science",
-      description: "Learn Python, NumPy, Pandas, Matplotlib and Machine Learning basics",
-      duration: "35 hours",
-      students: "1,800+",
-      rating: 4.7,
-      price: "₹2,499",
-      originalPrice: "₹3,999",
-      image: "/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png",
-      lessons: 38,
-      level: "Beginner"
+      title: 'Data Science',
+      description: 'Learn Python, Machine Learning, Statistics and Data Analysis',
+      icon: Database,
+      duration: '16 weeks',
+      students: '1,800+',
+      rating: 4.9,
+      color: 'bg-orange-500'
     },
     {
       id: 3,
-      title: "Digital Marketing Mastery",
-      description: "Complete course on SEO, Social Media, Google Ads, and Analytics",
-      duration: "25 hours",
-      students: "3,200+",
-      rating: 4.9,
-      price: "₹1,999",
-      originalPrice: "₹2,999",
-      image: "/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png",
-      lessons: 30,
-      level: "Beginner to Intermediate"
+      title: 'Aptitude Training',
+      description: 'Quantitative aptitude, logical reasoning, and verbal ability',
+      icon: Calculator,
+      duration: '8 weeks',
+      students: '3,200+',
+      rating: 4.7,
+      color: 'bg-green-500'
     },
     {
       id: 4,
-      title: "Java Programming Complete Course",
-      description: "Core Java, OOP concepts, Collections, Spring Boot fundamentals",
-      duration: "50 hours",
-      students: "2,100+",
+      title: 'Business Analytics',
+      description: 'Excel, Power BI, Tableau and business intelligence tools',
+      icon: TrendingUp,
+      duration: '10 weeks',
+      students: '1,500+',
       rating: 4.6,
-      price: "₹3,499",
-      originalPrice: "₹5,499",
-      image: "/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png",
-      lessons: 55,
-      level: "Beginner to Advanced"
+      color: 'bg-purple-500'
     },
     {
       id: 5,
-      title: "UI/UX Design Fundamentals",
-      description: "Design principles, Figma, Adobe XD, User Research, and Prototyping",
-      duration: "30 hours",
-      students: "1,500+",
+      title: 'Soft Skills',
+      description: 'Communication, leadership and professional development',
+      icon: Users,
+      duration: '6 weeks',
+      students: '4,000+',
       rating: 4.8,
-      price: "₹2,299",
-      originalPrice: "₹3,499",
-      image: "/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png",
-      lessons: 35,
-      level: "Beginner"
+      color: 'bg-pink-500'
     },
     {
       id: 6,
-      title: "Mobile App Development with React Native",
-      description: "Build iOS and Android apps with React Native and Expo",
-      duration: "45 hours",
-      students: "1,200+",
-      rating: 4.7,
-      price: "₹3,299",
-      originalPrice: "₹4,799",
-      image: "/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png",
-      lessons: 42,
-      level: "Intermediate"
+      title: 'Job Readiness',
+      description: 'Resume building, interview preparation and placement support',
+      icon: Briefcase,
+      duration: '4 weeks',
+      students: '2,800+',
+      rating: 4.9,
+      color: 'bg-indigo-500'
     }
   ];
+
 
   const handleEnroll = () => {
     navigate('/register');
