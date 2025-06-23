@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -32,7 +31,8 @@ import {
   Briefcase,
   Upload,
   User,
-  Edit
+  Edit,
+  ArrowLeft
 } from 'lucide-react';
 import CodeCompiler from '../CodeCompiler';
 import ExamsSection from '../ExamsSection';
@@ -48,6 +48,8 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
   const [internshipFilter, setInternshipFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
 
   // Sample data for enrolled courses
   const enrolledCourses = [
@@ -208,15 +210,168 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
     }
   ];
 
+  // Recent events and updates data
+  const recentUpdates = [
+    {
+      id: 1,
+      type: 'event',
+      title: 'Tech Hackathon 2025',
+      description: 'Join our annual hackathon with prizes worth ₹5 lakhs',
+      date: 'Feb 15-17, 2025',
+      image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=300&h=200&fit=crop'
+    },
+    {
+      id: 2,
+      type: 'success',
+      title: 'Placement Success',
+      description: 'Congratulations to Priya Sharma for joining TCS as Software Developer',
+      date: 'Jan 28, 2025',
+      image: 'https://images.unsplash.com/photo-1494790108755-2616c5e2e4b8?w=300&h=200&fit=crop&crop=face'
+    },
+    {
+      id: 3,
+      type: 'event',
+      title: 'Job Fair 2025',
+      description: 'Meet 50+ top companies looking for fresh talent',
+      date: 'Mar 5, 2025',
+      image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=300&h=200&fit=crop'
+    },
+    {
+      id: 4,
+      type: 'success',
+      title: 'New Achievement',
+      description: 'Rahul Kumar placed at Infosys with 7.2 LPA package',
+      date: 'Jan 25, 2025',
+      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=200&fit=crop&crop=face'
+    }
+  ];
+
+  const [currentUpdate, setCurrentUpdate] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentUpdate((prev) => (prev + 1) % recentUpdates.length);
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [recentUpdates.length]);
+
+  const handleEnrollCourse = (course: any) => {
+    if (course.type === 'recorded') {
+      setSelectedCourse(course);
+      setShowVideoPlayer(true);
+    } else {
+      // Handle live course enrollment
+      console.log('Live course enrollment:', course);
+    }
+  };
+
+  if (showVideoPlayer && selectedCourse) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center">
+                <Button variant="ghost" onClick={() => setShowVideoPlayer(false)} className="mr-4">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">
+                  TriaRight Hub
+                </h1>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">Welcome, {user.name}</span>
+                <Button variant="outline" size="sm" onClick={onLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedCourse.title}</h2>
+            <p className="text-gray-600">{selectedCourse.description}</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Video Player */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Videos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video mb-4">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src="https://www.youtube.com/embed/videoseries?list=PLanAc9YPhabZ5U6yuhufTIwKRjwUxBTds"
+                      title="Course Playlist"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="rounded-lg"
+                    ></iframe>
+                  </div>
+                  <Button className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600">
+                    <Award className="h-4 w-4 mr-2" />
+                    Get Certificate
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Course Info */}
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Duration:</span>
+                      <span className="font-medium">{selectedCourse.duration}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Type:</span>
+                      <Badge variant="outline">Recorded</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Progress:</span>
+                      <span className="font-medium">{selectedCourse.progress}%</span>
+                    </div>
+                    <Progress value={selectedCourse.progress} className="mt-2" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Triaright Hub
+            <div className="flex items-center">
+              <img 
+                src="/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png" 
+                alt="TriaRight Logo" 
+                className="h-8 w-auto mr-3"
+              />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">
+                TriaRight Hub
               </h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -320,6 +475,56 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Recent Updates & Success Stories */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Latest Updates & Success Stories</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="relative overflow-hidden">
+                  <div 
+                    className="flex transition-transform duration-500 ease-in-out"
+                    style={{ transform: `translateX(-${currentUpdate * 100}%)` }}
+                  >
+                    {recentUpdates.map((update, index) => (
+                      <div key={update.id} className="w-full flex-shrink-0 px-2">
+                        <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-orange-50 rounded-lg">
+                          <img
+                            src={update.image}
+                            alt={update.title}
+                            className="w-16 h-16 rounded-lg object-cover"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <Badge variant={update.type === 'event' ? 'default' : 'secondary'}>
+                                {update.type === 'event' ? 'Event' : 'Success Story'}
+                              </Badge>
+                              <span className="text-sm text-gray-500">{update.date}</span>
+                            </div>
+                            <h4 className="font-semibold text-gray-900">{update.title}</h4>
+                            <p className="text-sm text-gray-600">{update.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Slide Indicators */}
+                  <div className="flex justify-center mt-4 space-x-2">
+                    {recentUpdates.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentUpdate(index)}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          index === currentUpdate ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Courses Tab */}
@@ -377,7 +582,10 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                               Instructor: {course.instructor}
                             </div>
                           )}
-                          <Button className="w-full">
+                          <Button 
+                            className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
+                            onClick={() => handleEnrollCourse(course)}
+                          >
                             <Play className="h-4 w-4 mr-2" />
                             {course.type === 'live' ? 'Apply for Course' : 'Enroll Now'}
                           </Button>
@@ -1046,6 +1254,61 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center mb-4 md:mb-0">
+              <img 
+                src="/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png" 
+                alt="TriaRight Logo" 
+                className="h-8 w-auto mr-3"
+              />
+              <span className="text-xl font-bold">TriaRight Hub</span>
+            </div>
+            
+            <div className="flex space-x-6">
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </a>
+              
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+              </a>
+              
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.373 12.073 12.017 12.073c6.62 0 12.017-5.373 12.017-12.073C24.014 5.367 18.637 0 12.017 0zM8.449 16.988c-1.297 0-2.448-.473-3.342-1.257-.894-.784-1.449-1.849-1.449-3.043 0-1.194.555-2.259 1.449-3.043.894-.784 2.045-1.257 3.342-1.257 1.297 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+          
+          <div className="mt-6 pt-6 border-t border-gray-800 text-center text-gray-400">
+            <p>&copy; 2025 TriaRight. All rights reserved. The New Era Of Learning.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
