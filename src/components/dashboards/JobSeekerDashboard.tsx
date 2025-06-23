@@ -130,7 +130,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
               ))}
             </div>
           </TabsContent>
-
           <TabsContent value="my-jobs" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">My Job Applications</h2>
