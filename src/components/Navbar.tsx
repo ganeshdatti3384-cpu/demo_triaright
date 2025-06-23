@@ -19,7 +19,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
   const navigate = useNavigate();
 
   const courseTypes = [
-    { name: 'Live Courses', description: 'Interactive real-time learning', path: '#' },
+    { name: 'Live Courses', description: 'Interactive real-time learning', path: '/courses/live' },
     { name: 'Recorded Courses', description: 'Learn at your own pace', path: '/courses/recorded' }
   ];
 
