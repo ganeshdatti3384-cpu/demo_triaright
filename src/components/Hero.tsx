@@ -14,11 +14,11 @@ const Hero = ({ onOpenAuth }: HeroProps) => {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <div className="flex justify-center mb-8">
-            <img 
+{/*             <img 
               src="/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png" 
               alt="TriaRight Logo" 
               className="h-24 w-auto"
-            />
+            /> */}
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
