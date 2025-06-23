@@ -19,23 +19,23 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
   const navigate = useNavigate();
 
   const courseTypes = [
-    { name: 'Live Courses', description: 'Interactive real-time learning' },
-    { name: 'Recorded Courses', description: 'Learn at your own pace' }
+    { name: 'Live Courses', description: 'Interactive real-time learning', path: '#' },
+    { name: 'Recorded Courses', description: 'Learn at your own pace', path: '/courses/recorded' }
   ];
 
   const jobTypes = [
-    { name: 'Job Assurance', description: 'Guaranteed placement programs' },
-    { name: 'Job Assistance', description: 'Career support and guidance' }
+    { name: 'Job Assurance', description: 'Guaranteed placement programs', path: '/jobs/assurance' },
+    { name: 'Job Assistance', description: 'Career support and guidance', path: '/jobs/assistance' }
   ];
 
   const internshipTypes = [
-    { name: 'Online Internships', description: 'Remote opportunities' },
-    { name: 'Offline Internships', description: 'On-site experiences' }
+    { name: 'Online Internships', description: 'Remote opportunities', path: '/internships/online' },
+    { name: 'Offline Internships', description: 'On-site experiences', path: '/internships/offline' }
   ];
 
   const trainingTypes = [
-    { name: 'CRT Training', description: 'Campus Recruitment Training' },
-    { name: 'Technical Training', description: 'Skill-specific programs' }
+    { name: 'CRT Training', description: 'Campus Recruitment Training', path: '#' },
+    { name: 'Technical Training', description: 'Skill-specific programs', path: '#' }
   ];
 
   const loginOptions = [
@@ -44,6 +44,12 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
 
   const handleRegisterClick = () => {
     navigate('/register', { replace: true });
+  };
+
+  const handleMenuItemClick = (path: string) => {
+    if (path !== '#') {
+      navigate(path);
+    }
   };
 
   return (
@@ -70,7 +76,11 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 bg-white border shadow-lg">
                 {courseTypes.map((course) => (
-                  <DropdownMenuItem key={course.name} className="p-3">
+                  <DropdownMenuItem 
+                    key={course.name} 
+                    className="p-3 cursor-pointer"
+                    onClick={() => handleMenuItemClick(course.path)}
+                  >
                     <div>
                       <div className="font-medium">{course.name}</div>
                       <div className="text-sm text-gray-500">{course.description}</div>
@@ -87,7 +97,11 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 bg-white border shadow-lg">
                 {jobTypes.map((job) => (
-                  <DropdownMenuItem key={job.name} className="p-3">
+                  <DropdownMenuItem 
+                    key={job.name} 
+                    className="p-3 cursor-pointer"
+                    onClick={() => handleMenuItemClick(job.path)}
+                  >
                     <div>
                       <div className="font-medium">{job.name}</div>
                       <div className="text-sm text-gray-500">{job.description}</div>
@@ -104,7 +118,11 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 bg-white border shadow-lg">
                 {internshipTypes.map((internship) => (
-                  <DropdownMenuItem key={internship.name} className="p-3">
+                  <DropdownMenuItem 
+                    key={internship.name} 
+                    className="p-3 cursor-pointer"
+                    onClick={() => handleMenuItemClick(internship.path)}
+                  >
                     <div>
                       <div className="font-medium">{internship.name}</div>
                       <div className="text-sm text-gray-500">{internship.description}</div>
@@ -121,7 +139,11 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 bg-white border shadow-lg">
                 {trainingTypes.map((training) => (
-                  <DropdownMenuItem key={training.name} className="p-3">
+                  <DropdownMenuItem 
+                    key={training.name} 
+                    className="p-3 cursor-pointer"
+                    onClick={() => handleMenuItemClick(training.path)}
+                  >
                     <div>
                       <div className="font-medium">{training.name}</div>
                       <div className="text-sm text-gray-500">{training.description}</div>
@@ -181,7 +203,11 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
               <div className="space-y-2">
                 <h3 className="font-semibold text-gray-900">Courses</h3>
                 {courseTypes.map((course) => (
-                  <div key={course.name} className="pl-4 text-sm text-gray-600">
+                  <div 
+                    key={course.name} 
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-blue-600"
+                    onClick={() => handleMenuItemClick(course.path)}
+                  >
                     {course.name}
                   </div>
                 ))}
@@ -190,8 +216,25 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
               <div className="space-y-2">
                 <h3 className="font-semibold text-gray-900">Jobs</h3>
                 {jobTypes.map((job) => (
-                  <div key={job.name} className="pl-4 text-sm text-gray-600">
+                  <div 
+                    key={job.name} 
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-blue-600"
+                    onClick={() => handleMenuItemClick(job.path)}
+                  >
                     {job.name}
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900">Internships</h3>
+                {internshipTypes.map((internship) => (
+                  <div 
+                    key={internship.name} 
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-blue-600"
+                    onClick={() => handleMenuItemClick(internship.path)}
+                  >
+                    {internship.name}
                   </div>
                 ))}
               </div>
