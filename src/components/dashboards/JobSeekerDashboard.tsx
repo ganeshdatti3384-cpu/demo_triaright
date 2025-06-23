@@ -523,133 +523,113 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
             </Card>
           </TabsContent>
 
-     <TabsContent value="assistance" className="space-y-6">
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    {/* Job Assistance */}
-    <Card className="border-2 border-blue-200">
-      <CardHeader>
-        <CardTitle className="flex items-center text-blue-700">
-          <Users className="h-6 w-6 mr-2" />
-          Job Assistance
-        </CardTitle>
-        <CardDescription>₹500 Lifetime Access – Personalized Job Search Support</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Star className="h-4 w-4 text-yellow-500" />
-            <span className="text-sm">Resume Review & Optimization</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Star className="h-4 w-4 text-yellow-500" />
-            <span className="text-sm">Career Counseling</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Star className="h-4 w-4 text-yellow-500" />
-            <span className="text-sm">Job Matching Services</span>
-          </div>
-          <Button className="w-full mt-4">
-            Request Assistance – ₹500
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          <TabsContent value="assistance" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="border-2 border-blue-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-blue-700">
+                    <Users className="h-6 w-6 mr-2" />
+                    Job Assistance
+                  </CardTitle>
+                  <CardDescription>Get personalized help with your job search</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Resume Review & Optimization</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Interview Preparation</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Career Counseling</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Job Matching Services</span>
+                    </div>
+                    <Button className="w-full mt-4">
+                      Request Assistance
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-    {/* Job Assurance */}
-    <Card className="border-2 border-green-200">
-      <CardHeader>
-        <CardTitle className="flex items-center text-green-700">
-          <Shield className="h-6 w-6 mr-2" />
-          Job Assurance Program
-        </CardTitle>
-        <CardDescription>Guaranteed placement with tailored tracks</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          <div>
-            <h4 className="font-semibold text-green-700">IT Track – 1 Year Program</h4>
-            <p className="text-sm text-gray-600 mb-2">Fee: ₹30,000 (one-time)</p>
-            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-              <li>Intensive Training</li>
-              <li>Placement Support</li>
-            </ul>
-          </div>
+              <Card className="border-2 border-green-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-green-700">
+                    <Shield className="h-6 w-6 mr-2" />
+                    Job Assurance Program
+                  </CardTitle>
+                  <CardDescription>Guaranteed job placement with our premium program</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">100% Job Placement Guarantee</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Dedicated Career Coach</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Industry Connections</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm">Money Back Guarantee</span>
+                    </div>
+                    <Button className="w-full mt-4 bg-green-600 hover:bg-green-700">
+                      Join Assurance Program
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-          <div>
-            <h4 className="font-semibold text-green-700">Non‑IT Track – 100‑Day Program</h4>
-            <p className="text-sm text-gray-600 mb-2">Fee: ₹10,000 (one-time)</p>
-            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-              <li>Targeted Training</li>
-              <li>Job Assistance</li>
-            </ul>
-          </div>
-
-          <Button className="w-full mt-4 bg-green-600 hover:bg-green-700">
-            Join Assurance Program
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  </div>
-
-  {/* Common Inclusions */}
-  <Card>
-    <CardHeader>
-      <CardTitle>Common Inclusions</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <ul className="list-disc list-inside text-sm text-gray-700 space-y-2">
-        <li>Personalized Skill Assessment</li>
-        <li>Résumé Building & LinkedIn Optimization</li>
-        <li>Soft Skills & Communication Training</li>
-        <li>Domain‑Specific Technical Training</li>
-        <li>Weekly Progress Reviews</li>
-        <li>Direct Interview Opportunities</li>
-        <li>Mock Interviews with Real‑Time Feedback</li>
-      </ul>
-    </CardContent>
-  </Card>
-
-  {/* How Our Job Assistance Works – Retained as-is */}
-  <Card>
-    <CardHeader>
-      <CardTitle>How Our Job Assistance Works</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="text-center">
-          <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <span className="text-blue-600 font-bold">1</span>
-          </div>
-          <h3 className="font-semibold mb-2">Profile Assessment</h3>
-          <p className="text-sm text-gray-600">We analyze your skills and career goals</p>
-        </div>
-        <div className="text-center">
-          <div className="bg-purple-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <span className="text-purple-600 font-bold">2</span>
-          </div>
-          <h3 className="font-semibold mb-2">Skill Enhancement</h3>
-          <p className="text-sm text-gray-600">Personalized training recommendations</p>
-        </div>
-        <div className="text-center">
-          <div className="bg-green-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <span className="text-green-600 font-bold">3</span>
-          </div>
-          <h3 className="font-semibold mb-2">Job Matching</h3>
-          <p className="text-sm text-gray-600">Connect with relevant opportunities</p>
-        </div>
-        <div className="text-center">
-          <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <span className="text-orange-600 font-bold">4</span>
-          </div>
-          <h3 className="font-semibold mb-2">Placement</h3>
-          <p className="text-sm text-gray-600">Secure your dream job</p>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-</TabsContent>
-
+            <Card>
+              <CardHeader>
+                <CardTitle>How Our Job Assistance Works</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-blue-600 font-bold">1</span>
+                    </div>
+                    <h3 className="font-semibold mb-2">Profile Assessment</h3>
+                    <p className="text-sm text-gray-600">We analyze your skills and career goals</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="bg-purple-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-purple-600 font-bold">2</span>
+                    </div>
+                    <h3 className="font-semibold mb-2">Skill Enhancement</h3>
+                    <p className="text-sm text-gray-600">Personalized training recommendations</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="bg-green-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-green-600 font-bold">3</span>
+                    </div>
+                    <h3 className="font-semibold mb-2">Job Matching</h3>
+                    <p className="text-sm text-gray-600">Connect with relevant opportunities</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-orange-600 font-bold">4</span>
+                    </div>
+                    <h3 className="font-semibold mb-2">Placement</h3>
+                    <p className="text-sm text-gray-600">Secure your dream job</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>
