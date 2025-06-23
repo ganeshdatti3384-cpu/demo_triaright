@@ -226,7 +226,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
       title: 'Placement Success',
       description: 'Congratulations to Priya Sharma for joining TCS as Software Developer',
       date: 'Jan 28, 2025',
-      image: 'https://images.unsplash.com/photo-1494790108755-2616c5e2e4b8?w=300&h=200&fit=crop&crop=face'
+      image: 'https://images.unsplash.com/photo-1494790108755-18ee286d815b?w=300&h=200&fit=crop&crop=face'
     },
     {
       id: 3,
@@ -278,9 +278,11 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Dashboard
                 </Button>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">
-                  TriaRight Hub
-                </h1>
+                <img 
+                  src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                  alt="TriaRight Logo" 
+                  className="h-10 w-auto"
+                />
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600">Welcome, {user.name}</span>
@@ -366,13 +368,10 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <img 
-                src="/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png" 
+                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
                 alt="TriaRight Logo" 
-                className="h-8 w-auto mr-3"
+                className="h-10 w-auto"
               />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">
-                TriaRight Hub
-              </h1>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user.name}</span>
@@ -1261,11 +1260,10 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center mb-4 md:mb-0">
               <img 
-                src="/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png" 
+                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
                 alt="TriaRight Logo" 
                 className="h-8 w-auto mr-3"
               />
-              <span className="text-xl font-bold">TriaRight Hub</span>
             </div>
             
             <div className="flex space-x-6">
