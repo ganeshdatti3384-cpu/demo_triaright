@@ -38,7 +38,7 @@ const Footer = () => {
   return (
     <footer className="bg-gray-900 text-white">
       {/* Newsletter Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 py-12">
+      <div className="bg-gradient-to-r from-blue-600 to-orange-500 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h3 className="text-2xl font-bold mb-4">Stay Updated</h3>
@@ -67,9 +67,13 @@ const Footer = () => {
           <div className="grid lg:grid-cols-4 gap-8">
             {/* Company Info */}
             <div className="lg:col-span-1">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
-                TR Logo
-              </h3>
+              <div className="mb-4">
+                <img 
+                  src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                  alt="TriaRight - The New Era Of Learning" 
+                  className="h-12 w-auto mb-4"
+                />
+              </div>
               <p className="text-gray-400 mb-6">
                 Empowering careers through education, skills development, and placement services since 2010.
               </p>

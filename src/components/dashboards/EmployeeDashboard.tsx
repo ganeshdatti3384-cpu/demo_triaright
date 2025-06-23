@@ -33,10 +33,13 @@ const EmployeeDashboard = ({ user, onLogout }: EmployeeDashboardProps) => {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Employee Portal
-              </h1>
+            <div className="flex items-center space-x-4">
+              <img 
+                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                alt="TriaRight" 
+                className="h-8 w-auto"
+              />
+              <h1 className="text-xl font-bold text-gray-900">Employee Portal</h1>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user.name}</span>
