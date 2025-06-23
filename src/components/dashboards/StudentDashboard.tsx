@@ -32,7 +32,14 @@ import {
   Upload,
   User,
   Edit,
-  ArrowLeft
+  ArrowLeft,
+  TrendingUp,
+  CheckCircle,
+  Facebook,
+  Youtube,
+  Instagram,
+  ExternalLink,
+  ArrowRight
 } from 'lucide-react';
 import CodeCompiler from '../CodeCompiler';
 import ExamsSection from '../ExamsSection';
@@ -49,7 +56,8 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+  const [videoProgress, setVideoProgress] = useState<{ [key: string]: number }>({});
 
   // Sample data for enrolled courses
   const enrolledCourses = [
@@ -258,7 +266,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
 
   const handleEnrollCourse = (course: any) => {
     if (course.type === 'recorded') {
-      setSelectedCourse(course);
+      setSelectedCourse(course.title);
       setShowVideoPlayer(true);
     } else {
       // Handle live course enrollment
@@ -295,8 +303,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedCourse.title}</h2>
-            <p className="text-gray-600">{selectedCourse.description}</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedCourse}</h2>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -337,7 +344,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                   <div className="space-y-4">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Duration:</span>
-                      <span className="font-medium">{selectedCourse.duration}</span>
+                      <span className="font-medium">{enrolledCourses.find(course => course.title === selectedCourse)?.duration}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Type:</span>
@@ -345,9 +352,9 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Progress:</span>
-                      <span className="font-medium">{selectedCourse.progress}%</span>
+                      <span className="font-medium">{enrolledCourses.find(course => course.title === selectedCourse)?.progress}%</span>
                     </div>
-                    <Progress value={selectedCourse.progress} className="mt-2" />
+                    <Progress value={enrolledCourses.find(course => course.title === selectedCourse)?.progress || 0} className="mt-2" />
                   </div>
                 </CardContent>
               </Card>
@@ -357,6 +364,25 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
       </div>
     );
   }
+
+  const upskillingPrograms = [
+    {
+      id: 1,
+      title: 'Pack365 Course',
+      description: 'Comprehensive yearly program covering all essential skills',
+      duration: '365 days',
+      progress: 45,
+      status: 'In Progress'
+    },
+    {
+      id: 2,
+      title: 'Personality Development',
+      description: 'Build confidence, communication, and leadership skills',
+      duration: '60 days',
+      progress: 0,
+      status: 'Not Started'
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -386,16 +412,12 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-9">
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="courses">Courses</TabsTrigger>
-            <TabsTrigger value="internships">Internships</TabsTrigger>
-            <TabsTrigger value="training">Training</TabsTrigger>
-            <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="jobs">Jobs</TabsTrigger>
-            <TabsTrigger value="compiler">Compiler</TabsTrigger>
-            <TabsTrigger value="exams">Exams</TabsTrigger>
+            <TabsTrigger value="courses">My Courses</TabsTrigger>
+            <TabsTrigger value="upskilling">Upskilling Program</TabsTrigger>
+            <TabsTrigger value="certificates">Certificates</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
@@ -632,6 +654,99 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                 </div>
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          {/* Upskilling Tab */}
+          <TabsContent value="upskilling" className="space-y-6">
+            <div className="grid gap-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-900">Upskilling Program</h2>
+                <Button className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600">
+                  Explore Programs
+                </Button>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                {upskillingPrograms.map((program) => (
+                  <Card key={program.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-xl">{program.title}</CardTitle>
+                          <CardDescription className="mt-2">{program.description}</CardDescription>
+                        </div>
+                        <Badge variant={program.status === 'In Progress' ? 'default' : 'secondary'}>
+                          {program.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>Duration: {program.duration}</span>
+                          <span>Progress: {program.progress}%</span>
+                        </div>
+                        <Progress value={program.progress} className="w-full" />
+                        <Button 
+                          className="w-full"
+                          variant={program.status === 'In Progress' ? 'default' : 'outline'}
+                        >
+                          {program.status === 'In Progress' ? 'Continue Learning' : 'Start Program'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Certificates Tab */}
+          <TabsContent value="certificates" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Certificates</CardTitle>
+                <CardDescription>View and download your certificates</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-semibold text-lg">Certificates</h3>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {enrolledCourses.map((course) => (
+                      <Card key={course.id}>
+                        <CardHeader>
+                          <CardTitle>{course.title}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex justify-between items-center">
+                            <div className="flex-1">
+                              <p className="text-gray-600">{course.title}</p>
+                              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                                <span className="flex items-center">
+                                  <Calendar className="h-4 w-4 mr-1" />
+                                  {course.progress === 100 ? 'Completed' : 'Ongoing'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-center">
+                              <Badge variant={course.progress === 100 ? 'default' : 'secondary'}>
+                                {course.progress === 100 ? 'Completed' : 'Ongoing'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Internships Tab */}
@@ -1263,49 +1378,47 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
               <img 
                 src="/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png" 
                 alt="TriaRight Logo" 
-                className="h-8 w-auto mr-3"
+                className="h-8 w-auto mr-3 brightness-0 invert"
               />
               <span className="text-xl font-bold">TriaRight Hub</span>
             </div>
             
             <div className="flex space-x-6">
-              <a
-                href="https://facebook.com"
-                target="_blank"
+              <a 
+                href="https://facebook.com" 
+                target="_blank" 
                 rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors"
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
               >
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
+                <Facebook className="h-5 w-5" />
+                <span>Facebook</span>
+                <ExternalLink className="h-4 w-4" />
               </a>
-              
-              <a
-                href="https://youtube.com"
-                target="_blank"
+              <a 
+                href="https://youtube.com" 
+                target="_blank" 
                 rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors"
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
               >
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                </svg>
+                <Youtube className="h-5 w-5" />
+                <span>YouTube</span>
+                <ExternalLink className="h-4 w-4" />
               </a>
-              
-              <a
-                href="https://instagram.com"
-                target="_blank"
+              <a 
+                href="https://instagram.com" 
+                target="_blank" 
                 rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors"
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
               >
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.373 12.073 12.017 12.073c6.62 0 12.017-5.373 12.017-12.073C24.014 5.367 18.637 0 12.017 0zM8.449 16.988c-1.297 0-2.448-.473-3.342-1.257-.894-.784-1.449-1.849-1.449-3.043 0-1.194.555-2.259 1.449-3.043.894-.784 2.045-1.257 3.342-1.257 1.297 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
+                <Instagram className="h-5 w-5" />
+                <span>Instagram</span>
+                <ExternalLink className="h-4 w-4" />
               </a>
             </div>
           </div>
           
-          <div className="mt-6 pt-6 border-t border-gray-800 text-center text-gray-400">
-            <p>&copy; 2025 TriaRight. All rights reserved. The New Era Of Learning.</p>
+          <div className="border-t border-gray-800 mt-6 pt-6 text-center text-gray-400">
+            <p>&copy; 2025 TriaRight. All rights reserved.</p>
           </div>
         </div>
       </footer>

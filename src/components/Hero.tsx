@@ -15,9 +15,9 @@ const Hero = ({ onOpenAuth }: HeroProps) => {
         <div className="text-center">
           <div className="flex justify-center mb-8">
             <img 
-              src="/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png" 
+              src="/lovable-uploads/b64265c7-3083-45aa-837e-e5b4eb9bae7e.png" 
               alt="TriaRight Logo" 
-              className="h-24 w-auto"
+              className="h-32 w-auto"
             />
           </div>
           
