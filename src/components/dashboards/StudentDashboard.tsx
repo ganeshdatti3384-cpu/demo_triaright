@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,8 +48,6 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
   const [internshipFilter, setInternshipFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showYouTubePlayer, setShowYouTubePlayer] = useState(false);
-  const [currentVideoUrl, setCurrentVideoUrl] = useState('');
 
   // Sample data for enrolled courses
   const enrolledCourses = [
@@ -209,63 +208,20 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
     }
   ];
 
-  const recentEvents = [
-    {
-      id: 1,
-      title: "New React Course Launch",
-      description: "Advanced React Development course now available",
-      date: "2024-01-20",
-      type: "course"
-    },
-    {
-      id: 2,
-      title: "Success Story: Priya got placed at Google",
-      description: "Our student Priya landed a Software Engineer role",
-      date: "2024-01-18",
-      type: "success"
-    },
-    {
-      id: 3,
-      title: "New Internship Opportunities",
-      description: "50+ new internships added this week",
-      date: "2024-01-15",
-      type: "internship"
-    },
-    {
-      id: 4,
-      title: "Career Fair Next Week",
-      description: "Join our virtual career fair with 20+ companies",
-      date: "2024-01-25",
-      type: "event"
-    }
-  ];
-
-  const handleEnrollCourse = (courseId: number) => {
-    if (courseId === 3) { // Python course
-      setCurrentVideoUrl('https://www.youtube.com/embed/playlist?list=PLanAc9YPhabZ5U6yuhufTIwKRjwUxBTds');
-      setShowYouTubePlayer(true);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-blue-100">
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/lovable-uploads/ee3e5233-9e80-4395-879e-09a00e589c85.png" 
-                alt="Logo" 
-                className="h-10 w-auto"
-              />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-orange-500 bg-clip-text text-transparent">
-                Career Hub
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Triaright Hub
               </h1>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user.name}</span>
-              <Button variant="outline" size="sm" onClick={onLogout} className="border-blue-200 text-blue-700 hover:bg-blue-50">
+              <Button variant="outline" size="sm" onClick={onLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </Button>
@@ -276,8 +232,8 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-9 bg-white border-blue-200">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-orange-500 data-[state=active]:text-white">Overview</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-9">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="internships">Internships</TabsTrigger>
             <TabsTrigger value="training">Training</TabsTrigger>
@@ -338,9 +294,9 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
             </div>
 
             {/* Recent Activity */}
-            <Card className="border-blue-200">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-blue-900">Recent Activity</CardTitle>
+                <CardTitle>Recent Activity</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -351,53 +307,16 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                         <div className="flex items-center space-x-2 mt-1">
                           <Progress value={course.progress} className="w-32" />
                           <span className="text-sm text-gray-500">{course.progress}%</span>
-                          <Badge variant={course.progress === 100 ? 'default' : 'secondary'} className={course.progress === 100 ? 'bg-gradient-to-r from-blue-600 to-orange-500' : ''}>
+                          <Badge variant={course.progress === 100 ? 'default' : 'secondary'}>
                             {course.progress === 100 ? 'completed' : 'ongoing'}
                           </Badge>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                      <Button variant="outline" size="sm">
                         {course.progress === 100 ? 'View Certificate' : 'Continue'}
                       </Button>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Events & Success Stories - Moving Cards */}
-            <Card className="border-blue-200">
-              <CardHeader>
-                <CardTitle className="text-blue-900">Latest Updates</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="relative overflow-hidden">
-                  <div className="flex animate-scroll space-x-4">
-                    {[...recentEvents, ...recentEvents].map((event, index) => (
-                      <Card key={`${event.id}-${index}`} className="min-w-[300px] border-2 hover:border-blue-300 transition-colors">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <Badge 
-                              variant="outline" 
-                              className={
-                                event.type === 'success' ? 'border-green-200 text-green-700' :
-                                event.type === 'course' ? 'border-blue-200 text-blue-700' :
-                                event.type === 'internship' ? 'border-orange-200 text-orange-700' :
-                                'border-purple-200 text-purple-700'
-                              }
-                            >
-                              {event.type}
-                            </Badge>
-                            <span className="text-xs text-gray-500">{event.date}</span>
-                          </div>
-                          <CardTitle className="text-sm">{event.title}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <p className="text-sm text-gray-600">{event.description}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -441,9 +360,9 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                 {/* Available Courses */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {availableCourses.map((course) => (
-                    <Card key={course.id} className="border-2 hover:border-blue-300 transition-colors">
+                    <Card key={course.id}>
                       <CardHeader>
-                        <CardTitle className="text-lg text-blue-900">{course.title}</CardTitle>
+                        <CardTitle className="text-lg">{course.title}</CardTitle>
                         <CardDescription>{course.description}</CardDescription>
                       </CardHeader>
                       <CardContent>
@@ -458,10 +377,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                               Instructor: {course.instructor}
                             </div>
                           )}
-                          <Button 
-                            className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
-                            onClick={() => handleEnrollCourse(course.id)}
-                          >
+                          <Button className="w-full">
                             <Play className="h-4 w-4 mr-2" />
                             {course.type === 'live' ? 'Apply for Course' : 'Enroll Now'}
                           </Button>
@@ -1130,84 +1046,6 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* YouTube Player Modal */}
-      {showYouTubePlayer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Python for Beginners - Course Videos</h3>
-              <Button variant="outline" onClick={() => setShowYouTubePlayer(false)}>
-                Close
-              </Button>
-            </div>
-            <div className="aspect-video">
-              <iframe
-                src={currentVideoUrl}
-                title="Course Video"
-                className="w-full h-full rounded"
-                allowFullScreen
-              />
-            </div>
-            <div className="mt-4 text-center">
-              <Button className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600">
-                <Award className="h-4 w-4 mr-2" />
-                Get Certificate After Completion
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-blue-200 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex justify-center space-x-8">
-            <a 
-              href="https://facebook.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 transition-colors"
-            >
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">f</span>
-                </div>
-                <span>Facebook</span>
-              </div>
-            </a>
-            <a 
-              href="https://youtube.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-red-600 hover:text-red-800 transition-colors"
-            >
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">▶</span>
-                </div>
-                <span>YouTube</span>
-              </div>
-            </a>
-            <a 
-              href="https://instagram.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-pink-600 hover:text-pink-800 transition-colors"
-            >
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">📷</span>
-                </div>
-                <span>Instagram</span>
-              </div>
-            </a>
-          </div>
-          <div className="text-center mt-6 text-gray-600">
-            <p>&copy; 2024 Career Hub. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
