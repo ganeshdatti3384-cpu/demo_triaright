@@ -7,9 +7,8 @@ import AboutSection from '../components/AboutSection';
 import PartnersSection from '../components/PartnersSection';
 import Footer from '../components/Footer';
 import LoginDialog from '../components/LoginDialog';
-import EnhancedRegistrationDialog from '../components/EnhancedRegistrationDialog';
 import StudentDashboard from '../components/dashboards/StudentDashboard';
-import EnhancedJobSeekerDashboard from '../components/dashboards/EnhancedJobSeekerDashboard';
+import JobSeekerDashboard from '../components/dashboards/JobSeekerDashboard';
 import EmployeeDashboard from '../components/dashboards/EmployeeDashboard';
 import EmployerDashboard from '../components/dashboards/EmployerDashboard';
 import CollegeDashboard from '../components/dashboards/CollegeDashboard';
@@ -23,36 +22,22 @@ import { ArrowRight } from 'lucide-react';
 
 const Index = () => {
   const [showLoginDialog, setShowLoginDialog] = useState(false);
-  const [showRegistrationDialog, setShowRegistrationDialog] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('student');
   const [user, setUser] = useState<{ role: string; name: string } | null>(null);
   const [showSuccessStories, setShowSuccessStories] = useState(false);
 
   const openLoginDialog = (type: 'login' | 'register', userType: string) => {
     setSelectedRole(userType);
-    if (type === 'register') {
-      setShowRegistrationDialog(true);
-    } else {
-      setShowLoginDialog(true);
-    }
+    setShowLoginDialog(true);
   };
 
   const closeLoginDialog = () => {
     setShowLoginDialog(false);
   };
 
-  const closeRegistrationDialog = () => {
-    setShowRegistrationDialog(false);
-  };
-
   const handleLoginSuccess = (userName: string) => {
     setUser({ role: selectedRole, name: userName });
     closeLoginDialog();
-  };
-
-  const handleRegistrationSuccess = (userData: any) => {
-    setUser({ role: userData.role, name: userData.fullName });
-    closeRegistrationDialog();
   };
 
   const handleLogout = () => {
@@ -66,7 +51,7 @@ const Index = () => {
       case 'student':
         return <StudentDashboard user={user} onLogout={handleLogout} />;
       case 'job-seeker':
-        return <EnhancedJobSeekerDashboard user={user} onLogout={handleLogout} />;
+        return <JobSeekerDashboard user={user} onLogout={handleLogout} />;
       case 'employee':
         return <EmployeeDashboard user={user} onLogout={handleLogout} />;
       case 'employer':
@@ -125,12 +110,6 @@ const Index = () => {
         onClose={closeLoginDialog}
         onLoginSuccess={handleLoginSuccess}
         selectedRole={selectedRole}
-      />
-
-      <EnhancedRegistrationDialog
-        isOpen={showRegistrationDialog}
-        onClose={closeRegistrationDialog}
-        onRegisterSuccess={handleRegistrationSuccess}
       />
     </div>
   );

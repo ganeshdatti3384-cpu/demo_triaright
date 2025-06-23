@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,11 +67,9 @@ const Footer = () => {
           <div className="grid lg:grid-cols-4 gap-8">
             {/* Company Info */}
             <div className="lg:col-span-1">
-              <img 
-                src="/lovable-uploads/b64265c7-3083-45aa-837e-e5b4eb9bae7e.png" 
-                alt="TriaRight Logo" 
-                className="h-12 w-auto mb-4 brightness-0 invert"
-              />
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
+                TR Logo
+              </h3>
               <p className="text-gray-400 mb-6">
                 Empowering careers through education, skills development, and placement services since 2010.
               </p>
