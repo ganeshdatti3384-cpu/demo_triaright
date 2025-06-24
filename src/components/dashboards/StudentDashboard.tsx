@@ -1,42 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  BookOpen, 
-  Download, 
-  Users, 
-  Trophy, 
-  Calendar, 
-  MessageCircle, 
-  LogOut, 
-  Code, 
-  FileText,
-  Search,
-  Filter,
-  Play,
-  Clock,
-  MapPin,
-  DollarSign,
-  Star,
-  Send,
-  Target,
-  Award,
-  Briefcase,
-  Upload,
-  User,
-  Edit,
-  ArrowLeft
-} from 'lucide-react';
-import CodeCompiler from '../CodeCompiler';
-import ExamsSection from '../ExamsSection';
-import CourseLearningInterface from '../CourseLearningInterface';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Search, Download, Briefcase, LogOut, Filter, BookOpen, Video, Users, Shield, Star, Clock, Code, Database, Calculator, TrendingUp } from 'lucide-react';
+import CourseLearningInterface from '@/components/CourseLearningInterface';
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface StudentDashboardProps {
   user: { role: string; name: string };
@@ -44,360 +16,124 @@ interface StudentDashboardProps {
 }
 
 const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [courseFilter, setCourseFilter] = useState('all');
-  const [internshipFilter, setInternshipFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [activeTab, setActiveTab] = useState('courses');
+  const [showCourseInterface, setShowCourseInterface] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
-  const [showCourseLearning, setShowCourseLearning] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
-  // Sample data for enrolled courses
-  const enrolledCourses = [
-    { 
-      id: 1, 
-      title: 'React Development Masterclass', 
-      description: 'Complete guide to modern React development with hooks and context',
-      duration: '40 hours',
-      type: 'recorded',
-      progress: 75,
-      enrolled: true
+  // Course data from live/recorded pages
+  const allCourses = [
+    {
+      id: 'web-development',
+      title: 'Web Development',
+      description: 'Master HTML, CSS, JavaScript, React and build modern web applications',
+      duration: '12 weeks',
+      students: '2,500+',
+      rating: 4.8,
+      color: 'bg-blue-500',
+      icon: Code,
+      price: "₹2,999",
+      originalPrice: "₹4,999",
+      lessons: 45,
+      level: "Beginner to Advanced",
+      type: "Live"
     },
-    { 
-      id: 2, 
-      title: 'Data Structures & Algorithms', 
-      description: 'Master DSA concepts with practical problem-solving approaches',
-      duration: '60 hours',
-      type: 'recorded',
-      progress: 100,
-      enrolled: true
-    }
-  ];
-
-  // Sample data for available courses
-  const availableCourses = [
-    { 
-      id: 3, 
-      title: 'Python for Beginners', 
-      description: 'Learn Python programming from scratch to advanced concepts',
-      duration: '35 hours',
-      type: 'recorded',
-      progress: 0,
-      enrolled: false
+    {
+      id: 'data-science',
+      title: 'Data Science',
+      description: 'Learn Python, Machine Learning, Statistics and Data Analysis',
+      duration: '16 weeks',
+      students: '1,800+',
+      rating: 4.9,
+      color: 'bg-orange-500',
+      icon: Database,
+      price: "₹2,499",
+      originalPrice: "₹3,999",
+      lessons: 38,
+      level: "Beginner",
+      type: "Recorded"
     },
-    { 
-      id: 4, 
-      title: 'Full Stack Web Development', 
-      description: 'Live interactive sessions on modern web development',
-      duration: '3 months',
-      type: 'live',
-      instructor: 'John Doe',
-      enrolled: false
-    }
-  ];
-
-  // Sample data for applied internships
-  const appliedInternships = [
     {
-      id: 1,
-      title: 'Frontend Developer Intern',
-      company: 'TechCorp Solutions',
-      duration: '3 months',
-      stipend: '₹15,000/month',
-      type: 'Company-Paid',
-      skills: ['React', 'JavaScript', 'CSS'],
-      location: 'Hyderabad',
-      status: 'Under Review',
-      appliedDate: '2024-01-15'
-    }
-  ];
-
-  // Sample data for available internships
-  const availableInternships = [
-    {
-      id: 2,
-      title: 'Data Science Internship',
-      company: 'DataTech Labs',
-      duration: '6 months',
-      stipend: 'Pay ₹5,000',
-      type: 'Student-Paid',
-      skills: ['Python', 'SQL', 'Machine Learning'],
-      location: 'Remote'
-    }
-  ];
-
-  const trainingCategories = [
-    {
-      id: 1,
+      id: 'aptitude-training',
       title: 'Aptitude Training',
       description: 'Quantitative aptitude, logical reasoning, and verbal ability',
-      modules: ['Arithmetic', 'Algebra', 'Geometry', 'Data Interpretation'],
-      enrolled: true,
-      type: 'crt'
+      duration: '8 weeks',
+      students: '3,200+',
+      rating: 4.7,
+      color: 'bg-green-500',
+      icon: Calculator,
+      price: "₹1,999",
+      originalPrice: "₹2,999",
+      lessons: 30,
+      level: "Beginner to Intermediate",
+      type: "Live"
     },
     {
-      id: 2,
-      title: 'Soft Skills Development',
-      description: 'Communication, presentation, and interpersonal skills',
-      modules: ['Communication', 'Leadership', 'Time Management', 'Team Work'],
-      enrolled: false,
-      type: 'crt'
+      id: 'business-analytics',
+      title: 'Business Analytics',
+      description: 'Excel, Power BI, Tableau and business intelligence tools',
+      duration: '10 weeks',
+      students: '1,500+',
+      rating: 4.6,
+      color: 'bg-purple-500',
+      icon: TrendingUp,
+      price: "₹3,499",
+      originalPrice: "₹5,499",
+      lessons: 55,
+      level: "Beginner to Advanced",
+      type: "Recorded"
     },
     {
-      id: 3,
-      title: 'Company-Specific Training',
-      description: 'Targeted preparation for specific company requirements',
-      modules: ['TCS', 'Infosys', 'Wipro', 'Accenture'],
-      enrolled: false,
-      type: 'crt'
+      id: 'soft-skills',
+      title: 'Soft Skills',
+      description: 'Communication, leadership and professional development',
+      duration: '6 weeks',
+      students: '4,000+',
+      rating: 4.8,
+      color: 'bg-pink-500',
+      icon: Users,
+      price: "₹2,299",
+      originalPrice: "₹3,499",
+      lessons: 35,
+      level: "Beginner",
+      type: "Live"
     },
     {
-      id: 4,
-      title: 'Web Development',
-      description: 'Frontend and backend development technologies',
-      modules: ['HTML/CSS', 'JavaScript', 'React', 'Node.js'],
-      enrolled: true,
-      type: 'technical'
-    },
-    {
-      id: 5,
-      title: 'Data Science & Analytics',
-      description: 'Data analysis, machine learning, and statistical modeling',
-      modules: ['Python', 'SQL', 'Machine Learning', 'Data Visualization'],
-      enrolled: false,
-      type: 'technical'
+      id: 'job-readiness',
+      title: 'Job Readiness',
+      description: 'Resume building, interview preparation and placement support',
+      duration: '4 weeks',
+      students: '2,800+',
+      rating: 4.9,
+      color: 'bg-indigo-500',
+      icon: Briefcase,
+      price: "₹3,299",
+      originalPrice: "₹4,799",
+      lessons: 42,
+      level: "Intermediate",
+      type: "Recorded"
     }
   ];
 
-  const jobListings = [
-    {
-      id: 1,
-      title: 'Software Developer',
-      company: 'Tech Solutions Pvt Ltd',
-      location: 'Hyderabad',
-      type: 'Full-time',
-      domain: 'Technology',
-      salary: '₹4-6 LPA'
-    },
-    {
-      id: 2,
-      title: 'Data Analyst',
-      company: 'Analytics Corp',
-      location: 'Remote',
-      type: 'Remote',
-      domain: 'Data Science',
-      salary: '₹5-8 LPA'
-    }
-  ];
+  const enrolledCourses = allCourses.filter(course => ['web-development', 'data-science'].includes(course.id));
 
-  const appliedJobs = [
-    {
-      id: 1,
-      title: 'Frontend Developer',
-      company: 'StartupXYZ',
-      appliedDate: '2024-01-10',
-      status: 'Interview Scheduled',
-      location: 'Bangalore',
-      salary: '₹6-8 LPA'
-    },
-    {
-      id: 2,
-      title: 'UI/UX Designer',
-      company: 'DesignPro',
-      appliedDate: '2024-01-05',
-      status: 'Application Submitted',
-      location: 'Mumbai',
-      salary: '₹5-7 LPA'
-    }
-  ];
-
-  // Recent events and updates data
-  const recentUpdates = [
-    {
-      id: 1,
-      type: 'event',
-      title: 'Tech Hackathon 2025',
-      description: 'Join our annual hackathon with prizes worth ₹5 lakhs',
-      date: 'Feb 15-17, 2025',
-      image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=300&h=200&fit=crop'
-    },
-    {
-      id: 2,
-      type: 'success',
-      title: 'Placement Success',
-      description: 'Congratulations to Priya Sharma for joining TCS as Software Developer',
-      date: 'Jan 28, 2025',
-      image: 'https://images.unsplash.com/photo-1494790108755-18ee286d815b?w=300&h=200&fit=crop&crop=face'
-    },
-    {
-      id: 3,
-      type: 'event',
-      title: 'Job Fair 2025',
-      description: 'Meet 50+ top companies looking for fresh talent',
-      date: 'Mar 5, 2025',
-      image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=300&h=200&fit=crop'
-    },
-    {
-      id: 4,
-      type: 'success',
-      title: 'New Achievement',
-      description: 'Rahul Kumar placed at Infosys with 7.2 LPA package',
-      date: 'Jan 25, 2025',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=200&fit=crop&crop=face'
-    }
-  ];
-
-  const [currentUpdate, setCurrentUpdate] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentUpdate((prev) => (prev + 1) % recentUpdates.length);
-    }, 4000);
-
-    return () => clearInterval(timer);
-  }, [recentUpdates.length]);
-
-  const handleEnrollCourse = (course: any) => {
-    if (course.type === 'recorded') {
-      setSelectedCourse(course);
-      setShowVideoPlayer(true);
-    } else {
-      // Handle live course enrollment
-      console.log('Live course enrollment:', course);
-    }
-  };
-
-  const handleContinueLearning = (course: any) => {
+  const handleCourseClick = (course: any) => {
     setSelectedCourse(course);
-    setShowCourseLearning(true);
+    setShowCourseInterface(true);
   };
 
-  if (showCourseLearning && selectedCourse) {
-    return (
-      <CourseLearningInterface 
-        course={selectedCourse}
-        onBack={() => setShowCourseLearning(false)}
-      />
-    );
-  }
-
-  if (showVideoPlayer && selectedCourse) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center">
-                <Button variant="ghost" onClick={() => setShowVideoPlayer(false)} className="mr-4">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
-                </Button>
-                <img 
-                  src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
-                  alt="TriaRight Logo" 
-                  className="h-10 w-auto"
-                />
-              </div>
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">Welcome, {user.name}</span>
-                <Button variant="outline" size="sm" onClick={onLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-6">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedCourse.title}</h2>
-            <p className="text-gray-600">{selectedCourse.description}</p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Video Player */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Course Videos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="aspect-video mb-4">
-                    <iframe
-                      width="100%"
-                      height="100%"
-                      src="https://www.youtube.com/embed/videoseries?list=PLanAc9YPhabZ5U6yuhufTIwKRjwUxBTds"
-                      title="Course Playlist"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="rounded-lg"
-                    ></iframe>
-                  </div>
-                  <div className="space-y-3">
-                    <Button className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600">
-                      <Award className="h-4 w-4 mr-2" />
-                      Get Certificate
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => {
-                        setShowVideoPlayer(false);
-                        setShowCourseLearning(true);
-                      }}
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      Open Full Learning Interface
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Course Info */}
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Course Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Duration:</span>
-                      <span className="font-medium">{selectedCourse.duration}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Type:</span>
-                      <Badge variant="outline">Recorded</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Progress:</span>
-                      <span className="font-medium">{selectedCourse.progress}%</span>
-                    </div>
-                    <Progress value={selectedCourse.progress} className="mt-2" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  if (showCourseInterface && selectedCourse) {
+    return <CourseLearningInterface course={selectedCourse} onBack={() => setShowCourseInterface(false)} />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <img 
-                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png" 
                 alt="TriaRight Logo" 
                 className="h-10 w-auto"
               />
@@ -415,938 +151,343 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-9">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="courses">Courses</TabsTrigger>
-            <TabsTrigger value="internships">Internships</TabsTrigger>
-            <TabsTrigger value="training">Training</TabsTrigger>
-            <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="jobs">Jobs</TabsTrigger>
-            <TabsTrigger value="compiler">Compiler</TabsTrigger>
-            <TabsTrigger value="exams">Exams</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="courses">Browse Courses</TabsTrigger>
+            <TabsTrigger value="my-courses">My Courses</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="assistance">Job Assistance</TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Enrolled Courses</CardTitle>
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{enrolledCourses.length}</div>
-                  <p className="text-xs text-muted-foreground">Active learning paths</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Certificates</CardTitle>
-                  <Trophy className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">9</div>
-                  <p className="text-xs text-muted-foreground">Available for download</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Applications</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{appliedJobs.length + appliedInternships.length}</div>
-                  <p className="text-xs text-muted-foreground">Internship & job applications</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Skills Gained</CardTitle>
-                  <Award className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">24</div>
-                  <p className="text-xs text-muted-foreground">Technical & soft skills</p>
-                </CardContent>
-              </Card>
+          <TabsContent value="courses" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Browse All Courses</h2>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm">
+                  <Video className="h-4 w-4 mr-2" />
+                  Live Courses
+                </Button>
+                <Button variant="outline" size="sm">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Recorded Courses
+                </Button>
+              </div>
             </div>
 
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {enrolledCourses.slice(0, 3).map((course) => (
-                    <div key={course.id} className="flex items-center justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allCourses.map((course) => (
+                <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleCourseClick(course)}>
+                  <div className="relative flex items-center justify-center h-48">
+                    <div className={`h-24 w-24 ${course.color} rounded-full flex items-center justify-center`}>
+                      <course.icon className="h-12 w-12 text-white" />
+                    </div>
+                    <div className="absolute top-4 right-4">
+                      <Badge variant="secondary" className="bg-white/90">
+                        {course.level}
+                      </Badge>
+                    </div>
+                    <div className="absolute top-4 left-4">
+                      <Badge variant={course.type === 'Live' ? 'default' : 'secondary'}>
+                        {course.type}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <p className="font-medium">{course.title}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Progress value={course.progress} className="w-32" />
-                          <span className="text-sm text-gray-500">{course.progress}%</span>
-                          <Badge variant={course.progress === 100 ? 'default' : 'secondary'}>
-                            {course.progress === 100 ? 'completed' : 'ongoing'}
-                          </Badge>
-                        </div>
+                        <CardTitle className="text-lg mb-2">{course.title}</CardTitle>
+                        <CardDescription className="text-sm">{course.description}</CardDescription>
                       </div>
-                      <Button variant="outline" size="sm">
-                        {course.progress === 100 ? 'View Certificate' : 'Continue'}
+                    </div>
+
+                    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-4">
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {course.duration}
+                      </div>
+                      <div className="flex items-center">
+                        <Users className="h-4 w-4 mr-1" />
+                        {course.students}
+                      </div>
+                      <div className="flex items-center">
+                        <Star className="h-4 w-4 mr-1 fill-yellow-400 text-yellow-400" />
+                        {course.rating}
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-2xl font-bold text-blue-600">{course.price}</span>
+                        <span className="text-lg text-gray-500 line-through">{course.originalPrice}</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {course.lessons} lessons
+                      </div>
+                    </div>
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                      {enrolledCourses.find(c => c.id === course.id) ? 'Continue Learning' : 'Enroll Now'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="my-courses" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">My Enrolled Courses</h2>
+              <div className="text-sm text-gray-600">
+                {enrolledCourses.length} courses enrolled
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {enrolledCourses.map((course) => (
+                <Card key={course.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleCourseClick(course)}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{course.title}</CardTitle>
+                    <CardDescription>By Expert Instructor</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: course.id === 'web-development' ? '25%' : '60%' }}></div>
+                      </div>
+                      <p className="text-sm text-gray-600">Progress: {course.id === 'web-development' ? '25%' : '60%'}</p>
+                      <Button variant="outline" className="w-full">
+                        Continue Learning
                       </Button>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Updates & Success Stories */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Latest Updates & Success Stories</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="relative overflow-hidden">
-                  <div 
-                    className="flex transition-transform duration-500 ease-in-out"
-                    style={{ transform: `translateX(-${currentUpdate * 100}%)` }}
-                  >
-                    {recentUpdates.map((update, index) => (
-                      <div key={update.id} className="w-full flex-shrink-0 px-2">
-                        <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-orange-50 rounded-lg">
-                          <img
-                            src={update.image}
-                            alt={update.title}
-                            className="w-16 h-16 rounded-lg object-cover"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <Badge variant={update.type === 'event' ? 'default' : 'secondary'}>
-                                {update.type === 'event' ? 'Event' : 'Success Story'}
-                              </Badge>
-                              <span className="text-sm text-gray-500">{update.date}</span>
-                            </div>
-                            <h4 className="font-semibold text-gray-900">{update.title}</h4>
-                            <p className="text-sm text-gray-600">{update.description}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Slide Indicators */}
-                  <div className="flex justify-center mt-4 space-x-2">
-                    {recentUpdates.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentUpdate(index)}
-                        className={`w-2 h-2 rounded-full transition-colors ${
-                          index === currentUpdate ? 'bg-blue-600' : 'bg-gray-300'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Courses Tab */}
-          <TabsContent value="courses" className="space-y-6">
-            <Tabs defaultValue="browse" className="w-full">
-              <TabsList>
-                <TabsTrigger value="browse">Browse Courses</TabsTrigger>
-                <TabsTrigger value="mycourses">My Courses</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="browse" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">Browse Courses</h2>
-                </div>
-                
-                {/* Filters */}
-                <div className="flex gap-4 items-center">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Search courses..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="max-w-sm"
-                    />
-                  </div>
-                  <Select value={courseFilter} onValueChange={setCourseFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Course Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Courses</SelectItem>
-                      <SelectItem value="recorded">Recorded</SelectItem>
-                      <SelectItem value="live">Live</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Available Courses */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {availableCourses.map((course) => (
-                    <Card key={course.id}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{course.title}</CardTitle>
-                        <CardDescription>{course.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Clock className="h-4 w-4 mr-2" />
-                            {course.duration}
-                          </div>
-                          {'instructor' in course && (
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Users className="h-4 w-4 mr-2" />
-                              Instructor: {course.instructor}
-                            </div>
-                          )}
-                          <Button 
-                            className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
-                            onClick={() => handleEnrollCourse(course)}
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            {course.type === 'live' ? 'Apply for Course' : 'Enroll Now'}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="mycourses" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">My Courses</h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {enrolledCourses.map((course) => (
-                    <Card key={course.id}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{course.title}</CardTitle>
-                        <CardDescription>{course.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Clock className="h-4 w-4 mr-2" />
-                            {course.duration}
-                          </div>
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span>Progress</span>
-                              <span>{course.progress}%</span>
-                            </div>
-                            <Progress value={course.progress} />
-                          </div>
-                          <div className="space-y-2">
-                            <Button 
-                              className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
-                              onClick={() => handleContinueLearning(course)}
-                            >
-                              <Play className="h-4 w-4 mr-2" />
-                              {course.progress === 100 ? 'Review Course' : 'Continue Learning'}
-                            </Button>
-                            {course.progress === 100 && (
-                              <Button variant="outline" className="w-full">
-                                <Award className="h-4 w-4 mr-2" />
-                                View Certificate
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          {/* Internships Tab */}
-          <TabsContent value="internships" className="space-y-6">
-            <Tabs defaultValue="browse" className="w-full">
-              <TabsList>
-                <TabsTrigger value="browse">Browse Internships</TabsTrigger>
-                <TabsTrigger value="myinternships">My Internships</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="browse" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">Browse Internships</h2>
-                </div>
-
-                {/* Filters */}
-                <div className="flex gap-4 items-center">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Search internships..."
-                      className="max-w-sm"
-                    />
-                  </div>
-                  <Select value={internshipFilter} onValueChange={setInternshipFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Internship Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="company-paid">Company-Paid</SelectItem>
-                      <SelectItem value="student-paid">Student-Paid</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {availableInternships.map((internship) => (
-                    <Card key={internship.id}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{internship.title}</CardTitle>
-                        <CardDescription>{internship.company}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div className="flex items-center text-sm">
-                            <Clock className="h-4 w-4 mr-2" />
-                            Duration: {internship.duration}
-                          </div>
-                          <div className="flex items-center text-sm">
-                            <DollarSign className="h-4 w-4 mr-2" />
-                            {internship.stipend}
-                          </div>
-                          <div className="flex items-center text-sm">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            {internship.location}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium mb-2">Skills Required:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {internship.skills.map((skill, index) => (
-                                <Badge key={index} variant="outline">{skill}</Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <Badge variant={internship.type === 'Company-Paid' ? 'default' : 'secondary'}>
-                            {internship.type}
-                          </Badge>
-                          <Button className="w-full">Apply Now</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="myinternships" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">My Internships</h2>
-                </div>
-
-                <div className="space-y-4">
-                  {appliedInternships.map((internship) => (
-                    <Card key={internship.id}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{internship.title}</h3>
-                            <p className="text-gray-600">{internship.company}</p>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                              <span className="flex items-center">
-                                <Calendar className="h-4 w-4 mr-1" />
-                                Applied: {internship.appliedDate}
-                              </span>
-                              <span className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                {internship.location}
-                              </span>
-                            </div>
-                            <div className="mt-2">
-                              <Badge variant={internship.status === 'Under Review' ? 'secondary' : 'default'}>
-                                {internship.status}
-                              </Badge>
-                            </div>
-                          </div>
-                          <Button variant="outline">View Details</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          {/* Training Tab */}
-          <TabsContent value="training" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Training Programs</h2>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-
-            <Tabs defaultValue="crt" className="w-full">
-              <TabsList>
-                <TabsTrigger value="crt">CRT Training</TabsTrigger>
-                <TabsTrigger value="technical">Technical Training</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="crt" className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {trainingCategories.filter(cat => cat.type === 'crt').map((category) => (
-                    <Card key={category.id}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{category.title}</CardTitle>
-                        <CardDescription>{category.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <p className="text-sm font-medium mb-2">Modules:</p>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                              {category.modules.map((module, index) => (
-                                <li key={index}>• {module}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          {category.enrolled ? (
-                            <Badge className="w-full justify-center">Enrolled</Badge>
-                          ) : (
-                            <Button className="w-full">
-                              <Target className="h-4 w-4 mr-2" />
-                              Enroll Now
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="technical" className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {trainingCategories.filter(cat => cat.type === 'technical').map((category) => (
-                    <Card key={category.id}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{category.title}</CardTitle>
-                        <CardDescription>{category.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <p className="text-sm font-medium mb-2">Modules:</p>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                              {category.modules.map((module, index) => (
-                                <li key={index}>• {module}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          {category.enrolled ? (
-                            <Badge className="w-full justify-center">Enrolled</Badge>
-                          ) : (
-                            <Button className="w-full">
-                              <Target className="h-4 w-4 mr-2" />
-                              Enroll Now
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
           </TabsContent>
 
-          {/* Projects Tab */}
-          <TabsContent value="projects" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Projects</h2>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Submit Project for Guidance</CardTitle>
-                <CardDescription>Share your project idea and receive mentorship from our experts</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="projectName">Project Name</Label>
-                    <Input id="projectName" placeholder="Enter your project name" />
-                  </div>
-                  <div>
-                    <Label htmlFor="projectDescription">Description</Label>
-                    <Textarea id="projectDescription" placeholder="Describe your project idea..." />
-                  </div>
-                  <div>
-                    <Label htmlFor="githubLink">GitHub Link (Optional)</Label>
-                    <Input id="githubLink" placeholder="https://github.com/username/project" />
-                  </div>
-                  <div>
-                    <Label htmlFor="technologies">Tools/Technologies</Label>
-                    <Input id="technologies" placeholder="React, Node.js, MongoDB..." />
-                  </div>
-                  <Button className="w-full">
-                    <Send className="h-4 w-4 mr-2" />
-                    Submit for Guidance
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Previous Submissions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Previous Submissions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">No project submissions yet</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Jobs Tab */}
-          <TabsContent value="jobs" className="space-y-6">
-            <Tabs defaultValue="browse" className="w-full">
-              <TabsList>
-                <TabsTrigger value="browse">Browse Jobs</TabsTrigger>
-                <TabsTrigger value="myjobs">My Applications</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="browse" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">Job Opportunities</h2>
-                </div>
-
-                {/* Job Filters */}
-                <div className="flex gap-4">
-                  <Input placeholder="Search jobs..." className="max-w-sm" />
-                  <Select>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Domain" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="technology">Technology</SelectItem>
-                      <SelectItem value="data-science">Data Science</SelectItem>
-                      <SelectItem value="marketing">Marketing</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="remote">Remote</SelectItem>
-                      <SelectItem value="in-office">In Office</SelectItem>
-                      <SelectItem value="hybrid">Hybrid</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-4">
-                  {jobListings.map((job) => (
-                    <Card key={job.id}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-semibold text-lg">{job.title}</h3>
-                            <p className="text-gray-600">{job.company}</p>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                              <span className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                {job.location}
-                              </span>
-                              <span className="flex items-center">
-                                <Briefcase className="h-4 w-4 mr-1" />
-                                {job.type}
-                              </span>
-                              <span className="flex items-center">
-                                <DollarSign className="h-4 w-4 mr-1" />
-                                {job.salary}
-                              </span>
-                            </div>
-                            <Badge variant="outline" className="mt-2">{job.domain}</Badge>
-                          </div>
-                          <Button>Apply Now</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="myjobs" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">My Job Applications</h2>
-                </div>
-
-                <div className="space-y-4">
-                  {appliedJobs.map((job) => (
-                    <Card key={job.id}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{job.title}</h3>
-                            <p className="text-gray-600">{job.company}</p>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                              <span className="flex items-center">
-                                <Calendar className="h-4 w-4 mr-1" />
-                                Applied: {job.appliedDate}
-                              </span>
-                              <span className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                {job.location}
-                              </span>
-                              <span className="flex items-center">
-                                <DollarSign className="h-4 w-4 mr-1" />
-                                {job.salary}
-                              </span>
-                            </div>
-                            <div className="mt-2">
-                              <Badge variant={job.status === 'Interview Scheduled' ? 'default' : 'secondary'}>
-                                {job.status}
-                              </Badge>
-                            </div>
-                          </div>
-                          <Button variant="outline">View Details</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          {/* Compiler Tab */}
-          <TabsContent value="compiler">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Code className="h-5 w-5" />
-                  Code Compiler
-                </CardTitle>
-                <CardDescription>Practice coding in multiple programming languages</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CodeCompiler />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Exams Tab */}
-          <TabsContent value="exams">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Exams & Assessments
-                </CardTitle>
-                <CardDescription>Take exams and track your progress</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ExamsSection />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Profile Tab */}
           <TabsContent value="profile">
             <Card>
               <CardHeader>
                 <CardTitle>Profile Management</CardTitle>
-                <CardDescription>Manage your personal information and resume</CardDescription>
+                <CardDescription>Manage your profile and personal information</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <Button 
-                    onClick={() => setShowEditProfile(true)}
-                    className="w-full"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
+                  <Button onClick={() => setShowEditProfile(true)} className="w-full">
                     Edit Profile
                   </Button>
-                  <Button variant="outline" className="w-full">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Resume
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Career Guidance Chat
-                  </Button>
+
+                  {showEditProfile && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                          <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Edit Profile</h2>
+                            <Button variant="outline" onClick={() => setShowEditProfile(false)}>
+                              Close
+                            </Button>
+                          </div>
+
+                          <form className="space-y-8">
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                📂 Profile Picture Upload
+                              </h3>
+                              <div className="flex items-center space-x-4">
+                                <Avatar className="h-20 w-20">
+                                  <AvatarImage src="" />
+                                  <AvatarFallback>JS</AvatarFallback>
+                                </Avatar>
+                                <Button variant="outline">Choose File</Button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                🧑 Personal Details
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="fullName">Full Name *</Label>
+                                  <Input id="fullName" placeholder="Enter full name" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="dob">Date of Birth *</Label>
+                                  <Input id="dob" type="date" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="gender">Gender *</Label>
+                                  <Select>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select gender" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="male">Male</SelectItem>
+                                      <SelectItem value="female">Female</SelectItem>
+                                      <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="maritalStatus">Marital Status</Label>
+                                  <Select>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="single">Single</SelectItem>
+                                      <SelectItem value="married">Married</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <Label htmlFor="address">Address *</Label>
+                                  <Input id="address" placeholder="Enter address" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="nationality">Nationality</Label>
+                                  <Input id="nationality" placeholder="Enter nationality" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="languages">Languages Known</Label>
+                                  <Input id="languages" placeholder="E.g., English, Hindi" />
+                                </div>
+                                <div className="md:col-span-2">
+                                  <Label htmlFor="hobbies">Hobbies</Label>
+                                  <Input id="hobbies" placeholder="Enter hobbies" />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                🎓 Education Details
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="instituteName">Institute Name *</Label>
+                                  <Input id="instituteName" placeholder="College/University name" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="stream">Stream/Course *</Label>
+                                  <Input id="stream" placeholder="Enter stream/course" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="yearOfPass">Year of Pass *</Label>
+                                  <Input id="yearOfPass" placeholder="E.g., 2023" />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                💻 Project Section
+                              </h3>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="projectName">Project Name</Label>
+                                  <Input id="projectName" placeholder="Name of your project" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="githubLink">GitHub Link</Label>
+                                  <Input id="githubLink" placeholder="https://github.com/..." />
+                                </div>
+                                <div>
+                                  <Label htmlFor="projectDescription">Description</Label>
+                                  <textarea
+                                    id="projectDescription"
+                                    className="w-full p-2 border border-gray-300 rounded-md h-24"
+                                    placeholder="Brief description of your project"
+                                  ></textarea>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                📜 Certifications
+                              </h3>
+                              <div>
+                                <Label htmlFor="certifications">List of Certifications and Credentials</Label>
+                                <textarea
+                                  id="certifications"
+                                  className="w-full p-2 border border-gray-300 rounded-md h-24"
+                                  placeholder="List your certifications and credentials"
+                                ></textarea>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                🧳 Internships
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="companyName">Company Name</Label>
+                                  <Input id="companyName" placeholder="Company where you interned" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="internshipRole">Role</Label>
+                                  <Input id="internshipRole" placeholder="Your position/role" />
+                                </div>
+                                <div className="md:col-span-2">
+                                  <Label htmlFor="responsibilities">Responsibilities</Label>
+                                  <textarea
+                                    id="responsibilities"
+                                    className="w-full p-2 border border-gray-300 rounded-md h-24"
+                                    placeholder="Brief description of your responsibilities"
+                                  ></textarea>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                👤 Account Credentials
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="username">Username</Label>
+                                  <Input id="username" placeholder="Choose a username" />
+                                </div>
+                                <div>
+                                  <Label htmlFor="newPassword">New Password</Label>
+                                  <Input id="newPassword" type="password" placeholder="Enter new password" />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end space-x-4">
+                              <Button variant="outline" onClick={() => setShowEditProfile(false)}>
+                                Cancel
+                              </Button>
+                              <Button type="submit">
+                                Save Changes
+                              </Button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Edit Profile Form */}
-            {showEditProfile && (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Edit Profile</CardTitle>
-                  <CardDescription>Update your personal and academic information</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {/* Profile Picture Upload */}
-                    <div className="flex flex-col items-center space-y-4">
-                      <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
-                        <User className="h-12 w-12 text-gray-400" />
-                      </div>
-                      <div>
-                        <Label htmlFor="profilePicture">Upload Profile Picture</Label>
-                        <Input id="profilePicture" type="file" accept="image/*" className="mt-1" />
-                      </div>
-                    </div>
-
-                    {/* Personal Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="fullName">Full Name (as on SSC) *</Label>
-                        <Input id="fullName" placeholder="Your full name" />
-                      </div>
-                      <div>
-                        <Label htmlFor="dob">DOB *</Label>
-                        <Input id="dob" type="date" />
-                      </div>
-                      <div>
-                        <Label htmlFor="email">Email *</Label>
-                        <Input id="email" type="email" placeholder="Enter email" />
-                      </div>
-                      <div>
-                        <Label htmlFor="phone">Phone *</Label>
-                        <Input id="phone" placeholder="Primary number" />
-                      </div>
-                      <div>
-                        <Label htmlFor="alternatePhone">Alternate Phone</Label>
-                        <Input id="alternatePhone" placeholder="Secondary number" />
-                      </div>
-                      <div>
-                        <Label htmlFor="fatherName">Father Name</Label>
-                        <Input id="fatherName" placeholder="Father's full name" />
-                      </div>
-                      <div>
-                        <Label htmlFor="gender">Gender *</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="maritalStatus">Marital Status *</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="E.g., Single, Married" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="single">Single</SelectItem>
-                            <SelectItem value="married">Married</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="nationality">Nationality *</Label>
-                        <Input id="nationality" placeholder="Your nationality" defaultValue="Indian" />
-                      </div>
-                      <div>
-                        <Label htmlFor="languages">Languages Known *</Label>
-                        <Input id="languages" placeholder="E.g., English, Hindi" />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label htmlFor="address">Address *</Label>
-                        <Textarea id="address" placeholder="Your address" />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label htmlFor="hobbies">Hobbies</Label>
-                        <Input id="hobbies" placeholder="Your hobbies" />
-                      </div>
-                    </div>
-
-                    {/* Educational Qualification */}
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold mb-4">Educational Qualification</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Label htmlFor="instituteName">Institute Name *</Label>
-                          <Input id="instituteName" placeholder="College/University name" />
-                        </div>
-                        <div>
-                          <Label htmlFor="stream">Stream/Course *</Label>
-                          <Select>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="btech">B.Tech</SelectItem>
-                              <SelectItem value="bsc">B.Sc</SelectItem>
-                              <SelectItem value="bcom">B.Com</SelectItem>
-                              <SelectItem value="ba">B.A</SelectItem>
-                              <SelectItem value="mtech">M.Tech</SelectItem>
-                              <SelectItem value="msc">M.Sc</SelectItem>
-                              <SelectItem value="mba">MBA</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="yearOfPass">Year of Pass *</Label>
-                          <Input id="yearOfPass" placeholder="E.g., 2023" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Projects */}
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold mb-4">Projects</h3>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="projectName">Project Name</Label>
-                          <Input id="projectName" placeholder="Name of your project" />
-                        </div>
-                        <div>
-                          <Label htmlFor="githubLink">GitHub Link</Label>
-                          <Input id="githubLink" placeholder="https://github.com/..." />
-                        </div>
-                        <div>
-                          <Label htmlFor="projectDescription">Description</Label>
-                          <Textarea id="projectDescription" placeholder="Brief description of your project" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Certifications */}
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold mb-4">Certifications</h3>
-                      <div>
-                        <Label htmlFor="certifications">Certification Details</Label>
-                        <Textarea id="certifications" placeholder="List your certifications and credentials" />
-                      </div>
-                    </div>
-
-                    {/* Internships */}
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold mb-4">Internships</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="companyName">Company Name</Label>
-                          <Input id="companyName" placeholder="Company where you interned" />
-                        </div>
-                        <div>
-                          <Label htmlFor="internshipRole">Internship Role</Label>
-                          <Input id="internshipRole" placeholder="Your position/role" />
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label htmlFor="responsibilities">Responsibilities</Label>
-                          <Textarea id="responsibilities" placeholder="Brief description of your responsibilities" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Account Details */}
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold mb-4">Account Details</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="username">Username</Label>
-                          <Input id="username" placeholder="Choose a username" />
-                        </div>
-                        <div>
-                          <Label htmlFor="password">Password</Label>
-                          <Input id="password" type="password" placeholder="Password" />
-                        </div>
-                        <div>
-                          <Label htmlFor="confirmPassword">Re-enter Password</Label>
-                          <Input id="confirmPassword" type="password" placeholder="Re-enter Password" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-4 pt-6">
-                      <Button className="flex-1">Save Changes</Button>
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => setShowEditProfile(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          <TabsContent value="assistance">
+            <Card>
+              <CardHeader>
+                <CardTitle>Job Assistance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                Explore job assistance programs and resources.
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
-              <img 
-                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
-                alt="TriaRight Logo" 
-                className="h-8 w-auto mr-3"
-              />
-            </div>
-            
-            <div className="flex space-x-6">
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-              </a>
-              
-              <a
-                href="https://youtube.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                </svg>
-              </a>
-              
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.373 12.073 12.017 12.073c6.62 0 12.017-5.373 12.017-12.073C24.014 5.367 18.637 0 12.017 0zM8.449 16.988c-1.297 0-2.448-.473-3.342-1.257-.894-.784-1.449-1.849-1.449-3.043 0-1.194.555-2.259 1.449-3.043.894-.784 2.045-1.257 2.045-1.257v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-              </a>
-            </div>
-          </div>
-          
-          <div className="mt-6 pt-6 border-t border-gray-800 text-center text-gray-400">
-            <p>&copy; 2025 TriaRight. All rights reserved. The New Era Of Learning.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

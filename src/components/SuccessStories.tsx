@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import Navbar from '@/components/Navbar';
+import AuthModal from '@/components/AuthModal';
 import { ArrowLeft, MapPin, Calendar, Star } from 'lucide-react';
 
 interface SuccessStoriesProps {
@@ -11,6 +13,20 @@ interface SuccessStoriesProps {
 
 const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
   const [currentStory, setCurrentStory] = useState(0);
+  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
+
+  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
+    setAuthModal({ isOpen: true, type, userType });
+  };
+
+  const handleCloseAuth = () => {
+    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+  };
+
+  const handleAuthSuccess = (userRole: string, userName: string) => {
+    console.log(`User ${userName} logged in as ${userRole}`);
+    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+  };
 
   const successStories = [
     {
@@ -85,37 +101,30 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <Button variant="ghost" onClick={onBack} className="mr-4">
+      <Navbar onOpenAuth={handleOpenAuth} />
+      
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="flex items-center mb-8">
+            <Button variant="ghost" onClick={onBack} className="text-white hover:bg-white/20 mr-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-             <div className="flex items-center">
-              <img 
-                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
-                alt="TriaRight Logo" 
-                className="h-10 w-auto"
-              />
-            </div>
+          </div>
+          <div className="text-center">
+            <h1 className="text-5xl font-bold mb-6">Our Success Stories</h1>
+            <p className="text-xl max-w-3xl mx-auto">
+              Meet our successful students who transformed their careers with TriaRight training programs
+            </p>
           </div>
         </div>
-      </header>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Success Stories</h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Meet our successful students who transformed their careers with TriaRight training programs
-          </p>
-        </div>
-
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Featured Story */}
         <div className="mb-16">
-          <Card className="max-w-4xl mx-auto overflow-hidden">
+          <Card className="max-w-5xl mx-auto overflow-hidden shadow-xl">
             <div className="md:flex">
               <div className="md:w-1/3">
                 <img
@@ -126,7 +135,7 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
               </div>
               <div className="md:w-2/3 p-8">
                 <div className="flex items-center justify-between mb-4">
-                  <Badge className="bg-gradient-to-r from-blue-600 to-orange-500">
+                  <Badge className="bg-gradient-to-r from-blue-600 to-purple-600">
                     {successStories[currentStory].course}
                   </Badge>
                   <div className="flex items-center text-yellow-500">
@@ -137,10 +146,10 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
                     <Star className="h-4 w-4 fill-current" />
                   </div>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                <h3 className="text-3xl font-bold text-gray-900 mb-2">
                   {successStories[currentStory].name}
                 </h3>
-                <p className="text-lg text-blue-600 mb-4">
+                <p className="text-xl text-blue-600 mb-4">
                   {successStories[currentStory].role} at {successStories[currentStory].company}
                 </p>
                 <p className="text-gray-700 mb-6 text-lg leading-relaxed">
@@ -155,7 +164,7 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
                     <MapPin className="h-4 w-4 mr-1" />
                     {successStories[currentStory].location}
                   </div>
-                  <Badge variant="secondary" className="font-semibold">
+                  <Badge variant="secondary" className="font-semibold bg-green-100 text-green-800">
                     Package: {successStories[currentStory].package}
                   </Badge>
                 </div>
@@ -165,10 +174,10 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
         </div>
 
         {/* All Success Stories Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
           {successStories.map((story, index) => (
             <Card key={story.id} className={`cursor-pointer transition-all hover:shadow-lg ${
-              index === currentStory ? 'ring-2 ring-blue-500' : ''
+              index === currentStory ? 'ring-2 ring-blue-500 shadow-lg' : ''
             }`} onClick={() => setCurrentStory(index)}>
               <CardHeader className="text-center">
                 <img
@@ -184,7 +193,7 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
               <CardContent>
                 <div className="text-center space-y-2">
                   <Badge variant="outline">{story.course}</Badge>
-                  <p className="text-sm text-gray-600">Package: {story.package}</p>
+                  <p className="text-sm font-semibold text-green-600">Package: {story.package}</p>
                   <div className="flex items-center justify-center text-sm text-gray-500">
                     <MapPin className="h-3 w-3 mr-1" />
                     {story.location}
@@ -196,17 +205,26 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
         </div>
 
         {/* Call to Action */}
-        <div className="text-center mt-16">
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Start Your Success Story?</h3>
-          <p className="text-lg text-gray-600 mb-8">Join thousands of successful learners and transform your career today!</p>
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-16 text-center text-white">
+          <h3 className="text-4xl font-bold mb-4">Ready to Start Your Success Story?</h3>
+          <p className="text-xl mb-8">Join thousands of successful learners and transform your career today!</p>
           <Button 
+            size="lg"
             onClick={onBack}
-            className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600 text-white px-8 py-3 text-lg"
+            className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3"
           >
             Start Learning Now
           </Button>
         </div>
       </div>
+
+      <AuthModal
+        isOpen={authModal.isOpen}
+        onClose={handleCloseAuth}
+        type={authModal.type}
+        userType={authModal.userType}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };

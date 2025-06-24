@@ -6,14 +6,30 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
+import AuthModal from '@/components/AuthModal';
 import { useNavigate } from 'react-router-dom';
-import { Search, Clock, MapPin, DollarSign, Laptop } from 'lucide-react';
+import { Search, Clock, MapPin, DollarSign, Laptop, Code, TrendingUp, Users, Briefcase } from 'lucide-react';
 
 const OnlineInternships = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [feeTypeFilter, setFeeTypeFilter] = useState('All');
+  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
+
+  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
+    setAuthModal({ isOpen: true, type, userType });
+  };
+
+  const handleCloseAuth = () => {
+    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+  };
+
+  const handleAuthSuccess = (userRole: string, userName: string) => {
+    console.log(`User ${userName} logged in as ${userRole}`);
+    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+  };
 
   const internships = [
     {
@@ -27,6 +43,8 @@ const OnlineInternships = () => {
       stipend: "₹8,000/month",
       description: "Work on modern web applications using React and contribute to real projects.",
       requirements: "Basic knowledge of HTML, CSS, JavaScript",
+      color: "bg-blue-500",
+      icon: Code
     },
     {
       id: 2,
@@ -39,6 +57,8 @@ const OnlineInternships = () => {
       stipend: null,
       description: "Learn digital marketing strategies and campaign management.",
       requirements: "Interest in digital marketing, basic computer skills",
+      color: "bg-purple-500",
+      icon: TrendingUp
     },
     {
       id: 3,
@@ -51,6 +71,8 @@ const OnlineInternships = () => {
       stipend: "₹12,000/month",
       description: "Work with real datasets and build predictive models.",
       requirements: "Python programming, statistics knowledge",
+      color: "bg-green-500",
+      icon: TrendingUp
     },
     {
       id: 4,
@@ -63,6 +85,8 @@ const OnlineInternships = () => {
       stipend: "₹6,000/month",
       description: "Support HR operations and learn recruitment processes.",
       requirements: "Good communication skills, MS Office proficiency",
+      color: "bg-pink-500",
+      icon: Users
     },
     {
       id: 5,
@@ -75,6 +99,8 @@ const OnlineInternships = () => {
       stipend: "₹10,000/month",
       description: "Analyze business processes and create reports for decision making.",
       requirements: "Analytical thinking, Excel skills, business acumen",
+      color: "bg-indigo-500",
+      icon: Briefcase
     },
     {
       id: 6,
@@ -87,6 +113,8 @@ const OnlineInternships = () => {
       stipend: "₹9,000/month",
       description: "Learn financial analysis and reporting in a corporate environment.",
       requirements: "Finance background, Excel proficiency, attention to detail",
+      color: "bg-orange-500",
+      icon: TrendingUp
     }
   ];
 
@@ -112,14 +140,23 @@ const OnlineInternships = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Navbar onOpenAuth={handleOpenAuth} />
+      
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Online Internships</h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <h1 className="text-5xl font-bold mb-6">Online Internships</h1>
+            <p className="text-xl max-w-3xl mx-auto mb-8">
               Gain practical experience with remote internship opportunities from top companies.
             </p>
+            <Button 
+              size="lg" 
+              className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3"
+            >
+              <Laptop className="h-5 w-5 mr-2" />
+              Explore Internships
+            </Button>
           </div>
         </div>
       </div>
@@ -170,16 +207,24 @@ const OnlineInternships = () => {
         {/* Internships Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredInternships.map((internship) => (
-            <Card key={internship.id} className="hover:shadow-lg transition-shadow">
+            <Card key={internship.id} className="hover:shadow-lg transition-shadow overflow-hidden">
+              <div className="relative">
+                <div className={`h-24 ${internship.color} flex items-center justify-center`}>
+                  <internship.icon className="h-12 w-12 text-white" />
+                </div>
+                <div className="absolute top-4 right-4">
+                  <Badge variant={internship.feeType === 'Unpaid' ? 'secondary' : 'default'} className="bg-white/90">
+                    {internship.feeType}
+                  </Badge>
+                </div>
+              </div>
+
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg mb-2">{internship.role}</CardTitle>
                     <p className="text-blue-600 font-medium">{internship.company}</p>
                   </div>
-                  <Badge variant={internship.feeType === 'Unpaid' ? 'secondary' : 'default'}>
-                    {internship.feeType}
-                  </Badge>
                 </div>
               </CardHeader>
 
@@ -224,7 +269,7 @@ const OnlineInternships = () => {
               <CardFooter>
                 <Button 
                   onClick={handleEnroll}
-                  className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
                   Apply Now
                 </Button>
@@ -240,6 +285,13 @@ const OnlineInternships = () => {
         )}
       </div>
 
+      <AuthModal
+        isOpen={authModal.isOpen}
+        onClose={handleCloseAuth}
+        type={authModal.type}
+        userType={authModal.userType}
+        onAuthSuccess={handleAuthSuccess}
+      />
       <Footer />
     </div>
   );
