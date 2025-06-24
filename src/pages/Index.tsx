@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
@@ -18,12 +19,15 @@ import CourseCards from '../components/CourseCards';
 import SuccessStories from '../components/SuccessStories';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Index = () => {
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('student');
   const [user, setUser] = useState<{ role: string; name: string } | null>(null);
   const [showSuccessStories, setShowSuccessStories] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const openLoginDialog = (type: 'login' | 'register', userType: string) => {
     setSelectedRole(userType);
@@ -37,13 +41,21 @@ const Index = () => {
   const handleLoginSuccess = (userName: string) => {
     setUser({ role: selectedRole, name: userName });
     closeLoginDialog();
+    
+    // Navigate to home page after login to show the dashboard
+    if (location.pathname !== '/') {
+      navigate('/');
+    }
   };
 
   const handleLogout = () => {
     setUser(null);
     setShowSuccessStories(false);
+    // Navigate to home page after logout
+    navigate('/');
   };
 
+  // Check if user is logged in and show appropriate dashboard
   if (user) {
     switch (user.role) {
       case 'student':
