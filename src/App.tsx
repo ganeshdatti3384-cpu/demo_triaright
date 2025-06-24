@@ -14,7 +14,6 @@ import JobAssistance from "./pages/JobAssistance";
 import NotFound from "./pages/NotFound";
 import LiveCourses from "./pages/LiveCourses";
 import CourseDetail from "./pages/CourseDetail";
-import ContinueLearning from "./pages/ContinueLearning";
 
 const queryClient = new QueryClient();
 
@@ -31,7 +30,6 @@ const App = () => (
           <Route path="/courses/live" element={<LiveCourses />} />
           <Route path="/courses/recorded/:courseId" element={<CourseDetail />} />
           <Route path="/courses/live/:courseId" element={<CourseDetail />} />
-          <Route path="/courses/continue/:courseId" element={<ContinueLearning />} />
           <Route path="/internships/online" element={<OnlineInternships />} />
           <Route path="/internships/offline" element={<OfflineInternships />} />
           <Route path="/jobs/assurance" element={<JobAssurance />} />
