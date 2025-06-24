@@ -20,6 +20,12 @@ const LiveCourses = () => {
     setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
   };
 
+  const handleAuthSuccess = (userRole: string, userName: string) => {
+    console.log(`User ${userName} logged in as ${userRole}`);
+    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+    // You can add additional logic here like redirecting or updating user state
+  };
+
   const courses = [
     {
       id: 'web-development',
@@ -201,6 +207,7 @@ const LiveCourses = () => {
         onClose={handleCloseAuth}
         type={authModal.type}
         userType={authModal.userType}
+        onAuthSuccess={handleAuthSuccess}
       />
       <Footer />
     </div>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
@@ -25,6 +26,12 @@ const CourseDetail = () => {
 
   const handleCloseAuth = () => {
     setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+  };
+
+  const handleAuthSuccess = (userRole: string, userName: string) => {
+    console.log(`User ${userName} logged in as ${userRole}`);
+    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+    // You can add additional logic here like redirecting or updating user state
   };
 
   const course = courseData[courseId] || courseData['web-development'];
@@ -67,6 +74,7 @@ const CourseDetail = () => {
         onClose={handleCloseAuth}
         type={authModal.type}
         userType={authModal.userType}
+        onAuthSuccess={handleAuthSuccess}
       />
       <Footer />
     </div>
