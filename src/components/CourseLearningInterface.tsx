@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,6 +59,7 @@ const CourseLearningInterface = ({ course, onBack }: CourseLearningInterfaceProp
             title: "HTML Structure",
             duration: "20 min",
             type: "video",
+            videoId: "dQw4w9WgXcQ",
             completed: false,
             hasQuiz: true
           },
@@ -67,6 +67,7 @@ const CourseLearningInterface = ({ course, onBack }: CourseLearningInterfaceProp
             title: "HTML Forms",
             duration: "25 min",
             type: "video",
+            videoId: "oHg5SJYRHA0",
             completed: false,
             hasAssignment: true
           }
@@ -79,6 +80,7 @@ const CourseLearningInterface = ({ course, onBack }: CourseLearningInterfaceProp
             title: "CSS Basics",
             duration: "18 min",
             type: "video",
+            videoId: "1PnVor36_40",
             completed: false,
             hasQuiz: true
           },
@@ -86,6 +88,7 @@ const CourseLearningInterface = ({ course, onBack }: CourseLearningInterfaceProp
             title: "CSS Flexbox",
             duration: "30 min",
             type: "video",
+            videoId: "JJSoEo8JSnc",
             completed: false,
             hasAssignment: true
           }
@@ -98,6 +101,7 @@ const CourseLearningInterface = ({ course, onBack }: CourseLearningInterfaceProp
             title: "JavaScript Basics",
             duration: "22 min",
             type: "video",
+            videoId: "W6NZfCO5SIk",
             completed: false,
             hasQuiz: true,
             hasAssignment: true
