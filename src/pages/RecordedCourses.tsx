@@ -1,17 +1,18 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Users, Star, PlayCircle, Code, Database, Calculator, TrendingUp, Briefcase } from 'lucide-react';
+import { Clock, Users, Star, Code, Database, Calculator, TrendingUp, Briefcase } from 'lucide-react';
 
 const RecordedCourses = () => {
   const navigate = useNavigate();
 
   const courses = [
   {
-    id: 1,
+    id: 'web-development',
     title: 'Web Development',
     description: 'Master HTML, CSS, JavaScript, React and build modern web applications',
     duration: '12 weeks',
@@ -25,7 +26,7 @@ const RecordedCourses = () => {
     level: "Beginner to Advanced"
   },
   {
-    id: 2,
+    id: 'data-science',
     title: 'Data Science',
     description: 'Learn Python, Machine Learning, Statistics and Data Analysis',
     duration: '16 weeks',
@@ -95,8 +96,9 @@ const RecordedCourses = () => {
     level: "Intermediate"
   }
 ];
-  const handleEnroll = () => {
-    navigate('/register');
+
+  const handleCourseClick = (courseId: string) => {
+    navigate(`/courses/recorded/${courseId}`);
   };
 
   return (
@@ -117,7 +119,7 @@ const RecordedCourses = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {courses.map((course) => (
-           <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+           <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleCourseClick(course.id)}>
   <div className="relative flex items-center justify-center h-48">
     <div className={`h-24 w-24 ${course.color} rounded-full flex items-center justify-center`}>
       <course.icon className="h-12 w-12 text-white" />
@@ -167,10 +169,13 @@ const RecordedCourses = () => {
 
   <CardFooter>
     <Button 
-      onClick={handleEnroll}
+      onClick={(e) => {
+        e.stopPropagation();
+        handleCourseClick(course.id);
+      }}
       className="w-full bg-brand-primary hover:bg-blue-700 text-white"
     >
-      Enroll Now
+      View Details
     </Button>
   </CardFooter>
 </Card>
