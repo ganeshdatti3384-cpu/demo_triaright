@@ -6,120 +6,126 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Footer from '@/components/Footer';
-import Navbar from '@/components/Navbar';
-import AuthModal from '@/components/AuthModal';
 import { useNavigate } from 'react-router-dom';
-import { Search, Clock, MapPin, DollarSign, Building, Code, TrendingUp, Users, Briefcase } from 'lucide-react';
+import { Search, Clock, MapPin, DollarSign, Building } from 'lucide-react';
 
 const OfflineInternships = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [locationFilter, setLocationFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
-
-  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
-    setAuthModal({ isOpen: true, type, userType });
-  };
-
-  const handleCloseAuth = () => {
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-  };
-
-  const handleAuthSuccess = (userRole: string, userName: string) => {
-    console.log(`User ${userName} logged in as ${userRole}`);
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-  };
+  const [feeTypeFilter, setFeeTypeFilter] = useState('All');
+  const [locationFilter, setLocationFilter] = useState('All');
 
   const internships = [
     {
       id: 1,
-      role: "Software Developer Intern",
-      company: "Tech Innovations Pvt Ltd",
-      location: "Bangalore",
+      role: "Software Development Intern",
+      company: "Tech Innovators",
       duration: "6 months",
       technologies: ["Java", "Spring Boot", "MySQL"],
       category: "IT",
+      feeType: "Stipend",
       stipend: "₹15,000/month",
-      description: "Work on enterprise applications and learn backend development.",
-      requirements: "Java programming, database knowledge",
-      color: "bg-blue-500",
-      icon: Code
+      location: "Hyderabad",
+      description: "Work on enterprise applications and learn full-stack development.",
+      requirements: "Computer Science background, Java knowledge",
     },
     {
       id: 2,
-      role: "Marketing Intern",
-      company: "Brand Solutions",
-      location: "Mumbai",
+      role: "Marketing Assistant",
+      company: "Brand Builders",
       duration: "3 months",
-      technologies: ["Market Research", "Campaign Management", "Analytics"],
+      technologies: ["Market Research", "Content Creation", "Analytics"],
       category: "Marketing",
+      feeType: "Paid",
       stipend: "₹8,000/month",
-      description: "Assist in marketing campaigns and brand development.",
-      requirements: "Marketing knowledge, creative thinking",
-      color: "bg-purple-500",
-      icon: TrendingUp
+      location: "Mumbai",
+      description: "Support marketing campaigns and learn brand management.",
+      requirements: "MBA/BBA preferred, creative mindset",
     },
     {
       id: 3,
-      role: "Data Analyst Intern",
-      company: "Analytics Corp",
-      location: "Hyderabad",
+      role: "Business Operations Intern",
+      company: "StartupHub",
       duration: "4 months",
-      technologies: ["Python", "SQL", "Tableau"],
-      category: "IT",
+      technologies: ["Process Optimization", "Data Analysis", "CRM"],
+      category: "Business",
+      feeType: "Stipend",
       stipend: "₹12,000/month",
-      description: "Analyze business data and create insightful reports.",
-      requirements: "Python, SQL knowledge, analytical skills",
-      color: "bg-green-500",
-      icon: TrendingUp
+      location: "Bangalore",
+      description: "Learn business operations in a fast-paced startup environment.",
+      requirements: "Business background, analytical skills",
     },
     {
       id: 4,
-      role: "HR Intern",
-      company: "People & Culture Co",
+      role: "Finance Intern",
+      company: "Capital Solutions",
+      duration: "5 months",
+      technologies: ["Financial Analysis", "Bloomberg", "Excel"],
+      category: "Finance",
+      feeType: "Paid",
+      stipend: "₹18,000/month",
       location: "Delhi",
-      duration: "3 months",
-      technologies: ["Recruitment", "Employee Engagement", "HR Analytics"],
-      category: "HR",
-      stipend: "₹7,000/month",
-      description: "Support HR operations and talent acquisition.",
-      requirements: "Communication skills, HR interest",
-      color: "bg-pink-500",
-      icon: Users
+      description: "Work with investment portfolios and financial modeling.",
+      requirements: "Finance/Economics degree, Excel proficiency",
     },
     {
       id: 5,
-      role: "Finance Intern",
-      company: "Capital Advisors",
-      location: "Chennai",
-      duration: "5 months",
-      technologies: ["Financial Analysis", "Excel", "SAP"],
-      category: "Finance",
-      stipend: "₹10,000/month",
-      description: "Assist in financial planning and analysis activities.",
-      requirements: "Finance background, Excel skills",
-      color: "bg-indigo-500",
-      icon: Briefcase
+      role: "HR Trainee",
+      company: "People Connect",
+      duration: "3 months",
+      technologies: ["Recruitment", "Employee Engagement", "HRMS"],
+      category: "HR",
+      feeType: "Unpaid",
+      stipend: null,
+      location: "Pune",
+      description: "Learn HR processes and talent acquisition strategies.",
+      requirements: "HR background, good communication skills",
     },
     {
       id: 6,
-      role: "Operations Intern",
-      company: "Logistics Solutions",
-      location: "Pune",
+      role: "Quality Assurance Intern",
+      company: "TestPro Solutions",
       duration: "4 months",
-      technologies: ["Process Optimization", "Supply Chain", "Analytics"],
-      category: "Operations",
-      stipend: "₹9,000/month",
-      description: "Optimize business operations and improve efficiency.",
-      requirements: "Process thinking, analytical mindset",
-      color: "bg-orange-500",
-      icon: Briefcase
+      technologies: ["Manual Testing", "Selenium", "API Testing"],
+      category: "IT",
+      feeType: "Stipend",
+      stipend: "₹10,000/month",
+      location: "Chennai",
+      description: "Learn software testing methodologies and automation tools.",
+      requirements: "Basic programming knowledge, attention to detail",
+    },
+    {
+      id: 7,
+      role: "Content Writing Intern",
+      company: "ContentCraft",
+      duration: "2 months",
+      technologies: ["SEO Writing", "WordPress", "Content Strategy"],
+      category: "Marketing",
+      feeType: "Paid",
+      stipend: "₹7,000/month",
+      location: "Hyderabad",
+      description: "Create engaging content for digital platforms.",
+      requirements: "Excellent writing skills, creativity",
+    },
+    {
+      id: 8,
+      role: "Data Entry Intern",
+      company: "DataManage Corp",
+      duration: "2 months",
+      technologies: ["Excel", "Data Processing", "CRM"],
+      category: "Non-IT",
+      feeType: "Unpaid",
+      stipend: null,
+      location: "Kochi",
+      description: "Handle data processing and database management tasks.",
+      requirements: "Computer literacy, attention to detail",
     }
   ];
 
-  const locations = ["All", "Bangalore", "Mumbai", "Hyderabad", "Delhi", "Chennai", "Pune"];
-  const categories = ["All", "IT", "Marketing", "HR", "Finance", "Operations"];
+  const categories = ["All", "IT", "Non-IT", "Business", "HR", "Marketing", "Finance"];
+  const feeTypes = ["All", "Paid", "Unpaid", "Stipend"];
+  const locations = ["All", "Hyderabad", "Mumbai", "Bangalore", "Delhi", "Pune", "Chennai", "Kochi"];
 
   const filteredInternships = useMemo(() => {
     return internships.filter(internship => {
@@ -127,12 +133,13 @@ const OfflineInternships = () => {
                           internship.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           internship.technologies.some(tech => tech.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      const matchesLocation = locationFilter === 'All' || internship.location === locationFilter;
       const matchesCategory = categoryFilter === 'All' || internship.category === categoryFilter;
+      const matchesFeeType = feeTypeFilter === 'All' || internship.feeType === feeTypeFilter;
+      const matchesLocation = locationFilter === 'All' || internship.location === locationFilter;
       
-      return matchesSearch && matchesLocation && matchesCategory;
+      return matchesSearch && matchesCategory && matchesFeeType && matchesLocation;
     });
-  }, [searchTerm, locationFilter, categoryFilter]);
+  }, [searchTerm, categoryFilter, feeTypeFilter, locationFilter]);
 
   const handleEnroll = () => {
     navigate('/register');
@@ -140,23 +147,14 @@ const OfflineInternships = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar onOpenAuth={handleOpenAuth} />
-      
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      {/* Header */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
-            <h1 className="text-5xl font-bold mb-6">Offline Internships</h1>
-            <p className="text-xl max-w-3xl mx-auto mb-8">
-              Get hands-on experience with on-site internship opportunities in top companies across India.
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Offline Internships</h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Get hands-on experience with on-site internship opportunities across India.
             </p>
-            <Button 
-              size="lg" 
-              className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3"
-            >
-              <Building className="h-5 w-5 mr-2" />
-              Find Internships
-            </Button>
           </div>
         </div>
       </div>
@@ -164,7 +162,7 @@ const OfflineInternships = () => {
       {/* Filters */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
@@ -175,17 +173,6 @@ const OfflineInternships = () => {
               />
             </div>
             
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map(location => (
-                  <SelectItem key={location} value={location}>{location}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
@@ -193,6 +180,28 @@ const OfflineInternships = () => {
               <SelectContent>
                 {categories.map(category => (
                   <SelectItem key={category} value={category}>{category}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={feeTypeFilter} onValueChange={setFeeTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Fee Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {feeTypes.map(feeType => (
+                  <SelectItem key={feeType} value={feeType}>{feeType}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Location" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map(location => (
+                  <SelectItem key={location} value={location}>{location}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -207,24 +216,16 @@ const OfflineInternships = () => {
         {/* Internships Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredInternships.map((internship) => (
-            <Card key={internship.id} className="hover:shadow-lg transition-shadow overflow-hidden">
-              <div className="relative">
-                <div className={`h-24 ${internship.color} flex items-center justify-center`}>
-                  <internship.icon className="h-12 w-12 text-white" />
-                </div>
-                <div className="absolute top-4 right-4">
-                  <Badge className="bg-white/90 text-gray-800">
-                    On-site
-                  </Badge>
-                </div>
-              </div>
-
+            <Card key={internship.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg mb-2">{internship.role}</CardTitle>
                     <p className="text-blue-600 font-medium">{internship.company}</p>
                   </div>
+                  <Badge variant={internship.feeType === 'Unpaid' ? 'secondary' : 'default'}>
+                    {internship.feeType}
+                  </Badge>
                 </div>
               </CardHeader>
 
@@ -242,13 +243,15 @@ const OfflineInternships = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center text-green-600 font-medium">
-                  <DollarSign className="h-4 w-4 mr-1" />
-                  {internship.stipend}
-                </div>
+                {internship.stipend && (
+                  <div className="flex items-center text-green-600 font-medium">
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    {internship.stipend}
+                  </div>
+                )}
 
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Skills:</p>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Technologies:</p>
                   <div className="flex flex-wrap gap-1">
                     {internship.technologies.map((tech, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
@@ -267,7 +270,7 @@ const OfflineInternships = () => {
               <CardFooter>
                 <Button 
                   onClick={handleEnroll}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
                 >
                   Apply Now
                 </Button>
@@ -283,13 +286,6 @@ const OfflineInternships = () => {
         )}
       </div>
 
-      <AuthModal
-        isOpen={authModal.isOpen}
-        onClose={handleCloseAuth}
-        type={authModal.type}
-        userType={authModal.userType}
-        onAuthSuccess={handleAuthSuccess}
-      />
       <Footer />
     </div>
   );

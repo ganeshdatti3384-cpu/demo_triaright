@@ -73,10 +73,10 @@ const LoginDialog = ({ isOpen, onClose, onLoginSuccess, selectedRole }: LoginDia
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Sign In as {getRoleDisplayName(selectedRole)}
           </DialogTitle>
-          <DialogDescription className="text-gray-600 text-center">
+          <DialogDescription className="text-gray-600">
             Welcome back! Sign in to your {getRoleDisplayName(selectedRole).toLowerCase()} account.
           </DialogDescription>
         </DialogHeader>

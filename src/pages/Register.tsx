@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,7 +18,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from '@/hooks/use-toast';
 import Footer from '../components/Footer';
 import Navbar from '@/components/Navbar';
-import AuthModal from '@/components/AuthModal';
 
 const registrationSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -43,20 +41,6 @@ type RegistrationFormData = z.infer<typeof registrationSchema>;
 
 const Register = () => {
   const { toast } = useToast();
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
-
-  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
-    setAuthModal({ isOpen: true, type, userType });
-  };
-
-  const handleCloseAuth = () => {
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-  };
-
-  const handleAuthSuccess = (userRole: string, userName: string) => {
-    console.log(`User ${userName} logged in as ${userRole}`);
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-  };
 
   const {
     register,
@@ -85,29 +69,20 @@ const Register = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar onOpenAuth={handleOpenAuth} />
-      
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-5xl font-bold mb-6">Join TriaRight</h1>
-          <p className="text-xl max-w-2xl mx-auto">
-            Start your journey to success with our comprehensive training programs and career support
-          </p>
-        </div>
-      </div>
-
-      <main className="flex-1 py-12">
+    <div className="min-h-screen flex flex-col">
+      <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
+        throw new Error('Function not implemented.');
+      }} />
+      <main className="flex-1 bg-gray-50 py-8">
         <div className="container mx-auto px-4 max-w-2xl">
-          <Card className="shadow-xl border-0">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-              <CardTitle className="text-3xl font-bold text-center">
-                Create Your Account
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Register
               </CardTitle>
-              <p className="text-center text-blue-100">Fill in your details to get started</p>
+              <p className="text-center text-gray-600">Create your account to get started</p>
             </CardHeader>
-            <CardContent className="p-8">
+            <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
                 <div>
@@ -208,9 +183,9 @@ const Register = () => {
 
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 py-3 text-lg"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
-                  Create Account
+                  Register
                 </Button>
               </form>
 
@@ -226,14 +201,6 @@ const Register = () => {
           </Card>
         </div>
       </main>
-      
-      <AuthModal
-        isOpen={authModal.isOpen}
-        onClose={handleCloseAuth}
-        type={authModal.type}
-        userType={authModal.userType}
-        onAuthSuccess={handleAuthSuccess}
-      />
       <Footer />
     </div>
   );
