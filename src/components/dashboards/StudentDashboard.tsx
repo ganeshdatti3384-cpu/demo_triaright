@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import CodeCompiler from '../CodeCompiler';
 import ExamsSection from '../ExamsSection';
+import CourseLearningInterface from '../CourseLearningInterface';
 
 interface StudentDashboardProps {
   user: { role: string; name: string };
@@ -50,6 +51,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [showCourseLearning, setShowCourseLearning] = useState(false);
 
   // Sample data for enrolled courses
   const enrolledCourses = [
@@ -266,6 +268,20 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
     }
   };
 
+  const handleContinueLearning = (course: any) => {
+    setSelectedCourse(course);
+    setShowCourseLearning(true);
+  };
+
+  if (showCourseLearning && selectedCourse) {
+    return (
+      <CourseLearningInterface 
+        course={selectedCourse}
+        onBack={() => setShowCourseLearning(false)}
+      />
+    );
+  }
+
   if (showVideoPlayer && selectedCourse) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -321,10 +337,23 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                       className="rounded-lg"
                     ></iframe>
                   </div>
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600">
-                    <Award className="h-4 w-4 mr-2" />
-                    Get Certificate
-                  </Button>
+                  <div className="space-y-3">
+                    <Button className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600">
+                      <Award className="h-4 w-4 mr-2" />
+                      Get Certificate
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        setShowVideoPlayer(false);
+                        setShowCourseLearning(true);
+                      }}
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Open Full Learning Interface
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -620,10 +649,21 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                             </div>
                             <Progress value={course.progress} />
                           </div>
-                          <Button className="w-full">
-                            <Play className="h-4 w-4 mr-2" />
-                            {course.progress === 100 ? 'View Certificate' : 'Continue Learning'}
-                          </Button>
+                          <div className="space-y-2">
+                            <Button 
+                              className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
+                              onClick={() => handleContinueLearning(course)}
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              {course.progress === 100 ? 'Review Course' : 'Continue Learning'}
+                            </Button>
+                            {course.progress === 100 && (
+                              <Button variant="outline" className="w-full">
+                                <Award className="h-4 w-4 mr-2" />
+                                View Certificate
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -1296,7 +1336,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                 className="text-gray-400 hover:text-white transition-colors"
               >
                 <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.373 12.073 12.017 12.073c6.62 0 12.017-5.373 12.017-12.073C24.014 5.367 18.637 0 12.017 0zM8.449 16.988c-1.297 0-2.448-.473-3.342-1.257-.894-.784-1.449-1.849-1.449-3.043 0-1.194.555-2.259 1.449-3.043.894-.784 2.045-1.257 3.342-1.257 1.297 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.373 12.073 12.017 12.073c6.62 0 12.017-5.373 12.017-12.073C24.014 5.367 18.637 0 12.017 0zM8.449 16.988c-1.297 0-2.448-.473-3.342-1.257-.894-.784-1.449-1.849-1.449-3.043 0-1.194.555-2.259 1.449-3.043.894-.784 2.045-1.257 2.045-1.257v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                 </svg>
               </a>
             </div>
