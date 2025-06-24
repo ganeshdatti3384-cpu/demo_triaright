@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
+import AuthModal from '@/components/AuthModal';
 import { useNavigate } from 'react-router-dom';
 import { Search, Clock, MapPin, DollarSign, Building } from 'lucide-react';
 
@@ -15,6 +17,7 @@ const OfflineInternships = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [feeTypeFilter, setFeeTypeFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
+  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
 
   const internships = [
     {
@@ -145,8 +148,22 @@ const OfflineInternships = () => {
     navigate('/register');
   };
 
+  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
+    setAuthModal({ isOpen: true, type, userType });
+  };
+
+  const handleCloseAuth = () => {
+    setAuthModal({ ...authModal, isOpen: false });
+  };
+
+  const handleAuthSuccess = () => {
+    setAuthModal({ ...authModal, isOpen: false });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gray-50">
+      <Navbar onOpenAuth={handleOpenAuth} />
+      
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -221,7 +238,7 @@ const OfflineInternships = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg mb-2">{internship.role}</CardTitle>
-                    <p className="text-blue-600 font-medium">{internship.company}</p>
+                    <p className="text-brand-primary font-medium">{internship.company}</p>
                   </div>
                   <Badge variant={internship.feeType === 'Unpaid' ? 'secondary' : 'default'}>
                     {internship.feeType}
@@ -270,7 +287,7 @@ const OfflineInternships = () => {
               <CardFooter>
                 <Button 
                   onClick={handleEnroll}
-                  className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
+                  className="w-full bg-brand-primary hover:bg-blue-700"
                 >
                   Apply Now
                 </Button>
@@ -285,6 +302,14 @@ const OfflineInternships = () => {
           </div>
         )}
       </div>
+
+      <AuthModal
+        isOpen={authModal.isOpen}
+        onClose={handleCloseAuth}
+        type={authModal.type}
+        userType={authModal.userType}
+        onAuthSuccess={handleAuthSuccess}
+      />
 
       <Footer />
     </div>
