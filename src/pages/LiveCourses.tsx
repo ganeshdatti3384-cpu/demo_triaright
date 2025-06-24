@@ -1,105 +1,100 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Code, Database, Calculator, TrendingUp, Users, Briefcase } from 'lucide-react';
+import { Code, Database, Calculator, TrendingUp, Users, Briefcase, Clock, Star, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Users, Star, PlayCircle } from 'lucide-react';
 
 const LiveCourses = () => {
   const navigate = useNavigate();
 
- 
-
-const courses = [
-  {
-    id: 1,
-    title: 'Web Development',
-    description: 'Master HTML, CSS, JavaScript, React and build modern web applications',
-    duration: '12 weeks',
-    students: '2,500+',
-    rating: 4.8,
-    color: 'bg-blue-500',
-    icon: Code,
-    price: "₹2,999",
-    originalPrice: "₹4,999",
-    lessons: 45,
-    level: "Beginner to Advanced"
-  },
-  {
-    id: 2,
-    title: 'Data Science',
-    description: 'Learn Python, Machine Learning, Statistics and Data Analysis',
-    duration: '16 weeks',
-    students: '1,800+',
-    rating: 4.9,
-    color: 'bg-orange-500',
-    icon: Database,
-    price: "₹2,499",
-    originalPrice: "₹3,999",
-    lessons: 38,
-    level: "Beginner"
-  },
-  {
-    id: 3,
-    title: 'Aptitude Training',
-    description: 'Quantitative aptitude, logical reasoning, and verbal ability',
-    duration: '8 weeks',
-    students: '3,200+',
-    rating: 4.7,
-    color: 'bg-green-500',
-    icon: Calculator,
-    price: "₹1,999",
-    originalPrice: "₹2,999",
-    lessons: 30,
-    level: "Beginner to Intermediate"
-  },
-  {
-    id: 4,
-    title: 'Business Analytics',
-    description: 'Excel, Power BI, Tableau and business intelligence tools',
-    duration: '10 weeks',
-    students: '1,500+',
-    rating: 4.6,
-    color: 'bg-purple-500',
-    icon: TrendingUp,
-    price: "₹3,499",
-    originalPrice: "₹5,499",
-    lessons: 55,
-    level: "Beginner to Advanced"
-  },
-  {
-    id: 5,
-    title: 'Soft Skills',
-    description: 'Communication, leadership and professional development',
-    duration: '6 weeks',
-    students: '4,000+',
-    rating: 4.8,
-    color: 'bg-pink-500',
-    icon: Users,
-    price: "₹2,299",
-    originalPrice: "₹3,499",
-    lessons: 35,
-    level: "Beginner"
-  },
-  {
-    id: 6,
-    title: 'Job Readiness',
-    description: 'Resume building, interview preparation and placement support',
-    duration: '4 weeks',
-    students: '2,800+',
-    rating: 4.9,
-    color: 'bg-indigo-500',
-    icon: Briefcase,
-    price: "₹3,299",
-    originalPrice: "₹4,799",
-    lessons: 42,
-    level: "Intermediate"
-  }
-];
-
+  const courses = [
+    {
+      id: 1,
+      title: 'Web Development',
+      description: 'Master HTML, CSS, JavaScript, React and build modern web applications',
+      duration: '12 weeks',
+      students: '2,500+',
+      rating: 4.8,
+      color: 'bg-blue-500',
+      icon: Code,
+      price: "₹2,999",
+      originalPrice: "₹4,999",
+      lessons: 45,
+      level: "Beginner to Advanced"
+    },
+    {
+      id: 2,
+      title: 'Data Science',
+      description: 'Learn Python, Machine Learning, Statistics and Data Analysis',
+      duration: '16 weeks',
+      students: '1,800+',
+      rating: 4.9,
+      color: 'bg-orange-500',
+      icon: Database,
+      price: "₹2,499",
+      originalPrice: "₹3,999",
+      lessons: 38,
+      level: "Beginner"
+    },
+    {
+      id: 3,
+      title: 'Aptitude Training',
+      description: 'Quantitative aptitude, logical reasoning, and verbal ability',
+      duration: '8 weeks',
+      students: '3,200+',
+      rating: 4.7,
+      color: 'bg-green-500',
+      icon: Calculator,
+      price: "₹1,999",
+      originalPrice: "₹2,999",
+      lessons: 30,
+      level: "Beginner to Intermediate"
+    },
+    {
+      id: 4,
+      title: 'Business Analytics',
+      description: 'Excel, Power BI, Tableau and business intelligence tools',
+      duration: '10 weeks',
+      students: '1,500+',
+      rating: 4.6,
+      color: 'bg-purple-500',
+      icon: TrendingUp,
+      price: "₹3,499",
+      originalPrice: "₹5,499",
+      lessons: 55,
+      level: "Beginner to Advanced"
+    },
+    {
+      id: 5,
+      title: 'Soft Skills',
+      description: 'Communication, leadership and professional development',
+      duration: '6 weeks',
+      students: '4,000+',
+      rating: 4.8,
+      color: 'bg-pink-500',
+      icon: Users,
+      price: "₹2,299",
+      originalPrice: "₹3,499",
+      lessons: 35,
+      level: "Beginner"
+    },
+    {
+      id: 6,
+      title: 'Job Readiness',
+      description: 'Resume building, interview preparation and placement support',
+      duration: '4 weeks',
+      students: '2,800+',
+      rating: 4.9,
+      color: 'bg-indigo-500',
+      icon: Briefcase,
+      price: "₹3,299",
+      originalPrice: "₹4,799",
+      lessons: 42,
+      level: "Intermediate"
+    }
+  ];
 
   const handleEnroll = () => {
     navigate('/register');

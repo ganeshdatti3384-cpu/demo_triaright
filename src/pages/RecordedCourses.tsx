@@ -4,8 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Users, Star, PlayCircle } from 'lucide-react';
-import { Code, Database, Calculator, TrendingUp, Users, Briefcase } from 'lucide-react';
+import { Clock, Users, Star, PlayCircle, Code, Database, Calculator, TrendingUp, Briefcase } from 'lucide-react';
 
 const RecordedCourses = () => {
   const navigate = useNavigate();
