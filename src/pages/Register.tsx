@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -77,7 +78,7 @@ const Register = () => {
         <div className="container mx-auto px-4 max-w-2xl">
           <Card>
             <CardHeader>
-              <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <CardTitle className="text-3xl font-bold text-center text-blue-600">
                 Register
               </CardTitle>
               <p className="text-center text-gray-600">Create your account to get started</p>
@@ -183,7 +184,7 @@ const Register = () => {
 
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   Register
                 </Button>

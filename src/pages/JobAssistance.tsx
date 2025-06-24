@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Zap, Bell, Target, CreditCard, Smartphone } from 'lucide-react';
 
@@ -57,8 +58,12 @@ const JobAssistance = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
+        throw new Error('Function not implemented.');
+      }} />
+      
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
+      <div className="bg-green-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h1 className="text-5xl font-bold mb-4">Advance Your Career with Expert Guidance</h1>
@@ -176,7 +181,7 @@ const JobAssistance = () => {
       </div>
 
       {/* Value Proposition */}
-      <div className="py-16 bg-gradient-to-r from-blue-50 to-green-50">
+      <div className="py-16 bg-blue-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">Why This Investment Makes Sense</h2>
@@ -204,7 +209,7 @@ const JobAssistance = () => {
             <Button 
               onClick={handleGetStarted}
               size="lg"
-              className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 font-semibold px-8 py-4 text-lg"
+              className="bg-green-600 hover:bg-green-700 font-semibold px-8 py-4 text-lg"
             >
               Get Started Now - ₹500 Only!
             </Button>

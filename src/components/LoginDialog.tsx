@@ -73,7 +73,7 @@ const LoginDialog = ({ isOpen, onClose, onLoginSuccess, selectedRole }: LoginDia
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <DialogTitle className="text-2xl font-bold text-blue-600">
             Sign In as {getRoleDisplayName(selectedRole)}
           </DialogTitle>
           <DialogDescription className="text-gray-600">
@@ -113,7 +113,7 @@ const LoginDialog = ({ isOpen, onClose, onLoginSuccess, selectedRole }: LoginDia
             <Label htmlFor="remember" className="text-sm">Remember me</Label>
           </div>
 
-          <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
             Sign In
           </Button>
 

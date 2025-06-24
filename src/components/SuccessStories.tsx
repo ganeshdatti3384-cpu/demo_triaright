@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import Navbar from '@/components/Navbar';
 import { ArrowLeft, MapPin, Calendar, Star } from 'lucide-react';
 
 interface SuccessStoriesProps {
@@ -85,6 +85,10 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
+        throw new Error('Function not implemented.');
+      }} />
+      
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -126,7 +130,7 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
               </div>
               <div className="md:w-2/3 p-8">
                 <div className="flex items-center justify-between mb-4">
-                  <Badge className="bg-gradient-to-r from-blue-600 to-orange-500">
+                  <Badge className="bg-blue-600">
                     {successStories[currentStory].course}
                   </Badge>
                   <div className="flex items-center text-yellow-500">
@@ -201,7 +205,7 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
           <p className="text-lg text-gray-600 mb-8">Join thousands of successful learners and transform your career today!</p>
           <Button 
             onClick={onBack}
-            className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600 text-white px-8 py-3 text-lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
           >
             Start Learning Now
           </Button>

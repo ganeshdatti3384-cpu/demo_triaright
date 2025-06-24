@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { Search, Clock, MapPin, DollarSign, Building } from 'lucide-react';
 
@@ -147,6 +147,10 @@ const OfflineInternships = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
+        throw new Error('Function not implemented.');
+      }} />
+      
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -270,7 +274,7 @@ const OfflineInternships = () => {
               <CardFooter>
                 <Button 
                   onClick={handleEnroll}
-                  className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   Apply Now
                 </Button>

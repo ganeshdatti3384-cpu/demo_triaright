@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Target, Users, BookOpen, TrendingUp, Award, Clock } from 'lucide-react';
 
@@ -54,8 +55,12 @@ const JobAssurance = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
+        throw new Error('Function not implemented.');
+      }} />
+      
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-orange-500 text-white">
+      <div className="bg-blue-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h1 className="text-5xl font-bold mb-4">Triaright Job Assurance Program</h1>
@@ -108,7 +113,7 @@ const JobAssurance = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* IT Track */}
             <Card className="border-2 border-blue-200 hover:border-blue-400 transition-colors">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
+              <CardHeader className="bg-blue-50">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-2xl text-blue-800">IT Track</CardTitle>
                   <Badge className="bg-blue-600">Popular</Badge>
@@ -143,7 +148,7 @@ const JobAssurance = () => {
                 </ul>
                 <Button 
                   onClick={handleApplyNow}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   Apply for IT Track
                 </Button>
@@ -152,7 +157,7 @@ const JobAssurance = () => {
 
             {/* Non-IT Track */}
             <Card className="border-2 border-orange-200 hover:border-orange-400 transition-colors">
-              <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-100">
+              <CardHeader className="bg-orange-50">
                 <CardTitle className="text-2xl text-orange-800">Non-IT Track</CardTitle>
                 <div className="flex items-center space-x-2 mt-4">
                   <Clock className="h-5 w-5 text-orange-600" />
@@ -184,7 +189,7 @@ const JobAssurance = () => {
                 </ul>
                 <Button 
                   onClick={handleApplyNow}
-                  className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800"
+                  className="w-full bg-orange-600 hover:bg-orange-700"
                 >
                   Apply for Non-IT Track
                 </Button>
@@ -214,7 +219,7 @@ const JobAssurance = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="py-16 bg-gradient-to-r from-blue-600 to-orange-500">
+      <div className="py-16 bg-blue-600">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to Transform Your Career?</h2>
           <p className="text-xl text-blue-100 mb-8">
