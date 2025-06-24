@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 interface LoginDialogProps {
   isOpen: boolean;
@@ -24,7 +23,6 @@ interface LoginFormData {
 
 const LoginDialog = ({ isOpen, onClose, onLoginSuccess, selectedRole }: LoginDialogProps) => {
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const {
     register,
@@ -58,13 +56,8 @@ const LoginDialog = ({ isOpen, onClose, onLoginSuccess, selectedRole }: LoginDia
         title: "Success",
         description: `Logged in successfully as ${getRoleDisplayName(selectedRole)}!`,
       });
-      
-      // Navigate to home page first, then trigger login success
-      navigate('/');
-      setTimeout(() => {
-        onLoginSuccess('aks');
-      }, 100);
-      
+      onLoginSuccess('aks');
+      onClose();
       return;
     }
 

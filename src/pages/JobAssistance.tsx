@@ -1,17 +1,14 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/Footer';
-import Navbar from '@/components/Navbar';
-import AuthModal from '@/components/AuthModal';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Zap, Bell, Target, CreditCard, Smartphone } from 'lucide-react';
 
 const JobAssistance = () => {
   const navigate = useNavigate();
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
 
   const benefits = [
     {
@@ -58,35 +55,21 @@ const JobAssistance = () => {
     navigate('/register');
   };
 
-  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
-    setAuthModal({ isOpen: true, type, userType });
-  };
-
-  const handleCloseAuth = () => {
-    setAuthModal({ ...authModal, isOpen: false });
-  };
-
-  const handleAuthSuccess = () => {
-    setAuthModal({ ...authModal, isOpen: false });
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar onOpenAuth={handleOpenAuth} />
-      
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Hero Section */}
-      <div className="bg-brand-primary text-white">
+      <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h1 className="text-5xl font-bold mb-4">Advance Your Career with Expert Guidance</h1>
-            <p className="text-2xl mb-8">
+            <p className="text-2xl mb-8 text-green-100">
               🚀 Land Your Dream Job Faster with Triaright's Professional Job Assistance
             </p>
             
             <div className="bg-white/20 rounded-2xl p-8 max-w-2xl mx-auto">
               <div className="text-6xl font-bold mb-4">₹500 Only</div>
               <div className="text-2xl mb-4">Lifetime Access</div>
-              <p className="text-lg">One-time investment for lifetime career support!</p>
+              <p className="text-lg text-green-100">One-time investment for lifetime career support!</p>
             </div>
           </div>
         </div>
@@ -102,11 +85,11 @@ const JobAssistance = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {benefits.map((benefit, index) => (
-              <Card key={index} className="hover:shadow-lg transition-shadow border-l-4 border-l-brand-primary">
+              <Card key={index} className="hover:shadow-lg transition-shadow border-l-4 border-l-green-500">
                 <CardHeader>
                   <div className="flex items-center space-x-3">
-                    <div className="bg-blue-100 p-3 rounded-lg">
-                      <benefit.icon className="h-6 w-6 text-brand-primary" />
+                    <div className="bg-green-100 p-3 rounded-lg">
+                      <benefit.icon className="h-6 w-6 text-green-600" />
                     </div>
                     <CardTitle className="text-lg">{benefit.title}</CardTitle>
                   </div>
@@ -193,22 +176,22 @@ const JobAssistance = () => {
       </div>
 
       {/* Value Proposition */}
-      <div className="py-16 bg-blue-50">
+      <div className="py-16 bg-gradient-to-r from-blue-50 to-green-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">Why This Investment Makes Sense</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="text-center">
-                <div className="text-2xl font-bold text-brand-primary mb-2">₹500</div>
+                <div className="text-2xl font-bold text-green-600 mb-2">₹500</div>
                 <div className="text-sm text-gray-600">One-time payment</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-brand-primary mb-2">Lifetime</div>
+                <div className="text-2xl font-bold text-blue-600 mb-2">Lifetime</div>
                 <div className="text-sm text-gray-600">No recurring fees</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-brand-secondary mb-2">∞</div>
+                <div className="text-2xl font-bold text-purple-600 mb-2">∞</div>
                 <div className="text-sm text-gray-600">Unlimited opportunities</div>
               </div>
             </div>
@@ -221,7 +204,7 @@ const JobAssistance = () => {
             <Button 
               onClick={handleGetStarted}
               size="lg"
-              className="bg-brand-primary hover:bg-blue-700 font-semibold px-8 py-4 text-lg"
+              className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 font-semibold px-8 py-4 text-lg"
             >
               Get Started Now - ₹500 Only!
             </Button>
@@ -236,28 +219,20 @@ const JobAssistance = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-gray-50 rounded-lg p-6">
-              <div className="text-3xl font-bold text-brand-primary mb-2">5000+</div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">5000+</div>
               <div className="text-gray-600">Active Users</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-6">
-              <div className="text-3xl font-bold text-brand-secondary mb-2">85%</div>
+              <div className="text-3xl font-bold text-green-600 mb-2">85%</div>
               <div className="text-gray-600">Success Rate</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-6">
-              <div className="text-3xl font-bold text-brand-accent mb-2">24/7</div>
+              <div className="text-3xl font-bold text-purple-600 mb-2">24/7</div>
               <div className="text-gray-600">Support Available</div>
             </div>
           </div>
         </div>
       </div>
-
-      <AuthModal
-        isOpen={authModal.isOpen}
-        onClose={handleCloseAuth}
-        type={authModal.type}
-        userType={authModal.userType}
-        onAuthSuccess={handleAuthSuccess}
-      />
 
       <Footer />
     </div>

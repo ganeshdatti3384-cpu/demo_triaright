@@ -3,9 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import Navbar from '@/components/Navbar';
-import AuthModal from '@/components/AuthModal';
-import Footer from '@/components/Footer';
 import { ArrowLeft, MapPin, Calendar, Star } from 'lucide-react';
 
 interface SuccessStoriesProps {
@@ -14,7 +11,6 @@ interface SuccessStoriesProps {
 
 const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
   const [currentStory, setCurrentStory] = useState(0);
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
 
   const successStories = [
     {
@@ -87,31 +83,28 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
     return () => clearInterval(timer);
   }, [successStories.length]);
 
-  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
-    setAuthModal({ isOpen: true, type, userType });
-  };
-
-  const handleCloseAuth = () => {
-    setAuthModal({ ...authModal, isOpen: false });
-  };
-
-  const handleAuthSuccess = () => {
-    setAuthModal({ ...authModal, isOpen: false });
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar onOpenAuth={handleOpenAuth} />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center h-16">
+            <Button variant="ghost" onClick={onBack} className="mr-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+             <div className="flex items-center">
+              <img 
+                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                alt="TriaRight Logo" 
+                className="h-10 w-auto"
+              />
+            </div>
+          </div>
+        </div>
+      </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <div className="mb-6">
-          <Button variant="ghost" onClick={onBack} className="mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        </div>
-
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Success Stories</h2>
@@ -133,7 +126,7 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
               </div>
               <div className="md:w-2/3 p-8">
                 <div className="flex items-center justify-between mb-4">
-                  <Badge className="bg-brand-primary">
+                  <Badge className="bg-gradient-to-r from-blue-600 to-orange-500">
                     {successStories[currentStory].course}
                   </Badge>
                   <div className="flex items-center text-yellow-500">
@@ -147,7 +140,7 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
                   {successStories[currentStory].name}
                 </h3>
-                <p className="text-lg text-brand-primary mb-4">
+                <p className="text-lg text-blue-600 mb-4">
                   {successStories[currentStory].role} at {successStories[currentStory].company}
                 </p>
                 <p className="text-gray-700 mb-6 text-lg leading-relaxed">
@@ -175,7 +168,7 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {successStories.map((story, index) => (
             <Card key={story.id} className={`cursor-pointer transition-all hover:shadow-lg ${
-              index === currentStory ? 'ring-2 ring-brand-primary' : ''
+              index === currentStory ? 'ring-2 ring-blue-500' : ''
             }`} onClick={() => setCurrentStory(index)}>
               <CardHeader className="text-center">
                 <img
@@ -208,22 +201,12 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
           <p className="text-lg text-gray-600 mb-8">Join thousands of successful learners and transform your career today!</p>
           <Button 
             onClick={onBack}
-            className="bg-brand-primary hover:bg-blue-700 text-white px-8 py-3 text-lg"
+            className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600 text-white px-8 py-3 text-lg"
           >
             Start Learning Now
           </Button>
         </div>
       </div>
-
-      <AuthModal
-        isOpen={authModal.isOpen}
-        onClose={handleCloseAuth}
-        type={authModal.type}
-        userType={authModal.userType}
-        onAuthSuccess={handleAuthSuccess}
-      />
-
-      <Footer />
     </div>
   );
 };

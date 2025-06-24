@@ -1,17 +1,14 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/Footer';
-import Navbar from '@/components/Navbar';
-import AuthModal from '@/components/AuthModal';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Target, Users, BookOpen, TrendingUp, Award, Clock } from 'lucide-react';
 
 const JobAssurance = () => {
   const navigate = useNavigate();
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
 
   const whyChooseUs = [
     {
@@ -55,29 +52,14 @@ const JobAssurance = () => {
     navigate('/register');
   };
 
-  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
-    setAuthModal({ isOpen: true, type, userType });
-  };
-
-  const handleCloseAuth = () => {
-    setAuthModal({ ...authModal, isOpen: false });
-  };
-
-  const handleAuthSuccess = () => {
-    setAuthModal({ ...authModal, isOpen: false });
-    // Handle successful authentication
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar onOpenAuth={handleOpenAuth} />
-      
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Hero Section */}
-      <div className="bg-brand-primary text-white">
+      <div className="bg-gradient-to-r from-blue-600 to-orange-500 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h1 className="text-5xl font-bold mb-4">Triaright Job Assurance Program</h1>
-            <p className="text-2xl mb-8">
+            <p className="text-2xl mb-8 text-blue-100">
               Personalized Training + Guaranteed Placement — Or 100% Refund!
             </p>
             <div className="inline-flex items-center bg-white/20 rounded-full px-6 py-3 text-lg">
@@ -126,19 +108,19 @@ const JobAssurance = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* IT Track */}
             <Card className="border-2 border-blue-200 hover:border-blue-400 transition-colors">
-              <CardHeader className="bg-blue-50">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-2xl text-brand-primary">IT Track</CardTitle>
-                  <Badge className="bg-brand-primary">Popular</Badge>
+                  <CardTitle className="text-2xl text-blue-800">IT Track</CardTitle>
+                  <Badge className="bg-blue-600">Popular</Badge>
                 </div>
                 <div className="flex items-center space-x-2 mt-4">
-                  <Clock className="h-5 w-5 text-brand-primary" />
-                  <span className="text-brand-primary font-medium">1 Year Program</span>
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  <span className="text-blue-700 font-medium">1 Year Program</span>
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="text-center mb-6">
-                  <div className="text-4xl font-bold text-brand-primary mb-2">₹30,000</div>
+                  <div className="text-4xl font-bold text-blue-600 mb-2">₹30,000</div>
                   <p className="text-gray-600">Includes training & placement support</p>
                 </div>
                 <ul className="space-y-3 mb-6">
@@ -161,7 +143,7 @@ const JobAssurance = () => {
                 </ul>
                 <Button 
                   onClick={handleApplyNow}
-                  className="w-full bg-brand-primary hover:bg-blue-700"
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                 >
                   Apply for IT Track
                 </Button>
@@ -170,16 +152,16 @@ const JobAssurance = () => {
 
             {/* Non-IT Track */}
             <Card className="border-2 border-orange-200 hover:border-orange-400 transition-colors">
-              <CardHeader className="bg-orange-50">
-                <CardTitle className="text-2xl text-brand-secondary">Non-IT Track</CardTitle>
+              <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-100">
+                <CardTitle className="text-2xl text-orange-800">Non-IT Track</CardTitle>
                 <div className="flex items-center space-x-2 mt-4">
-                  <Clock className="h-5 w-5 text-brand-secondary" />
-                  <span className="text-brand-secondary font-medium">100-Day Program</span>
+                  <Clock className="h-5 w-5 text-orange-600" />
+                  <span className="text-orange-700 font-medium">100-Day Program</span>
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="text-center mb-6">
-                  <div className="text-4xl font-bold text-brand-secondary mb-2">₹10,000</div>
+                  <div className="text-4xl font-bold text-orange-600 mb-2">₹10,000</div>
                   <p className="text-gray-600">Includes targeted training & job assistance</p>
                 </div>
                 <ul className="space-y-3 mb-6">
@@ -202,7 +184,7 @@ const JobAssurance = () => {
                 </ul>
                 <Button 
                   onClick={handleApplyNow}
-                  className="w-full bg-brand-secondary hover:bg-orange-700"
+                  className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800"
                 >
                   Apply for Non-IT Track
                 </Button>
@@ -232,7 +214,7 @@ const JobAssurance = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="py-16 bg-brand-primary">
+      <div className="py-16 bg-gradient-to-r from-blue-600 to-orange-500">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to Transform Your Career?</h2>
           <p className="text-xl text-blue-100 mb-8">
@@ -241,20 +223,12 @@ const JobAssurance = () => {
           <Button 
             onClick={handleApplyNow}
             size="lg"
-            className="bg-white text-brand-primary hover:bg-gray-100 font-semibold px-8 py-4 text-lg"
+            className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-8 py-4 text-lg"
           >
             Apply Now - Limited Seats Available!
           </Button>
         </div>
       </div>
-
-      <AuthModal
-        isOpen={authModal.isOpen}
-        onClose={handleCloseAuth}
-        type={authModal.type}
-        userType={authModal.userType}
-        onAuthSuccess={handleAuthSuccess}
-      />
 
       <Footer />
     </div>
