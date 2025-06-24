@@ -1,14 +1,24 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
+import AuthModal from '@/components/AuthModal';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Users, Star, Code, Database, Calculator, TrendingUp, Briefcase } from 'lucide-react';
 
 const RecordedCourses = () => {
   const navigate = useNavigate();
+  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
+
+  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
+    setAuthModal({ isOpen: true, type, userType });
+  };
+
+  const handleCloseAuth = () => {
+    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+  };
 
   const courses = [
   {
@@ -103,6 +113,8 @@ const RecordedCourses = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Navbar onOpenAuth={handleOpenAuth} />
+      
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -184,6 +196,12 @@ const RecordedCourses = () => {
         </div>
       </div>
 
+      <AuthModal
+        isOpen={authModal.isOpen}
+        onClose={handleCloseAuth}
+        type={authModal.type}
+        userType={authModal.userType}
+      />
       <Footer />
     </div>
   );

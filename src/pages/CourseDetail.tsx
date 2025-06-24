@@ -1,7 +1,8 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
+import AuthModal from '@/components/AuthModal';
 import CourseHeader from '@/components/CourseDetail/CourseHeader';
 import CourseVideoPlayer from '@/components/CourseDetail/CourseVideoPlayer';
 import WhatYoullLearn from '@/components/CourseDetail/WhatYoullLearn';
@@ -16,6 +17,15 @@ import { courseData } from '@/data/courseData';
 const CourseDetail = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
+
+  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
+    setAuthModal({ isOpen: true, type, userType });
+  };
+
+  const handleCloseAuth = () => {
+    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
+  };
 
   const course = courseData[courseId] || courseData['web-development'];
   const IconComponent = course.icon;
@@ -26,6 +36,8 @@ const CourseDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Navbar onOpenAuth={handleOpenAuth} />
+      
       <CourseHeader course={course} IconComponent={IconComponent} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -50,6 +62,12 @@ const CourseDetail = () => {
       </div>
 
       <MobileCTA course={course} onEnrollClick={handleEnrollClick} />
+      <AuthModal
+        isOpen={authModal.isOpen}
+        onClose={handleCloseAuth}
+        type={authModal.type}
+        userType={authModal.userType}
+      />
       <Footer />
     </div>
   );
