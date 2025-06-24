@@ -23,7 +23,7 @@ const Hero = ({ onOpenAuth }: HeroProps) => {
           
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
             Transform Your Career with{' '}
-            <span className="bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">
+            <span className="text-brand-primary">
               TriaRight
             </span>
           </h1>
@@ -37,7 +37,7 @@ const Hero = ({ onOpenAuth }: HeroProps) => {
             <Button 
               onClick={() => onOpenAuth('login', 'student')}
               size="lg" 
-              className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600 text-white px-8 py-3"
+              className="bg-brand-primary hover:bg-blue-700 text-white px-8 py-3"
             >
               Get Started
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -47,7 +47,7 @@ const Hero = ({ onOpenAuth }: HeroProps) => {
               onClick={() => onOpenAuth('login', 'employer')}
               variant="outline" 
               size="lg" 
-              className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-3"
+              className="border-2 border-brand-primary text-brand-primary hover:bg-blue-50 px-8 py-3"
             >
               For Employers
             </Button>
@@ -57,7 +57,7 @@ const Hero = ({ onOpenAuth }: HeroProps) => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-16">
             <div className="text-center">
               <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <BookOpen className="h-8 w-8 text-blue-600" />
+                <BookOpen className="h-8 w-8 text-brand-primary" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Expert Training</h3>
               <p className="text-sm text-gray-600">Industry-leading courses and certifications</p>
@@ -65,7 +65,7 @@ const Hero = ({ onOpenAuth }: HeroProps) => {
             
             <div className="text-center">
               <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Users className="h-8 w-8 text-orange-600" />
+                <Users className="h-8 w-8 text-brand-secondary" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Community</h3>
               <p className="text-sm text-gray-600">Connect with peers and mentors</p>

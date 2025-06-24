@@ -70,7 +70,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-blue-600 transition-colors">
+              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
                 <span>Courses</span>
                 <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -91,7 +91,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
             </DropdownMenu>
 
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-blue-600 transition-colors">
+              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
                 <span>Jobs</span>
                 <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -112,7 +112,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
             </DropdownMenu>
 
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-blue-600 transition-colors">
+              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
                 <span>Internships</span>
                 <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -133,7 +133,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
             </DropdownMenu>
 
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-blue-600 transition-colors">
+              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
                 <span>Training</span>
                 <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -158,7 +158,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
           <div className="hidden md:flex items-center space-x-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex items-center space-x-1">
+                <Button variant="outline" className="flex items-center space-x-1 border-brand-primary text-brand-primary hover:bg-blue-50">
                   <span>Login</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
@@ -178,7 +178,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
 
             <Button
               onClick={handleRegisterClick}
-              className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
+              className="bg-brand-primary hover:bg-blue-700 text-white"
             >
               Register
             </Button>
@@ -205,7 +205,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
                 {courseTypes.map((course) => (
                   <div 
                     key={course.name} 
-                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-blue-600"
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
                     onClick={() => handleMenuItemClick(course.path)}
                   >
                     {course.name}
@@ -218,7 +218,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
                 {jobTypes.map((job) => (
                   <div 
                     key={job.name} 
-                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-blue-600"
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
                     onClick={() => handleMenuItemClick(job.path)}
                   >
                     {job.name}
@@ -231,7 +231,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
                 {internshipTypes.map((internship) => (
                   <div 
                     key={internship.name} 
-                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-blue-600"
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
                     onClick={() => handleMenuItemClick(internship.path)}
                   >
                     {internship.name}
@@ -242,10 +242,10 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
               <div className="space-y-2">
                 <h3 className="font-semibold text-gray-900">Auth</h3>
                 <div className="flex flex-col space-y-2 pl-4">
-                  <Button variant="outline" size="sm" onClick={() => onOpenAuth('login', 'student')}>
+                  <Button variant="outline" size="sm" onClick={() => onOpenAuth('login', 'student')} className="border-brand-primary text-brand-primary">
                     Login
                   </Button>
-                  <Button size="sm" onClick={() => onOpenAuth('register', 'student')}>
+                  <Button size="sm" onClick={() => onOpenAuth('register', 'student')} className="bg-brand-primary hover:bg-blue-700">
                     Register
                   </Button>
                 </div>

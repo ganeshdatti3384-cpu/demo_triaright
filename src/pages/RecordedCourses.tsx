@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -158,7 +157,7 @@ const RecordedCourses = () => {
   <CardContent>
     <div className="flex items-center justify-between mb-4">
       <div className="flex items-center space-x-2">
-        <span className="text-2xl font-bold text-blue-600">{course.price}</span>
+        <span className="text-2xl font-bold text-brand-primary">{course.price}</span>
         <span className="text-lg text-gray-500 line-through">{course.originalPrice}</span>
       </div>
       <div className="text-sm text-gray-600">
@@ -170,7 +169,7 @@ const RecordedCourses = () => {
   <CardFooter>
     <Button 
       onClick={handleEnroll}
-      className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
+      className="w-full bg-brand-primary hover:bg-blue-700 text-white"
     >
       Enroll Now
     </Button>

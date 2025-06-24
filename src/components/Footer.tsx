@@ -38,7 +38,7 @@ const Footer = () => {
   return (
     <footer className="bg-gray-900 text-white">
       {/* Newsletter Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-orange-500 py-12">
+      <div className="bg-brand-primary py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h3 className="text-2xl font-bold mb-4">Stay Updated</h3>
@@ -52,7 +52,7 @@ const Footer = () => {
                 placeholder="Enter your email"
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/70"
               />
-              <Button className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-6">
+              <Button className="bg-white text-brand-primary hover:bg-gray-100 font-semibold px-6">
                 Subscribe
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -118,7 +118,7 @@ const Footer = () => {
               <h4 className="text-lg font-semibold mb-6">Contact Us</h4>
               <div className="space-y-4 text-sm">
                 <div className="flex items-start space-x-3">
-                  <Mail className="h-5 w-5 text-blue-400 mt-0.5" />
+                  <Mail className="h-5 w-5 text-brand-primary mt-0.5" />
                   <div className="space-y-2">
                     <div>
                       <p className="text-white">📧 info@triaright.com</p>
@@ -140,7 +140,7 @@ const Footer = () => {
                 </div>
                 
                 <div className="flex items-start space-x-3">
-                  <Phone className="h-5 w-5 text-blue-400 mt-0.5" />
+                  <Phone className="h-5 w-5 text-brand-primary mt-0.5" />
                   <div>
                     <p className="text-white">📞 +91 9059373300</p>
                     <p className="text-white">📞 +91 8341044141</p>
@@ -148,7 +148,7 @@ const Footer = () => {
                 </div>
 
                 <div className="flex items-start space-x-3">
-                  <MapPin className="h-5 w-5 text-blue-400 mt-0.5" />
+                  <MapPin className="h-5 w-5 text-brand-primary mt-0.5" />
                   <div>
                     <p className="text-white">🏢 #7-1-58, 401, Surekha Chambers,</p>
                     <p className="text-white">Ameerpet, Hyderabad, Telangana 500016</p>
@@ -173,7 +173,7 @@ const Footer = () => {
                 <a
                   key={index}
                   href={social.href}
-                  className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
+                  className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-brand-primary transition-colors"
                   aria-label={social.label}
                 >
                   <social.icon className="h-5 w-5" />
