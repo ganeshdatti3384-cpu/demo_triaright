@@ -98,7 +98,7 @@ const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
               </div>
               <Button 
                 onClick={onCourseClick}
-                className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
+                className="w-full bg-brand-primary hover:bg-blue-700 text-white"
               >
                 Enroll Now
               </Button>

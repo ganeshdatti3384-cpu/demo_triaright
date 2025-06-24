@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
@@ -45,7 +44,6 @@ const Index = () => {
     setShowSuccessStories(false);
   };
 
-  // If user is logged in, show appropriate dashboard
   if (user) {
     switch (user.role) {
       case 'student':
@@ -76,10 +74,8 @@ const Index = () => {
       <Navbar onOpenAuth={openLoginDialog} />
       <Hero onOpenAuth={openLoginDialog} />
       
-      {/* Image Slider Section */}
       <ImageSlider />
       
-      {/* Course Cards Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -91,7 +87,7 @@ const Index = () => {
           <div className="text-center mt-12">
             <Button 
               onClick={() => setShowSuccessStories(true)}
-              className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600 text-white px-8 py-3 text-lg"
+              className="bg-brand-primary hover:bg-blue-700 text-white px-8 py-3 text-lg"
             >
               View Success Stories
               <ArrowRight className="ml-2 h-5 w-5" />
