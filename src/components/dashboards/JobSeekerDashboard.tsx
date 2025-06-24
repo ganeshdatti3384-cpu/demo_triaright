@@ -48,13 +48,12 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <img 
-                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png" 
                 alt="TriaRight Logo" 
                 className="h-10 w-auto"
               />
@@ -329,7 +328,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                           </div>
 
                           <form className="space-y-8">
-                            {/* Profile Picture Upload */}
                             <div className="space-y-4">
                               <h3 className="text-lg font-semibold flex items-center">
                                 📂 Profile Picture Upload
@@ -343,7 +341,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                               </div>
                             </div>
 
-                            {/* Personal Details */}
                             <div className="space-y-4">
                               <h3 className="text-lg font-semibold flex items-center">
                                 🧑 Personal Details
@@ -401,7 +398,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                               </div>
                             </div>
 
-                            {/* Education Details */}
                             <div className="space-y-4">
                               <h3 className="text-lg font-semibold flex items-center">
                                 🎓 Education Details
@@ -422,7 +418,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                               </div>
                             </div>
 
-                            {/* Project Section */}
                             <div className="space-y-4">
                               <h3 className="text-lg font-semibold flex items-center">
                                 💻 Project Section
@@ -447,7 +442,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                               </div>
                             </div>
 
-                            {/* Certifications */}
                             <div className="space-y-4">
                               <h3 className="text-lg font-semibold flex items-center">
                                 📜 Certifications
@@ -462,7 +456,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                               </div>
                             </div>
 
-                            {/* Internships */}
                             <div className="space-y-4">
                               <h3 className="text-lg font-semibold flex items-center">
                                 🧳 Internships
@@ -487,7 +480,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                               </div>
                             </div>
 
-                            {/* Account Credentials */}
                             <div className="space-y-4">
                               <h3 className="text-lg font-semibold flex items-center">
                                 👤 Account Credentials
@@ -588,23 +580,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                 </CardContent>
               </Card>
             </div>
-
-{/*             <Card>
-              <CardHeader>
-                <CardTitle>Common Inclusions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-2">
-                  <li>Personalized Skill Assessment</li>
-                  <li>Résumé Building & LinkedIn Optimization</li>
-                  <li>Soft Skills & Communication Training</li>
-                  <li>Domain‑Specific Technical Training</li>
-                  <li>Weekly Progress Reviews</li>
-                  <li>Direct Interview Opportunities</li>
-                  <li>Mock Interviews with Real‑Time Feedback</li>
-                </ul>
-              </CardContent>
-            </Card> */}
 
             <Card>
               <CardHeader>

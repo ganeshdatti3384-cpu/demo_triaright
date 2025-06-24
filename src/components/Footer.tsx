@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,7 +68,7 @@ const Footer = () => {
             <div className="lg:col-span-1">
               <div className="mb-4">
                 <img 
-                  src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                  src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png" 
                   alt="TriaRight - The New Era Of Learning" 
                   className="h-12 w-auto mb-4"
                 />

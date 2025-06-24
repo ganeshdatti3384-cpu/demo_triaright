@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -60,7 +59,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
           <div className="flex-shrink-0">
             <a href="/" className="flex items-center">
               <img 
-                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png" 
                 alt="TriaRight - The New Era Of Learning" 
                 className="h-10 w-auto"
               />
