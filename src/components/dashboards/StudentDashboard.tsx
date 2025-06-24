@@ -1,210 +1,358 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Award, BookOpen, Clock, Users, Trophy } from 'lucide-react';
-import CourseVideoPlayer from './CourseLearningInterface';
-import CourseSidebar from './CourseSidebar';
-import CourseQuizAssignment from './CourseQuizAssignment';
-import CertificateSection from './CertificateSection';
-import { useToast } from '@/hooks/use-toast';
-
-interface User {
-  role: string;
-  name: string;
-}
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  BookOpen, 
+  Download, 
+  Users, 
+  Trophy, 
+  Calendar, 
+  MessageCircle, 
+  LogOut, 
+  Code, 
+  FileText,
+  Search,
+  Filter,
+  Play,
+  Clock,
+  MapPin,
+  DollarSign,
+  Star,
+  Send,
+  Target,
+  Award,
+  Briefcase,
+  Upload,
+  User,
+  Edit,
+  ArrowLeft
+} from 'lucide-react';
+import CodeCompiler from '../CodeCompiler';
+import ExamsSection from '../ExamsSection';
 
 interface StudentDashboardProps {
-  user: User;
+  user: { role: string; name: string };
   onLogout: () => void;
 }
 
 const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'learning'>('dashboard');
-  const [currentLesson, setCurrentLesson] = useState(0);
-  const [courseProgress, setCourseProgress] = useState(25);
-  const [completedLessons, setCompletedLessons] = useState([0]);
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [courseFilter, setCourseFilter] = useState('all');
+  const [internshipFilter, setInternshipFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
 
+  // Sample data for enrolled courses
   const enrolledCourses = [
+    { 
+      id: 1, 
+      title: 'React Development Masterclass', 
+      description: 'Complete guide to modern React development with hooks and context',
+      duration: '40 hours',
+      type: 'recorded',
+      progress: 75,
+      enrolled: true
+    },
+    { 
+      id: 2, 
+      title: 'Data Structures & Algorithms', 
+      description: 'Master DSA concepts with practical problem-solving approaches',
+      duration: '60 hours',
+      type: 'recorded',
+      progress: 100,
+      enrolled: true
+    }
+  ];
+
+  // Sample data for available courses
+  const availableCourses = [
+    { 
+      id: 3, 
+      title: 'Python for Beginners', 
+      description: 'Learn Python programming from scratch to advanced concepts',
+      duration: '35 hours',
+      type: 'recorded',
+      progress: 0,
+      enrolled: false
+    },
+    { 
+      id: 4, 
+      title: 'Full Stack Web Development', 
+      description: 'Live interactive sessions on modern web development',
+      duration: '3 months',
+      type: 'live',
+      instructor: 'John Doe',
+      enrolled: false
+    }
+  ];
+
+  // Sample data for applied internships
+  const appliedInternships = [
     {
       id: 1,
-      title: 'Web Development',
-      progress: courseProgress,
-      instructor: 'John Doe',
-      nextLesson: 'HTML Basics',
-      totalLessons: 12,
-      completedLessons: 3,
-      estimatedTime: '2 hours left'
+      title: 'Frontend Developer Intern',
+      company: 'TechCorp Solutions',
+      duration: '3 months',
+      stipend: '₹15,000/month',
+      type: 'Company-Paid',
+      skills: ['React', 'JavaScript', 'CSS'],
+      location: 'Hyderabad',
+      status: 'Under Review',
+      appliedDate: '2024-01-15'
+    }
+  ];
+
+  // Sample data for available internships
+  const availableInternships = [
+    {
+      id: 2,
+      title: 'Data Science Internship',
+      company: 'DataTech Labs',
+      duration: '6 months',
+      stipend: 'Pay ₹5,000',
+      type: 'Student-Paid',
+      skills: ['Python', 'SQL', 'Machine Learning'],
+      location: 'Remote'
+    }
+  ];
+
+  const trainingCategories = [
+    {
+      id: 1,
+      title: 'Aptitude Training',
+      description: 'Quantitative aptitude, logical reasoning, and verbal ability',
+      modules: ['Arithmetic', 'Algebra', 'Geometry', 'Data Interpretation'],
+      enrolled: true,
+      type: 'crt'
     },
     {
       id: 2,
-      title: 'JavaScript Fundamentals',
-      progress: 60,
-      instructor: 'Jane Smith',
-      nextLesson: 'Functions and Scope',
-      totalLessons: 8,
-      completedLessons: 5,
-      estimatedTime: '1.5 hours left'
+      title: 'Soft Skills Development',
+      description: 'Communication, presentation, and interpersonal skills',
+      modules: ['Communication', 'Leadership', 'Time Management', 'Team Work'],
+      enrolled: false,
+      type: 'crt'
+    },
+    {
+      id: 3,
+      title: 'Company-Specific Training',
+      description: 'Targeted preparation for specific company requirements',
+      modules: ['TCS', 'Infosys', 'Wipro', 'Accenture'],
+      enrolled: false,
+      type: 'crt'
+    },
+    {
+      id: 4,
+      title: 'Web Development',
+      description: 'Frontend and backend development technologies',
+      modules: ['HTML/CSS', 'JavaScript', 'React', 'Node.js'],
+      enrolled: true,
+      type: 'technical'
+    },
+    {
+      id: 5,
+      title: 'Data Science & Analytics',
+      description: 'Data analysis, machine learning, and statistical modeling',
+      modules: ['Python', 'SQL', 'Machine Learning', 'Data Visualization'],
+      enrolled: false,
+      type: 'technical'
     }
   ];
 
-  const stats = [
-    { icon: BookOpen, label: 'Courses Enrolled', value: '2', color: 'text-blue-600' },
-    { icon: Trophy, label: 'Certificates Earned', value: '0', color: 'text-yellow-600' },
-    { icon: Clock, label: 'Hours Learned', value: '24', color: 'text-green-600' },
-    { icon: Award, label: 'Assignments Completed', value: '5', color: 'text-purple-600' }
+  const jobListings = [
+    {
+      id: 1,
+      title: 'Software Developer',
+      company: 'Tech Solutions Pvt Ltd',
+      location: 'Hyderabad',
+      type: 'Full-time',
+      domain: 'Technology',
+      salary: '₹4-6 LPA'
+    },
+    {
+      id: 2,
+      title: 'Data Analyst',
+      company: 'Analytics Corp',
+      location: 'Remote',
+      type: 'Remote',
+      domain: 'Data Science',
+      salary: '₹5-8 LPA'
+    }
   ];
 
-  const handleContinueLearning = (courseId: number) => {
-    setCurrentView('learning');
-  };
+  const appliedJobs = [
+    {
+      id: 1,
+      title: 'Frontend Developer',
+      company: 'StartupXYZ',
+      appliedDate: '2024-01-10',
+      status: 'Interview Scheduled',
+      location: 'Bangalore',
+      salary: '₹6-8 LPA'
+    },
+    {
+      id: 2,
+      title: 'UI/UX Designer',
+      company: 'DesignPro',
+      appliedDate: '2024-01-05',
+      status: 'Application Submitted',
+      location: 'Mumbai',
+      salary: '₹5-7 LPA'
+    }
+  ];
 
-  const handleMarkComplete = () => {
-    const newCompletedLessons = [...completedLessons, currentLesson + 1];
-    setCompletedLessons(newCompletedLessons);
-    
-    // Calculate new progress
-    const totalLessons = 12;
-    const newProgress = Math.round((newCompletedLessons.length / totalLessons) * 100);
-    setCourseProgress(newProgress);
-    
-    toast({
-      title: "Lesson Completed!",
-      description: "Great job! Moving to the next lesson.",
-    });
-    
-    if (currentLesson < 11) {
-      setCurrentLesson(currentLesson + 1);
+  // Recent events and updates data
+  const recentUpdates = [
+    {
+      id: 1,
+      type: 'event',
+      title: 'Tech Hackathon 2025',
+      description: 'Join our annual hackathon with prizes worth ₹5 lakhs',
+      date: 'Feb 15-17, 2025',
+      image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=300&h=200&fit=crop'
+    },
+    {
+      id: 2,
+      type: 'success',
+      title: 'Placement Success',
+      description: 'Congratulations to Priya Sharma for joining TCS as Software Developer',
+      date: 'Jan 28, 2025',
+      image: 'https://images.unsplash.com/photo-1494790108755-18ee286d815b?w=300&h=200&fit=crop&crop=face'
+    },
+    {
+      id: 3,
+      type: 'event',
+      title: 'Job Fair 2025',
+      description: 'Meet 50+ top companies looking for fresh talent',
+      date: 'Mar 5, 2025',
+      image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=300&h=200&fit=crop'
+    },
+    {
+      id: 4,
+      type: 'success',
+      title: 'New Achievement',
+      description: 'Rahul Kumar placed at Infosys with 7.2 LPA package',
+      date: 'Jan 25, 2025',
+      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=200&fit=crop&crop=face'
+    }
+  ];
+
+  const [currentUpdate, setCurrentUpdate] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentUpdate((prev) => (prev + 1) % recentUpdates.length);
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [recentUpdates.length]);
+
+  const handleEnrollCourse = (course: any) => {
+    if (course.type === 'recorded') {
+      setSelectedCourse(course);
+      setShowVideoPlayer(true);
+    } else {
+      // Handle live course enrollment
+      console.log('Live course enrollment:', course);
     }
   };
 
-  const handleBackToDashboard = () => {
-    setCurrentView('dashboard');
-  };
-
-  if (currentView === 'learning') {
+  if (showVideoPlayer && selectedCourse) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Top Header */}
-        <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  onClick={handleBackToDashboard}
-                  className="text-gray-600 hover:text-gray-900"
-                >
-                  ← Back to Dashboard
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center">
+                <Button variant="ghost" onClick={() => setShowVideoPlayer(false)} className="mr-4">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
                 </Button>
-                <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Web Development</h1>
-                  <div className="flex items-center space-x-4 mt-1">
-                    <Progress value={courseProgress} className="w-48" />
-                    <span className="text-sm text-gray-600">{courseProgress}% complete</span>
-                    {courseProgress === 100 && (
-                      <Badge variant="default" className="bg-green-100 text-green-800">
-                        <Award className="h-3 w-3 mr-1" />
-                        Ready for Certificate
-                      </Badge>
-                    )}
-                  </div>
-                </div>
+                <img 
+                  src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                  alt="TriaRight Logo" 
+                  className="h-10 w-auto"
+                />
               </div>
-              <div className="flex items-center space-x-3">
-                {courseProgress === 100 && (
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    <Award className="h-4 w-4 mr-2" />
-                    Get Certificate
-                  </Button>
-                )}
-                <Button variant="outline">
-                  Continue Where You Left Off
-                </Button>
-                <Button variant="ghost" onClick={onLogout}>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">Welcome, {user.name}</span>
+                <Button variant="outline" size="sm" onClick={onLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
               </div>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Main Learning Layout */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex gap-6">
-            {/* Main Content Area */}
-            <div className="flex-1">
-              <div className="space-y-6">
-                {/* Video Player */}
-                <CourseVideoPlayer 
-                  courseTitle="Web Development"
-                  currentLesson={currentLesson}
-                  onMarkComplete={handleMarkComplete}
-                  isCompleted={completedLessons.includes(currentLesson)}
-                />
-                
-                {/* Course Content Tabs */}
-                <Tabs defaultValue="resources" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="resources">Resources</TabsTrigger>
-                    <TabsTrigger value="quiz">Quiz</TabsTrigger>
-                    <TabsTrigger value="assignment">Assignment</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="resources" className="mt-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Downloadable Resources</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <span className="font-medium">HTML Basics Cheat Sheet.pdf</span>
-                          <Button variant="outline" size="sm">Download</Button>
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <span className="font-medium">Sample HTML Templates.zip</span>
-                          <Button variant="outline" size="sm">Download</Button>
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <span className="font-medium">HTML Best Practices Guide.pdf</span>
-                          <Button variant="outline" size="sm">Download</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                  
-                  <TabsContent value="quiz" className="mt-4">
-                    <CourseQuizAssignment type="quiz" />
-                  </TabsContent>
-                  
-                  <TabsContent value="assignment" className="mt-4">
-                    <CourseQuizAssignment type="assignment" />
-                  </TabsContent>
-                </Tabs>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedCourse.title}</h2>
+            <p className="text-gray-600">{selectedCourse.description}</p>
+          </div>
 
-                {/* Certificate Section */}
-                {courseProgress === 100 && (
-                  <CertificateSection 
-                    studentName={user.name}
-                    courseName="Web Development"
-                    completionDate={new Date().toLocaleDateString()}
-                  />
-                )}
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Video Player */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Videos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video mb-4">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src="https://www.youtube.com/embed/videoseries?list=PLanAc9YPhabZ5U6yuhufTIwKRjwUxBTds"
+                      title="Course Playlist"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="rounded-lg"
+                    ></iframe>
+                  </div>
+                  <Button className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600">
+                    <Award className="h-4 w-4 mr-2" />
+                    Get Certificate
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Sidebar */}
-            <div className="w-80">
-              <CourseSidebar 
-                currentLesson={currentLesson}
-                completedLessons={completedLessons}
-                onLessonSelect={setCurrentLesson}
-              />
+            {/* Course Info */}
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Duration:</span>
+                      <span className="font-medium">{selectedCourse.duration}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Type:</span>
+                      <Badge variant="outline">Recorded</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Progress:</span>
+                      <span className="font-medium">{selectedCourse.progress}%</span>
+                    </div>
+                    <Progress value={selectedCourse.progress} className="mt-2" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
@@ -215,108 +363,950 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user.name}!</h1>
-              <p className="text-gray-600">Continue your learning journey</p>
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <img 
+                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                alt="TriaRight Logo" 
+                className="h-10 w-auto"
+              />
             </div>
-            <Button variant="outline" onClick={onLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">Welcome, {user.name}</span>
+              <Button variant="outline" size="sm" onClick={onLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  </div>
-                  <stat.icon className={`h-8 w-8 ${stat.color}`} />
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-9">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
+            <TabsTrigger value="internships">Internships</TabsTrigger>
+            <TabsTrigger value="training">Training</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
+            <TabsTrigger value="jobs">Jobs</TabsTrigger>
+            <TabsTrigger value="compiler">Compiler</TabsTrigger>
+            <TabsTrigger value="exams">Exams</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Enrolled Courses</CardTitle>
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{enrolledCourses.length}</div>
+                  <p className="text-xs text-muted-foreground">Active learning paths</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Certificates</CardTitle>
+                  <Trophy className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">9</div>
+                  <p className="text-xs text-muted-foreground">Available for download</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Applications</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{appliedJobs.length + appliedInternships.length}</div>
+                  <p className="text-xs text-muted-foreground">Internship & job applications</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Skills Gained</CardTitle>
+                  <Award className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">24</div>
+                  <p className="text-xs text-muted-foreground">Technical & soft skills</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {enrolledCourses.slice(0, 3).map((course) => (
+                    <div key={course.id} className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium">{course.title}</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Progress value={course.progress} className="w-32" />
+                          <span className="text-sm text-gray-500">{course.progress}%</span>
+                          <Badge variant={course.progress === 100 ? 'default' : 'secondary'}>
+                            {course.progress === 100 ? 'completed' : 'ongoing'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm">
+                        {course.progress === 100 ? 'View Certificate' : 'Continue'}
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-        {/* Continue Learning Section */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BookOpen className="h-5 w-5 mr-2" />
-              Continue Learning
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {enrolledCourses.map((course) => (
-                <div key={course.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{course.title}</h3>
-                    <p className="text-sm text-gray-600">by {course.instructor}</p>
-                    <div className="flex items-center space-x-4 mt-2">
-                      <Progress value={course.progress} className="w-32" />
-                      <span className="text-sm text-gray-600">{course.progress}%</span>
-                      <span className="text-sm text-gray-500">
-                        {course.completedLessons}/{course.totalLessons} lessons
-                      </span>
-                    </div>
-                    <p className="text-sm text-blue-600 mt-1">Next: {course.nextLesson}</p>
+            {/* Recent Updates & Success Stories */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Latest Updates & Success Stories</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="relative overflow-hidden">
+                  <div 
+                    className="flex transition-transform duration-500 ease-in-out"
+                    style={{ transform: `translateX(-${currentUpdate * 100}%)` }}
+                  >
+                    {recentUpdates.map((update, index) => (
+                      <div key={update.id} className="w-full flex-shrink-0 px-2">
+                        <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-orange-50 rounded-lg">
+                          <img
+                            src={update.image}
+                            alt={update.title}
+                            className="w-16 h-16 rounded-lg object-cover"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <Badge variant={update.type === 'event' ? 'default' : 'secondary'}>
+                                {update.type === 'event' ? 'Event' : 'Success Story'}
+                              </Badge>
+                              <span className="text-sm text-gray-500">{update.date}</span>
+                            </div>
+                            <h4 className="font-semibold text-gray-900">{update.title}</h4>
+                            <p className="text-sm text-gray-600">{update.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-500 mb-2">{course.estimatedTime}</p>
-                    <Button onClick={() => handleContinueLearning(course.id)}>
-                      Continue Learning
-                    </Button>
+                  
+                  {/* Slide Indicators */}
+                  <div className="flex justify-center mt-4 space-x-2">
+                    {recentUpdates.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentUpdate(index)}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          index === currentUpdate ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                      />
+                    ))}
                   </div>
                 </div>
-              ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Courses Tab */}
+          <TabsContent value="courses" className="space-y-6">
+            <Tabs defaultValue="browse" className="w-full">
+              <TabsList>
+                <TabsTrigger value="browse">Browse Courses</TabsTrigger>
+                <TabsTrigger value="mycourses">My Courses</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="browse" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Browse Courses</h2>
+                </div>
+                
+                {/* Filters */}
+                <div className="flex gap-4 items-center">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search courses..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="max-w-sm"
+                    />
+                  </div>
+                  <Select value={courseFilter} onValueChange={setCourseFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Course Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Courses</SelectItem>
+                      <SelectItem value="recorded">Recorded</SelectItem>
+                      <SelectItem value="live">Live</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Available Courses */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {availableCourses.map((course) => (
+                    <Card key={course.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{course.title}</CardTitle>
+                        <CardDescription>{course.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Clock className="h-4 w-4 mr-2" />
+                            {course.duration}
+                          </div>
+                          {'instructor' in course && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Users className="h-4 w-4 mr-2" />
+                              Instructor: {course.instructor}
+                            </div>
+                          )}
+                          <Button 
+                            className="w-full bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600"
+                            onClick={() => handleEnrollCourse(course)}
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            {course.type === 'live' ? 'Apply for Course' : 'Enroll Now'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="mycourses" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">My Courses</h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {enrolledCourses.map((course) => (
+                    <Card key={course.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{course.title}</CardTitle>
+                        <CardDescription>{course.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Clock className="h-4 w-4 mr-2" />
+                            {course.duration}
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span>Progress</span>
+                              <span>{course.progress}%</span>
+                            </div>
+                            <Progress value={course.progress} />
+                          </div>
+                          <Button className="w-full">
+                            <Play className="h-4 w-4 mr-2" />
+                            {course.progress === 100 ? 'View Certificate' : 'Continue Learning'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
+          {/* Internships Tab */}
+          <TabsContent value="internships" className="space-y-6">
+            <Tabs defaultValue="browse" className="w-full">
+              <TabsList>
+                <TabsTrigger value="browse">Browse Internships</TabsTrigger>
+                <TabsTrigger value="myinternships">My Internships</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="browse" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Browse Internships</h2>
+                </div>
+
+                {/* Filters */}
+                <div className="flex gap-4 items-center">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search internships..."
+                      className="max-w-sm"
+                    />
+                  </div>
+                  <Select value={internshipFilter} onValueChange={setInternshipFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Internship Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="company-paid">Company-Paid</SelectItem>
+                      <SelectItem value="student-paid">Student-Paid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {availableInternships.map((internship) => (
+                    <Card key={internship.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{internship.title}</CardTitle>
+                        <CardDescription>{internship.company}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex items-center text-sm">
+                            <Clock className="h-4 w-4 mr-2" />
+                            Duration: {internship.duration}
+                          </div>
+                          <div className="flex items-center text-sm">
+                            <DollarSign className="h-4 w-4 mr-2" />
+                            {internship.stipend}
+                          </div>
+                          <div className="flex items-center text-sm">
+                            <MapPin className="h-4 w-4 mr-2" />
+                            {internship.location}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium mb-2">Skills Required:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {internship.skills.map((skill, index) => (
+                                <Badge key={index} variant="outline">{skill}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <Badge variant={internship.type === 'Company-Paid' ? 'default' : 'secondary'}>
+                            {internship.type}
+                          </Badge>
+                          <Button className="w-full">Apply Now</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="myinternships" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">My Internships</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {appliedInternships.map((internship) => (
+                    <Card key={internship.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg">{internship.title}</h3>
+                            <p className="text-gray-600">{internship.company}</p>
+                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                              <span className="flex items-center">
+                                <Calendar className="h-4 w-4 mr-1" />
+                                Applied: {internship.appliedDate}
+                              </span>
+                              <span className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-1" />
+                                {internship.location}
+                              </span>
+                            </div>
+                            <div className="mt-2">
+                              <Badge variant={internship.status === 'Under Review' ? 'secondary' : 'default'}>
+                                {internship.status}
+                              </Badge>
+                            </div>
+                          </div>
+                          <Button variant="outline">View Details</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
+          {/* Training Tab */}
+          <TabsContent value="training" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Training Programs</h2>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Browse Courses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-4">Discover new courses to expand your skills</p>
-              <Button variant="outline" className="w-full">Explore Courses</Button>
-            </CardContent>
-          </Card>
+            <Tabs defaultValue="crt" className="w-full">
+              <TabsList>
+                <TabsTrigger value="crt">CRT Training</TabsTrigger>
+                <TabsTrigger value="technical">Technical Training</TabsTrigger>
+              </TabsList>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>My Certificates</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-4">View and download your earned certificates</p>
-              <Button variant="outline" className="w-full">View Certificates</Button>
-            </CardContent>
-          </Card>
+              <TabsContent value="crt" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {trainingCategories.filter(cat => cat.type === 'crt').map((category) => (
+                    <Card key={category.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{category.title}</CardTitle>
+                        <CardDescription>{category.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-sm font-medium mb-2">Modules:</p>
+                            <ul className="text-sm text-gray-600 space-y-1">
+                              {category.modules.map((module, index) => (
+                                <li key={index}>• {module}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          {category.enrolled ? (
+                            <Badge className="w-full justify-center">Enrolled</Badge>
+                          ) : (
+                            <Button className="w-full">
+                              <Target className="h-4 w-4 mr-2" />
+                              Enroll Now
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Study Groups</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-4">Join study groups with fellow learners</p>
-              <Button variant="outline" className="w-full">Find Groups</Button>
-            </CardContent>
-          </Card>
-        </div>
+              <TabsContent value="technical" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {trainingCategories.filter(cat => cat.type === 'technical').map((category) => (
+                    <Card key={category.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{category.title}</CardTitle>
+                        <CardDescription>{category.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-sm font-medium mb-2">Modules:</p>
+                            <ul className="text-sm text-gray-600 space-y-1">
+                              {category.modules.map((module, index) => (
+                                <li key={index}>• {module}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          {category.enrolled ? (
+                            <Badge className="w-full justify-center">Enrolled</Badge>
+                          ) : (
+                            <Button className="w-full">
+                              <Target className="h-4 w-4 mr-2" />
+                              Enroll Now
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
+          {/* Projects Tab */}
+          <TabsContent value="projects" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Projects</h2>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Submit Project for Guidance</CardTitle>
+                <CardDescription>Share your project idea and receive mentorship from our experts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="projectName">Project Name</Label>
+                    <Input id="projectName" placeholder="Enter your project name" />
+                  </div>
+                  <div>
+                    <Label htmlFor="projectDescription">Description</Label>
+                    <Textarea id="projectDescription" placeholder="Describe your project idea..." />
+                  </div>
+                  <div>
+                    <Label htmlFor="githubLink">GitHub Link (Optional)</Label>
+                    <Input id="githubLink" placeholder="https://github.com/username/project" />
+                  </div>
+                  <div>
+                    <Label htmlFor="technologies">Tools/Technologies</Label>
+                    <Input id="technologies" placeholder="React, Node.js, MongoDB..." />
+                  </div>
+                  <Button className="w-full">
+                    <Send className="h-4 w-4 mr-2" />
+                    Submit for Guidance
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Previous Submissions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Previous Submissions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">No project submissions yet</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Jobs Tab */}
+          <TabsContent value="jobs" className="space-y-6">
+            <Tabs defaultValue="browse" className="w-full">
+              <TabsList>
+                <TabsTrigger value="browse">Browse Jobs</TabsTrigger>
+                <TabsTrigger value="myjobs">My Applications</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="browse" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Job Opportunities</h2>
+                </div>
+
+                {/* Job Filters */}
+                <div className="flex gap-4">
+                  <Input placeholder="Search jobs..." className="max-w-sm" />
+                  <Select>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Domain" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="technology">Technology</SelectItem>
+                      <SelectItem value="data-science">Data Science</SelectItem>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="remote">Remote</SelectItem>
+                      <SelectItem value="in-office">In Office</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-4">
+                  {jobListings.map((job) => (
+                    <Card key={job.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-lg">{job.title}</h3>
+                            <p className="text-gray-600">{job.company}</p>
+                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                              <span className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-1" />
+                                {job.location}
+                              </span>
+                              <span className="flex items-center">
+                                <Briefcase className="h-4 w-4 mr-1" />
+                                {job.type}
+                              </span>
+                              <span className="flex items-center">
+                                <DollarSign className="h-4 w-4 mr-1" />
+                                {job.salary}
+                              </span>
+                            </div>
+                            <Badge variant="outline" className="mt-2">{job.domain}</Badge>
+                          </div>
+                          <Button>Apply Now</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="myjobs" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">My Job Applications</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {appliedJobs.map((job) => (
+                    <Card key={job.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg">{job.title}</h3>
+                            <p className="text-gray-600">{job.company}</p>
+                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                              <span className="flex items-center">
+                                <Calendar className="h-4 w-4 mr-1" />
+                                Applied: {job.appliedDate}
+                              </span>
+                              <span className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-1" />
+                                {job.location}
+                              </span>
+                              <span className="flex items-center">
+                                <DollarSign className="h-4 w-4 mr-1" />
+                                {job.salary}
+                              </span>
+                            </div>
+                            <div className="mt-2">
+                              <Badge variant={job.status === 'Interview Scheduled' ? 'default' : 'secondary'}>
+                                {job.status}
+                              </Badge>
+                            </div>
+                          </div>
+                          <Button variant="outline">View Details</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
+          {/* Compiler Tab */}
+          <TabsContent value="compiler">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Code className="h-5 w-5" />
+                  Code Compiler
+                </CardTitle>
+                <CardDescription>Practice coding in multiple programming languages</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CodeCompiler />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Exams Tab */}
+          <TabsContent value="exams">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Exams & Assessments
+                </CardTitle>
+                <CardDescription>Take exams and track your progress</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ExamsSection />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Management</CardTitle>
+                <CardDescription>Manage your personal information and resume</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Button 
+                    onClick={() => setShowEditProfile(true)}
+                    className="w-full"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                  <Button variant="outline" className="w-full">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Resume
+                  </Button>
+                  <Button variant="outline" className="w-full">
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Career Guidance Chat
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Edit Profile Form */}
+            {showEditProfile && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Edit Profile</CardTitle>
+                  <CardDescription>Update your personal and academic information</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {/* Profile Picture Upload */}
+                    <div className="flex flex-col items-center space-y-4">
+                      <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
+                        <User className="h-12 w-12 text-gray-400" />
+                      </div>
+                      <div>
+                        <Label htmlFor="profilePicture">Upload Profile Picture</Label>
+                        <Input id="profilePicture" type="file" accept="image/*" className="mt-1" />
+                      </div>
+                    </div>
+
+                    {/* Personal Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="fullName">Full Name (as on SSC) *</Label>
+                        <Input id="fullName" placeholder="Your full name" />
+                      </div>
+                      <div>
+                        <Label htmlFor="dob">DOB *</Label>
+                        <Input id="dob" type="date" />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">Email *</Label>
+                        <Input id="email" type="email" placeholder="Enter email" />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">Phone *</Label>
+                        <Input id="phone" placeholder="Primary number" />
+                      </div>
+                      <div>
+                        <Label htmlFor="alternatePhone">Alternate Phone</Label>
+                        <Input id="alternatePhone" placeholder="Secondary number" />
+                      </div>
+                      <div>
+                        <Label htmlFor="fatherName">Father Name</Label>
+                        <Input id="fatherName" placeholder="Father's full name" />
+                      </div>
+                      <div>
+                        <Label htmlFor="gender">Gender *</Label>
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="maritalStatus">Marital Status *</Label>
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="E.g., Single, Married" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="single">Single</SelectItem>
+                            <SelectItem value="married">Married</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="nationality">Nationality *</Label>
+                        <Input id="nationality" placeholder="Your nationality" defaultValue="Indian" />
+                      </div>
+                      <div>
+                        <Label htmlFor="languages">Languages Known *</Label>
+                        <Input id="languages" placeholder="E.g., English, Hindi" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor="address">Address *</Label>
+                        <Textarea id="address" placeholder="Your address" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor="hobbies">Hobbies</Label>
+                        <Input id="hobbies" placeholder="Your hobbies" />
+                      </div>
+                    </div>
+
+                    {/* Educational Qualification */}
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Educational Qualification</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="instituteName">Institute Name *</Label>
+                          <Input id="instituteName" placeholder="College/University name" />
+                        </div>
+                        <div>
+                          <Label htmlFor="stream">Stream/Course *</Label>
+                          <Select>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="btech">B.Tech</SelectItem>
+                              <SelectItem value="bsc">B.Sc</SelectItem>
+                              <SelectItem value="bcom">B.Com</SelectItem>
+                              <SelectItem value="ba">B.A</SelectItem>
+                              <SelectItem value="mtech">M.Tech</SelectItem>
+                              <SelectItem value="msc">M.Sc</SelectItem>
+                              <SelectItem value="mba">MBA</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="yearOfPass">Year of Pass *</Label>
+                          <Input id="yearOfPass" placeholder="E.g., 2023" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Projects */}
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Projects</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="projectName">Project Name</Label>
+                          <Input id="projectName" placeholder="Name of your project" />
+                        </div>
+                        <div>
+                          <Label htmlFor="githubLink">GitHub Link</Label>
+                          <Input id="githubLink" placeholder="https://github.com/..." />
+                        </div>
+                        <div>
+                          <Label htmlFor="projectDescription">Description</Label>
+                          <Textarea id="projectDescription" placeholder="Brief description of your project" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Certifications */}
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Certifications</h3>
+                      <div>
+                        <Label htmlFor="certifications">Certification Details</Label>
+                        <Textarea id="certifications" placeholder="List your certifications and credentials" />
+                      </div>
+                    </div>
+
+                    {/* Internships */}
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Internships</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="companyName">Company Name</Label>
+                          <Input id="companyName" placeholder="Company where you interned" />
+                        </div>
+                        <div>
+                          <Label htmlFor="internshipRole">Internship Role</Label>
+                          <Input id="internshipRole" placeholder="Your position/role" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label htmlFor="responsibilities">Responsibilities</Label>
+                          <Textarea id="responsibilities" placeholder="Brief description of your responsibilities" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Account Details */}
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Account Details</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="username">Username</Label>
+                          <Input id="username" placeholder="Choose a username" />
+                        </div>
+                        <div>
+                          <Label htmlFor="password">Password</Label>
+                          <Input id="password" type="password" placeholder="Password" />
+                        </div>
+                        <div>
+                          <Label htmlFor="confirmPassword">Re-enter Password</Label>
+                          <Input id="confirmPassword" type="password" placeholder="Re-enter Password" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-4 pt-6">
+                      <Button className="flex-1">Save Changes</Button>
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => setShowEditProfile(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center mb-4 md:mb-0">
+              <img 
+                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
+                alt="TriaRight Logo" 
+                className="h-8 w-auto mr-3"
+              />
+            </div>
+            
+            <div className="flex space-x-6">
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </a>
+              
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+              </a>
+              
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.373 12.073 12.017 12.073c6.62 0 12.017-5.373 12.017-12.073C24.014 5.367 18.637 0 12.017 0zM8.449 16.988c-1.297 0-2.448-.473-3.342-1.257-.894-.784-1.449-1.849-1.449-3.043 0-1.194.555-2.259 1.449-3.043.894-.784 2.045-1.257 3.342-1.257 1.297 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+          
+          <div className="mt-6 pt-6 border-t border-gray-800 text-center text-gray-400">
+            <p>&copy; 2025 TriaRight. All rights reserved. The New Era Of Learning.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
