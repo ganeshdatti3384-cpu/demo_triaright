@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,7 +15,13 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Footer from '../components/Footer';
 import Navbar from '@/components/Navbar';
@@ -48,7 +55,6 @@ const Register = () => {
     handleSubmit,
     setValue,
     formState: { errors },
-    watch,
   } = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
   });
@@ -70,109 +76,104 @@ const Register = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800">
+    <div className="min-h-screen flex flex-col">
       <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
         throw new Error('Function not implemented.');
-      }} />
+      } } />
       <main className="flex-1 py-8">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <div className="mb-6">
-            <Button variant="ghost" className="text-white hover:text-blue-200" onClick={() => window.history.back()}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Login
-            </Button>
-          </div>
+        <div className="container mx-auto px-4 max-w-4xl">
           <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
             <CardHeader>
-              <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-300 bg-clip-text text-transparent">
                 Register
               </CardTitle>
               <p className="text-center text-gray-600">Create your account to get started</p>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="name">Full Name *</Label>
+                    <Input id="name" {...register('name')} placeholder="Enter your full name" />
+                    {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
+                  </div>
 
-                <div>
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input id="name" {...register('name')} placeholder="Enter your full name" />
-                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+                  <div>
+                    <Label htmlFor="email">Email Address *</Label>
+                    <Input id="email" type="email" {...register('email')} placeholder="Enter your email address" />
+                    {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="phoneNumber">Phone Number *</Label>
+                    <Input id="phoneNumber" {...register('phoneNumber')} placeholder="Enter your phone number" />
+                    {errors.phoneNumber && <p className="text-red-500 text-sm">{errors.phoneNumber.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="whatsappNumber">WhatsApp Number *</Label>
+                    <Input id="whatsappNumber" {...register('whatsappNumber')} placeholder="Enter your WhatsApp number" />
+                    {errors.whatsappNumber && <p className="text-red-500 text-sm">{errors.whatsappNumber.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="password">Password *</Label>
+                    <Input id="password" type="password" {...register('password')} placeholder="Enter your password" />
+                    {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                    <Input id="confirmPassword" type="password" {...register('confirmPassword')} placeholder="Confirm your password" />
+                    {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword.message}</p>}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label htmlFor="address">Address *</Label>
+                    <Input id="address" {...register('address')} placeholder="Enter your address" />
+                    {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="state">State *</Label>
+                    <Select onValueChange={(value) => setValue('state', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your state" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {indianStates.map((state) => (
+                          <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.state && <p className="text-red-500 text-sm">{errors.state.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="userType">I am registering as *</Label>
+                    <Select onValueChange={(value) => setValue('userType', value as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="jobseeker">Job Seeker</SelectItem>
+                        <SelectItem value="trainer">Trainer</SelectItem>
+                        <SelectItem value="employer">Employer</SelectItem>
+                        <SelectItem value="college">College</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.userType && <p className="text-red-500 text-sm">{errors.userType.message}</p>}
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input id="email" type="email" {...register('email')} placeholder="Enter your email address" />
-                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="phoneNumber">Phone Number *</Label>
-                  <Input id="phoneNumber" {...register('phoneNumber')} placeholder="Enter your phone number" />
-                  {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber.message}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="whatsappNumber">WhatsApp Number *</Label>
-                  <Input id="whatsappNumber" {...register('whatsappNumber')} placeholder="Enter your WhatsApp number" />
-                  {errors.whatsappNumber && <p className="text-red-500 text-sm mt-1">{errors.whatsappNumber.message}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="password">Password *</Label>
-                  <Input id="password" type="password" {...register('password')} placeholder="Enter your password" />
-                  {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                  <Input id="confirmPassword" type="password" {...register('confirmPassword')} placeholder="Confirm your password" />
-                  {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="address">Address *</Label>
-                  <Input id="address" {...register('address')} placeholder="Enter your address" />
-                  {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="state">State *</Label>
-                  <Select onValueChange={(value) => setValue('state', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {indianStates.map((state) => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="userType">I am registering as *</Label>
-                  <Select onValueChange={(value) => setValue('userType', value as any)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="jobseeker">Job Seeker</SelectItem>
-                      <SelectItem value="trainer">Trainer</SelectItem>
-                      <SelectItem value="employer">Employer</SelectItem>
-                      <SelectItem value="college">College</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.userType && <p className="text-red-500 text-sm mt-1">{errors.userType.message}</p>}
-                </div>
-
-                <div className="flex items-center space-x-2">
+                <div className="flex items-start space-x-2 mt-4">
                   <Checkbox id="terms" {...register('acceptTerms')} />
                   <Label htmlFor="terms">
                     I accept the{' '}
                     <Dialog>
                       <DialogTrigger className="text-blue-600 underline cursor-pointer">Terms and Conditions</DialogTrigger>
-                      <DialogContent> 
+                      <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Terms and Conditions</DialogTitle>
                           <p className="text-sm text-gray-600 mt-2">
@@ -184,9 +185,7 @@ const Register = () => {
                     </Dialog>
                   </Label>
                 </div>
-                {errors.acceptTerms && (
-                  <p className="text-red-500 text-sm mt-1">{errors.acceptTerms.message}</p>
-                )}
+                {errors.acceptTerms && <p className="text-red-500 text-sm mt-1">{errors.acceptTerms.message}</p>}
 
                 <Button
                   type="submit"
@@ -199,7 +198,7 @@ const Register = () => {
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600">
                   Already have an account?{' '}
-                  <a href="/" className="text-blue-600 hover:underline font-semibold">
+                  <a href="/login" className="text-blue-600 hover:underline font-semibold">
                     Sign in
                   </a>
                 </p>
@@ -208,7 +207,6 @@ const Register = () => {
           </Card>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };

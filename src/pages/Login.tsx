@@ -74,12 +74,7 @@ const Login = () => {
 
   return (
     <>
-      <Navbar onOpenAuth={() => { } } user={{
-        role: '',
-        name: ''
-      }} onLogout={function (): void {
-        throw new Error('Function not implemented.');
-      } } />  
+      <Navbar onOpenAuth={() => {}} />  
 
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-4">
         <Card className="w-full max-w-4xl md:flex rounded-2xl shadow-2xl overflow-hidden -mt-16">
