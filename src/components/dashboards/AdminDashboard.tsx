@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3 } from 'lucide-react';
+import CourseManagement from '../admin/CourseManagement';
 
 interface AdminDashboardProps {
   user: { role: string; name: string };
@@ -71,7 +71,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Platform Stats */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -129,7 +128,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               </Card>
             </div>
 
-            {/* Pending Approvals */}
             <Card>
               <CardHeader>
                 <CardTitle>Pending Approvals</CardTitle>
@@ -154,7 +152,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               </CardContent>
             </Card>
 
-            {/* Recent Activity */}
             <Card>
               <CardHeader>
                 <CardTitle>Recent Platform Activity</CardTitle>
@@ -221,37 +218,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </TabsContent>
 
           <TabsContent value="courses" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Course Management</h2>
-              <Button>
-                <BookOpen className="h-4 w-4 mr-2" />
-                Create New Course
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Live Courses</CardTitle>
-                  <CardDescription>Currently active courses</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold mb-2">89</div>
-                  <Button variant="outline" className="w-full">Manage Live Courses</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recorded Courses</CardTitle>
-                  <CardDescription>Self-paced learning content</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold mb-2">234</div>
-                  <Button variant="outline" className="w-full">Manage Recorded Courses</Button>
-                </CardContent>
-              </Card>
-            </div>
+            <CourseManagement />
           </TabsContent>
 
           <TabsContent value="jobs" className="space-y-6">
