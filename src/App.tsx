@@ -29,6 +29,7 @@ import CollegeDashboard from "./components/dashboards/CollegeDashboard";
 import AdminDashboard from "./components/dashboards/AdminDashboard";
 import SuperAdminDashboard from "./components/dashboards/SuperAdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ProfileSection from "./components/Profile";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/profile" element={<ProfileSection />} />          
           <Route path="/courses/recorded" element={<RecordedCourses />} />
           <Route path="/courses/live" element={<LiveCourses />} />
           <Route path="/courses/recorded/:courseId" element={<CourseDetail />} />

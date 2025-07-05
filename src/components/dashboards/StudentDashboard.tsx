@@ -67,9 +67,14 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
   ];
 
   return (
+          <>
+          <Navbar
+          user={{ role:"student",name: "John Doe" }} // 👈 Must be defined
+          userRole="student"
+          onOpenAuth={(type, userType) => console.log(type, userType)}
+          onLogout={() => console.log('Logged out')}
+        />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <Navbar onOpenAuth={() => {}} userRole="student" />
-      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -264,7 +269,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                 <CardDescription>Discover new learning opportunities</CardDescription>
               </CardHeader>
               <CardContent>
-                <CourseCards onCourseClick={() => {}} />
+                <CourseCards onCourseClick={() => { } } />
               </CardContent>
             </Card>
           </TabsContent>
@@ -303,7 +308,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                       <Button>Create Project</Button>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between mb-4">
@@ -408,7 +413,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h3 className="text-lg font-medium">Notifications</h3>
                     <div className="space-y-3 mt-4">
@@ -427,7 +432,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                     </div>
                   </div>
                 </div>
-                
+
                 <Button>Save Changes</Button>
               </CardContent>
             </Card>
@@ -438,9 +443,9 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Pack365 - Your Complete Learning Journey</h2>
               <p className="text-lg text-gray-600">Get access to all premium content for an entire year</p>
             </div>
-            
+
             <Pack365Card />
-            
+
             <Card>
               <CardHeader>
                 <CardTitle>Why Choose Pack365?</CardTitle>
@@ -474,7 +479,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </div></>
   );
 };
 

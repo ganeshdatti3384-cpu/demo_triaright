@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,43 +6,54 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Menu, X } from 'lucide-react';
+import { ChevronDown, Menu, X, User, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
   onOpenAuth: (type: 'login' | 'register', userType: string) => void;
   userRole?: string;
+   user: {
+    role: string;
+    name: string;
+  };
+  onLogout: () => void;
 }
 
-const Navbar = ({ onOpenAuth, userRole }: NavbarProps) => {
+const Navbar = ({ onOpenAuth, userRole, user, onLogout }: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   const courseTypes = [
     { name: 'Live Courses', description: 'Interactive real-time learning', path: '/courses/live' },
     { name: 'Recorded Courses', description: 'Learn at your own pace', path: '/courses/recorded' },
-    ...(userRole === 'student' || userRole === 'job-seeker' ? [
-      { name: 'Pack365', description: 'Complete annual learning program', path: '/pack365' }
-    ] : [])
+    ...(userRole === 'student' || userRole === 'job-seeker'
+      ? [{ name: 'Pack365', description: 'Complete annual learning program', path: '/pack365' }]
+      : []),
   ];
 
   const jobTypes = [
     { name: 'Job Assurance', description: 'Guaranteed placement programs', path: '/jobs/assurance' },
-    { name: 'Job Assistance', description: 'Career support and guidance', path: '/jobs/assistance' }
+    { name: 'Job Assistance', description: 'Career support and guidance', path: '/jobs/assistance' },
   ];
 
   const internshipTypes = [
     { name: 'Online Internships', description: 'Remote opportunities', path: '/internships/online' },
-    { name: 'Offline Internships', description: 'On-site experiences', path: '/internships/offline' }
+    { name: 'Offline Internships', description: 'On-site experiences', path: '/internships/offline' },
   ];
 
   const trainingTypes = [
     { name: 'CRT Training', description: 'Campus Recruitment Training', path: '#' },
-    { name: 'Technical Training', description: 'Skill-specific programs', path: '#' }
+    { name: 'Technical Training', description: 'Skill-specific programs', path: '#' },
   ];
 
   const loginOptions = [
-    'Job Seeker', 'Student', 'Admin', 'Super Admin', 'Employee', 'Employer', 'Colleges'
+    'Job Seeker',
+    'Student',
+    'Admin',
+    'Super Admin',
+    'Employee',
+    'Employer',
+    'Colleges',
   ];
 
   const handleRegisterClick = () => {
@@ -63,9 +73,9 @@ const Navbar = ({ onOpenAuth, userRole }: NavbarProps) => {
           {/* Logo */}
           <div className="flex-shrink-0">
             <a href="/" className="flex items-center">
-              <img 
-                src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png" 
-                alt="TriaRight - The New Era Of Learning" 
+              <img
+                src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png"
+                alt="TriaRight - The New Era Of Learning"
                 className="h-10 w-auto"
               />
             </a>
@@ -73,119 +83,93 @@ const Navbar = ({ onOpenAuth, userRole }: NavbarProps) => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
-                <span>Courses</span>
-                <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-white border shadow-lg">
-                {courseTypes.map((course) => (
-                  <DropdownMenuItem 
-                    key={course.name} 
-                    className="p-3 cursor-pointer"
-                    onClick={() => handleMenuItemClick(course.path)}
-                  >
-                    <div>
-                      <div className="font-medium">{course.name}</div>
-                      <div className="text-sm text-gray-500">{course.description}</div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
-                <span>Jobs</span>
-                <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-white border shadow-lg">
-                {jobTypes.map((job) => (
-                  <DropdownMenuItem 
-                    key={job.name} 
-                    className="p-3 cursor-pointer"
-                    onClick={() => handleMenuItemClick(job.path)}
-                  >
-                    <div>
-                      <div className="font-medium">{job.name}</div>
-                      <div className="text-sm text-gray-500">{job.description}</div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
-                <span>Internships</span>
-                <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-white border shadow-lg">
-                {internshipTypes.map((internship) => (
-                  <DropdownMenuItem 
-                    key={internship.name} 
-                    className="p-3 cursor-pointer"
-                    onClick={() => handleMenuItemClick(internship.path)}
-                  >
-                    <div>
-                      <div className="font-medium">{internship.name}</div>
-                      <div className="text-sm text-gray-500">{internship.description}</div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
-                <span>Training</span>
-                <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-white border shadow-lg">
-                {trainingTypes.map((training) => (
-                  <DropdownMenuItem 
-                    key={training.name} 
-                    className="p-3 cursor-pointer"
-                    onClick={() => handleMenuItemClick(training.path)}
-                  >
-                    <div>
-                      <div className="font-medium">{training.name}</div>
-                      <div className="text-sm text-gray-500">{training.description}</div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {[{ label: 'Courses', items: courseTypes },
+              { label: 'Jobs', items: jobTypes },
+              { label: 'Internships', items: internshipTypes },
+              { label: 'Training', items: trainingTypes }].map((menu) => (
+              <DropdownMenu key={menu.label}>
+                <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
+                  <span>{menu.label}</span>
+                  <ChevronDown className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-white border shadow-lg">
+                  {menu.items.map((item) => (
+                    <DropdownMenuItem
+                      key={item.name}
+                      className="p-3 cursor-pointer"
+                      onClick={() => handleMenuItemClick(item.path)}
+                    >
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-sm text-gray-500">{item.description}</div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ))}
           </div>
 
-          {/* Desktop Auth Buttons */}
+          {/* Desktop Auth/Profile Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex items-center space-x-1 border-brand-primary text-brand-primary hover:bg-blue-50">
-                  <span>Login</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48 bg-white border shadow-lg">
-                {loginOptions.map((option) => (
-                  <DropdownMenuItem 
-                    key={option} 
-                    onClick={() => onOpenAuth('login', option.toLowerCase().replace(' ', '-'))}
-                    className="cursor-pointer"
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center space-x-2">
+                    <User className="h-5 w-5 text-brand-primary" />
+                    <span className="text-sm font-medium text-gray-700">
+                      {user.name || 'Profile'}
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-40 bg-white border shadow-lg">
+                  <DropdownMenuItem
+                    className="cursor-pointer flex items-center space-x-2"
+                    onClick={() => navigate('/profile')}
                   >
-                    {option}
+                    <User className="h-4 w-4 text-gray-600" />
+                    <span>Profile</span>
                   </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem
+                    className="cursor-pointer flex items-center space-x-2 text-red-600"
+                    onClick={onLogout}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="flex items-center space-x-1 border-brand-primary text-brand-primary hover:bg-blue-50">
+                      <span>Login</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-48 bg-white border shadow-lg">
+                    {loginOptions.map((option) => (
+                      <DropdownMenuItem
+                        key={option}
+                        onClick={() => onOpenAuth('login', option.toLowerCase().replace(' ', '-'))}
+                        className="cursor-pointer"
+                      >
+                        {option}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-            <Button
-              onClick={handleRegisterClick}
-              className="bg-brand-primary hover:bg-blue-700 text-white"
-            >
-              Register
-            </Button>
+                <Button
+                  onClick={handleRegisterClick}
+                  className="bg-brand-primary hover:bg-blue-700 text-white"
+                >
+                  Register
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -204,54 +188,63 @@ const Navbar = ({ onOpenAuth, userRole }: NavbarProps) => {
         {isMobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-200 py-4">
             <div className="space-y-4">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900">Courses</h3>
-                {courseTypes.map((course) => (
-                  <div 
-                    key={course.name} 
-                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
-                    onClick={() => handleMenuItemClick(course.path)}
-                  >
-                    {course.name}
-                  </div>
-                ))}
-              </div>
-              
-              <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900">Jobs</h3>
-                {jobTypes.map((job) => (
-                  <div 
-                    key={job.name} 
-                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
-                    onClick={() => handleMenuItemClick(job.path)}
-                  >
-                    {job.name}
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900">Internships</h3>
-                {internshipTypes.map((internship) => (
-                  <div 
-                    key={internship.name} 
-                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
-                    onClick={() => handleMenuItemClick(internship.path)}
-                  >
-                    {internship.name}
-                  </div>
-                ))}
-              </div>
+              {[{ title: 'Courses', items: courseTypes },
+                { title: 'Jobs', items: jobTypes },
+                { title: 'Internships', items: internshipTypes }].map((section) => (
+                <div className="space-y-2" key={section.title}>
+                  <h3 className="font-semibold text-gray-900">{section.title}</h3>
+                  {section.items.map((item) => (
+                    <div
+                      key={item.name}
+                      className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
+                      onClick={() => handleMenuItemClick(item.path)}
+                    >
+                      {item.name}
+                    </div>
+                  ))}
+                </div>
+              ))}
 
               <div className="space-y-2">
                 <h3 className="font-semibold text-gray-900">Auth</h3>
                 <div className="flex flex-col space-y-2 pl-4">
-                  <Button variant="outline" size="sm" onClick={() => onOpenAuth('login', 'student')} className="border-brand-primary text-brand-primary">
-                    Login
-                  </Button>
-                  <Button size="sm" onClick={() => onOpenAuth('register', 'student')} className="bg-brand-primary hover:bg-blue-700">
-                    Register
-                  </Button>
+                  {user ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate('/profile')}
+                        className="border-brand-primary text-brand-primary"
+                      >
+                        Profile
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={onLogout}
+                      >
+                        Logout
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onOpenAuth('login', 'student')}
+                        className="border-brand-primary text-brand-primary"
+                      >
+                        Login
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => onOpenAuth('register', 'student')}
+                        className="bg-brand-primary hover:bg-blue-700"
+                      >
+                        Register
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
