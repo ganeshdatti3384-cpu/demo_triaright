@@ -4,12 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Code, Database, Calculator, Briefcase, Users, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface CourseCardsProps {
   onCourseClick: () => void;
 }
 
 const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
+  const navigate = useNavigate();
+  
   const courses = [
     {
       id: 1,
@@ -19,7 +22,9 @@ const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
       duration: '12 weeks',
       students: '2,500+',
       rating: 4.8,
-      color: 'bg-blue-500'
+      color: 'bg-blue-500',
+      price: 199,
+      isPaid: true
     },
     {
       id: 2,
@@ -29,7 +34,9 @@ const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
       duration: '16 weeks',
       students: '1,800+',
       rating: 4.9,
-      color: 'bg-orange-500'
+      color: 'bg-orange-500',
+      price: 299,
+      isPaid: true
     },
     {
       id: 3,
@@ -39,7 +46,9 @@ const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
       duration: '8 weeks',
       students: '3,200+',
       rating: 4.7,
-      color: 'bg-green-500'
+      color: 'bg-green-500',
+      price: 0,
+      isPaid: false
     },
     {
       id: 4,
@@ -49,7 +58,9 @@ const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
       duration: '10 weeks',
       students: '1,500+',
       rating: 4.6,
-      color: 'bg-purple-500'
+      color: 'bg-purple-500',
+      price: 249,
+      isPaid: true
     },
     {
       id: 5,
@@ -59,7 +70,9 @@ const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
       duration: '6 weeks',
       students: '4,000+',
       rating: 4.8,
-      color: 'bg-pink-500'
+      color: 'bg-pink-500',
+      price: 0,
+      isPaid: false
     },
     {
       id: 6,
@@ -69,9 +82,19 @@ const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
       duration: '4 weeks',
       students: '2,800+',
       rating: 4.9,
-      color: 'bg-indigo-500'
+      color: 'bg-indigo-500',
+      price: 99,
+      isPaid: true
     }
   ];
+
+  const handleEnrollClick = (course: any) => {
+    if (course.isPaid) {
+      navigate(`/course-enrollment/paid/${course.id}`);
+    } else {
+      navigate(`/course-enrollment/free/${course.id}`);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -84,7 +107,14 @@ const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
                 <div className={`${course.color} p-3 rounded-lg text-white group-hover:scale-110 transition-transform`}>
                   <IconComponent className="h-6 w-6" />
                 </div>
-                <Badge variant="secondary">{course.duration}</Badge>
+                <div className="flex flex-col items-end space-y-1">
+                  <Badge variant="secondary">{course.duration}</Badge>
+                  {course.isPaid ? (
+                    <Badge className="bg-blue-500 text-white">${course.price}</Badge>
+                  ) : (
+                    <Badge className="bg-green-500 text-white">FREE</Badge>
+                  )}
+                </div>
               </div>
               <CardTitle className="text-xl">{course.title}</CardTitle>
               <CardDescription className="text-gray-600">
@@ -97,10 +127,10 @@ const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
                 <span>⭐ {course.rating}</span>
               </div>
               <Button 
-                onClick={onCourseClick}
+                onClick={() => handleEnrollClick(course)}
                 className="w-full bg-brand-primary hover:bg-blue-700 text-white"
               >
-                Enroll Now
+                {course.isPaid ? `Enroll for $${course.price}` : 'Enroll for Free'}
               </Button>
             </CardContent>
           </Card>

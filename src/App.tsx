@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,9 +14,12 @@ import JobAssistance from "./pages/JobAssistance";
 import NotFound from "./pages/NotFound";
 import LiveCourses from "./pages/LiveCourses";
 import CourseDetail from "./pages/CourseDetail";
+import Pack365 from "./pages/Pack365";
 import Pack365Payment from "./pages/Pack365Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
+import FreeCourseEnrollment from "./pages/FreeCourseEnrollment";
+import PaidCourseEnrollment from "./pages/PaidCourseEnrollment";
 import StudentDashboard from "./components/dashboards/StudentDashboard";
 import JobSeekerDashboard from "./components/dashboards/JobSeekerDashboard";
 import EmployeeDashboard from "./components/dashboards/EmployeeDashboard";
@@ -42,13 +44,16 @@ const App = () => (
           <Route path="/courses/live" element={<LiveCourses />} />
           <Route path="/courses/recorded/:courseId" element={<CourseDetail />} />
           <Route path="/courses/live/:courseId" element={<CourseDetail />} />
+          <Route path="/pack365" element={<Pack365 />} />
+          <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/internships/online" element={<OnlineInternships />} />
           <Route path="/internships/offline" element={<OfflineInternships />} />
           <Route path="/jobs/assurance" element={<JobAssurance />} />
           <Route path="/jobs/assistance" element={<JobAssistance />} />
-          <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/course-enrollment/free/:courseId" element={<FreeCourseEnrollment />} />
+          <Route path="/course-enrollment/paid/:courseId" element={<PaidCourseEnrollment />} />
           <Route path="/student" element={<StudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={() => window.location.href = '/'} />} />
           <Route path="/job-seeker" element={<JobSeekerDashboard user={{ role: 'job-seeker', name: 'Job Seeker' }} onLogout={() => window.location.href = '/'} />} />
           <Route path="/employee" element={<EmployeeDashboard user={{ role: 'employee', name: 'Employee' }} onLogout={() => window.location.href = '/'} />} />

@@ -4,10 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3 } from 'lucide-react';
+import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3, Package, DollarSign } from 'lucide-react';
 import CourseManagement from '../admin/CourseManagement';
 import UserManagement from '../admin/UserManagement';
 import JobManagement from '../admin/JobManagement';
+import Pack365Management from '../admin/Pack365Management';
+import PaymentAnalytics from '../admin/PaymentAnalytics';
 
 interface AdminDashboardProps {
   user: { role: string; name: string };
@@ -62,11 +64,13 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
+            <TabsTrigger value="pack365">Pack365</TabsTrigger>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="approvals">Approvals</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
@@ -181,8 +185,16 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             <CourseManagement />
           </TabsContent>
 
+          <TabsContent value="pack365" className="space-y-6">
+            <Pack365Management />
+          </TabsContent>
+
           <TabsContent value="jobs" className="space-y-6">
             <JobManagement />
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-6">
+            <PaymentAnalytics />
           </TabsContent>
 
           <TabsContent value="approvals" className="space-y-6">
