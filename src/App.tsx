@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +18,15 @@ import CourseDetail from "./pages/CourseDetail";
 import Pack365Payment from "./pages/Pack365Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
+import CourseEnrollment from "./pages/CourseEnrollment";
+import CoursePayment from "./pages/CoursePayment";
+import StudentDashboard from "./components/dashboards/StudentDashboard";
+import JobSeekerDashboard from "./components/dashboards/JobSeekerDashboard";
+import EmployeeDashboard from "./components/dashboards/EmployeeDashboard";
+import EmployerDashboard from "./components/dashboards/EmployerDashboard";
+import CollegeDashboard from "./components/dashboards/CollegeDashboard";
+import AdminDashboard from "./components/dashboards/AdminDashboard";
+import SuperAdminDashboard from "./components/dashboards/SuperAdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +51,15 @@ const App = () => (
           <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/course-enrollment/:courseId" element={<CourseEnrollment />} />
+          <Route path="/course-payment/:courseId" element={<CoursePayment />} />
+          <Route path="/student" element={<StudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={() => window.location.href = '/'} />} />
+          <Route path="/job-seeker" element={<JobSeekerDashboard user={{ role: 'job-seeker', name: 'Job Seeker' }} onLogout={() => window.location.href = '/'} />} />
+          <Route path="/employee" element={<EmployeeDashboard user={{ role: 'employee', name: 'Employee' }} onLogout={() => window.location.href = '/'} />} />
+          <Route path="/employer" element={<EmployerDashboard user={{ role: 'employer', name: 'Employer' }} onLogout={() => window.location.href = '/'} />} />
+          <Route path="/college" element={<CollegeDashboard user={{ role: 'colleges', name: 'College' }} onLogout={() => window.location.href = '/'} />} />
+          <Route path="/admin" element={<AdminDashboard user={{ role: 'admin', name: 'Admin' }} onLogout={() => window.location.href = '/'} />} />
+          <Route path="/super-admin" element={<SuperAdminDashboard user={{ role: 'super-admin', name: 'Super Admin' }} onLogout={() => window.location.href = '/'} />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -48,4 +67,5 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
+
 export default App;
