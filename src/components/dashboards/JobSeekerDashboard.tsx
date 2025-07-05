@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Briefcase, FileText, Users, TrendingUp, MapPin, Clock, DollarSign, Star, Building, Calendar } from 'lucide-react';
+import { Briefcase, FileText, Users, TrendingUp, MapPin, Clock, DollarSign, Star, Building, Calendar, Code, FolderOpen, Settings } from 'lucide-react';
 import Navbar from '../Navbar';
 import Pack365Card from '../Pack365Card';
+import CodeCompiler from '../CodeCompiler';
 
 interface JobSeekerDashboardProps {
   user: {
@@ -124,11 +125,14 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
         </div>
 
         <Tabs defaultValue="jobs" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="jobs">Job Search</TabsTrigger>
             <TabsTrigger value="applications">My Applications</TabsTrigger>
+            <TabsTrigger value="compiler">Compiler</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="skills">Skills</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
           </TabsList>
 
@@ -205,6 +209,136 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
                   <p className="text-gray-500 mb-4">No applications yet.</p>
                   <Button>Start Applying to Jobs</Button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="compiler" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Code className="h-5 w-5" />
+                  <span>Code Compiler</span>
+                </CardTitle>
+                <CardDescription>Practice coding to improve your technical skills</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CodeCompiler />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="projects" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FolderOpen className="h-5 w-5" />
+                  <span>Portfolio Projects</span>
+                </CardTitle>
+                <CardDescription>Showcase your projects to potential employers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <Card className="border-dashed border-2 border-gray-300">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+                      <FolderOpen className="h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="font-semibold text-gray-900 mb-2">Add New Project</h3>
+                      <p className="text-sm text-gray-500 mb-4">Build your portfolio</p>
+                      <Button>Add Project</Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold">E-commerce Website</h3>
+                        <Badge variant="outline">Full Stack</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">Complete e-commerce solution with payment integration</p>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">View</Button>
+                        <Button size="sm">Edit</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold">Weather App</h3>
+                        <Badge variant="outline">React</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">Weather forecast app with geolocation</p>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">View</Button>
+                        <Button size="sm">Edit</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Settings className="h-5 w-5" />
+                  <span>Account Settings</span>
+                </CardTitle>
+                <CardDescription>Manage your job search preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-medium">Profile Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={user.name} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" className="w-full p-2 border rounded-md" defaultValue="jobseeker@example.com" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium">Job Preferences</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Location</label>
+                        <input type="text" className="w-full p-2 border rounded-md" defaultValue="Remote" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Salary Expectation</label>
+                        <input type="text" className="w-full p-2 border rounded-md" defaultValue="$80,000 - $120,000" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium">Notifications</h3>
+                    <div className="space-y-3 mt-4">
+                      <div className="flex items-center justify-between">
+                        <span>Job recommendations</span>
+                        <input type="checkbox" defaultChecked className="rounded" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Application updates</span>
+                        <input type="checkbox" defaultChecked className="rounded" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Email notifications</span>
+                        <input type="checkbox" className="rounded" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <Button>Save Changes</Button>
               </CardContent>
             </Card>
           </TabsContent>

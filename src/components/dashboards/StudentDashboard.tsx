@@ -4,11 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, BookOpen, Award, Clock, Users, TrendingUp, Star, ArrowRight, Play, CheckCircle } from 'lucide-react';
+import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell } from 'lucide-react';
 import Navbar from '../Navbar';
-import CourseCards from '../CourseCards';
 import Pack365Card from '../Pack365Card';
-import { useNavigate } from 'react-router-dom';
+import CodeCompiler from '../CodeCompiler';
 
 interface StudentDashboardProps {
   user: {
@@ -103,11 +102,14 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="courses">My Courses</TabsTrigger>
-            <TabsTrigger value="all-courses">Browse Courses</TabsTrigger>
+            <TabsTrigger value="browse">Browse</TabsTrigger>
+            <TabsTrigger value="compiler">Compiler</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
           </TabsList>
 
@@ -252,7 +254,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
             )}
           </TabsContent>
 
-          <TabsContent value="all-courses" className="space-y-6">
+          <TabsContent value="browse" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Browse All Courses</CardTitle>
@@ -260,6 +262,73 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
               </CardHeader>
               <CardContent>
                 <CourseCards onCourseClick={() => {}} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="compiler" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Code className="h-5 w-5" />
+                  <span>Code Compiler</span>
+                </CardTitle>
+                <CardDescription>Practice coding with our online compiler</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CodeCompiler />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="projects" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FolderOpen className="h-5 w-5" />
+                  <span>My Projects</span>
+                </CardTitle>
+                <CardDescription>Manage your coding projects and assignments</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <Card className="border-dashed border-2 border-gray-300">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+                      <FolderOpen className="h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="font-semibold text-gray-900 mb-2">Create New Project</h3>
+                      <p className="text-sm text-gray-500 mb-4">Start a new coding project</p>
+                      <Button>Create Project</Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold">Todo App</h3>
+                        <Badge variant="outline">React</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">A simple todo application with CRUD operations</p>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">View</Button>
+                        <Button size="sm">Edit</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold">Calculator</h3>
+                        <Badge variant="outline">JavaScript</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">Basic calculator with arithmetic operations</p>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">View</Button>
+                        <Button size="sm">Edit</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -308,6 +377,55 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
               </CardHeader>
               <CardContent>
                 <Pack365Card />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Settings className="h-5 w-5" />
+                  <span>Account Settings</span>
+                </CardTitle>
+                <CardDescription>Manage your account preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-medium">Profile Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={user.name} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" className="w-full p-2 border rounded-md" defaultValue="student@example.com" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium">Notifications</h3>
+                    <div className="space-y-3 mt-4">
+                      <div className="flex items-center justify-between">
+                        <span>Course updates</span>
+                        <input type="checkbox" defaultChecked className="rounded" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Assignment reminders</span>
+                        <input type="checkbox" defaultChecked className="rounded" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Email notifications</span>
+                        <input type="checkbox" className="rounded" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <Button>Save Changes</Button>
               </CardContent>
             </Card>
           </TabsContent>
