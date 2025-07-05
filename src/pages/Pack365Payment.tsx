@@ -6,12 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, CreditCard, Shield, Clock } from 'lucide-react';
-<<<<<<< HEAD
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-=======
 import PaymentGateway from '@/components/PaymentGateway';
->>>>>>> 27e1c084f36b8457243702875fd7bed2c0aaeaea
 
 interface Pack365Course {
   id: string;
@@ -82,9 +79,11 @@ const Pack365Payment = () => {
   }
 
   return (
-    <><Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
-      throw new Error('Function not implemented.');
-    } } /><div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <>
+      <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
+        throw new Error('Function not implemented.');
+      }} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="max-w-4xl mx-auto px-4 py-12">
           <Button
             variant="outline"
@@ -105,7 +104,8 @@ const Pack365Payment = () => {
                 <img
                   src={course.image}
                   alt={course.title}
-                  className="w-full h-48 object-cover rounded-lg" />
+                  className="w-full h-48 object-cover rounded-lg"
+                />
                 <h3 className="text-xl font-semibold">{course.title}</h3>
                 <p className="text-gray-600">{course.description}</p>
 
@@ -161,7 +161,7 @@ const Pack365Payment = () => {
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2 text-sm text-green-600">
                     <Shield className="h-4 w-4" />
-                    <span>Secure Payment with Razorpay</span>
+                    <span>Secure Payment Gateway</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-green-600">
                     <Clock className="h-4 w-4" />
@@ -173,48 +173,19 @@ const Pack365Payment = () => {
                   </div>
                 </div>
 
-<<<<<<< HEAD
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-medium">Total Amount</span>
                     <span className="text-2xl font-bold text-blue-600">${course.price}</span>
                   </div>
-=======
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2 text-sm text-green-600">
-                  <Shield className="h-4 w-4" />
-                  <span>Secure Payment Gateway</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm text-green-600">
-                  <Clock className="h-4 w-4" />
-                  <span>365 days unlimited access</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm text-green-600">
-                  <Shield className="h-4 w-4" />
-                  <span>Certificate upon completion</span>
-                </div>
-              </div>
->>>>>>> 27e1c084f36b8457243702875fd7bed2c0aaeaea
-
-                  <Button
-                    onClick={handlePayment}
-                    disabled={isProcessing}
+                  
+                  <Button 
+                    onClick={handleProceedToPayment}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
                   >
-                    {isProcessing ? 'Processing Payment...' : 'Pay with Razorpay'}
+                    Proceed to Payment Gateway
                   </Button>
                 </div>
-<<<<<<< HEAD
-=======
-                
-                <Button 
-                  onClick={handleProceedToPayment}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
-                >
-                  Proceed to Payment Gateway
-                </Button>
-              </div>
->>>>>>> 27e1c084f36b8457243702875fd7bed2c0aaeaea
 
                 <div className="text-xs text-gray-500 text-center">
                   By proceeding, you agree to our Terms of Service and Privacy Policy
@@ -225,7 +196,7 @@ const Pack365Payment = () => {
         </div>
       </div>
       <Footer />
-      </>
+    </>
   );
 };
 
