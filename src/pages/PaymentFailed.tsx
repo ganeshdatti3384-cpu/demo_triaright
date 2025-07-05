@@ -4,6 +4,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XCircle, Home, RefreshCw } from 'lucide-react';
+import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 
 const PaymentFailed = () => {
   const navigate = useNavigate();
@@ -36,6 +38,10 @@ const PaymentFailed = () => {
   };
 
   return (
+    <>
+    <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
+        throw new Error('Function not implemented.');
+      } } />
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4">
       <Card className="max-w-md w-full shadow-xl">
         <CardHeader className="text-center">
@@ -48,7 +54,7 @@ const PaymentFailed = () => {
           <p className="text-gray-600">
             We couldn't process your payment. This might be due to:
           </p>
-          
+
           <div className="bg-red-50 p-4 rounded-lg text-left">
             <ul className="text-sm text-red-800 space-y-1">
               <li>• Insufficient funds in your account</li>
@@ -68,16 +74,16 @@ const PaymentFailed = () => {
           )}
 
           <div className="space-y-2 pt-4">
-            <Button 
+            <Button
               onClick={handleRetryPayment}
               className="w-full bg-blue-600 hover:bg-blue-700"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Try Again
             </Button>
-            
-            <Button 
-              variant="outline" 
+
+            <Button
+              variant="outline"
               onClick={() => navigate('/')}
               className="w-full"
             >
@@ -91,7 +97,7 @@ const PaymentFailed = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </div><Footer /></>
   );
 };
 

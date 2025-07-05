@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, CreditCard, Shield, Clock } from 'lucide-react';
+import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 
 interface Pack365Course {
   id: string;
@@ -65,10 +67,14 @@ const Pack365Payment = () => {
   }
 
   return (
+    <>
+    <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
+        throw new Error('Function not implemented.');
+      } } />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-4xl mx-auto px-4 py-12">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => navigate('/pack365')}
           className="mb-6"
         >
@@ -83,14 +89,13 @@ const Pack365Payment = () => {
               <CardTitle className="text-2xl">Course Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <img 
-                src={course.image} 
+              <img
+                src={course.image}
                 alt={course.title}
-                className="w-full h-48 object-cover rounded-lg"
-              />
+                className="w-full h-48 object-cover rounded-lg" />
               <h3 className="text-xl font-semibold">{course.title}</h3>
               <p className="text-gray-600">{course.description}</p>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Instructor:</span>
@@ -160,8 +165,8 @@ const Pack365Payment = () => {
                   <span className="text-lg font-medium">Total Amount</span>
                   <span className="text-2xl font-bold text-blue-600">${course.price}</span>
                 </div>
-                
-                <Button 
+
+                <Button
                   onClick={handlePayment}
                   disabled={isProcessing}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
@@ -177,7 +182,7 @@ const Pack365Payment = () => {
           </Card>
         </div>
       </div>
-    </div>
+    </div><Footer /></>
   );
 };
 
