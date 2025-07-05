@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from '@/hooks/use-toast';
 import Footer from '../components/Footer';
 import Navbar from '@/components/Navbar';
+import { ArrowLeft } from 'lucide-react';
 
 const registrationSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -70,15 +70,21 @@ const Register = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800">
       <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
         throw new Error('Function not implemented.');
       }} />
-      <main className="flex-1 bg-gray-50 py-8">
+      <main className="flex-1 py-8">
         <div className="container mx-auto px-4 max-w-2xl">
-          <Card>
+          <div className="mb-6">
+            <Button variant="ghost" className="text-white hover:text-blue-200" onClick={() => window.history.back()}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Login
+            </Button>
+          </div>
+          <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
             <CardHeader>
-              <CardTitle className="text-3xl font-bold text-center text-blue-600">
+              <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Register
               </CardTitle>
               <p className="text-center text-gray-600">Create your account to get started</p>
@@ -184,7 +190,7 @@ const Register = () => {
 
                 <Button
                   type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                 >
                   Register
                 </Button>

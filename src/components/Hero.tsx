@@ -42,15 +42,6 @@ const Hero = ({ onOpenAuth }: HeroProps) => {
               Get Started
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            
-            <Button 
-              onClick={() => onOpenAuth('login', 'employer')}
-              variant="outline" 
-              size="lg" 
-              className="border-2 border-brand-primary text-brand-primary hover:bg-blue-50 px-8 py-3"
-            >
-              For Employers
-            </Button>
           </div>
 
           {/* Feature highlights */}
