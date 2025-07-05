@@ -33,10 +33,31 @@ const PaymentSuccess = () => {
     <><Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
       throw new Error('Function not implemented.');
     } } /><div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center p-4">
+<<<<<<< HEAD
         <Card className="max-w-md w-full shadow-xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 p-3 bg-green-100 rounded-full w-fit">
               <CheckCircle className="h-12 w-12 text-green-600" />
+=======
+      <Card className="max-w-md w-full shadow-xl">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 p-3 bg-green-100 rounded-full w-fit">
+            <CheckCircle className="h-12 w-12 text-green-600" />
+          </div>
+          <CardTitle className="text-2xl text-green-600">Payment Successful!</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center space-y-4">
+          <p className="text-gray-600">
+            Your payment has been processed successfully. You now have access to:
+          </p>
+
+          {courseName && (
+            <div className="bg-green-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-green-800">{courseName}</h3>
+              <p className="text-sm text-green-600 mt-1">
+                {type === 'pack365' ? '365 days access' : 'Lifetime access'}
+              </p>
+>>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
             </div>
             <CardTitle className="text-2xl text-green-600">Payment Successful!</CardTitle>
           </CardHeader>
@@ -54,6 +75,7 @@ const PaymentSuccess = () => {
               </div>
             )}
 
+<<<<<<< HEAD
             <div className="text-sm text-gray-500">
               A confirmation email has been sent to your registered email address.
             </div>
@@ -81,6 +103,31 @@ const PaymentSuccess = () => {
       </div>
       <Footer />
       </>
+=======
+          <div className="space-y-2 pt-4">
+            <Button
+              onClick={() => navigate('/student-dashboard')}
+              className="w-full bg-green-600 hover:bg-green-700"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Go to My Courses
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => navigate('/')}
+              className="w-full"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Back to Home
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+    <Footer />
+    </>
+>>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
   );
 };
 

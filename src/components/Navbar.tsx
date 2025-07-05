@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,15 +12,19 @@ import { useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
   onOpenAuth: (type: 'login' | 'register', userType: string) => void;
+  userRole?: string;
 }
 
-const Navbar = ({ onOpenAuth }: NavbarProps) => {
+const Navbar = ({ onOpenAuth, userRole }: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   const courseTypes = [
     { name: 'Live Courses', description: 'Interactive real-time learning', path: '/courses/live' },
-    { name: 'Recorded Courses', description: 'Learn at your own pace', path: '/courses/recorded' }
+    { name: 'Recorded Courses', description: 'Learn at your own pace', path: '/courses/recorded' },
+    ...(userRole === 'student' || userRole === 'job-seeker' ? [
+      { name: 'Pack365', description: 'Complete annual learning program', path: '/pack365' }
+    ] : [])
   ];
 
   const jobTypes = [

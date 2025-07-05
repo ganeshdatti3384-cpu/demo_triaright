@@ -3,8 +3,13 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+<<<<<<< HEAD
 import { useNavigate } from 'react-router-dom';
 import { Clock, BookOpen, Users, Star } from 'lucide-react';
+=======
+import { Code, Database, Calculator, Briefcase, Users, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+>>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
 
 interface Course {
   id: string;
@@ -22,6 +27,7 @@ interface Course {
   studentsEnrolled: number;
 }
 
+<<<<<<< HEAD
 interface CourseCardsProps {
   courses?: Course[];
   type?: 'recorded' | 'live';
@@ -32,6 +38,12 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
 
   // Default demo courses if none provided
   const defaultCourses: Course[] = [
+=======
+const CourseCards = ({ onCourseClick }: CourseCardsProps) => {
+  const navigate = useNavigate();
+  
+  const courses = [
+>>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
     {
       id: '1',
       title: 'Full Stack Web Development',
@@ -45,6 +57,7 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
       image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
       skills: ['React', 'Node.js', 'MongoDB', 'JavaScript'],
       rating: 4.8,
+<<<<<<< HEAD
       studentsEnrolled: 1250
     },
     {
@@ -61,6 +74,47 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
       skills: ['Python', 'Pandas', 'Matplotlib', 'Scikit-learn'],
       rating: 4.6,
       studentsEnrolled: 890
+=======
+      color: 'bg-blue-500',
+      price: 199,
+      isPaid: true
+    },
+    {
+      id: 2,
+      title: 'Data Science',
+      description: 'Learn Python, Machine Learning, Statistics and Data Analysis',
+      icon: Database,
+      duration: '16 weeks',
+      students: '1,800+',
+      rating: 4.9,
+      color: 'bg-orange-500',
+      price: 299,
+      isPaid: true
+    },
+    {
+      id: 3,
+      title: 'Aptitude Training',
+      description: 'Quantitative aptitude, logical reasoning, and verbal ability',
+      icon: Calculator,
+      duration: '8 weeks',
+      students: '3,200+',
+      rating: 4.7,
+      color: 'bg-green-500',
+      price: 0,
+      isPaid: false
+    },
+    {
+      id: 4,
+      title: 'Business Analytics',
+      description: 'Excel, Power BI, Tableau and business intelligence tools',
+      icon: TrendingUp,
+      duration: '10 weeks',
+      students: '1,500+',
+      rating: 4.6,
+      color: 'bg-purple-500',
+      price: 249,
+      isPaid: true
+>>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
     },
     {
       id: '3',
@@ -68,6 +122,7 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
       description: 'Start your coding journey with fundamental programming concepts',
       instructor: 'Mike Johnson',
       duration: '6 weeks',
+<<<<<<< HEAD
       level: 'Beginner',
       price: '₹0',
       originalPrice: '₹0',
@@ -83,6 +138,34 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
 
   const handleEnrollClick = (courseId: string) => {
     navigate(`/course-enrollment/${courseId}`);
+=======
+      students: '4,000+',
+      rating: 4.8,
+      color: 'bg-pink-500',
+      price: 0,
+      isPaid: false
+    },
+    {
+      id: 6,
+      title: 'Job Readiness',
+      description: 'Resume building, interview preparation and placement support',
+      icon: Briefcase,
+      duration: '4 weeks',
+      students: '2,800+',
+      rating: 4.9,
+      color: 'bg-indigo-500',
+      price: 99,
+      isPaid: true
+    }
+  ];
+
+  const handleEnrollClick = (course: any) => {
+    if (course.isPaid) {
+      navigate(`/course-enrollment/paid/${course.id}`);
+    } else {
+      navigate(`/course-enrollment/free/${course.id}`);
+    }
+>>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
   };
 
   return (
@@ -151,13 +234,41 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
                     </Badge>
                   )}
                 </div>
+<<<<<<< HEAD
+=======
+                <div className="flex flex-col items-end space-y-1">
+                  <Badge variant="secondary">{course.duration}</Badge>
+                  {course.isPaid ? (
+                    <Badge className="bg-blue-500 text-white">${course.price}</Badge>
+                  ) : (
+                    <Badge className="bg-green-500 text-white">FREE</Badge>
+                  )}
+                </div>
+              </div>
+              <CardTitle className="text-xl">{course.title}</CardTitle>
+              <CardDescription className="text-gray-600">
+                {course.description}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between mb-4 text-sm text-gray-500">
+                <span>{course.students} students</span>
+                <span>⭐ {course.rating}</span>
+>>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
               </div>
               
               <Button 
+<<<<<<< HEAD
                 onClick={() => handleEnrollClick(course.id)}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {course.isPaid ? `Enroll Now - ${course.price}` : 'Enroll Free'}
+=======
+                onClick={() => handleEnrollClick(course)}
+                className="w-full bg-brand-primary hover:bg-blue-700 text-white"
+              >
+                {course.isPaid ? `Enroll for $${course.price}` : 'Enroll for Free'}
+>>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
               </Button>
             </div>
           </CardContent>
