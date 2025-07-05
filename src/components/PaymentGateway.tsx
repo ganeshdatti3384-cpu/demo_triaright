@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   ArrowLeft
 } from 'lucide-react';
+import Navbar from './Navbar';
+import Footer from './Footer';
 
 interface PaymentGatewayProps {
   amount: number;
@@ -68,9 +70,17 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
   };
 
   return (
+    <><Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
+      throw new Error('Function not implemented.');
+    } } user={{
+      role: '',
+      name: ''
+    }} onLogout={function (): void {
+      throw new Error('Function not implemented.');
+    } } />
     <div className="max-w-2xl mx-auto p-6">
-      <Button 
-        variant="outline" 
+      <Button
+        variant="outline"
         onClick={onBack}
         className="mb-6"
       >
@@ -126,8 +136,7 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
                     placeholder="1234 5678 9012 3456"
                     value={formData.cardNumber}
                     onChange={(e) => handleInputChange('cardNumber', formatCardNumber(e.target.value))}
-                    maxLength={19}
-                  />
+                    maxLength={19} />
                 </div>
                 <div>
                   <Label htmlFor="cardHolder">Card Holder Name</Label>
@@ -135,8 +144,7 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
                     id="cardHolder"
                     placeholder="John Doe"
                     value={formData.cardHolder}
-                    onChange={(e) => handleInputChange('cardHolder', e.target.value)}
-                  />
+                    onChange={(e) => handleInputChange('cardHolder', e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -146,8 +154,7 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
                       placeholder="MM/YY"
                       value={formData.expiryDate}
                       onChange={(e) => handleInputChange('expiryDate', e.target.value)}
-                      maxLength={5}
-                    />
+                      maxLength={5} />
                   </div>
                   <div>
                     <Label htmlFor="cvv">CVV</Label>
@@ -156,8 +163,7 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
                       placeholder="123"
                       value={formData.cvv}
                       onChange={(e) => handleInputChange('cvv', e.target.value)}
-                      maxLength={4}
-                    />
+                      maxLength={4} />
                   </div>
                 </div>
               </div>
@@ -175,8 +181,7 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
                   id="upiId"
                   placeholder="yourname@paytm"
                   value={formData.upiId}
-                  onChange={(e) => handleInputChange('upiId', e.target.value)}
-                />
+                  onChange={(e) => handleInputChange('upiId', e.target.value)} />
               </div>
               <div className="bg-blue-50 p-4 rounded-lg">
                 <div className="flex items-center space-x-2 text-blue-700">
@@ -252,7 +257,7 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
             </div>
           </div>
 
-          <Button 
+          <Button
             onClick={processPayment}
             disabled={isProcessing}
             className="w-full mt-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-6"
@@ -273,6 +278,8 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
         </CardContent>
       </Card>
     </div>
+    <Footer />
+    </>
   );
 };
 
