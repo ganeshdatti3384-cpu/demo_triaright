@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import {authApi} from '@/services/api'; // Import your login API
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -23,24 +23,28 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      if (email && password) {
-        // Set authentication status in localStorage
+    try {
+      const response = await authApi.login({ email, password });
+
+      if (response?.token && response?.user) {
+        const { token, user } = response;
+
+        // Store values in localStorage
+        localStorage.setItem('token', token);
+        localStorage.setItem('currentUser', JSON.stringify(user));
         localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('userRole', selectedRole);
-        localStorage.setItem('userName', email.split('@')[0]);
 
         toast({
-          title: "Login Successful",
-          description: "Welcome back!"
+          title: 'Login Successful',
+          description: `Welcome back, ${user.firstName}!`,
         });
 
-        // Navigate to appropriate dashboard based on role
-        switch (selectedRole) {
+        // Navigate based on actual backend role
+        switch (user.role) {
           case 'student':
             navigate('/student');
             break;
-          case 'job-seeker':
+          case 'jobseeker':
             navigate('/job-seeker');
             break;
           case 'employee':
@@ -49,32 +53,33 @@ const Login = () => {
           case 'employer':
             navigate('/employer');
             break;
-          case 'colleges':
+          case 'college':
             navigate('/college');
             break;
           case 'admin':
             navigate('/admin');
             break;
-          case 'super-admin':
+          case 'superadmin':
             navigate('/super-admin');
             break;
           default:
-            navigate('/student');
+            navigate('/');
         }
-      } else {
-        toast({
-          title: "Login Failed",
-          description: "Please enter valid credentials",
-          variant: "destructive"
-        });
       }
+    } catch (error: any) {
+      toast({
+        title: 'Login Failed',
+        description: error?.response?.data?.message || 'Invalid credentials',
+        variant: 'destructive',
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
     <>
-      <Navbar onOpenAuth={() => {}} />  
+      <Navbar onOpenAuth={() => {}} />
 
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-4">
         <Card className="w-full max-w-4xl md:flex rounded-2xl shadow-2xl overflow-hidden -mt-16">
@@ -93,7 +98,7 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Right Column - Login */}
+          {/* Right Column */}
           <div className="w-full md:w-1/2 bg-white p-6">
             <CardHeader className="pb-4">
               <CardTitle className="text-2xl text-center text-gray-800">Login</CardTitle>
@@ -102,18 +107,18 @@ const Login = () => {
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="role" className="text-gray-700">Login as</Label>
-                  <select 
-                    value={selectedRole} 
+                  <select
+                    value={selectedRole}
                     onChange={(e) => setSelectedRole(e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded-md"
                   >
                     <option value="student">Student</option>
-                    <option value="job-seeker">Job Seeker</option>
+                    <option value="jobseeker">Job Seeker</option>
                     <option value="employee">Employee</option>
                     <option value="employer">Employer</option>
-                    <option value="colleges">College</option>
+                    <option value="college">College</option>
                     <option value="admin">Admin</option>
-                    <option value="super-admin">Super Admin</option>
+                    <option value="superadmin">Super Admin</option>
                   </select>
                 </div>
 
@@ -182,7 +187,7 @@ const Login = () => {
 
               <div className="mt-6 text-center">
                 <p className="text-gray-600 text-sm">
-                  Don't have an account?{' '}
+                  Don&apos;t have an account?{' '}
                   <Link to="/register" className="text-blue-600 hover:underline font-semibold">
                     Sign up
                   </Link>
