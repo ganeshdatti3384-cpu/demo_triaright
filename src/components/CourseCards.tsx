@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,12 +23,63 @@ interface Course {
 }
 
 interface CourseCardsProps {
-  courses: Course[];
-  type: 'recorded' | 'live';
+  courses?: Course[];
+  type?: 'recorded' | 'live';
 }
 
-const CourseCards = ({ courses, type }: CourseCardsProps) => {
+const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
   const navigate = useNavigate();
+
+  // Default demo courses if none provided
+  const defaultCourses: Course[] = [
+    {
+      id: '1',
+      title: 'Full Stack Web Development',
+      description: 'Learn modern web development with React, Node.js, and MongoDB',
+      instructor: 'John Doe',
+      duration: '12 weeks',
+      level: 'Intermediate',
+      price: '₹9,999',
+      originalPrice: '₹15,999',
+      isPaid: true,
+      image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
+      skills: ['React', 'Node.js', 'MongoDB', 'JavaScript'],
+      rating: 4.8,
+      studentsEnrolled: 1250
+    },
+    {
+      id: '2',
+      title: 'Data Science Fundamentals',
+      description: 'Master data analysis, visualization, and machine learning basics',
+      instructor: 'Jane Smith',
+      duration: '8 weeks',
+      level: 'Beginner',
+      price: '₹7,999',
+      originalPrice: '₹12,999',
+      isPaid: true,
+      image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
+      skills: ['Python', 'Pandas', 'Matplotlib', 'Scikit-learn'],
+      rating: 4.6,
+      studentsEnrolled: 890
+    },
+    {
+      id: '3',
+      title: 'Introduction to Programming',
+      description: 'Start your coding journey with fundamental programming concepts',
+      instructor: 'Mike Johnson',
+      duration: '6 weeks',
+      level: 'Beginner',
+      price: '₹0',
+      originalPrice: '₹0',
+      isPaid: false,
+      image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
+      skills: ['Programming Basics', 'Logic', 'Problem Solving'],
+      rating: 4.7,
+      studentsEnrolled: 2340
+    }
+  ];
+
+  const displayCourses = courses.length > 0 ? courses : defaultCourses;
 
   const handleEnrollClick = (courseId: string) => {
     navigate(`/course-enrollment/${courseId}`);
@@ -35,7 +87,7 @@ const CourseCards = ({ courses, type }: CourseCardsProps) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {courses.map((course) => (
+      {displayCourses.map((course) => (
         <Card key={course.id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
           <div className="relative">
             <img 

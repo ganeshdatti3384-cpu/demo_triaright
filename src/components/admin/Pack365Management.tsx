@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,13 +9,15 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 
+type CourseLevel = 'Beginner' | 'Intermediate' | 'Advanced';
+
 interface Pack365Course {
   id: string;
   title: string;
   description: string;
   instructor: string;
   duration: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  level: CourseLevel;
   price: number;
   isPaid: boolean;
   image: string;
@@ -37,7 +38,7 @@ const Pack365Management = () => {
     description: '',
     instructor: '',
     duration: '365 days',
-    level: 'Beginner' as const,
+    level: 'Beginner' as CourseLevel,
     price: 0,
     isPaid: false,
     image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
@@ -195,7 +196,7 @@ const Pack365Management = () => {
                   <Label htmlFor="level">Level</Label>
                   <Select 
                     value={formData.level} 
-                    onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') => 
+                    onValueChange={(value: CourseLevel) => 
                       setFormData({...formData, level: value})
                     }
                   >

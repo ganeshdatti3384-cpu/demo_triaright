@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
@@ -47,21 +48,21 @@ const Index = () => {
   if (user) {
     switch (user.role) {
       case 'student':
-        return <StudentDashboard user={user} onLogout={handleLogout} />;
+        return <StudentDashboard />;
       case 'job-seeker':
-        return <JobSeekerDashboard user={user} onLogout={handleLogout} />;
+        return <JobSeekerDashboard />;
       case 'employee':
-        return <EmployeeDashboard user={user} onLogout={handleLogout} />;
+        return <EmployeeDashboard />;
       case 'employer':
-        return <EmployerDashboard user={user} onLogout={handleLogout} />;
+        return <EmployerDashboard />;
       case 'colleges':
-        return <CollegeDashboard user={user} onLogout={handleLogout} />;
+        return <CollegeDashboard />;
       case 'admin':
-        return <AdminDashboard user={user} onLogout={handleLogout} />;
+        return <AdminDashboard />;
       case 'super-admin':
-        return <SuperAdminDashboard user={user} onLogout={handleLogout} />;
+        return <SuperAdminDashboard />;
       default:
-        return <StudentDashboard user={user} onLogout={handleLogout} />;
+        return <StudentDashboard />;
     }
   }
 
@@ -82,7 +83,7 @@ const Index = () => {
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Courses</h2>
             <p className="text-lg text-gray-600">Choose from our top-rated courses to accelerate your career</p>
           </div>
-          <CourseCards onCourseClick={() => openLoginDialog('login', 'student')} />
+          <CourseCards />
           
           <div className="text-center mt-12">
             <Button 
