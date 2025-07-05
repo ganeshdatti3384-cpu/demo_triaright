@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -104,10 +103,11 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="courses">My Courses</TabsTrigger>
             <TabsTrigger value="all-courses">Browse Courses</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
           </TabsList>
 
@@ -260,6 +260,54 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
               </CardHeader>
               <CardContent>
                 <CourseCards onCourseClick={() => {}} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="profile" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Completion</CardTitle>
+                <CardDescription>Complete your profile to get better course recommendations</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-sm">
+                    <span>Profile Completion</span>
+                    <span>75%</span>
+                  </div>
+                  <Progress value={75} className="h-2" />
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span>✅ Basic Information</span>
+                      <span className="text-green-600">Complete</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>✅ Learning Preferences</span>
+                      <span className="text-green-600">Complete</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>⚠️ Skills Assessment</span>
+                      <span className="text-yellow-600">Incomplete</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>❌ Portfolio Projects</span>
+                      <span className="text-red-600">Missing</span>
+                    </div>
+                  </div>
+                  <Button className="w-full mt-4">Complete Profile</Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Skills Enhancement */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Skill Enhancement</CardTitle>
+                <CardDescription>Improve your skills to unlock more opportunities</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Pack365Card />
               </CardContent>
             </Card>
           </TabsContent>

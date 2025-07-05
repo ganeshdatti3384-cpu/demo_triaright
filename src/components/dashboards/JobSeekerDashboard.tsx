@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -125,10 +124,11 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
         </div>
 
         <Tabs defaultValue="jobs" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="jobs">Job Search</TabsTrigger>
             <TabsTrigger value="applications">My Applications</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="skills">Skills</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
           </TabsList>
 
@@ -246,6 +246,52 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
             </Card>
 
             {/* Skills Enhancement */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Skill Enhancement</CardTitle>
+                <CardDescription>Improve your skills to get better job opportunities</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Pack365Card />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="skills" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Skills Assessment</CardTitle>
+                <CardDescription>Track and improve your professional skills</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">JavaScript</span>
+                      <span className="text-sm text-gray-500">85%</span>
+                    </div>
+                    <Progress value={85} className="h-2" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">React</span>
+                      <span className="text-sm text-gray-500">78%</span>
+                    </div>
+                    <Progress value={78} className="h-2" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Communication</span>
+                      <span className="text-sm text-gray-500">92%</span>
+                    </div>
+                    <Progress value={92} className="h-2" />
+                  </div>
+                </div>
+                <Button className="w-full mt-6">Take Skills Assessment</Button>
+              </CardContent>
+            </Card>
+
+            {/* Skill Enhancement */}
             <Card>
               <CardHeader>
                 <CardTitle>Skill Enhancement</CardTitle>
