@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, CreditCard, Shield, Clock } from 'lucide-react';
+import PaymentGateway from '@/components/PaymentGateway';
 
 interface Pack365Course {
   id: string;
@@ -23,7 +24,7 @@ const Pack365Payment = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [course, setCourse] = useState<Pack365Course | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
 
   useEffect(() => {
     const savedCourses = localStorage.getItem('pack365Courses');
@@ -34,20 +35,16 @@ const Pack365Payment = () => {
     }
   }, [courseId]);
 
-  const handlePayment = () => {
-    setIsProcessing(true);
-    
-    // Simulate payment processing
-    setTimeout(() => {
-      const isSuccess = Math.random() > 0.2; // 80% success rate for demo
-      
-      if (isSuccess) {
-        navigate(`/payment-success?courseId=${courseId}&type=pack365`);
-      } else {
-        navigate(`/payment-failed?courseId=${courseId}&type=pack365`);
-      }
-      setIsProcessing(false);
-    }, 3000);
+  const handlePaymentComplete = (success: boolean) => {
+    if (success) {
+      navigate(`/payment-success?courseId=${courseId}&type=pack365`);
+    } else {
+      navigate(`/payment-failed?courseId=${courseId}&type=pack365`);
+    }
+  };
+
+  const handleProceedToPayment = () => {
+    setShowPaymentGateway(true);
   };
 
   if (!course) {
@@ -59,6 +56,21 @@ const Pack365Payment = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Pack365
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showPaymentGateway) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <PaymentGateway
+            amount={course.price}
+            courseName={course.title}
+            onPaymentComplete={handlePaymentComplete}
+            onBack={() => setShowPaymentGateway(false)}
+          />
         </div>
       </div>
     );
@@ -143,7 +155,7 @@ const Pack365Payment = () => {
               <div className="space-y-3">
                 <div className="flex items-center space-x-2 text-sm text-green-600">
                   <Shield className="h-4 w-4" />
-                  <span>Secure Payment with Razorpay</span>
+                  <span>Secure Payment Gateway</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-green-600">
                   <Clock className="h-4 w-4" />
@@ -162,11 +174,10 @@ const Pack365Payment = () => {
                 </div>
                 
                 <Button 
-                  onClick={handlePayment}
-                  disabled={isProcessing}
+                  onClick={handleProceedToPayment}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
                 >
-                  {isProcessing ? 'Processing Payment...' : 'Pay with Razorpay'}
+                  Proceed to Payment Gateway
                 </Button>
               </div>
 
