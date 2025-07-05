@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3, Eye, CheckCircle, XCircle } from 'lucide-react';
 import CourseManagement from '../admin/CourseManagement';
 import UserManagement from '../admin/UserManagement';
 import JobManagement from '../admin/JobManagement';
@@ -14,8 +15,28 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
+interface PendingApproval {
+  id: number;
+  type: string;
+  name: string;
+  requestDate: string;
+  status: string;
+  details?: {
+    description?: string;
+    contactPerson?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    website?: string;
+    companySize?: string;
+    industry?: string;
+  };
+}
+
 const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedApproval, setSelectedApproval] = useState<PendingApproval | null>(null);
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
 
   const platformStats = {
     totalUsers: 15234,
@@ -25,10 +46,51 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     completedPlacements: 1234
   };
 
-  const pendingApprovals = [
-    { id: 1, type: 'Employer', name: 'TechCorp Solutions', requestDate: '2024-01-15', status: 'pending' },
-    { id: 2, type: 'College', name: 'ABC Engineering College', requestDate: '2024-01-14', status: 'pending' },
-    { id: 3, type: 'Course', name: 'Advanced React Development', requestDate: '2024-01-13', status: 'pending' },
+  const pendingApprovals: PendingApproval[] = [
+    { 
+      id: 1, 
+      type: 'Employer', 
+      name: 'TechCorp Solutions', 
+      requestDate: '2024-01-15', 
+      status: 'pending',
+      details: {
+        description: 'Leading technology solutions company',
+        contactPerson: 'John Smith',
+        email: 'john@techcorp.com',
+        phone: '+1-555-0123',
+        address: '123 Tech Street, Silicon Valley, CA',
+        website: 'www.techcorp.com',
+        companySize: '500-1000 employees',
+        industry: 'Technology'
+      }
+    },
+    { 
+      id: 2, 
+      type: 'College', 
+      name: 'ABC Engineering College', 
+      requestDate: '2024-01-14', 
+      status: 'pending',
+      details: {
+        description: 'Premier engineering institution',
+        contactPerson: 'Dr. Sarah Johnson',
+        email: 'admin@abc.edu',
+        phone: '+1-555-0456',
+        address: '456 College Ave, Education City, NY',
+        website: 'www.abc.edu'
+      }
+    },
+    { 
+      id: 3, 
+      type: 'Course', 
+      name: 'Advanced React Development', 
+      requestDate: '2024-01-13', 
+      status: 'pending',
+      details: {
+        description: 'Comprehensive React course covering advanced concepts',
+        contactPerson: 'Mike Wilson',
+        email: 'mike@reactcourse.com'
+      }
+    },
   ];
 
   const recentActivity = [
@@ -36,6 +98,21 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     { id: 2, action: 'Course completion', entity: 'React Fundamentals', time: '4 hours ago' },
     { id: 3, action: 'Job posting created', entity: 'Senior Developer Role', time: '6 hours ago' },
   ];
+
+  const handleViewApproval = (approval: PendingApproval) => {
+    setSelectedApproval(approval);
+    setIsApprovalDialogOpen(true);
+  };
+
+  const handleApproveRequest = (approvalId: number) => {
+    console.log(`Approving request ${approvalId}`);
+    setIsApprovalDialogOpen(false);
+  };
+
+  const handleRejectRequest = (approvalId: number) => {
+    console.log(`Rejecting request ${approvalId}`);
+    setIsApprovalDialogOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -144,8 +221,11 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                       </div>
                       <div className="flex items-center space-x-2">
                         <Badge variant="outline">Pending</Badge>
-                        <Button variant="outline" size="sm">Review</Button>
-                        <Button size="sm">Approve</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleViewApproval(item)}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          Review
+                        </Button>
+                        <Button size="sm" onClick={() => handleApproveRequest(item.id)}>Approve</Button>
                       </div>
                     </div>
                   ))}
@@ -202,9 +282,18 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                         <p className="text-sm text-gray-500">Requested on: {item.requestDate}</p>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm">View Details</Button>
-                        <Button variant="destructive" size="sm">Reject</Button>
-                        <Button size="sm">Approve</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleViewApproval(item)}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Details
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleRejectRequest(item.id)}>
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                        <Button size="sm" onClick={() => handleApproveRequest(item.id)}>
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -248,6 +337,106 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Approval Request Details</DialogTitle>
+          </DialogHeader>
+          {selectedApproval && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Request Type</label>
+                  <p className="text-sm font-medium">{selectedApproval.type}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Name</label>
+                  <p className="text-sm font-medium">{selectedApproval.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Request Date</label>
+                  <p className="text-sm font-medium">{selectedApproval.requestDate}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <Badge variant="outline">{selectedApproval.status}</Badge>
+                </div>
+              </div>
+              
+              {selectedApproval.details && (
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-3">Additional Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedApproval.details.description && (
+                      <div className="col-span-2">
+                        <label className="text-sm font-medium text-gray-500">Description</label>
+                        <p className="text-sm">{selectedApproval.details.description}</p>
+                      </div>
+                    )}
+                    {selectedApproval.details.contactPerson && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Contact Person</label>
+                        <p className="text-sm">{selectedApproval.details.contactPerson}</p>
+                      </div>
+                    )}
+                    {selectedApproval.details.email && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Email</label>
+                        <p className="text-sm">{selectedApproval.details.email}</p>
+                      </div>
+                    )}
+                    {selectedApproval.details.phone && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Phone</label>
+                        <p className="text-sm">{selectedApproval.details.phone}</p>
+                      </div>
+                    )}
+                    {selectedApproval.details.website && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Website</label>
+                        <p className="text-sm">{selectedApproval.details.website}</p>
+                      </div>
+                    )}
+                    {selectedApproval.details.address && (
+                      <div className="col-span-2">
+                        <label className="text-sm font-medium text-gray-500">Address</label>
+                        <p className="text-sm">{selectedApproval.details.address}</p>
+                      </div>
+                    )}
+                    {selectedApproval.details.companySize && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Company Size</label>
+                        <p className="text-sm">{selectedApproval.details.companySize}</p>
+                      </div>
+                    )}
+                    {selectedApproval.details.industry && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Industry</label>
+                        <p className="text-sm">{selectedApproval.details.industry}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex space-x-2 pt-4 border-t">
+                <Button onClick={() => handleApproveRequest(selectedApproval.id)}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve Request
+                </Button>
+                <Button variant="destructive" onClick={() => handleRejectRequest(selectedApproval.id)}>
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reject Request
+                </Button>
+                <Button variant="outline" onClick={() => setIsApprovalDialogOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
