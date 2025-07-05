@@ -82,9 +82,9 @@ const Login = () => {
           <div className="hidden md:flex w-1/2 items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 p-6">
             <div className="text-center">
               <img
-                src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png"
+                src="/lovable-uploads/login.png"
                 alt="TriaRight Logo"
-                className="h-16 mx-auto mb-4"
+                className="h-64 mx-auto mb-4"
               />
               <h2 className="text-3xl font-bold text-blue-700">Welcome to Aploye</h2>
               <p className="mt-2 text-sm text-gray-700">
