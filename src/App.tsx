@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,11 +19,6 @@ import Pack365 from "./pages/Pack365";
 import Pack365Payment from "./pages/Pack365Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
-<<<<<<< HEAD
-import CourseEnrollment from "./pages/CourseEnrollment";
-import CoursePayment from "./pages/CoursePayment";
-import EnhancedStudentDashboard from "./components/dashboards/EnhancedStudentDashboard";
-=======
 import FreeCourseEnrollment from "./pages/FreeCourseEnrollment";
 import PaidCourseEnrollment from "./pages/PaidCourseEnrollment";
 import StudentDashboard from "./components/dashboards/StudentDashboard";
@@ -32,7 +28,7 @@ import EmployerDashboard from "./components/dashboards/EmployerDashboard";
 import CollegeDashboard from "./components/dashboards/CollegeDashboard";
 import AdminDashboard from "./components/dashboards/AdminDashboard";
 import SuperAdminDashboard from "./components/dashboards/SuperAdminDashboard";
->>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +39,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -50,33 +47,66 @@ const App = () => (
           <Route path="/courses/live" element={<LiveCourses />} />
           <Route path="/courses/recorded/:courseId" element={<CourseDetail />} />
           <Route path="/courses/live/:courseId" element={<CourseDetail />} />
-          <Route path="/pack365" element={<Pack365 />} />
-<<<<<<< HEAD
-=======
-          <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
->>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
           <Route path="/internships/online" element={<OnlineInternships />} />
           <Route path="/internships/offline" element={<OfflineInternships />} />
           <Route path="/jobs/assurance" element={<JobAssurance />} />
           <Route path="/jobs/assistance" element={<JobAssistance />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
-<<<<<<< HEAD
-          <Route path="/course-enrollment/:courseId" element={<CourseEnrollment />} />
-          <Route path="/course-payment/:courseId" element={<CoursePayment />} />
-          <Route path="/student-dashboard" element={<EnhancedStudentDashboard />} />
-=======
           <Route path="/course-enrollment/free/:courseId" element={<FreeCourseEnrollment />} />
           <Route path="/course-enrollment/paid/:courseId" element={<PaidCourseEnrollment />} />
-          <Route path="/student" element={<StudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={() => window.location.href = '/'} />} />
-          <Route path="/job-seeker" element={<JobSeekerDashboard user={{ role: 'job-seeker', name: 'Job Seeker' }} onLogout={() => window.location.href = '/'} />} />
-          <Route path="/employee" element={<EmployeeDashboard user={{ role: 'employee', name: 'Employee' }} onLogout={() => window.location.href = '/'} />} />
-          <Route path="/employer" element={<EmployerDashboard user={{ role: 'employer', name: 'Employer' }} onLogout={() => window.location.href = '/'} />} />
-          <Route path="/college" element={<CollegeDashboard user={{ role: 'colleges', name: 'College' }} onLogout={() => window.location.href = '/'} />} />
-          <Route path="/admin" element={<AdminDashboard user={{ role: 'admin', name: 'Admin' }} onLogout={() => window.location.href = '/'} />} />
-          <Route path="/super-admin" element={<SuperAdminDashboard user={{ role: 'super-admin', name: 'Super Admin' }} onLogout={() => window.location.href = '/'} />} />
->>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          
+          {/* Protected Routes */}
+          <Route path="/pack365" element={
+            <ProtectedRoute allowedRoles={['student', 'job-seeker']}>
+              <Pack365 />
+            </ProtectedRoute>
+          } />
+          <Route path="/pack365/payment/:courseId" element={
+            <ProtectedRoute allowedRoles={['student', 'job-seeker']}>
+              <Pack365Payment />
+            </ProtectedRoute>
+          } />
+          
+          {/* Dashboard Routes */}
+          <Route path="/student" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={() => window.location.href = '/'} />
+            </ProtectedRoute>
+          } />
+          <Route path="/job-seeker" element={
+            <ProtectedRoute allowedRoles={['job-seeker']}>
+              <JobSeekerDashboard user={{ role: 'job-seeker', name: 'Job Seeker' }} onLogout={() => window.location.href = '/'} />
+            </ProtectedRoute>
+          } />
+          <Route path="/employee" element={
+            <ProtectedRoute allowedRoles={['employee']}>
+              <EmployeeDashboard user={{ role: 'employee', name: 'Employee' }} onLogout={() => window.location.href = '/'} />
+            </ProtectedRoute>
+          } />
+          <Route path="/employer" element={
+            <ProtectedRoute allowedRoles={['employer']}>
+              <EmployerDashboard user={{ role: 'employer', name: 'Employer' }} onLogout={() => window.location.href = '/'} />
+            </ProtectedRoute>
+          } />
+          <Route path="/college" element={
+            <ProtectedRoute allowedRoles={['colleges']}>
+              <CollegeDashboard user={{ role: 'colleges', name: 'College' }} onLogout={() => window.location.href = '/'} />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard user={{ role: 'admin', name: 'Admin' }} onLogout={() => window.location.href = '/'} />
+            </ProtectedRoute>
+          } />
+          <Route path="/super-admin" element={
+            <ProtectedRoute allowedRoles={['super-admin']}>
+              <SuperAdminDashboard user={{ role: 'super-admin', name: 'Super Admin' }} onLogout={() => window.location.href = '/'} />
+            </ProtectedRoute>
+          } />
+          
+          {/* Catch-all route for 404 */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

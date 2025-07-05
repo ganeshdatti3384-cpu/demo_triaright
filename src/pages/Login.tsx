@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -14,7 +15,9 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('student');
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,10 +25,42 @@ const Login = () => {
 
     setTimeout(() => {
       if (email && password) {
+        // Set authentication status in localStorage
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userRole', selectedRole);
+        localStorage.setItem('userName', email.split('@')[0]);
+
         toast({
           title: "Login Successful",
           description: "Welcome back!"
         });
+
+        // Navigate to appropriate dashboard based on role
+        switch (selectedRole) {
+          case 'student':
+            navigate('/student');
+            break;
+          case 'job-seeker':
+            navigate('/job-seeker');
+            break;
+          case 'employee':
+            navigate('/employee');
+            break;
+          case 'employer':
+            navigate('/employer');
+            break;
+          case 'colleges':
+            navigate('/college');
+            break;
+          case 'admin':
+            navigate('/admin');
+            break;
+          case 'super-admin':
+            navigate('/super-admin');
+            break;
+          default:
+            navigate('/student');
+        }
       } else {
         toast({
           title: "Login Failed",
@@ -39,7 +74,7 @@ const Login = () => {
 
   return (
     <>
-      <Navbar  />  
+      <Navbar onOpenAuth={() => {}} />  
 
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-4">
         <Card className="w-full max-w-4xl md:flex rounded-2xl shadow-2xl overflow-hidden -mt-16">
@@ -65,6 +100,23 @@ const Login = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="role" className="text-gray-700">Login as</Label>
+                  <select 
+                    value={selectedRole} 
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="student">Student</option>
+                    <option value="job-seeker">Job Seeker</option>
+                    <option value="employee">Employee</option>
+                    <option value="employer">Employer</option>
+                    <option value="colleges">College</option>
+                    <option value="admin">Admin</option>
+                    <option value="super-admin">Super Admin</option>
+                  </select>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-gray-700">Email</Label>
                   <Input
@@ -130,7 +182,7 @@ const Login = () => {
 
               <div className="mt-6 text-center">
                 <p className="text-gray-600 text-sm">
-                  Don’t have an account?{' '}
+                  Don't have an account?{' '}
                   <Link to="/register" className="text-blue-600 hover:underline font-semibold">
                     Sign up
                   </Link>

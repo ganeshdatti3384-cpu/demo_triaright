@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
@@ -18,12 +18,15 @@ const Index = () => {
   const navigate = useNavigate();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('student');
-  const [user, setUser] = useState<{ role: string; name: string } | null>(null);
   const [showSuccessStories, setShowSuccessStories] = useState(false);
 
   const openLoginDialog = (type: 'login' | 'register', userType: string) => {
-    setSelectedRole(userType);
-    setShowLoginDialog(true);
+    if (type === 'login') {
+      setSelectedRole(userType);
+      setShowLoginDialog(true);
+    } else {
+      navigate('/register');
+    }
   };
 
   const closeLoginDialog = () => {
@@ -31,66 +34,41 @@ const Index = () => {
   };
 
   const handleLoginSuccess = (userName: string) => {
-    setUser({ role: selectedRole, name: userName });
+    // Set authentication status
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userRole', selectedRole);
+    localStorage.setItem('userName', userName);
+    
     closeLoginDialog();
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    setShowSuccessStories(false);
-  };
-
-<<<<<<< HEAD
-  if (user) {
-    switch (user.role) {
+    
+    // Navigate to appropriate dashboard
+    switch (selectedRole) {
       case 'student':
-        return <StudentDashboard user={user} onLogout={handleLogout} />;
+        navigate('/student');
+        break;
       case 'job-seeker':
-        return <JobSeekerDashboard user={user} onLogout={handleLogout} />;
+        navigate('/job-seeker');
+        break;
       case 'employee':
-        return <EmployeeDashboard user={user} onLogout={handleLogout} />;
+        navigate('/employee');
+        break;
       case 'employer':
-        return <EmployerDashboard user={user} onLogout={handleLogout} />;
+        navigate('/employer');
+        break;
       case 'colleges':
-        return <CollegeDashboard user={user} onLogout={handleLogout} />;
+        navigate('/college');
+        break;
       case 'admin':
-        return <AdminDashboard />;
+        navigate('/admin');
+        break;
       case 'super-admin':
-        return <SuperAdminDashboard user={user} onLogout={handleLogout} />;
+        navigate('/super-admin');
+        break;
       default:
-        return <StudentDashboard user={user} onLogout={handleLogout} />;
-=======
-  useEffect(() => {
-    if (user) {
-      switch (user.role) {
-        case 'student':
-          navigate('/student');
-          break;
-        case 'job-seeker':
-          navigate('/job-seeker');
-          break;
-        case 'employee':
-          navigate('/employee');
-          break;
-        case 'employer':
-          navigate('/employer');
-          break;
-        case 'colleges':
-          navigate('/college');
-          break;
-        case 'admin':
-          navigate('/admin');
-          break;
-        case 'super-admin':
-          navigate('/super-admin');
-          break;
-        default:
-          navigate('/student');
-          break;
-      }
->>>>>>> 353d7e975c005bdcc6e584a454eecc48787a84ae
+        navigate('/student');
+        break;
     }
-  }, [user, navigate]);
+  };
 
   if (showSuccessStories) {
     return <SuccessStories onBack={() => setShowSuccessStories(false)} />;
