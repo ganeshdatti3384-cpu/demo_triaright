@@ -48,21 +48,21 @@ const Index = () => {
   if (user) {
     switch (user.role) {
       case 'student':
-        return <StudentDashboard />;
+        return <StudentDashboard user={user} onLogout={handleLogout} />;
       case 'job-seeker':
-        return <JobSeekerDashboard />;
+        return <JobSeekerDashboard user={user} onLogout={handleLogout} />;
       case 'employee':
-        return <EmployeeDashboard />;
+        return <EmployeeDashboard user={user} onLogout={handleLogout} />;
       case 'employer':
-        return <EmployerDashboard />;
+        return <EmployerDashboard user={user} onLogout={handleLogout} />;
       case 'colleges':
-        return <CollegeDashboard />;
+        return <CollegeDashboard user={user} onLogout={handleLogout} />;
       case 'admin':
         return <AdminDashboard />;
       case 'super-admin':
-        return <SuperAdminDashboard />;
+        return <SuperAdminDashboard user={user} onLogout={handleLogout} />;
       default:
-        return <StudentDashboard />;
+        return <StudentDashboard user={user} onLogout={handleLogout} />;
     }
   }
 
