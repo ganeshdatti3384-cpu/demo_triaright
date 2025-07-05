@@ -18,8 +18,6 @@ import CourseDetail from "./pages/CourseDetail";
 import Pack365Payment from "./pages/Pack365Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
-import CourseEnrollment from "./pages/CourseEnrollment";
-import CoursePayment from "./pages/CoursePayment";
 import StudentDashboard from "./components/dashboards/StudentDashboard";
 import JobSeekerDashboard from "./components/dashboards/JobSeekerDashboard";
 import EmployeeDashboard from "./components/dashboards/EmployeeDashboard";
@@ -51,8 +49,6 @@ const App = () => (
           <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
-          <Route path="/course-enrollment/:courseId" element={<CourseEnrollment />} />
-          <Route path="/course-payment/:courseId" element={<CoursePayment />} />
           <Route path="/student" element={<StudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={() => window.location.href = '/'} />} />
           <Route path="/job-seeker" element={<JobSeekerDashboard user={{ role: 'job-seeker', name: 'Job Seeker' }} onLogout={() => window.location.href = '/'} />} />
           <Route path="/employee" element={<EmployeeDashboard user={{ role: 'employee', name: 'Employee' }} onLogout={() => window.location.href = '/'} />} />
