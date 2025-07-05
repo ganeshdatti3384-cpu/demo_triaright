@@ -30,6 +30,8 @@ const CourseManagement = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isExcelUploadOpen, setIsExcelUploadOpen] = useState(false);
+  const [isExamUploadOpen, setIsExamUploadOpen] = useState(false);
+  const [selectedCourseForExam, setSelectedCourseForExam] = useState<string>('');
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -163,6 +165,23 @@ const CourseManagement = () => {
       });
       setIsExcelUploadOpen(false);
     }
+  };
+
+  const handleExamUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && selectedCourseForExam) {
+      toast({
+        title: "Exam Upload",
+        description: `Exam questions for course uploaded successfully from ${file.name}`
+      });
+      setIsExamUploadOpen(false);
+      setSelectedCourseForExam('');
+    }
+  };
+
+  const openExamUpload = (courseId: string) => {
+    setSelectedCourseForExam(courseId);
+    setIsExamUploadOpen(true);
   };
 
   const CourseForm = ({ onSubmit, submitText }: { onSubmit: () => void; submitText: string }) => (
@@ -306,7 +325,7 @@ const CourseManagement = () => {
             <DialogTrigger asChild>
               <Button variant="outline">
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Upload Excel
+                Upload Courses via Excel
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -354,7 +373,7 @@ const CourseManagement = () => {
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg">{course.title}</CardTitle>
                 <div className="flex space-x-1">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => openExamUpload(course.id)}>
                     <Upload className="h-4 w-4" />
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
@@ -413,6 +432,28 @@ const CourseManagement = () => {
             <DialogTitle>Edit Course</DialogTitle>
           </DialogHeader>
           <CourseForm onSubmit={handleEditCourse} submitText="Update Course" />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isExamUploadOpen} onOpenChange={setIsExamUploadOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Exam Questions</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="exam-excel-file">Select Excel File with Questions</Label>
+              <Input
+                id="exam-excel-file"
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleExamUpload}
+              />
+            </div>
+            <p className="text-sm text-gray-600">
+              Excel should contain columns: Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Explanation
+            </p>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3 } from 'lucide-react';
 import CourseManagement from '../admin/CourseManagement';
 import UserManagement from '../admin/UserManagement';
+import JobManagement from '../admin/JobManagement';
 
 interface AdminDashboardProps {
   user: { role: string; name: string };
@@ -181,37 +182,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </TabsContent>
 
           <TabsContent value="jobs" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Job Management</h2>
-              <div className="flex space-x-2">
-                <Button variant="outline">Export Data</Button>
-                <Button>Job Analytics</Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Job Postings</CardTitle>
-                  <CardDescription>Currently open positions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold mb-2">342</div>
-                  <Button variant="outline" className="w-full">View All Jobs</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Applications</CardTitle>
-                  <CardDescription>Total job applications</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold mb-2">12,456</div>
-                  <Button variant="outline" className="w-full">Application Analytics</Button>
-                </CardContent>
-              </Card>
-            </div>
+            <JobManagement />
           </TabsContent>
 
           <TabsContent value="approvals" className="space-y-6">

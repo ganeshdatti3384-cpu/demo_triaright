@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,9 @@ import JobAssistance from "./pages/JobAssistance";
 import NotFound from "./pages/NotFound";
 import LiveCourses from "./pages/LiveCourses";
 import CourseDetail from "./pages/CourseDetail";
+import Pack365Payment from "./pages/Pack365Payment";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFailed from "./pages/PaymentFailed";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +38,9 @@ const App = () => (
           <Route path="/internships/offline" element={<OfflineInternships />} />
           <Route path="/jobs/assurance" element={<JobAssurance />} />
           <Route path="/jobs/assistance" element={<JobAssistance />} />
+          <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-failed" element={<PaymentFailed />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
