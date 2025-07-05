@@ -23,8 +23,14 @@ interface Course {
   image: string;
   skills: string[];
   category: string;
+  subtopic:SubTopicSchema
 }
 
+interface SubTopicSchema {
+  id: string;
+  title: string;
+  link : string;
+}
 const CourseManagement = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -44,7 +50,8 @@ const CourseManagement = () => {
     isPaid: false,
     image: '',
     skills: '',
-    category: ''
+    category: '',
+    subtopics: [{ name: '', link: '' }],
   });
   const { toast } = useToast();
 
@@ -73,7 +80,8 @@ const CourseManagement = () => {
       isPaid: false,
       image: '',
       skills: '',
-      category: ''
+      category: '',
+      subtopics: [{ name: '', link: '' }],
     });
   };
 
@@ -91,6 +99,7 @@ const CourseManagement = () => {
       id: Date.now().toString(),
       ...formData,
       skills: formData.skills.split(',').map(skill => skill.trim()),
+      subtopic: undefined
     };
 
     setCourses(prev => [...prev, newCourse]);
@@ -151,7 +160,8 @@ const CourseManagement = () => {
       isPaid: course.isPaid,
       image: course.image,
       skills: course.skills.join(', '),
-      category: course.category
+      category: course.category,
+      subtopic: course.subtopic
     });
     setIsEditDialogOpen(true);
   };
@@ -183,9 +193,20 @@ const CourseManagement = () => {
     setSelectedCourseForExam(courseId);
     setIsExamUploadOpen(true);
   };
+const handleAddSubtopic = () => {
+    setFormData(prev => ({
+      ...prev,
+      subtopics: [...prev.subtopics, { name: '', link: '' }],
+    }));
+  };
 
+  const handleSubtopicChange = (index: number, key: 'name' | 'link', value: string) => {
+    const updated = [...formData.subtopics];
+    updated[index][key] = value;
+    setFormData(prev => ({ ...prev, subtopics: updated }));
+  };
   const CourseForm = ({ onSubmit, submitText }: { onSubmit: () => void; submitText: string }) => (
-    <div className="space-y-4">
+     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="title">Course Title *</Label>
@@ -230,9 +251,14 @@ const CourseManagement = () => {
         </div>
         <div>
           <Label htmlFor="level">Level</Label>
-          <Select value={formData.level} onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') => setFormData(prev => ({ ...prev, level: value }))}>
+          <Select
+            value={formData.level}
+            onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') =>
+              setFormData(prev => ({ ...prev, level: value }))
+            }
+          >
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Select level" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Beginner">Beginner</SelectItem>
@@ -243,9 +269,14 @@ const CourseManagement = () => {
         </div>
         <div>
           <Label htmlFor="type">Type</Label>
-          <Select value={formData.type} onValueChange={(value: 'live' | 'recorded') => setFormData(prev => ({ ...prev, type: value }))}>
+          <Select
+            value={formData.type}
+            onValueChange={(value: 'live' | 'recorded') =>
+              setFormData(prev => ({ ...prev, type: value }))
+            }
+          >
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="live">Live</SelectItem>
@@ -286,7 +317,7 @@ const CourseManagement = () => {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 items-center">
         <div className="flex items-center space-x-2">
           <input
             type="checkbox"
@@ -303,14 +334,45 @@ const CourseManagement = () => {
               id="price"
               type="number"
               value={formData.price}
-              onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+              onChange={(e) =>
+                setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
+              }
               placeholder="0.00"
             />
           </div>
         )}
       </div>
 
-      <Button onClick={onSubmit} className="w-full">
+      {/* Subtopics Section */}
+      <div>
+        <Label>Subtopics</Label>
+        <div className="space-y-4">
+          {formData.subtopics.map((subtopic, index) => (
+            <div key={index} className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder="Subtopic Name"
+                value={subtopic.name}
+                onChange={(e) => handleSubtopicChange(index, 'name', e.target.value)}
+              />
+              <Input
+                placeholder="Subtopic Link"
+                value={subtopic.link}
+                onChange={(e) => handleSubtopicChange(index, 'link', e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleAddSubtopic}
+          className="mt-2"
+        >
+          + Add Subtopic
+        </Button>
+      </div>
+
+      <Button onClick={onSubmit} className="w-full mt-4">
         {submitText}
       </Button>
     </div>
