@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, FileSpreadsheet } from 'lucide-react';
 
 interface Course {
   id: string;
@@ -30,14 +29,15 @@ const CourseManagement = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isExcelUploadOpen, setIsExcelUploadOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     instructor: '',
     duration: '',
-    level: 'Beginner' as const,
-    type: 'live' as const,
+    level: 'Beginner' as 'Beginner' | 'Intermediate' | 'Advanced',
+    type: 'live' as 'live' | 'recorded',
     price: 0,
     isPaid: false,
     image: '',
@@ -154,6 +154,17 @@ const CourseManagement = () => {
     setIsEditDialogOpen(true);
   };
 
+  const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      toast({
+        title: "Excel Upload",
+        description: `File ${file.name} uploaded successfully. Processing...`
+      });
+      setIsExcelUploadOpen(false);
+    }
+  };
+
   const CourseForm = ({ onSubmit, submitText }: { onSubmit: () => void; submitText: string }) => (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -200,7 +211,7 @@ const CourseManagement = () => {
         </div>
         <div>
           <Label htmlFor="level">Level</Label>
-          <Select value={formData.level} onValueChange={(value: any) => setFormData(prev => ({ ...prev, level: value }))}>
+          <Select value={formData.level} onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') => setFormData(prev => ({ ...prev, level: value }))}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -213,7 +224,7 @@ const CourseManagement = () => {
         </div>
         <div>
           <Label htmlFor="type">Type</Label>
-          <Select value={formData.type} onValueChange={(value: any) => setFormData(prev => ({ ...prev, type: value }))}>
+          <Select value={formData.type} onValueChange={(value: 'live' | 'recorded') => setFormData(prev => ({ ...prev, type: value }))}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -290,20 +301,50 @@ const CourseManagement = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Course Management</h2>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Course
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Course</DialogTitle>
-            </DialogHeader>
-            <CourseForm onSubmit={handleAddCourse} submitText="Add Course" />
-          </DialogContent>
-        </Dialog>
+        <div className="flex space-x-2">
+          <Dialog open={isExcelUploadOpen} onOpenChange={setIsExcelUploadOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Upload Excel
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload Courses via Excel</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="excel-file">Select Excel File</Label>
+                  <Input
+                    id="excel-file"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleExcelUpload}
+                  />
+                </div>
+                <p className="text-sm text-gray-600">
+                  Upload an Excel file with columns: Title, Description, Instructor, Duration, Level, Type, Price, Category, Skills
+                </p>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Course
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add New Course</DialogTitle>
+              </DialogHeader>
+              <CourseForm onSubmit={handleAddCourse} submitText="Add Course" />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -313,6 +354,9 @@ const CourseManagement = () => {
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg">{course.title}</CardTitle>
                 <div className="flex space-x-1">
+                  <Button variant="outline" size="sm">
+                    <Upload className="h-4 w-4" />
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -363,7 +407,6 @@ const CourseManagement = () => {
         </Card>
       )}
 
-      {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>

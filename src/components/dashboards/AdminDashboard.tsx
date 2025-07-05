@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3 } from 'lucide-react';
 import CourseManagement from '../admin/CourseManagement';
+import UserManagement from '../admin/UserManagement';
 
 interface AdminDashboardProps {
   user: { role: string; name: string };
@@ -37,7 +38,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -173,48 +173,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">User Management</h2>
-              <div className="flex space-x-2">
-                <Input placeholder="Search users..." className="w-64" />
-                <Button variant="outline">Filter</Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Students</CardTitle>
-                  <CardDescription>Manage student accounts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold mb-2">8,967</div>
-                  <Button variant="outline" className="w-full">View All Students</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Employers</CardTitle>
-                  <CardDescription>Manage employer accounts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold mb-2">456</div>
-                  <Button variant="outline" className="w-full">View All Employers</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Colleges</CardTitle>
-                  <CardDescription>Manage college partnerships</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold mb-2">89</div>
-                  <Button variant="outline" className="w-full">View All Colleges</Button>
-                </CardContent>
-              </Card>
-            </div>
+            <UserManagement />
           </TabsContent>
 
           <TabsContent value="courses" className="space-y-6">
