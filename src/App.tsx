@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,7 @@ import JobAssistance from "./pages/JobAssistance";
 import NotFound from "./pages/NotFound";
 import LiveCourses from "./pages/LiveCourses";
 import CourseDetail from "./pages/CourseDetail";
+import Pack365 from "./pages/Pack365";
 import Pack365Payment from "./pages/Pack365Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
@@ -34,6 +36,7 @@ const App = () => (
           <Route path="/courses/live" element={<LiveCourses />} />
           <Route path="/courses/recorded/:courseId" element={<CourseDetail />} />
           <Route path="/courses/live/:courseId" element={<CourseDetail />} />
+          <Route path="/pack365" element={<Pack365 />} />
           <Route path="/internships/online" element={<OnlineInternships />} />
           <Route path="/internships/offline" element={<OfflineInternships />} />
           <Route path="/jobs/assurance" element={<JobAssurance />} />
