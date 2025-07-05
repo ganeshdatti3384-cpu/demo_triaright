@@ -35,7 +35,7 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-gray-100 text-gray-800">
       {/* Newsletter Section */}
       <div className="bg-brand-primary py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

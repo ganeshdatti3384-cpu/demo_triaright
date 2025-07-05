@@ -172,7 +172,7 @@ const Register = () => {
                     I accept the{' '}
                     <Dialog>
                       <DialogTrigger className="text-blue-600 underline cursor-pointer">Terms and Conditions</DialogTrigger>
-                      <DialogContent>
+                      <DialogContent> 
                         <DialogHeader>
                           <DialogTitle>Terms and Conditions</DialogTitle>
                           <p className="text-sm text-gray-600 mt-2">

@@ -50,7 +50,6 @@ const App = () => (
           <Route path="/course-payment/:courseId" element={<CoursePayment />} />
           <Route path="/student-dashboard" element={<EnhancedStudentDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
