@@ -62,7 +62,7 @@ const Footer = () => {
           {/* Company Info */}
           <div>
             <img
-              src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png"
+              src="/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png"
               alt="TriaRight - The New Era Of Learning"
               className="h-12 mb-4"
             />

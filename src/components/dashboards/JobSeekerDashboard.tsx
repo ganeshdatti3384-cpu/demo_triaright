@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,7 +89,12 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
-      <Navbar onOpenAuth={() => {}} userRole="job-seeker" />
+      <Navbar onOpenAuth={() => { } } userRole="job-seeker" user={{
+        role: '',
+        name: ''
+      }} onLogout={function (): void {
+        throw new Error('Function not implemented.');
+      } } />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -97,9 +103,6 @@ const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
             <h1 className="text-3xl font-bold text-gray-900">Welcome, {user.name}!</h1>
             <p className="text-gray-600 mt-2">Find your dream job and advance your career</p>
           </div>
-          <Button variant="outline" onClick={onLogout}>
-            Logout
-          </Button>
         </div>
 
         {/* Stats Grid */}
