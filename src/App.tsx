@@ -30,6 +30,7 @@ import AdminDashboard from "./components/dashboards/AdminDashboard";
 import SuperAdminDashboard from "./components/dashboards/SuperAdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProfileSection from "./components/Profile";
+import ForgotPassword from "./pages/Forgotpassword";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />          
           <Route path="/profile" element={<ProfileSection />} />          
           <Route path="/courses/recorded" element={<RecordedCourses />} />
           <Route path="/courses/live" element={<LiveCourses />} />
