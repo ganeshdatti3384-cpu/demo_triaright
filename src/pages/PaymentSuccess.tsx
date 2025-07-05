@@ -32,6 +32,11 @@ const PaymentSuccess = () => {
   return (
     <><Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
       throw new Error('Function not implemented.');
+    } } user={{
+      role: '',
+      name: ''
+    }} onLogout={function (): void {
+      throw new Error('Function not implemented.');
     } } /><div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full shadow-xl">
           <CardHeader className="text-center">
@@ -60,7 +65,7 @@ const PaymentSuccess = () => {
 
             <div className="space-y-2 pt-4">
               <Button
-                onClick={() => navigate('/student-dashboard')}
+                onClick={() => navigate('/student')}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
                 <BookOpen className="h-4 w-4 mr-2" />
@@ -69,7 +74,7 @@ const PaymentSuccess = () => {
 
               <Button
                 variant="outline"
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/student')}
                 className="w-full"
               >
                 <Home className="h-4 w-4 mr-2" />
