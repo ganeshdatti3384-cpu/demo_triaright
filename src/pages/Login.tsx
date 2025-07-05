@@ -74,7 +74,12 @@ const Login = () => {
 
   return (
     <>
-      <Navbar onOpenAuth={() => {}} />  
+      <Navbar onOpenAuth={() => { } } user={{
+        role: '',
+        name: ''
+      }} onLogout={function (): void {
+        throw new Error('Function not implemented.');
+      } } />  
 
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-4">
         <Card className="w-full max-w-4xl md:flex rounded-2xl shadow-2xl overflow-hidden -mt-16">
@@ -187,24 +192,6 @@ const Login = () => {
                     Sign up
                   </Link>
                 </p>
-              </div>
-
-              <div className="mt-4 relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Or continue with</span>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <Button variant="outline" className="w-full">
-                  Google
-                </Button>
-                <Button variant="outline" className="w-full">
-                  Facebook
-                </Button>
               </div>
             </CardContent>
           </div>

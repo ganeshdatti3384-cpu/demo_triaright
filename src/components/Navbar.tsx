@@ -113,64 +113,52 @@ const Navbar = ({ onOpenAuth, userRole, user, onLogout }: NavbarProps) => {
           {/* Desktop Auth/Profile Buttons */}
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
-                    <User className="h-5 w-5 text-brand-primary" />
-                    <span className="text-sm font-medium text-gray-700">
-                      {user.name || 'Profile'}
-                    </span>
-                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-40 bg-white border shadow-lg">
-                  <DropdownMenuItem
-                    className="cursor-pointer flex items-center space-x-2"
-                    onClick={() => navigate('/profile')}
-                  >
-                    <User className="h-4 w-4 text-gray-600" />
-                    <span>Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="cursor-pointer flex items-center space-x-2 text-red-600"
-                    onClick={onLogout}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="flex items-center space-x-1 border-brand-primary text-brand-primary hover:bg-blue-50">
-                      <span>Login</span>
-                      <ChevronDown className="h-4 w-4" />
+                    <Button variant="ghost" className="flex items-center space-x-2">
+                      <User className="h-5 w-5 text-brand-primary" />
+                      <span className="text-sm font-medium text-gray-700">
+                        {user.name || 'Profile'}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-48 bg-white border shadow-lg">
-                    {loginOptions.map((option) => (
-                      <DropdownMenuItem
-                        key={option}
-                        onClick={() => onOpenAuth('login', option.toLowerCase().replace(' ', '-'))}
-                        className="cursor-pointer"
-                      >
-                        {option}
-                      </DropdownMenuItem>
-                    ))}
+                  <DropdownMenuContent className="w-40 bg-white border shadow-lg">
+                    <DropdownMenuItem
+                      className="cursor-pointer flex items-center space-x-2"
+                      onClick={() => navigate('/profile')}
+                    >
+                      <User className="h-4 w-4 text-gray-600" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer flex items-center space-x-2 text-red-600"
+                      onClick={onLogout}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                ) : (
+                  <>
+                    <Button
+                      onClick={() => navigate('/login')}
+                      variant="outline"
+                      className="border-brand-primary text-brand-primary hover:bg-blue-50"
+                    >
+                      Login
+                    </Button>
 
-                <Button
-                  onClick={handleRegisterClick}
-                  className="bg-brand-primary hover:bg-blue-700 text-white"
-                >
-                  Register
-                </Button>
-              </>
-            )}
-          </div>
+                    <Button
+                      onClick={handleRegisterClick}
+                      className="bg-brand-primary hover:bg-blue-700 text-white"
+                    >
+                      Register
+                    </Button>
+                  </>
+                )}
+              </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden">
