@@ -110,15 +110,12 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="courses">My Courses</TabsTrigger>
-            <TabsTrigger value="browse">Browse</TabsTrigger>
             <TabsTrigger value="compiler">Compiler</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="pack365">Pack365</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -262,18 +259,6 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
             )}
           </TabsContent>
 
-          <TabsContent value="browse" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Browse All Courses</CardTitle>
-                <CardDescription>Discover new learning opportunities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CourseCards onCourseClick={() => { } } />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="compiler" className="space-y-6">
             <Card>
               <CardHeader>
@@ -341,54 +326,6 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="profile" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Completion</CardTitle>
-                <CardDescription>Complete your profile to get better course recommendations</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm">
-                    <span>Profile Completion</span>
-                    <span>75%</span>
-                  </div>
-                  <Progress value={75} className="h-2" />
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span>✅ Basic Information</span>
-                      <span className="text-green-600">Complete</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>✅ Learning Preferences</span>
-                      <span className="text-green-600">Complete</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>⚠️ Skills Assessment</span>
-                      <span className="text-yellow-600">Incomplete</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>❌ Portfolio Projects</span>
-                      <span className="text-red-600">Missing</span>
-                    </div>
-                  </div>
-                  <Button className="w-full mt-4">Complete Profile</Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Skills Enhancement */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Skill Enhancement</CardTitle>
-                <CardDescription>Improve your skills to unlock more opportunities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Pack365Card />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="settings" className="space-y-6">
             <Card>
               <CardHeader>
@@ -434,46 +371,6 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
                 </div>
 
                 <Button>Save Changes</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="pack365" className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Pack365 - Your Complete Learning Journey</h2>
-              <p className="text-lg text-gray-600">Get access to all premium content for an entire year</p>
-            </div>
-
-            <Pack365Card />
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Why Choose Pack365?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="text-center space-y-2">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                      <BookOpen className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <h3 className="font-semibold">All Courses Included</h3>
-                    <p className="text-sm text-gray-600">Access to every course in our catalog</p>
-                  </div>
-                  <div className="text-center space-y-2">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                      <Users className="h-6 w-6 text-green-600" />
-                    </div>
-                    <h3 className="font-semibold">Personal Mentorship</h3>
-                    <p className="text-sm text-gray-600">1-on-1 guidance from industry experts</p>
-                  </div>
-                  <div className="text-center space-y-2">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
-                      <Award className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <h3 className="font-semibold">Job Placement</h3>
-                    <p className="text-sm text-gray-600">Career support and job placement assistance</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>

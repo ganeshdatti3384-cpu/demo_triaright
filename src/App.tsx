@@ -30,6 +30,7 @@ import SuperAdminDashboard from "./components/dashboards/SuperAdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import EnhancedProfile from "./components/EnhancedProfile";
 import ForgotPassword from "./pages/Forgotpassword";
+import StudentDashboard from "./components/dashboards/StudentDashboard";
 
 const queryClient = new QueryClient();
 
@@ -73,7 +74,12 @@ const App = () => (
           {/* Student Dashboard Routes */}
           <Route path="/student" element={
             <ProtectedRoute allowedRoles={['student']}>
-              <SimplifiedStudentDashboard />
+              <StudentDashboard user={{
+                role: "",
+                name: ""
+              }} onLogout={function (): void {
+                throw new Error("Function not implemented.");
+              } } />
             </ProtectedRoute>
           } />
           <Route path="/student/profile" element={

@@ -117,6 +117,15 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
+            {isAuthenticated && (
+              <button
+                onClick={handleDashboardClick}
+                className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span>Dashboard</span>
+              </button>
+            )}
             {[{ label: 'Courses', items: courseTypes },
               { label: 'Jobs', items: jobTypes },
               { label: 'Internships', items: internshipTypes },
@@ -144,15 +153,7 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
             ))}
             
             {/* Dashboard Link - Only show when authenticated */}
-            {isAuthenticated && (
-              <button
-                onClick={handleDashboardClick}
-                className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Dashboard</span>
-              </button>
-            )}
+            
           </div>
 
           {/* Desktop Auth/Profile Buttons */}
