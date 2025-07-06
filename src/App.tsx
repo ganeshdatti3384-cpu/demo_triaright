@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,7 +20,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import FreeCourseEnrollment from "./pages/FreeCourseEnrollment";
 import PaidCourseEnrollment from "./pages/PaidCourseEnrollment";
-import StudentDashboard from "./components/dashboards/StudentDashboard";
+import SimplifiedStudentDashboard from "./components/dashboards/SimplifiedStudentDashboard";
 import JobSeekerDashboard from "./components/dashboards/JobSeekerDashboard";
 import EmployeeDashboard from "./components/dashboards/EmployeeDashboard";
 import EmployerDashboard from "./components/dashboards/EmployerDashboard";
@@ -29,7 +28,7 @@ import CollegeDashboard from "./components/dashboards/CollegeDashboard";
 import AdminDashboard from "./components/dashboards/AdminDashboard";
 import SuperAdminDashboard from "./components/dashboards/SuperAdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
-import ProfileSection from "./components/Profile";
+import EnhancedProfile from "./components/EnhancedProfile";
 import ForgotPassword from "./pages/Forgotpassword";
 
 const queryClient = new QueryClient();
@@ -74,12 +73,12 @@ const App = () => (
           {/* Student Dashboard Routes */}
           <Route path="/student" element={
             <ProtectedRoute allowedRoles={['student']}>
-              <StudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={() => window.location.href = '/'} />
+              <SimplifiedStudentDashboard />
             </ProtectedRoute>
           } />
           <Route path="/student/profile" element={
             <ProtectedRoute allowedRoles={['student']}>
-              <ProfileSection />
+              <EnhancedProfile />
             </ProtectedRoute>
           } />
           <Route path="/student/courses" element={
@@ -89,14 +88,14 @@ const App = () => (
           } />
           
           {/* Job Seeker Dashboard Routes */}
-          <Route path="/job-seeker" element={
+          <Route path="/jobseeker" element={
             <ProtectedRoute allowedRoles={['jobseeker']}>
               <JobSeekerDashboard user={{ role: 'jobseeker', name: 'Job Seeker' }} onLogout={() => window.location.href = '/'} />
             </ProtectedRoute>
           } />
-          <Route path="/job-seeker/profile" element={
+          <Route path="/jobseeker/profile" element={
             <ProtectedRoute allowedRoles={['jobseeker']}>
-              <ProfileSection />
+              <EnhancedProfile />
             </ProtectedRoute>
           } />
           
@@ -108,7 +107,7 @@ const App = () => (
           } />
           <Route path="/employee/profile" element={
             <ProtectedRoute allowedRoles={['employee']}>
-              <ProfileSection />
+              <EnhancedProfile />
             </ProtectedRoute>
           } />
           
@@ -120,7 +119,7 @@ const App = () => (
           } />
           <Route path="/employer/profile" element={
             <ProtectedRoute allowedRoles={['employer']}>
-              <ProfileSection />
+              <EnhancedProfile />
             </ProtectedRoute>
           } />
           
@@ -132,7 +131,7 @@ const App = () => (
           } />
           <Route path="/college/profile" element={
             <ProtectedRoute allowedRoles={['college']}>
-              <ProfileSection />
+              <EnhancedProfile />
             </ProtectedRoute>
           } />
           

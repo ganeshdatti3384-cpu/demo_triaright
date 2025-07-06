@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Menu, X, User, LogOut } from 'lucide-react';
+import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
@@ -64,6 +64,20 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
     }
   };
 
+  const handleLogoClick = () => {
+    if (isAuthenticated && user?.role) {
+      navigate(`/${user.role}`);
+    } else {
+      navigate('/');
+    }
+  };
+
+  const handleDashboardClick = () => {
+    if (isAuthenticated && user?.role) {
+      navigate(`/${user.role}`);
+    }
+  };
+
   const handleProfileClick = () => {
     if (user?.role) {
       navigate(`/${user.role}/profile`);
@@ -86,24 +100,19 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
     return `Welcome, ${name}!`;
   };
 
-  const getRolePath = () => {
-    if (!user?.role) return '/';
-    return `/${user.role}`;
-  };
-
   return (
     <nav className="bg-white/90 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <a href="/" className="flex items-center">
+            <button onClick={handleLogoClick} className="flex items-center hover:opacity-80 transition-opacity">
               <img
                 src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png"
                 alt="TriaRight - The New Era Of Learning"
                 className="h-10 w-auto"
               />
-            </a>
+            </button>
           </div>
 
           {/* Desktop Navigation */}
@@ -133,6 +142,17 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ))}
+            
+            {/* Dashboard Link - Only show when authenticated */}
+            {isAuthenticated && (
+              <button
+                onClick={handleDashboardClick}
+                className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span>Dashboard</span>
+              </button>
+            )}
           </div>
 
           {/* Desktop Auth/Profile Buttons */}
@@ -237,6 +257,20 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
                   ))}
                 </div>
               ))}
+
+              {/* Dashboard Link - Mobile */}
+              {isAuthenticated && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-gray-900">Navigation</h3>
+                  <div
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary flex items-center space-x-2"
+                    onClick={handleDashboardClick}
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Dashboard</span>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <h3 className="font-semibold text-gray-900">Account</h3>
