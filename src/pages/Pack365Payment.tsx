@@ -10,6 +10,7 @@ import Footer from '@/components/Footer';
 import PaymentGateway from '@/components/PaymentGateway';
 import { pack365Api } from '@/services/api';
 import { useAuth } from '@/utlis/useAuth';
+import { courseData } from '@/data/courseData';
 
 interface Pack365Course {
   documentLink: string;
@@ -58,7 +59,7 @@ const Pack365Payment = () => {
       navigate('/pack365');
     }
   };
-
+  console.log(course)
   const handlePaymentComplete = (success: boolean) => {
     if (success) {
       navigate(`/payment-success?courseId=${courseId}&type=pack365`);
@@ -123,10 +124,10 @@ const Pack365Payment = () => {
               <CardContent className="space-y-4">
                 <img
                   src={course.documentLink}
-                  alt={course.title}
+                  alt={course.courseName}
                   className="w-full h-48 object-cover rounded-lg"
                 />
-                <h3 className="text-xl font-semibold">{course.title}</h3>
+                <h3 className="text-xl font-semibold">{course.courseName}</h3>
                 <p className="text-gray-600">{course.description}</p>
 
                 <div className="space-y-2">
@@ -164,7 +165,7 @@ const Pack365Payment = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Full year access</span>
-                    <span className="text-2xl font-bold">Rs.365</span>
+                    <span className="text-2xl font-bold">Rs.{course.price}</span>
                   </div>
                 </div>
 
@@ -186,7 +187,7 @@ const Pack365Payment = () => {
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-medium">Total Amount</span>
-                    <span className="text-2xl font-bold text-blue-600">Rs.365</span>
+                    <span className="text-2xl font-bold text-blue-600">Rs{course.price}</span>
                   </div>
 
                   <Button
