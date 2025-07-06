@@ -12,15 +12,9 @@ import CodeCompiler from '../CodeCompiler';
 import { useNavigate } from 'react-router-dom';
 import CourseCards from '../CourseCards';
 
-interface StudentDashboardProps {
-  user: {
-    role: string;
-    name: string;
-  };
-  onLogout: () => void;
-}
 
-const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
+
+const StudentDashboard = () => {
   const navigate = useNavigate();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
@@ -65,7 +59,7 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
       bgColor: 'bg-yellow-50'
     }
   ];
-
+const user = JSON.parse(localStorage.getItem('user'));
   return (
           <>
           <Navbar
