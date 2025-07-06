@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { useAuth } from '@/utlis/useAuth';
 
 const Login = () => {
   const [email, setEmail] = useState('');

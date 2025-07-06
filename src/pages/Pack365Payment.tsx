@@ -10,7 +10,6 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PaymentGateway from '@/components/PaymentGateway';
 import { pack365Api, Pack365Course } from '@/services/api';
-import { useAuth } from '@/utlis/useAuth';
 
 const Pack365Payment = () => {
   const { courseId } = useParams();
@@ -18,7 +17,6 @@ const Pack365Payment = () => {
   const { toast } = useToast();
   const [course, setCourse] = useState<Pack365Course | null>(null);
   const [showPaymentGateway, setShowPaymentGateway] = useState(false);
-  const { token } = useAuth();
 
   useEffect(() => {
     if (courseId && token) {
