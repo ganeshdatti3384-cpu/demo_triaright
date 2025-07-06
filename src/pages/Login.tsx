@@ -85,7 +85,7 @@ const Login = () => {
                 alt="TriaRight Logo"
                 className="h-64 mx-auto mb-4"
               />
-              <h2 className="text-3xl font-bold text-blue-700">Welcome to Aploye</h2>
+              <h2 className="text-3xl font-bold text-blue-700">Welcome to Triaright</h2>
               <p className="mt-2 text-sm text-gray-700">
                 Connect. Learn. Grow. Start your future today.
               </p>
