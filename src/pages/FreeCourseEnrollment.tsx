@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle, BookOpen, Clock, Users } from 'lucide-react';
 
+
 interface Course {
   id: string;
   title: string;
