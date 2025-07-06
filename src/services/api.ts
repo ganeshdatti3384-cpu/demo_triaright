@@ -317,7 +317,7 @@ export const pack365Api = {
   getMyEnrollments: async (
     token: string
   ): Promise<{ success: boolean; enrollments: Pack365Enrollment[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/packenroll365/my-enrollments`, {
+    const res = await axios.get(`${API_BASE_URL}/enrollments/my-enrollments`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

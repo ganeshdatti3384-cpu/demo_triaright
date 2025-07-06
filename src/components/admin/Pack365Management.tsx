@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -95,7 +96,7 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '')
       };
 
-      const response = await pack365Api.updateCourse(token, editingCourse._id, courseData);
+      const response = await pack365Api.updateCourse(token, editingCourse.courseId, courseData);
       if (response.success) {
         toast({ title: 'Course updated successfully!' });
         fetchCourses();
