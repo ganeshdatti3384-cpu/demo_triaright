@@ -46,7 +46,6 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />          
-          <Route path="/profile" element={<ProfileSection />} />          
           <Route path="/courses/recorded" element={<RecordedCourses />} />
           <Route path="/courses/live" element={<LiveCourses />} />
           <Route path="/courses/recorded/:courseId" element={<CourseDetail />} />
@@ -60,52 +59,94 @@ const App = () => (
           <Route path="/course-enrollment/free/:courseId" element={<FreeCourseEnrollment />} />
           <Route path="/course-enrollment/paid/:courseId" element={<PaidCourseEnrollment />} />
           
-          {/* Protected Routes */}
+          {/* Protected Pack365 Routes */}
           <Route path="/pack365" element={
-            <ProtectedRoute allowedRoles={['student', 'job-seeker']}>
+            <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
               <Pack365 />
             </ProtectedRoute>
           } />
           <Route path="/pack365/payment/:courseId" element={
-            <ProtectedRoute allowedRoles={['student', 'job-seeker']}>
+            <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
               <Pack365Payment />
             </ProtectedRoute>
           } />
           
-          {/* Dashboard Routes */}
+          {/* Student Dashboard Routes */}
           <Route path="/student" element={
             <ProtectedRoute allowedRoles={['student']}>
               <StudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={() => window.location.href = '/'} />
             </ProtectedRoute>
           } />
-          <Route path="/job-seeker" element={
-            <ProtectedRoute allowedRoles={['job-seeker']}>
-              <JobSeekerDashboard user={{ role: 'job-seeker', name: 'Job Seeker' }} onLogout={() => window.location.href = '/'} />
+          <Route path="/student/profile" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <ProfileSection />
             </ProtectedRoute>
           } />
+          <Route path="/student/courses" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <RecordedCourses />
+            </ProtectedRoute>
+          } />
+          
+          {/* Job Seeker Dashboard Routes */}
+          <Route path="/job-seeker" element={
+            <ProtectedRoute allowedRoles={['jobseeker']}>
+              <JobSeekerDashboard user={{ role: 'jobseeker', name: 'Job Seeker' }} onLogout={() => window.location.href = '/'} />
+            </ProtectedRoute>
+          } />
+          <Route path="/job-seeker/profile" element={
+            <ProtectedRoute allowedRoles={['jobseeker']}>
+              <ProfileSection />
+            </ProtectedRoute>
+          } />
+          
+          {/* Employee Dashboard Routes */}
           <Route path="/employee" element={
             <ProtectedRoute allowedRoles={['employee']}>
               <EmployeeDashboard user={{ role: 'employee', name: 'Employee' }} onLogout={() => window.location.href = '/'} />
             </ProtectedRoute>
           } />
+          <Route path="/employee/profile" element={
+            <ProtectedRoute allowedRoles={['employee']}>
+              <ProfileSection />
+            </ProtectedRoute>
+          } />
+          
+          {/* Employer Dashboard Routes */}
           <Route path="/employer" element={
             <ProtectedRoute allowedRoles={['employer']}>
               <EmployerDashboard user={{ role: 'employer', name: 'Employer' }} onLogout={() => window.location.href = '/'} />
             </ProtectedRoute>
           } />
-          <Route path="/college" element={
-            <ProtectedRoute allowedRoles={['colleges']}>
-              <CollegeDashboard user={{ role: 'colleges', name: 'College' }} onLogout={() => window.location.href = '/'} />
+          <Route path="/employer/profile" element={
+            <ProtectedRoute allowedRoles={['employer']}>
+              <ProfileSection />
             </ProtectedRoute>
           } />
+          
+          {/* College Dashboard Routes */}
+          <Route path="/college" element={
+            <ProtectedRoute allowedRoles={['college']}>
+              <CollegeDashboard user={{ role: 'college', name: 'College' }} onLogout={() => window.location.href = '/'} />
+            </ProtectedRoute>
+          } />
+          <Route path="/college/profile" element={
+            <ProtectedRoute allowedRoles={['college']}>
+              <ProfileSection />
+            </ProtectedRoute>
+          } />
+          
+          {/* Admin Dashboard Routes */}
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminDashboard user={{ role: 'admin', name: 'Admin' }} onLogout={() => window.location.href = '/'} />
             </ProtectedRoute>
           } />
+          
+          {/* Super Admin Dashboard Routes */}
           <Route path="/super-admin" element={
-            <ProtectedRoute allowedRoles={['super-admin']}>
-              <SuperAdminDashboard user={{ role: 'super-admin', name: 'Super Admin' }} onLogout={() => window.location.href = '/'} />
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <SuperAdminDashboard user={{ role: 'superadmin', name: 'Super Admin' }} onLogout={() => window.location.href = '/'} />
             </ProtectedRoute>
           } />
           

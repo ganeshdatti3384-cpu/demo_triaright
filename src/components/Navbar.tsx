@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,23 +11,30 @@ import { ChevronDown, Menu, X, User, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
-  onOpenAuth: (type: 'login' | 'register', userType: string) => void;
-  userRole?: string;
-   user: {
-    role: string;
-    name: string;
-  };
-  onLogout: () => void;
+  onOpenAuth?: (type: 'login' | 'register', userType: string) => void;
 }
 
-const Navbar = ({ onOpenAuth, userRole, user, onLogout }: NavbarProps) => {
+const Navbar = ({ onOpenAuth }: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check authentication status
+    const token = localStorage.getItem('token');
+    const currentUser = localStorage.getItem('currentUser');
+    
+    if (token && currentUser) {
+      setIsAuthenticated(true);
+      setUser(JSON.parse(currentUser));
+    }
+  }, []);
 
   const courseTypes = [
     { name: 'Live Courses', description: 'Interactive real-time learning', path: '/courses/live' },
     { name: 'Recorded Courses', description: 'Learn at your own pace', path: '/courses/recorded' },
-    ...(userRole === 'student' || userRole === 'job-seeker'
+    ...(user?.role === 'student' || user?.role === 'jobseeker'
       ? [{ name: 'Pack365', description: 'Complete annual learning program', path: '/pack365' }]
       : []),
   ];
@@ -46,16 +54,6 @@ const Navbar = ({ onOpenAuth, userRole, user, onLogout }: NavbarProps) => {
     { name: 'Technical Training', description: 'Skill-specific programs', path: '#' },
   ];
 
-  const loginOptions = [
-    'Job Seeker',
-    'Student',
-    'Admin',
-    'Super Admin',
-    'Employee',
-    'Employer',
-    'Colleges',
-  ];
-
   const handleRegisterClick = () => {
     navigate('/register', { replace: true });
   };
@@ -64,6 +62,33 @@ const Navbar = ({ onOpenAuth, userRole, user, onLogout }: NavbarProps) => {
     if (path !== '#') {
       navigate(path);
     }
+  };
+
+  const handleProfileClick = () => {
+    if (user?.role) {
+      navigate(`/${user.role}/profile`);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userRole');
+    setIsAuthenticated(false);
+    setUser(null);
+    navigate('/');
+  };
+
+  const getWelcomeMessage = () => {
+    if (!user) return '';
+    const name = user.firstName || user.name || 'User';
+    return `Welcome, ${name}!`;
+  };
+
+  const getRolePath = () => {
+    if (!user?.role) return '/';
+    return `/${user.role}`;
   };
 
   return (
@@ -112,53 +137,73 @@ const Navbar = ({ onOpenAuth, userRole, user, onLogout }: NavbarProps) => {
 
           {/* Desktop Auth/Profile Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center space-x-2">
-                      <User className="h-5 w-5 text-brand-primary" />
-                      <span className="text-sm font-medium text-gray-700">
-                        {user.name || 'Profile'}
-                      </span>
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-40 bg-white border shadow-lg">
-                    <DropdownMenuItem
-                      className="cursor-pointer flex items-center space-x-2"
-                      onClick={() => navigate('/profile')}
-                    >
-                      <User className="h-4 w-4 text-gray-600" />
-                      <span>Profile</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer flex items-center space-x-2 text-red-600"
-                      onClick={onLogout}
+            {isAuthenticated && user ? (
+              <>
+                {/* Welcome message for students, job seekers, employees, employers */}
+                {['student', 'jobseeker', 'employee', 'employer'].includes(user.role) ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="flex items-center space-x-2">
+                        <User className="h-5 w-5 text-brand-primary" />
+                        <span className="text-sm font-medium text-gray-700">
+                          {getWelcomeMessage()}
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-40 bg-white border shadow-lg">
+                      <DropdownMenuItem
+                        className="cursor-pointer flex items-center space-x-2"
+                        onClick={handleProfileClick}
+                      >
+                        <User className="h-4 w-4 text-gray-600" />
+                        <span>Profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer flex items-center space-x-2 text-red-600"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>Logout</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  /* Welcome message and logout button for admin/super-admin */
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm font-medium text-gray-700">
+                      {getWelcomeMessage()}
+                    </span>
+                    <Button
+                      onClick={handleLogout}
+                      variant="outline"
+                      className="flex items-center space-x-2 border-red-500 text-red-600 hover:bg-red-50"
                     >
                       <LogOut className="h-4 w-4" />
                       <span>Logout</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                ) : (
-                  <>
-                    <Button
-                      onClick={() => navigate('/login')}
-                      variant="outline"
-                      className="border-brand-primary text-brand-primary hover:bg-blue-50"
-                    >
-                      Login
                     </Button>
-
-                    <Button
-                      onClick={handleRegisterClick}
-                      className="bg-brand-primary hover:bg-blue-700 text-white"
-                    >
-                      Register
-                    </Button>
-                  </>
+                  </div>
                 )}
-              </div>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => navigate('/login')}
+                  variant="outline"
+                  className="border-brand-primary text-brand-primary hover:bg-blue-50"
+                >
+                  Login
+                </Button>
+
+                <Button
+                  onClick={handleRegisterClick}
+                  className="bg-brand-primary hover:bg-blue-700 text-white"
+                >
+                  Register
+                </Button>
+              </>
+            )}
+          </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden">
@@ -194,22 +239,25 @@ const Navbar = ({ onOpenAuth, userRole, user, onLogout }: NavbarProps) => {
               ))}
 
               <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900">Auth</h3>
+                <h3 className="font-semibold text-gray-900">Account</h3>
                 <div className="flex flex-col space-y-2 pl-4">
-                  {user ? (
+                  {isAuthenticated && user ? (
                     <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate('/profile')}
-                        className="border-brand-primary text-brand-primary"
-                      >
-                        Profile
-                      </Button>
+                      <span className="text-sm text-gray-700">{getWelcomeMessage()}</span>
+                      {['student', 'jobseeker', 'employee', 'employer'].includes(user.role) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleProfileClick}
+                          className="border-brand-primary text-brand-primary"
+                        >
+                          Profile
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={onLogout}
+                        onClick={handleLogout}
                       >
                         Logout
                       </Button>
@@ -219,14 +267,14 @@ const Navbar = ({ onOpenAuth, userRole, user, onLogout }: NavbarProps) => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onOpenAuth('login', 'student')}
+                        onClick={() => navigate('/login')}
                         className="border-brand-primary text-brand-primary"
                       >
                         Login
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => onOpenAuth('register', 'student')}
+                        onClick={handleRegisterClick}
                         className="bg-brand-primary hover:bg-blue-700"
                       >
                         Register
