@@ -23,13 +23,12 @@ interface Course {
   image: string;
   skills: string[];
   category: string;
-  subtopic:SubTopicSchema
+  subtopics: SubTopicSchema[];
 }
 
 interface SubTopicSchema {
-  id: string;
-  title: string;
-  link : string;
+  name: string;
+  link: string;
 }
 const CourseManagement = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -99,7 +98,7 @@ const CourseManagement = () => {
       id: Date.now().toString(),
       ...formData,
       skills: formData.skills.split(',').map(skill => skill.trim()),
-      subtopic: undefined
+      subtopics: formData.subtopics.filter(st => st.name.trim() && st.link.trim()),
     };
 
     setCourses(prev => [...prev, newCourse]);
@@ -125,6 +124,7 @@ const CourseManagement = () => {
       ...editingCourse,
       ...formData,
       skills: formData.skills.split(',').map(skill => skill.trim()),
+      subtopics: formData.subtopics.filter(st => st.name.trim() && st.link.trim()),
     };
 
     setCourses(prev => prev.map(course => 
@@ -161,7 +161,7 @@ const CourseManagement = () => {
       image: course.image,
       skills: course.skills.join(', '),
       category: course.category,
-      subtopic: course.subtopic
+      subtopics: course.subtopics
     });
     setIsEditDialogOpen(true);
   };

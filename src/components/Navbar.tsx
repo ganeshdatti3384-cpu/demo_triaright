@@ -12,24 +12,33 @@ import { useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
   onOpenAuth?: (type: 'login' | 'register', userType: string) => void;
+  user?: { role: string; name: string };
+  userRole?: string;
+  onLogout?: () => void;
 }
 
-const Navbar = ({ onOpenAuth }: NavbarProps) => {
+const Navbar = ({ onOpenAuth, user: propUser, onLogout }: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check authentication status
-    const token = localStorage.getItem('token');
-    const currentUser = localStorage.getItem('currentUser');
-    
-    if (token && currentUser) {
+    // Use prop user if provided, otherwise check localStorage
+    if (propUser) {
+      setUser(propUser);
       setIsAuthenticated(true);
-      setUser(JSON.parse(currentUser));
+    } else {
+      // Check authentication status from localStorage
+      const token = localStorage.getItem('token');
+      const currentUser = localStorage.getItem('currentUser');
+      
+      if (token && currentUser) {
+        setIsAuthenticated(true);
+        setUser(JSON.parse(currentUser));
+      }
     }
-  }, []);
+  }, [propUser]);
 
   const courseTypes = [
     { name: 'Live Courses', description: 'Interactive real-time learning', path: '/courses/live' },
