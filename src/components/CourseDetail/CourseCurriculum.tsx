@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { PlayCircle } from 'lucide-react';
 
+
 interface CourseCurriculumProps {
   curriculum: Array<{
     module: string;
