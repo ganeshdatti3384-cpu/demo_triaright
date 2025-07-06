@@ -137,7 +137,7 @@ const ForgotPassword = () => {
           <div className="hidden md:flex w-1/2 items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 p-6">
             <div className="text-center">
               <img
-                src="/lovable-uploads/login.png"
+                src="/lovable-uploads/register.png"
                 alt="Reset Password"
                 className="h-64 mx-auto mb-4"
               />
