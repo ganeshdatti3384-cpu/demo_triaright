@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Card,
@@ -34,22 +33,25 @@ import {
   User,
   GraduationCap,
   Briefcase,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { profileApi } from '@/services/api';
 import Navbar from './Navbar';
 
 const profileSchema = z.object({
-  fullName: z.string().min(2),
-  dob: z.string(),
-  gender: z.string(),
-  email: z.string().email(),
-  phone: z.string(),
+  fullName: z.string().min(2).optional(),
+  dob: z.string().optional(),
+  gender: z.string().optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
   altPhone: z.string().optional(),
-  address: z.string(),
+  address: z.string().optional(),
   fatherName: z.string().optional(),
-  maritalStatus: z.string(),
-  nationality: z.string(),
-  languages: z.string(),
+  maritalStatus: z.string().optional(),
+  nationality: z.string().optional(),
+  languages: z.string().optional(),
   hobbies: z.string().optional(),
   education: z.array(
     z.object({
@@ -57,7 +59,7 @@ const profileSchema = z.object({
       course: z.string(),
       year: z.string(),
     })
-  ),
+  ).optional(),
   projects: z
     .array(
       z.object({
@@ -77,9 +79,8 @@ const profileSchema = z.object({
       })
     )
     .optional(),
-  username: z.string(),
-  password: z.string(),
-});
+  username: z.string().optional(),
+}).passthrough();
 
 interface UploadedDocument {
   id: string;
@@ -94,8 +95,11 @@ const EnhancedProfile: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [profilePic, setProfilePic] = useState<string>('');
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const form = useForm<any>({
     resolver: zodResolver(profileSchema),
@@ -116,7 +120,6 @@ const EnhancedProfile: React.FC = () => {
       projects: [{ name: '', github: '', description: '' }],
       internships: [{ company: '', role: '', responsibilities: '' }],
       username: '',
-      password: '',
     },
   });
 
@@ -137,16 +140,15 @@ const EnhancedProfile: React.FC = () => {
 
   useEffect(() => {
     const currentUser = localStorage.getItem('currentUser');
-    if (currentUser) {
-      setUser(JSON.parse(currentUser));
+    const token = localStorage.getItem('token');
+    
+    if (currentUser && token) {
+      const userData = JSON.parse(currentUser);
+      setUser(userData);
+      fetchUserProfile(userData.role, token);
     }
 
-    const stored = localStorage.getItem('profileData');
-    if (stored) {
-      const profileData = JSON.parse(stored);
-      form.reset(profileData);
-    }
-
+    // Load stored documents and profile pic
     const storedPic = localStorage.getItem('profilePic');
     if (storedPic) {
       setProfilePic(storedPic);
@@ -157,6 +159,69 @@ const EnhancedProfile: React.FC = () => {
       setUploadedDocuments(JSON.parse(storedDocs));
     }
   }, []);
+
+  const fetchUserProfile = async (role: string, token: string) => {
+    setIsLoading(true);
+    try {
+      let profileData;
+      
+      switch (role) {
+        case 'student':
+          profileData = await profileApi.getStudentProfile(token);
+          break;
+        case 'jobseeker':
+          profileData = await profileApi.getJobSeekerProfile(token);
+          break;
+        case 'employer':
+          profileData = await profileApi.getEmployerProfile(token);
+          break;
+        case 'college':
+          profileData = await profileApi.getCollegeProfile(token);
+          break;
+        default:
+          console.log('No profile API available for this role');
+          return;
+      }
+
+      if (profileData) {
+        // Map API data to form structure
+        const formData = {
+          fullName: profileData.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`,
+          dob: profileData.dob || '',
+          gender: profileData.gender || '',
+          email: profileData.email || user?.email || '',
+          phone: profileData.phone || user?.phoneNumber || '',
+          altPhone: profileData.altPhone || user?.whatsappNumber || '',
+          address: profileData.address || user?.address || '',
+          fatherName: profileData.fatherName || '',
+          maritalStatus: profileData.maritalStatus || '',
+          nationality: profileData.nationality || '',
+          languages: profileData.languages || '',
+          hobbies: profileData.hobbies || '',
+          education: profileData.education || [{ institute: '', course: '', year: '' }],
+          projects: profileData.projects || [{ name: '', github: '', description: '' }],
+          internships: profileData.internships || [{ company: '', role: '', responsibilities: '' }],
+          username: profileData.username || user?.email || '',
+          ...profileData
+        };
+        
+        form.reset(formData);
+        
+        if (profileData.profilePicture) {
+          setProfilePic(profileData.profilePicture);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching profile:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load profile data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleProfilePicUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -188,6 +253,11 @@ const EnhancedProfile: React.FC = () => {
         setUploadedDocuments(updatedDocs);
         localStorage.setItem('uploadedDocuments', JSON.stringify(updatedDocs));
       });
+
+      toast({
+        title: 'Success',
+        description: `${category === 'document' ? 'Document' : 'Payslip'} uploaded successfully`,
+      });
     }
   };
 
@@ -195,11 +265,63 @@ const EnhancedProfile: React.FC = () => {
     const updatedDocs = uploadedDocuments.filter(doc => doc.id !== docId);
     setUploadedDocuments(updatedDocs);
     localStorage.setItem('uploadedDocuments', JSON.stringify(updatedDocs));
+    
+    toast({
+      title: 'Success',
+      description: 'Document deleted successfully',
+    });
   };
 
-  const onSubmit = (data: any) => {
-    localStorage.setItem('profileData', JSON.stringify(data));
-    alert('Profile saved successfully!');
+  const onSubmit = async (data: any) => {
+    const token = localStorage.getItem('token');
+    if (!token || !user) return;
+
+    setIsSubmitting(true);
+    
+    try {
+      // Add profile picture to form data if available
+      const formDataToSubmit = {
+        ...data,
+        profilePicture: profilePic
+      };
+
+      let response;
+      
+      switch (user.role) {
+        case 'student':
+          response = await profileApi.updateStudentProfile(token, formDataToSubmit);
+          break;
+        case 'jobseeker':
+          response = await profileApi.updateJobSeekerProfile(token, formDataToSubmit);
+          break;
+        case 'employer':
+          response = await profileApi.updateEmployerProfile(token, formDataToSubmit);
+          break;
+        case 'college':
+          response = await profileApi.updateCollegeProfile(token, formDataToSubmit);
+          break;
+        default:
+          throw new Error('No update API available for this role');
+      }
+
+      toast({
+        title: 'Success',
+        description: response.message || 'Profile updated successfully!',
+      });
+
+      // Also save to localStorage as backup
+      localStorage.setItem('profileData', JSON.stringify(data));
+      
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: 'Error',
+        description: error?.response?.data?.message || 'Failed to update profile',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getInitials = (name: string) => {
@@ -220,6 +342,14 @@ const EnhancedProfile: React.FC = () => {
   };
 
   const isEmployeeOrEmployer = user?.role === 'employee' || user?.role === 'employer';
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -270,7 +400,7 @@ const EnhancedProfile: React.FC = () => {
                     </Badge>
                     <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
                       <Star className="h-4 w-4 mr-1" />
-                      Active Learner
+                      Active Member
                     </Badge>
                   </div>
                   <p className="text-white/90 text-lg">
@@ -281,372 +411,384 @@ const EnhancedProfile: React.FC = () => {
             </div>
           </div>
 
-          <Tabs defaultValue="basic" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
-              <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="education">Education</TabsTrigger>
-              <TabsTrigger value="projects">Projects</TabsTrigger>
-              <TabsTrigger value="account">Account</TabsTrigger>
-              {isEmployeeOrEmployer && <TabsTrigger value="documents">Documents</TabsTrigger>}
-              {isEmployeeOrEmployer && <TabsTrigger value="payslips">Payslips</TabsTrigger>}
-            </TabsList>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Loading profile...</span>
+            </div>
+          ) : (
+            <Tabs defaultValue="basic" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+                <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                <TabsTrigger value="education">Education</TabsTrigger>
+                <TabsTrigger value="projects">Projects</TabsTrigger>
+                <TabsTrigger value="account">Account</TabsTrigger>
+                {isEmployeeOrEmployer && <TabsTrigger value="documents">Documents</TabsTrigger>}
+                {isEmployeeOrEmployer && <TabsTrigger value="payslips">Payslips</TabsTrigger>}
+              </TabsList>
 
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
-                <TabsContent value="basic" className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Basic Information */}
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)}>
+                  
+                  <TabsContent value="basic" className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Basic Information */}
+                      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                        <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
+                          <CardTitle className="flex items-center">
+                            <User className="h-5 w-5 mr-2" />
+                            Personal Details
+                          </CardTitle>
+                          <CardDescription className="text-white/90">
+                            Your basic personal information
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4">
+                          <FormField name="fullName" control={form.control} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name</FormLabel>
+                              <FormControl><Input {...field} className="border-2 focus:border-blue-500" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          
+                          <FormField name="dob" control={form.control} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date of Birth</FormLabel>
+                              <FormControl><Input type="date" {...field} className="border-2 focus:border-blue-500" /></FormControl>
+                            </FormItem>
+                          )} />
+                          
+                          <FormField name="gender" control={form.control} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Gender</FormLabel>
+                              <FormControl><Input placeholder="Male / Female / Other" {...field} className="border-2 focus:border-blue-500" /></FormControl>
+                            </FormItem>
+                          )} />
+                        </CardContent>
+                      </Card>
+
+                      {/* Contact Information */}
+                      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                        <CardHeader className="bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-t-lg">
+                          <CardTitle>Contact Information</CardTitle>
+                          <CardDescription className="text-white/90">
+                            How to reach you
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4">
+                          <FormField name="email" control={form.control} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl><Input type="email" {...field} className="border-2 focus:border-green-500" /></FormControl>
+                            </FormItem>
+                          )} />
+                          
+                          <FormField name="phone" control={form.control} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone</FormLabel>
+                              <FormControl><Input {...field} className="border-2 focus:border-green-500" /></FormControl>
+                            </FormItem>
+                          )} />
+                          
+                          <FormField name="altPhone" control={form.control} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Alternate Phone</FormLabel>
+                              <FormControl><Input {...field} className="border-2 focus:border-green-500" /></FormControl>
+                            </FormItem>
+                          )} />
+                          
+                          <FormField name="address" control={form.control} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Address</FormLabel>
+                              <FormControl><Textarea {...field} className="border-2 focus:border-green-500" /></FormControl>
+                            </FormItem>
+                          )} />
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  
+                  <TabsContent value="education" className="space-y-6">
                     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                      <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
+                      <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
                         <CardTitle className="flex items-center">
-                          <User className="h-5 w-5 mr-2" />
-                          Personal Details
+                          <GraduationCap className="h-5 w-5 mr-2" />
+                          Education History
                         </CardTitle>
                         <CardDescription className="text-white/90">
-                          Your basic personal information
+                          Your academic qualifications and achievements
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="p-6 space-y-4">
-                        <FormField name="fullName" control={form.control} render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Full Name</FormLabel>
-                            <FormControl><Input {...field} className="border-2 focus:border-blue-500" /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        
-                        <FormField name="dob" control={form.control} render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Date of Birth</FormLabel>
-                            <FormControl><Input type="date" {...field} className="border-2 focus:border-blue-500" /></FormControl>
-                          </FormItem>
-                        )} />
-                        
-                        <FormField name="gender" control={form.control} render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Gender</FormLabel>
-                            <FormControl><Input placeholder="Male / Female / Other" {...field} className="border-2 focus:border-blue-500" /></FormControl>
-                          </FormItem>
-                        )} />
+                      <CardContent className="p-6 space-y-6">
+                        {eduFields.map((field, index) => (
+                          <div key={field.id} className="p-4 border-2 border-purple-200 rounded-lg space-y-4">
+                            <h4 className="font-semibold text-purple-700">Education #{index + 1}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <FormField name={`education.${index}.institute`} control={form.control} render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Institute</FormLabel>
+                                  <FormControl><Input {...field} className="border-2 focus:border-purple-500" /></FormControl>
+                                </FormItem>
+                              )} />
+                              <FormField name={`education.${index}.course`} control={form.control} render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Course</FormLabel>
+                                  <FormControl><Input {...field} className="border-2 focus:border-purple-500" /></FormControl>
+                                </FormItem>
+                              )} />
+                              <FormField name={`education.${index}.year`} control={form.control} render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Year</FormLabel>
+                                  <FormControl><Input {...field} className="border-2 focus:border-purple-500" /></FormControl>
+                                </FormItem>
+                              )} />
+                            </div>
+                          </div>
+                        ))}
+                        <Button 
+                          type="button" 
+                          onClick={() => appendEdu({ institute: '', course: '', year: '' })}
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        >
+                          + Add Another Qualification
+                        </Button>
                       </CardContent>
                     </Card>
+                  </TabsContent>
 
-                    {/* Contact Information */}
+                  <TabsContent value="projects" className="space-y-6">
                     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                      <CardHeader className="bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-t-lg">
-                        <CardTitle>Contact Information</CardTitle>
+                      <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-lg">
+                        <CardTitle className="flex items-center">
+                          <Briefcase className="h-5 w-5 mr-2" />
+                          Projects & Experience
+                        </CardTitle>
                         <CardDescription className="text-white/90">
-                          How to reach you
+                          Showcase your work and achievements
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-6 space-y-6">
+                        {projFields.map((field, index) => (
+                          <div key={field.id} className="p-4 border-2 border-orange-200 rounded-lg space-y-4">
+                            <h4 className="font-semibold text-orange-700">Project #{index + 1}</h4>
+                            <div className="space-y-4">
+                              <FormField name={`projects.${index}.name`} control={form.control} render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Project Name</FormLabel>
+                                  <FormControl><Input {...field} className="border-2 focus:border-orange-500" /></FormControl>
+                                </FormItem>
+                              )} />
+                              <FormField name={`projects.${index}.github`} control={form.control} render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>GitHub Link</FormLabel>
+                                  <FormControl><Input {...field} className="border-2 focus:border-orange-500" /></FormControl>
+                                </FormItem>
+                              )} />
+                              <FormField name={`projects.${index}.description`} control={form.control} render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Description</FormLabel>
+                                  <FormControl><Textarea {...field} className="border-2 focus:border-orange-500" /></FormControl>
+                                </FormItem>
+                              )} />
+                            </div>
+                          </div>
+                        ))}
+                        <Button 
+                          type="button" 
+                          onClick={() => appendProj({ name: '', github: '', description: '' })}
+                          className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                        >
+                          + Add Another Project
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="account" className="space-y-6">
+                    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                      <CardHeader className="bg-gradient-to-r from-gray-600 to-gray-800 text-white rounded-t-lg">
+                        <CardTitle>Account Settings</CardTitle>
+                        <CardDescription className="text-white/90">
+                          Manage your login credentials
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="p-6 space-y-4">
-                        <FormField name="email" control={form.control} render={({ field }) => (
+                        <FormField name="username" control={form.control} render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl><Input type="email" {...field} className="border-2 focus:border-green-500" /></FormControl>
-                          </FormItem>
-                        )} />
-                        
-                        <FormField name="phone" control={form.control} render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Phone</FormLabel>
-                            <FormControl><Input {...field} className="border-2 focus:border-green-500" /></FormControl>
-                          </FormItem>
-                        )} />
-                        
-                        <FormField name="altPhone" control={form.control} render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Alternate Phone</FormLabel>
-                            <FormControl><Input {...field} className="border-2 focus:border-green-500" /></FormControl>
-                          </FormItem>
-                        )} />
-                        
-                        <FormField name="address" control={form.control} render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Address</FormLabel>
-                            <FormControl><Textarea {...field} className="border-2 focus:border-green-500" /></FormControl>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl><Input {...field} className="border-2 focus:border-gray-500" /></FormControl>
                           </FormItem>
                         )} />
                       </CardContent>
                     </Card>
+                  </TabsContent>
+
+                  
+                  {isEmployeeOrEmployer && (
+                    <>
+                      <TabsContent value="documents" className="space-y-6">
+                        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                          <CardHeader className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-t-lg">
+                            <CardTitle className="flex items-center">
+                              <FileText className="h-5 w-5 mr-2" />
+                              Document Management
+                            </CardTitle>
+                            <CardDescription className="text-white/90">
+                              Upload and manage your documents
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="p-6 space-y-6">
+                            <div className="border-2 border-dashed border-teal-300 rounded-lg p-6 text-center">
+                              <Upload className="h-12 w-12 text-teal-500 mx-auto mb-4" />
+                              <Button
+                                type="button"
+                                onClick={() => documentInputRef.current?.click()}
+                                className="bg-gradient-to-r from-teal-500 to-cyan-500"
+                              >
+                                Upload Documents
+                              </Button>
+                              <p className="text-sm text-gray-600 mt-2">
+                                Supported formats: PDF, DOC, DOCX, JPG, PNG
+                              </p>
+                              <input
+                                ref={documentInputRef}
+                                type="file"
+                                multiple
+                                accept=".pdf,.doc,.docx,.jpg,.png,.jpeg"
+                                onChange={(e) => handleDocumentUpload(e, 'document')}
+                                className="hidden"
+                              />
+                            </div>
+
+                            <div className="space-y-3">
+                              <h4 className="font-semibold text-lg">Uploaded Documents</h4>
+                              {uploadedDocuments.filter(doc => doc.category === 'document').map((doc) => (
+                                <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center space-x-3">
+                                    <FileText className="h-5 w-5 text-teal-600" />
+                                    <div>
+                                      <p className="font-medium">{doc.name}</p>
+                                      <p className="text-sm text-gray-600">
+                                        {formatFileSize(doc.size)} • {new Date(doc.uploadDate).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button size="sm" variant="outline">
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="sm" variant="outline">
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="destructive"
+                                      onClick={() => deleteDocument(doc.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </TabsContent>
+
+                      <TabsContent value="payslips" className="space-y-6">
+                        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                          <CardHeader className="bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-t-lg">
+                            <CardTitle className="flex items-center">
+                              <FileText className="h-5 w-5 mr-2" />
+                              Payslips Management
+                            </CardTitle>
+                            <CardDescription className="text-white/90">
+                              Upload and view your payslips
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="p-6 space-y-6">
+                            <div className="border-2 border-dashed border-emerald-300 rounded-lg p-6 text-center">
+                              <Upload className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
+                              <Button
+                                type="button"
+                                onClick={() => {
+                                  const input = document.createElement('input');
+                                  input.type = 'file';
+                                  input.multiple = true;
+                                  input.accept = '.pdf,.doc,.docx,.jpg,.png,.jpeg';
+                                  input.onchange = (e) => handleDocumentUpload(e as any, 'payslip');
+                                  input.click();
+                                }}
+                                className="bg-gradient-to-r from-emerald-500 to-green-500"
+                              >
+                                Upload Payslips
+                              </Button>
+                              <p className="text-sm text-gray-600 mt-2">
+                                Upload your monthly payslips securely
+                              </p>
+                            </div>
+
+                            <div className="space-y-3">
+                              <h4 className="font-semibold text-lg">Payslip History</h4>
+                              {uploadedDocuments.filter(doc => doc.category === 'payslip').map((doc) => (
+                                <div key={doc.id} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
+                                  <div className="flex items-center space-x-3">
+                                    <FileText className="h-5 w-5 text-emerald-600" />
+                                    <div>
+                                      <p className="font-medium">{doc.name}</p>
+                                      <p className="text-sm text-gray-600">
+                                        {formatFileSize(doc.size)} • {new Date(doc.uploadDate).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button size="sm" variant="outline">
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="sm" variant="outline">
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="destructive"
+                                      onClick={() => deleteDocument(doc.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </TabsContent>
+                    </>
+                  )}
+
+                  {/* Submit Button */}
+                  <div className="flex justify-center mt-8">
+                    <Button 
+                      type="submit"
+                      size="lg"
+                      disabled={isSubmitting}
+                      className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-12 py-3 text-lg shadow-lg transform transition-all duration-300 hover:scale-105"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          Updating Profile...
+                        </>
+                      ) : (
+                        'Save Profile'
+                      )}
+                    </Button>
                   </div>
-                </TabsContent>
-
-                <TabsContent value="education" className="space-y-6">
-                  <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                    <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
-                      <CardTitle className="flex items-center">
-                        <GraduationCap className="h-5 w-5 mr-2" />
-                        Education History
-                      </CardTitle>
-                      <CardDescription className="text-white/90">
-                        Your academic qualifications and achievements
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-6">
-                      {eduFields.map((field, index) => (
-                        <div key={field.id} className="p-4 border-2 border-purple-200 rounded-lg space-y-4">
-                          <h4 className="font-semibold text-purple-700">Education #{index + 1}</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormField name={`education.${index}.institute`} control={form.control} render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Institute</FormLabel>
-                                <FormControl><Input {...field} className="border-2 focus:border-purple-500" /></FormControl>
-                              </FormItem>
-                            )} />
-                            <FormField name={`education.${index}.course`} control={form.control} render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Course</FormLabel>
-                                <FormControl><Input {...field} className="border-2 focus:border-purple-500" /></FormControl>
-                              </FormItem>
-                            )} />
-                            <FormField name={`education.${index}.year`} control={form.control} render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Year</FormLabel>
-                                <FormControl><Input {...field} className="border-2 focus:border-purple-500" /></FormControl>
-                              </FormItem>
-                            )} />
-                          </div>
-                        </div>
-                      ))}
-                      <Button 
-                        type="button" 
-                        onClick={() => appendEdu({ institute: '', course: '', year: '' })}
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                      >
-                        + Add Another Qualification
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="projects" className="space-y-6">
-                  <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                    <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-lg">
-                      <CardTitle className="flex items-center">
-                        <Briefcase className="h-5 w-5 mr-2" />
-                        Projects & Experience
-                      </CardTitle>
-                      <CardDescription className="text-white/90">
-                        Showcase your work and achievements
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-6">
-                      {projFields.map((field, index) => (
-                        <div key={field.id} className="p-4 border-2 border-orange-200 rounded-lg space-y-4">
-                          <h4 className="font-semibold text-orange-700">Project #{index + 1}</h4>
-                          <div className="space-y-4">
-                            <FormField name={`projects.${index}.name`} control={form.control} render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Project Name</FormLabel>
-                                <FormControl><Input {...field} className="border-2 focus:border-orange-500" /></FormControl>
-                              </FormItem>
-                            )} />
-                            <FormField name={`projects.${index}.github`} control={form.control} render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>GitHub Link</FormLabel>
-                                <FormControl><Input {...field} className="border-2 focus:border-orange-500" /></FormControl>
-                              </FormItem>
-                            )} />
-                            <FormField name={`projects.${index}.description`} control={form.control} render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Description</FormLabel>
-                                <FormControl><Textarea {...field} className="border-2 focus:border-orange-500" /></FormControl>
-                              </FormItem>
-                            )} />
-                          </div>
-                        </div>
-                      ))}
-                      <Button 
-                        type="button" 
-                        onClick={() => appendProj({ name: '', github: '', description: '' })}
-                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                      >
-                        + Add Another Project
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="account" className="space-y-6">
-                  <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                    <CardHeader className="bg-gradient-to-r from-gray-600 to-gray-800 text-white rounded-t-lg">
-                      <CardTitle>Account Settings</CardTitle>
-                      <CardDescription className="text-white/90">
-                        Manage your login credentials
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-4">
-                      <FormField name="username" control={form.control} render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Username</FormLabel>
-                          <FormControl><Input {...field} className="border-2 focus:border-gray-500" /></FormControl>
-                        </FormItem>
-                      )} />
-                      <FormField name="password" control={form.control} render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl><Input type="password" {...field} className="border-2 focus:border-gray-500" /></FormControl>
-                        </FormItem>
-                      )} />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {isEmployeeOrEmployer && (
-                  <TabsContent value="documents" className="space-y-6">
-                    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                      <CardHeader className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-t-lg">
-                        <CardTitle className="flex items-center">
-                          <FileText className="h-5 w-5 mr-2" />
-                          Document Management
-                        </CardTitle>
-                        <CardDescription className="text-white/90">
-                          Upload and manage your documents
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="p-6 space-y-6">
-                        <div className="border-2 border-dashed border-teal-300 rounded-lg p-6 text-center">
-                          <Upload className="h-12 w-12 text-teal-500 mx-auto mb-4" />
-                          <Button
-                            type="button"
-                            onClick={() => documentInputRef.current?.click()}
-                            className="bg-gradient-to-r from-teal-500 to-cyan-500"
-                          >
-                            Upload Documents
-                          </Button>
-                          <p className="text-sm text-gray-600 mt-2">
-                            Supported formats: PDF, DOC, DOCX, JPG, PNG
-                          </p>
-                          <input
-                            ref={documentInputRef}
-                            type="file"
-                            multiple
-                            accept=".pdf,.doc,.docx,.jpg,.png,.jpeg"
-                            onChange={(e) => handleDocumentUpload(e, 'document')}
-                            className="hidden"
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-lg">Uploaded Documents</h4>
-                          {uploadedDocuments.filter(doc => doc.category === 'document').map((doc) => (
-                            <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                              <div className="flex items-center space-x-3">
-                                <FileText className="h-5 w-5 text-teal-600" />
-                                <div>
-                                  <p className="font-medium">{doc.name}</p>
-                                  <p className="text-sm text-gray-600">
-                                    {formatFileSize(doc.size)} • {new Date(doc.uploadDate).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex space-x-2">
-                                <Button size="sm" variant="outline">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="destructive"
-                                  onClick={() => deleteDocument(doc.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                )}
-
-                {isEmployeeOrEmployer && (
-                  <TabsContent value="payslips" className="space-y-6">
-                    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                      <CardHeader className="bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-t-lg">
-                        <CardTitle className="flex items-center">
-                          <FileText className="h-5 w-5 mr-2" />
-                          Payslips Management
-                        </CardTitle>
-                        <CardDescription className="text-white/90">
-                          Upload and view your payslips
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="p-6 space-y-6">
-                        <div className="border-2 border-dashed border-emerald-300 rounded-lg p-6 text-center">
-                          <Upload className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              const input = document.createElement('input');
-                              input.type = 'file';
-                              input.multiple = true;
-                              input.accept = '.pdf,.doc,.docx,.jpg,.png,.jpeg';
-                              input.onchange = (e) => handleDocumentUpload(e as any, 'payslip');
-                              input.click();
-                            }}
-                            className="bg-gradient-to-r from-emerald-500 to-green-500"
-                          >
-                            Upload Payslips
-                          </Button>
-                          <p className="text-sm text-gray-600 mt-2">
-                            Upload your monthly payslips securely
-                          </p>
-                        </div>
-
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-lg">Payslip History</h4>
-                          {uploadedDocuments.filter(doc => doc.category === 'payslip').map((doc) => (
-                            <div key={doc.id} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                              <div className="flex items-center space-x-3">
-                                <FileText className="h-5 w-5 text-emerald-600" />
-                                <div>
-                                  <p className="font-medium">{doc.name}</p>
-                                  <p className="text-sm text-gray-600">
-                                    {formatFileSize(doc.size)} • {new Date(doc.uploadDate).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex space-x-2">
-                                <Button size="sm" variant="outline">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="destructive"
-                                  onClick={() => deleteDocument(doc.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                )}
-
-                {/* Submit Button */}
-                <div className="flex justify-center mt-8">
-                  <Button 
-                    type="submit"
-                    size="lg"
-                    className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-12 py-3 text-lg shadow-lg transform transition-all duration-300 hover:scale-105"
-                  >
-                    Save Profile
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </Tabs>
+                </form>
+              </Form>
+            </Tabs>
+          )}
         </div>
       </div>
     </>
