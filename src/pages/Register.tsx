@@ -68,18 +68,18 @@ const Register = () => {
   });
 
   const handleRegister = async (formData: RegisterPayload) => {
-  try {
-    const response = await authApi.register(formData);
-    toast({ title: "Success", description: response.message });
-    navigate("/login");
-  } catch (error: any) {
-    toast({
-      title: "Registration Failed",
-      description: error?.response?.data?.error || "Something went wrong",
-      variant: "destructive",
-    });
-  }
-};
+    try {
+      const response = await authApi.register(formData);
+      toast({ title: "Success", description: "Registration successful! Please login." });
+      navigate("/login");
+    } catch (error: any) {
+      toast({
+        title: "Registration Failed",
+        description: error?.response?.data?.error || "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
 
 
   const indianStates = [

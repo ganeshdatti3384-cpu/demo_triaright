@@ -13,8 +13,8 @@ export interface RegisterPayload {
   firstName: string;
   lastName: string;
   email: string;
-  phoneNumber: string;
-  whatsappNumber: string;
+  phoneNumber?: string;
+  whatsappNumber?: string;
   address: string;
   role: 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
   password: string;
@@ -25,7 +25,10 @@ export interface UpdatePasswordPayload {
   newPassword: string;
 }
 
+export type UserRole = 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
+
 export interface User {
+  id: string;
   _id: string;
   userId: string;
   firstName: string;
@@ -34,7 +37,7 @@ export interface User {
   phoneNumber: string;
   whatsappNumber: string;
   address: string;
-  role: string;
+  role: UserRole;
   createdAt: string;
   updatedAt: string;
 }
@@ -64,7 +67,7 @@ export const authApi = {
     return res.data;
   },
 
-  register: async (payload: RegisterPayload): Promise<{ message: string }> => {
+  register: async (payload: RegisterPayload): Promise<LoginResponse> => {
     const res = await axios.post(`${API_BASE_URL}/users/register`, payload);
     return res.data;
   },
@@ -97,6 +100,41 @@ export const authApi = {
     return res.data;
   },
 };
+
+export interface Pack365Course {
+  _id?: string;
+  courseId?: string;
+  courseName: string;
+  description: string;
+  stream: 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance';
+  documentLink: string;
+  topics: Array<{ name: string; link: string; }>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Pack365Enrollment {
+  _id?: string;
+  userId: string;
+  courseId: string;
+  courseName: string;
+  amountPaid: number;
+  paymentId: string;
+  enrollmentDate: string;
+  expiresAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RazorpayOrderResponse {
+  success: boolean;
+  order: {
+    id: string;
+    amount: number;
+    currency: string;
+    receipt: string;
+  };
+}
 
 export const profileApi = {
   // ✅ College
@@ -178,6 +216,108 @@ export const profileApi = {
 
   getStudentProfile: async (token: string): Promise<StudentProfile> => {
     const res = await axios.get(`${API_BASE_URL}/students/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+};
+
+export const pack365Api = {
+  // Get all Pack365 courses
+  getAllCourses: async (): Promise<{ success: boolean; data: Pack365Course[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/courses`);
+    return res.data;
+  },
+
+  // Get course by ID
+  getCourseById: async (
+    id: string, 
+    token: string
+  ): Promise<{ success: boolean; data: Pack365Course }> => {
+    const res = await axios.get(`${API_BASE_URL}/courses/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Create course (admin only)
+  createCourse: async (
+    token: string,
+    data: Partial<Pack365Course> & { courseDocument?: File }
+  ): Promise<{ success: boolean; message: string; course: Pack365Course }> => {
+    const formData = toFormData(data);
+    const res = await axios.post(`${API_BASE_URL}/courses`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+
+  // Update course (admin only)
+  updateCourse: async (
+    token: string,
+    id: string,
+    data: Partial<Pack365Course> & { courseDocument?: File }
+  ): Promise<{ success: boolean; message: string; course: Pack365Course }> => {
+    const formData = toFormData(data);
+    const res = await axios.put(`${API_BASE_URL}/courses/${id}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+
+  // Delete course (admin only)
+  deleteCourse: async (
+    token: string,
+    id: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const res = await axios.delete(`${API_BASE_URL}/courses/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Create Razorpay order
+  createOrder: async (
+    token: string,
+    courseId: string
+  ): Promise<RazorpayOrderResponse> => {
+    const res = await axios.post(
+      `${API_BASE_URL}/enrollments/create-order`,
+      { courseId },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return res.data;
+  },
+
+  // Enroll in course after payment
+  enrollInCourse: async (
+    token: string,
+    data: {
+      courseId: string;
+      razorpay_order_id: string;
+      razorpay_payment_id: string;
+      razorpay_signature: string;
+    }
+  ): Promise<{ success: boolean; message: string; enrollment: Pack365Enrollment }> => {
+    const res = await axios.post(`${API_BASE_URL}/enrollments/enroll`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get user's enrollments
+  getMyEnrollments: async (
+    token: string
+  ): Promise<{ success: boolean; enrollments: Pack365Enrollment[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/enrollments/my-enrollments`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

@@ -59,9 +59,7 @@ const StudentDashboard = () => {
       bgColor: 'bg-yellow-50'
     }
   ];
-  const user = [
-    {name:"varun",email:"example@gmail.com"}
-  ];
+  const user = { name: "varun", email: "example@gmail.com" };
   return (
           <>
           <Navbar

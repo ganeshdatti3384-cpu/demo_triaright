@@ -9,7 +9,7 @@ import {
   ReactNode,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from '../services/api';
+import { User as ApiUser, LoginResponse, RegisterPayload, authApi, UserRole as ApiUserRole } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 
 // ---------------------- Types ------------------------
@@ -42,7 +42,7 @@ export interface RegisterData {
   role: UserRole;
   phoneNumber?: string;
   whatsappNumber?: string;
-  address?: string;
+  address: string; // Required to match API
 }
 
 export interface AuthContextType {
@@ -114,12 +114,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await authApi.login({ email, password });
 
       if (response?.token && response?.user) {
-        const { token: authToken, user: userData } = response;
+        const { token: authToken, user: apiUser } = response;
+
+        const userData: User = {
+          id: apiUser._id,
+          email: apiUser.email,
+          firstName: apiUser.firstName,
+          lastName: apiUser.lastName,
+          role: apiUser.role as UserRole,
+          phoneNumber: apiUser.phoneNumber,
+          whatsappNumber: apiUser.whatsappNumber,
+          address: apiUser.address,
+        };
 
         localStorage.setItem('token', authToken);
         localStorage.setItem('currentUser', JSON.stringify(userData));
         localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('userRole', userData.role);
+        localStorage.setItem('userRole', apiUser.role);
 
         setToken(authToken);
         setUser(userData);
@@ -150,18 +161,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const response = await authApi.register(userData);
+      const registerPayload: RegisterPayload = {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        phoneNumber: userData.phoneNumber,
+        whatsappNumber: userData.whatsappNumber,
+        address: userData.address,
+        role: userData.role as ApiUserRole,
+        password: userData.password,
+      };
+      
+      const response = await authApi.register(registerPayload);
 
       if (response?.token && response?.user) {
         const { token: authToken, user: newUser } = response;
+        
+        const newUserData: User = {
+          id: newUser._id,
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          role: newUser.role as UserRole,
+          phoneNumber: newUser.phoneNumber,
+          whatsappNumber: newUser.whatsappNumber,
+          address: newUser.address,
+        };
 
         localStorage.setItem('token', authToken);
-        localStorage.setItem('currentUser', JSON.stringify(newUser));
+        localStorage.setItem('currentUser', JSON.stringify(newUserData));
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userRole', newUser.role);
 
         setToken(authToken);
-        setUser(newUser);
+        setUser(newUserData);
         setIsAuthenticated(true);
 
         toast({
@@ -169,7 +202,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: `Welcome to Aploye, ${newUser.firstName}!`,
         });
 
-        navigateByRole(newUser.role);
+        navigateByRole(newUser.role as UserRole);
         return true;
       }
       return false;

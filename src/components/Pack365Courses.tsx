@@ -4,93 +4,80 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Clock, BookOpen, Users, Star } from 'lucide-react';
-
-interface Pack365Course {
-  id: string;
-  title: string;
-  description: string;
-  instructor: string;
-  duration: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced';
-  price: number;
-  isPaid: boolean;
-  image: string;
-  skills: string[];
-  rating: number;
-  studentsEnrolled: number;
-  category: string;
-}
+import { Clock, BookOpen, Users, Star, AlertCircle } from 'lucide-react';
+import { pack365Api, Pack365Course } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
 
 const Pack365Courses = () => {
   const [courses, setCourses] = useState<Pack365Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Load Pack365 courses from localStorage or use sample data
-    const savedCourses = localStorage.getItem('pack365Courses');
-    if (savedCourses) {
-      setCourses(JSON.parse(savedCourses));
-    } else {
-      const sampleCourses: Pack365Course[] = [
-        {
-          id: '1',
-          title: 'Complete Web Development Bootcamp',
-          description: 'Master HTML, CSS, JavaScript, React, Node.js and more in this comprehensive course.',
-          instructor: 'John Smith',
-          duration: '365 days',
-          level: 'Beginner',
-          price: 365,
-          isPaid: true,
-          image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-          skills: ['HTML', 'CSS', 'JavaScript', 'React', 'Node.js'],
-          rating: 4.8,
-          studentsEnrolled: 12500,
-          category: 'Web Development'
-        },
-        {
-          id: '2',
-          title: 'Full Stack Data Science Pack',
-          description: 'Learn Python, Machine Learning, Data Analysis, and AI in one comprehensive package.',
-          instructor: 'Sarah Johnson',
-          duration: '365 days',
-          level: 'Intermediate',
-          price: 365,
-          isPaid: true,
-          image: '/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png',
-          skills: ['Python', 'Machine Learning', 'Data Analysis', 'AI'],
-          rating: 4.9,
-          studentsEnrolled: 8900,
-          category: 'Data Science'
-        },
-        {
-          id: '3',
-          title: 'Free Programming Fundamentals',
-          description: 'Start your coding journey with basic programming concepts and logic.',
-          instructor: 'Mike Wilson',
-          duration: '365 days',
-          level: 'Beginner',
-          price: 0,
-          isPaid: false,
-          image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-          skills: ['Programming Logic', 'Algorithms', 'Basic Coding'],
-          rating: 4.5,
-          studentsEnrolled: 25000,
-          category: 'Programming'
-        }
-      ];
-      setCourses(sampleCourses);
-      localStorage.setItem('pack365Courses', JSON.stringify(sampleCourses));
-    }
+    loadCourses();
   }, []);
 
-  const handleEnrollClick = (course: Pack365Course) => {
-    if (course.isPaid) {
-      navigate(`/pack365/payment/${course.id}`);
-    } else {
-      navigate(`/pack365/course/${course.id}`);
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      const response = await pack365Api.getAllCourses();
+      if (response.success) {
+        setCourses(response.data);
+      } else {
+        setError('Failed to load courses');
+      }
+    } catch (err: any) {
+      console.error('Error loading courses:', err);
+      setError(err.message || 'Failed to load courses');
+      toast({
+        title: "Error",
+        description: "Failed to load courses. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleEnrollClick = (course: Pack365Course) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: "Login Required",
+        description: "Please login to enroll in courses.",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+    navigate(`/pack365/payment/${course._id}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading courses...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Courses</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={loadCourses}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
@@ -104,82 +91,87 @@ const Pack365Courses = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {courses.map((course) => (
-            <Card key={course.id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
-              <div className="relative">
-                <img 
-                  src={course.image} 
-                  alt={course.title}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="absolute top-4 right-4">
-                  {course.isPaid ? (
+        {courses.length === 0 ? (
+          <div className="text-center py-12">
+            <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Courses Available</h3>
+            <p className="text-gray-600">Check back later for new course packages.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {courses.map((course) => (
+              <Card key={course._id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                <div className="relative">
+                  <div className="w-full h-48 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                    <BookOpen className="h-16 w-16 text-white" />
+                  </div>
+                  <div className="absolute top-4 right-4">
                     <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                      ${course.price}
+                      $365
                     </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="bg-green-500 text-white">
-                      FREE
+                  </div>
+                  <div className="absolute top-4 left-4">
+                    <Badge variant="secondary" className="bg-white/90 text-gray-800">
+                      {course.stream.toUpperCase()}
                     </Badge>
-                  )}
-                </div>
-              </div>
-              
-              <CardHeader>
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="outline">{course.level}</Badge>
-                  <div className="flex items-center space-x-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium">{course.rating}</span>
                   </div>
                 </div>
-                <CardTitle className="text-xl mb-2">{course.title}</CardTitle>
-                <p className="text-gray-600 text-sm mb-4">{course.description}</p>
-              </CardHeader>
-              
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-sm text-gray-500">
+                
+                <CardHeader>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline">Professional</Badge>
                     <div className="flex items-center space-x-1">
-                      <BookOpen className="h-4 w-4" />
-                      <span>{course.instructor}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-4 w-4" />
-                      <span>{course.duration}</span>
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm font-medium">4.8</span>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-1 text-sm text-gray-500">
-                    <Users className="h-4 w-4" />
-                    <span>{course.studentsEnrolled.toLocaleString()} students enrolled</span>
+                  <CardTitle className="text-xl mb-2">{course.courseName}</CardTitle>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{course.description}</p>
+                </CardHeader>
+                
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <div className="flex items-center space-x-1">
+                        <BookOpen className="h-4 w-4" />
+                        <span>{course.topics?.length || 0} Topics</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-4 w-4" />
+                        <span>365 days access</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-1 text-sm text-gray-500">
+                      <Users className="h-4 w-4" />
+                      <span>Premium Content</span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-1">
+                      {course.topics?.slice(0, 3).map((topic, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {topic.name}
+                        </Badge>
+                      ))}
+                      {course.topics && course.topics.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{course.topics.length - 3} more
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <Button 
+                      onClick={() => handleEnrollClick(course)}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      Enroll Now - $365
+                    </Button>
                   </div>
-                  
-                  <div className="flex flex-wrap gap-1">
-                    {course.skills.slice(0, 3).map((skill, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                    {course.skills.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{course.skills.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <Button 
-                    onClick={() => handleEnrollClick(course)}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    {course.isPaid ? 'Enroll Now - $365' : 'Start Free Course'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
