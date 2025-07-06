@@ -19,12 +19,16 @@ const Pack365Payment = () => {
   const [showPaymentGateway, setShowPaymentGateway] = useState(false);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
     if (courseId && token) {
-      fetchCourse(courseId);
+      fetchCourse(courseId, token);
+    } else if (!token) {
+      toast({ title: 'Please login to continue.', variant: 'destructive' });
+      navigate('/login');
     }
-  }, [courseId, token]);
+  }, [courseId, navigate, toast]);
 
-  const fetchCourse = async (id: string) => {
+  const fetchCourse = async (id: string, token: string) => {
     try {
       const response = await pack365Api.getCourseById(id, token);
       const courseData = response.data;

@@ -4,20 +4,74 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { authApi } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(email, password);
+    setIsLoading(true);
+
+    try {
+      const response = await authApi.login({ email, password });
+      
+      // Store authentication data in localStorage
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('currentUser', JSON.stringify(response.user));
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userRole', response.user.role);
+
+      toast({
+        title: 'Login successful!',
+        description: 'Welcome back!',
+      });
+
+      // Redirect based on user role
+      switch (response.user.role) {
+        case 'student':
+          navigate('/student');
+          break;
+        case 'jobseeker':
+          navigate('/jobseeker');
+          break;
+        case 'employee':
+          navigate('/employee');
+          break;
+        case 'employer':
+          navigate('/employer');
+          break;
+        case 'college':
+          navigate('/college');
+          break;
+        case 'admin':
+          navigate('/admin');
+          break;
+        case 'superadmin':
+          navigate('/super-admin');
+          break;
+        default:
+          navigate('/');
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Login failed',
+        description: error.response?.data?.message || 'Invalid credentials',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
