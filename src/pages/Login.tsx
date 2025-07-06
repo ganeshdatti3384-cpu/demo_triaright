@@ -45,9 +45,6 @@ const Login = () => {
         case 'jobseeker':
           navigate('/jobseeker');
           break;
-        case 'employee':
-          navigate('/employee');
-          break;
         case 'employer':
           navigate('/employer');
           break;
