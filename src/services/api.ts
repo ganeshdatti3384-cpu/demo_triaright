@@ -225,7 +225,7 @@ export const profileApi = {
 export const pack365Api = {
   // Get all Pack365 courses
   getAllCourses: async (): Promise<{ success: boolean; data: Pack365Course[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/courses`);
+    const res = await axios.get(`${API_BASE_URL}/pack365`);
     return res.data;
   },
 
@@ -234,7 +234,7 @@ export const pack365Api = {
     id: string, 
     token: string
   ): Promise<{ success: boolean; data: Pack365Course }> => {
-    const res = await axios.get(`${API_BASE_URL}/courses/${id}`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -246,7 +246,7 @@ export const pack365Api = {
     data: Partial<Pack365Course> & { courseDocument?: File }
   ): Promise<{ success: boolean; message: string; course: Pack365Course }> => {
     const formData = toFormData(data);
-    const res = await axios.post(`${API_BASE_URL}/courses`, formData, {
+    const res = await axios.post(`${API_BASE_URL}/pack365`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -262,7 +262,7 @@ export const pack365Api = {
     data: Partial<Pack365Course> & { courseDocument?: File }
   ): Promise<{ success: boolean; message: string; course: Pack365Course }> => {
     const formData = toFormData(data);
-    const res = await axios.put(`${API_BASE_URL}/courses/${id}`, formData, {
+    const res = await axios.put(`${API_BASE_URL}/pack365/${id}`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -276,7 +276,7 @@ export const pack365Api = {
     token: string,
     id: string
   ): Promise<{ success: boolean; message: string }> => {
-    const res = await axios.delete(`${API_BASE_URL}/courses/${id}`, {
+    const res = await axios.delete(`${API_BASE_URL}/pack365/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
