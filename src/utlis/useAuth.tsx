@@ -1,11 +1,26 @@
-
-import { useState, useEffect, useContext, createContext, ReactNode } from 'react';
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-refresh/only-export-components */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+  useState,
+  useEffect,
+  useContext,
+  createContext,
+  ReactNode,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from '@/services/api';
-import { useToast } from '@/hooks/use-toast';
+import { authApi } from '../services/api';
+import { useToast } from '../hooks/use-toast';
 
-// Types
-export type UserRole = 'student' | 'jobseeker' | 'employee' | 'employer' | 'college' | 'admin' | 'superadmin';
+// ---------------------- Types ------------------------
+export type UserRole =
+  | 'student'
+  | 'jobseeker'
+  | 'employee'
+  | 'employer'
+  | 'college'
+  | 'admin'
+  | 'superadmin';
 
 export interface User {
   id: string;
@@ -17,6 +32,17 @@ export interface User {
   whatsappNumber?: string;
   address?: string;
   isVerified?: boolean;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  phoneNumber?: string;
+  whatsappNumber?: string;
+  address?: string;
 }
 
 export interface AuthContextType {
@@ -31,21 +57,10 @@ export interface AuthContextType {
   refreshAuth: () => Promise<void>;
 }
 
-export interface RegisterData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole;
-  phoneNumber?: string;
-  whatsappNumber?: string;
-  address?: string;
-}
-
-// Create Auth Context
+// ---------------------- Context ------------------------
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Auth Provider Component
+// ---------------------- Provider ------------------------
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -54,7 +69,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Initialize auth state from localStorage
   useEffect(() => {
     initializeAuth();
   }, []);
@@ -71,11 +85,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setToken(storedToken);
         setUser(userData);
         setIsAuthenticated(true);
-        
-        // Verify token is still valid
+
         await validateToken(storedToken);
       } else {
-        // Clear any invalid stored data
         clearAuthData();
       }
     } catch (error) {
@@ -88,9 +100,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const validateToken = async (tokenToValidate: string) => {
     try {
-      // You can add a token validation API call here if available
-      // For now, we'll assume the token is valid if it exists
       console.log('Token validated:', tokenToValidate);
+      // Optionally: add real token validation logic
     } catch (error) {
       console.error('Token validation failed:', error);
       clearAuthData();
@@ -105,13 +116,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (response?.token && response?.user) {
         const { token: authToken, user: userData } = response;
 
-        // Store in localStorage
         localStorage.setItem('token', authToken);
         localStorage.setItem('currentUser', JSON.stringify(userData));
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userRole', userData.role);
 
-        // Update state
         setToken(authToken);
         setUser(userData);
         setIsAuthenticated(true);
@@ -121,7 +130,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: `Welcome back, ${userData.firstName}!`,
         });
 
-        // Navigate based on role
         navigateByRole(userData.role);
         return true;
       }
@@ -147,13 +155,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (response?.token && response?.user) {
         const { token: authToken, user: newUser } = response;
 
-        // Store in localStorage
         localStorage.setItem('token', authToken);
         localStorage.setItem('currentUser', JSON.stringify(newUser));
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userRole', newUser.role);
 
-        // Update state
         setToken(authToken);
         setUser(newUser);
         setIsAuthenticated(true);
@@ -163,7 +169,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: `Welcome to Aploye, ${newUser.firstName}!`,
         });
 
-        // Navigate based on role
         navigateByRole(newUser.role);
         return true;
       }
@@ -191,16 +196,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const clearAuthData = () => {
-    // Clear localStorage
-    localStorage.removeItem('token');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('profileData');
-    localStorage.removeItem('profilePic');
-    localStorage.removeItem('uploadedDocuments');
+    [
+      'token',
+      'currentUser',
+      'isAuthenticated',
+      'userRole',
+      'profileData',
+      'profilePic',
+      'uploadedDocuments',
+    ].forEach(key => localStorage.removeItem(key));
 
-    // Clear state
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
@@ -265,59 +270,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Custom hook to use auth context
+// ---------------------- Hook ------------------------
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
 
-// Helper functions for role-based access
-export const hasRole = (userRole: UserRole, allowedRoles: UserRole[]): boolean => {
-  return allowedRoles.includes(userRole);
-};
+// ---------------------- Utils ------------------------
+export const hasRole = (userRole: UserRole, allowedRoles: UserRole[]): boolean =>
+  allowedRoles.includes(userRole);
 
-export const isStudent = (role: UserRole): boolean => {
-  return role === 'student';
-};
+export const isStudent = (role: UserRole): boolean => role === 'student';
+export const isJobSeeker = (role: UserRole): boolean => role === 'jobseeker';
+export const isEmployeeOrEmployer = (role: UserRole): boolean =>
+  role === 'employee' || role === 'employer';
+export const isAdmin = (role: UserRole): boolean =>
+  role === 'admin' || role === 'superadmin';
 
-export const isJobSeeker = (role: UserRole): boolean => {
-  return role === 'jobseeker';
-};
-
-export const isEmployeeOrEmployer = (role: UserRole): boolean => {
-  return role === 'employee' || role === 'employer';
-};
-
-export const isAdmin = (role: UserRole): boolean => {
-  return role === 'admin' || role === 'superadmin';
-};
-
-// Token utilities
-export const getAuthToken = (): string | null => {
-  return localStorage.getItem('token');
-};
+export const getAuthToken = (): string | null =>
+  localStorage.getItem('token');
 
 export const getAuthHeaders = () => {
   const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// Storage utilities
 export const clearUserStorage = () => {
-  const keysToRemove = [
+  [
     'token',
     'currentUser',
     'isAuthenticated',
     'userRole',
     'profileData',
     'profilePic',
-    'uploadedDocuments'
-  ];
-  
-  keysToRemove.forEach(key => localStorage.removeItem(key));
+    'uploadedDocuments',
+  ].forEach(key => localStorage.removeItem(key));
 };
-
-export default useAuth;
