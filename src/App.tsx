@@ -77,7 +77,12 @@ const App = () => (
             {/* Student Dashboard Routes */}
             <Route path="/student" element={
               <ProtectedRoute allowedRoles={['student']}>
-                <SimplifiedStudentDashboard />
+                <StudentDashboard user={{
+                  role: "",
+                  name: ""
+                }} onLogout={function (): void {
+                  throw new Error("Function not implemented.");
+                } } />
               </ProtectedRoute>
             } />
             <Route path="/student/profile" element={
