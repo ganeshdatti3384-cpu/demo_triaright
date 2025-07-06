@@ -42,7 +42,7 @@ export interface RegisterData {
   role: UserRole;
   phoneNumber?: string;
   whatsappNumber?: string;
-  address: string; // Required to match API
+  address: string;
 }
 
 export interface AuthContextType {
@@ -57,11 +57,9 @@ export interface AuthContextType {
   refreshAuth: () => Promise<void>;
 }
 
-// ---------------------- Context ------------------------
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ---------------------- Provider ------------------------
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -73,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initializeAuth();
   }, []);
 
-  const initializeAuth = async () => {
+  const initializeAuth = async (): Promise<void> => {
     try {
       setIsLoading(true);
       const storedToken = localStorage.getItem('token');
@@ -98,10 +96,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const validateToken = async (tokenToValidate: string) => {
+  const validateToken = async (tokenToValidate: string): Promise<void> => {
     try {
       console.log('Token validated:', tokenToValidate);
-      // Optionally: add real token validation logic
     } catch (error) {
       console.error('Token validation failed:', error);
       clearAuthData();
@@ -171,17 +168,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: userData.role as ApiUserRole,
         password: userData.password,
       };
-      
+
       const response = await authApi.register(registerPayload);
 
       if (response?.token && response?.user) {
         const { token: authToken, user: newUser } = response;
-        
+
         const newUserData: User = {
           id: newUser._id,
           email: newUser.email,
           firstName: newUser.firstName,
-          lastName: newUser.lastName,
+          last: newUser.lastName,
           role: newUser.role as UserRole,
           phoneNumber: newUser.phoneNumber,
           whatsappNumber: newUser.whatsappNumber,
@@ -219,7 +216,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => {
+  const logout = (): void => {
     clearAuthData();
     toast({
       title: 'Logged Out',
@@ -228,7 +225,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigate('/');
   };
 
-  const clearAuthData = () => {
+  const clearAuthData = (): void => {
     [
       'token',
       'currentUser',
@@ -244,7 +241,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(false);
   };
 
-  const updateUser = (userData: Partial<User>) => {
+  const updateUser = (userData: Partial<User>): void => {
     if (user) {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
@@ -252,11 +249,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const refreshAuth = async () => {
+  const refreshAuth = async (): Promise<void> => {
     await initializeAuth();
   };
 
-  const navigateByRole = (role: UserRole) => {
+  const navigateByRole = (role: UserRole): void => {
     switch (role) {
       case 'student':
         navigate('/student');
@@ -296,14 +293,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     refreshAuth,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+
 };
 
-// ---------------------- Hook ------------------------
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -312,7 +304,6 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-// ---------------------- Utils ------------------------
 export const hasRole = (userRole: UserRole, allowedRoles: UserRole[]): boolean =>
   allowedRoles.includes(userRole);
 
@@ -326,12 +317,12 @@ export const isAdmin = (role: UserRole): boolean =>
 export const getAuthToken = (): string | null =>
   localStorage.getItem('token');
 
-export const getAuthHeaders = () => {
+export const getAuthHeaders = (): Record<string, string> => {
   const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const clearUserStorage = () => {
+export const clearUserStorage = (): void => {
   [
     'token',
     'currentUser',

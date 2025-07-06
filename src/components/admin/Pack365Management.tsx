@@ -1,355 +1,212 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Eye } from 'lucide-react';
-
-type CourseLevel = 'Beginner' | 'Intermediate' | 'Advanced';
+import { ArrowLeft, CreditCard, Shield, Clock } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import PaymentGateway from '@/components/PaymentGateway';
+import { pack365Api } from '@/services/api';
+import { useAuth } from '@/utlis/useAuth';
 
 interface Pack365Course {
-  id: string;
-  title: string;
+  _id: string;
+  courseName: string;
   description: string;
   instructor: string;
   duration: string;
-  level: CourseLevel;
   price: number;
-  isPaid: boolean;
+  topics: { name: string }[];
   image: string;
-  skills: string[];
-  rating: number;
-  studentsEnrolled: number;
-  category: string;
 }
 
-const Pack365Management = () => {
-  const [courses, setCourses] = useState<Pack365Course[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Pack365Course | null>(null);
+const Pack365Payment = () => {
+  const { courseId } = useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
-
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    instructor: '',
-    duration: '365 days',
-    level: 'Beginner' as CourseLevel,
-    price: 0,
-    isPaid: false,
-    image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-    skills: '',
-    category: ''
-  });
+  const [course, setCourse] = useState<Pack365Course | null>(null);
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+  const { token } = useAuth();
 
   useEffect(() => {
-    const savedCourses = localStorage.getItem('pack365Courses');
-    if (savedCourses) {
-      setCourses(JSON.parse(savedCourses));
+    if (courseId && token) {
+      fetchCourse(courseId);
     }
-  }, []);
+  }, [courseId, token]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const newCourse: Pack365Course = {
-      id: editingCourse?.id || Date.now().toString(),
-      title: formData.title,
-      description: formData.description,
-      instructor: formData.instructor,
-      duration: formData.duration,
-      level: formData.level,
-      price: formData.isPaid ? formData.price : 0,
-      isPaid: formData.isPaid,
-      image: formData.image,
-      skills: formData.skills.split(',').map(s => s.trim()).filter(s => s),
-      rating: 4.5,
-      studentsEnrolled: Math.floor(Math.random() * 10000),
-      category: formData.category
-    };
+  const fetchCourse = async (id: string) => {
+    try {
+      const response = await pack365Api.getCourseById(id, token);
+      const courseData = response.data;
+      if (courseData) {
+        setCourse(courseData);
+      } else {
+        toast({ title: 'Course not found.', variant: 'destructive' });
+        navigate('/pack365');
+      }
+    } catch (error) {
+      toast({ title: 'Error fetching course data.', variant: 'destructive' });
+      navigate('/pack365');
+    }
+  };
 
-    let updatedCourses;
-    if (editingCourse) {
-      updatedCourses = courses.map(course => 
-        course.id === editingCourse.id ? newCourse : course
-      );
-      toast({
-        title: "Course Updated",
-        description: `${newCourse.title} has been updated successfully.`
-      });
+  const handlePaymentComplete = (success: boolean) => {
+    if (success) {
+      navigate(`/payment-success?courseId=${courseId}&type=pack365`);
     } else {
-      updatedCourses = [...courses, newCourse];
-      toast({
-        title: "Course Added",
-        description: `${newCourse.title} has been added to Pack365.`
-      });
+      navigate(`/payment-failed?courseId=${courseId}&type=pack365`);
     }
-
-    setCourses(updatedCourses);
-    localStorage.setItem('pack365Courses', JSON.stringify(updatedCourses));
-    
-    resetForm();
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      instructor: '',
-      duration: '365 days',
-      level: 'Beginner',
-      price: 0,
-      isPaid: false,
-      image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-      skills: '',
-      category: ''
-    });
-    setShowForm(false);
-    setEditingCourse(null);
+  const handleProceedToPayment = () => {
+    setShowPaymentGateway(true);
   };
 
-  const handleEdit = (course: Pack365Course) => {
-    setEditingCourse(course);
-    setFormData({
-      title: course.title,
-      description: course.description,
-      instructor: course.instructor,
-      duration: course.duration,
-      level: course.level,
-      price: course.price,
-      isPaid: course.isPaid,
-      image: course.image,
-      skills: course.skills.join(', '),
-      category: course.category
-    });
-    setShowForm(true);
-  };
-
-  const handleDelete = (id: string) => {
-    const updatedCourses = courses.filter(course => course.id !== id);
-    setCourses(updatedCourses);
-    localStorage.setItem('pack365Courses', JSON.stringify(updatedCourses));
-    toast({
-      title: "Course Deleted",
-      description: "The course has been removed from Pack365."
-    });
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Pack365 Course Management</h2>
-          <p className="text-gray-600">Manage comprehensive course packages</p>
-        </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Pack365 Course
-        </Button>
-      </div>
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {editingCourse ? 'Edit Pack365 Course' : 'Add New Pack365 Course'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Course Title</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="instructor">Instructor</Label>
-                  <Input
-                    id="instructor"
-                    value={formData.instructor}
-                    onChange={(e) => setFormData({...formData, instructor: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Input
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="level">Level</Label>
-                  <Select 
-                    value={formData.level} 
-                    onValueChange={(value: CourseLevel) => 
-                      setFormData({...formData, level: value})
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duration</Label>
-                  <Input
-                    id="duration"
-                    value={formData.duration}
-                    onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isPaid"
-                      checked={formData.isPaid}
-                      onChange={(e) => setFormData({...formData, isPaid: e.target.checked})}
-                    />
-                    <Label htmlFor="isPaid">Paid Course</Label>
-                  </div>
-                  {formData.isPaid && (
-                    <Input
-                      type="number"
-                      placeholder="Price (in dollars)"
-                      value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})}
-                      required
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  rows={3}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="skills">Skills (comma-separated)</Label>
-                <Input
-                  id="skills"
-                  value={formData.skills}
-                  onChange={(e) => setFormData({...formData, skills: e.target.value})}
-                  placeholder="HTML, CSS, JavaScript, React"
-                  required
-                />
-              </div>
-
-              <div className="flex space-x-2">
-                <Button type="submit">
-                  {editingCourse ? 'Update Course' : 'Add Course'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map((course) => (
-          <Card key={course.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <Badge variant={course.isPaid ? "default" : "secondary"}>
-                  {course.isPaid ? `$${course.price}` : 'FREE'}
-                </Badge>
-                <Badge variant="outline">{course.level}</Badge>
-              </div>
-              <CardTitle className="text-lg">{course.title}</CardTitle>
-              <p className="text-sm text-gray-600">by {course.instructor}</p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
-                
-                <div className="text-sm">
-                  <div className="flex justify-between">
-                    <span>Category:</span>
-                    <span className="font-medium">{course.category}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Duration:</span>
-                    <span className="font-medium">{course.duration}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Students:</span>
-                    <span className="font-medium">{course.studentsEnrolled.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1">
-                  {course.skills.slice(0, 3).map((skill, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {skill}
-                    </Badge>
-                  ))}
-                  {course.skills.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{course.skills.length - 3} more
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline" onClick={() => handleEdit(course)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleDelete(course.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {courses.length === 0 && (
-        <div className="text-center py-12">
-          <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Pack365 courses yet</h3>
-          <p className="text-gray-600 mb-4">Create your first comprehensive course package</p>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Pack365 Course
+  if (!course) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Course not found</h2>
+          <Button onClick={() => navigate('/pack365')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Pack365
           </Button>
         </div>
-      )}
-    </div>
+      </div>
+    );
+  }
+
+  if (showPaymentGateway) {
+    return (
+      <div>
+        <PaymentGateway
+          amount={course.price}
+          courseName={course.courseName}
+          onPaymentComplete={handlePaymentComplete}
+          onBack={() => setShowPaymentGateway(false)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Navbar onOpenAuth={() => {}} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/pack365')}
+            className="mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Pack365
+          </Button>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">Course Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <img
+                  src={course.image}
+                  alt={course.courseName}
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+                <h3 className="text-xl font-semibold">{course.courseName}</h3>
+                <p className="text-gray-600">{course.description}</p>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Instructor:</span>
+                    <span className="font-medium">{course.instructor}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Duration:</span>
+                    <div className="flex items-center space-x-1">
+                      <Clock className="h-4 w-4" />
+                      <span className="font-medium">{course.duration}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-sm text-gray-500">Skills you'll learn:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {course.topics.map((topic, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {topic.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center">
+                  <CreditCard className="h-6 w-6 mr-2" />
+                  Payment Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-lg font-medium">Pack365 Course</span>
+                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                      Premium
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Full year access</span>
+                    <span className="text-2xl font-bold">${course.price}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2 text-sm text-green-600">
+                    <Shield className="h-4 w-4" />
+                    <span>Secure Payment Gateway</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm text-green-600">
+                    <Clock className="h-4 w-4" />
+                    <span>365 days unlimited access</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm text-green-600">
+                    <Shield className="h-4 w-4" />
+                    <span>Certificate upon completion</span>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-lg font-medium">Total Amount</span>
+                    <span className="text-2xl font-bold text-blue-600">${course.price}</span>
+                  </div>
+
+                  <Button
+                    onClick={handleProceedToPayment}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
+                  >
+                    Proceed to Payment Gateway
+                  </Button>
+                </div>
+
+                <div className="text-xs text-gray-500 text-center">
+                  By proceeding, you agree to our Terms of Service and Privacy Policy
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </>
   );
 };
 
-export default Pack365Management;
+export default Pack365Payment;
