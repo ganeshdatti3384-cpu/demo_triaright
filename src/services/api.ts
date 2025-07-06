@@ -225,7 +225,7 @@ export const profileApi = {
 export const pack365Api = {
   // Get all Pack365 courses
   getAllCourses: async (): Promise<{ success: boolean; data: Pack365Course[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365`);
+    const res = await axios.get(`${API_BASE_URL}/pack365/getcourses`);
     return res.data;
   },
 
@@ -246,7 +246,7 @@ export const pack365Api = {
     data: Partial<Pack365Course> & { courseDocument?: File }
   ): Promise<{ success: boolean; message: string; course: Pack365Course }> => {
     const formData = toFormData(data);
-    const res = await axios.post(`${API_BASE_URL}/pack365`, formData, {
+    const res = await axios.post(`${API_BASE_URL}/pack365/courses`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -262,7 +262,7 @@ export const pack365Api = {
     data: Partial<Pack365Course> & { courseDocument?: File }
   ): Promise<{ success: boolean; message: string; course: Pack365Course }> => {
     const formData = toFormData(data);
-    const res = await axios.put(`${API_BASE_URL}/pack365/${id}`, formData, {
+    const res = await axios.put(`${API_BASE_URL}/pack365/update/${id}`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -276,7 +276,7 @@ export const pack365Api = {
     token: string,
     id: string
   ): Promise<{ success: boolean; message: string }> => {
-    const res = await axios.delete(`${API_BASE_URL}/pack365/${id}`, {
+    const res = await axios.delete(`${API_BASE_URL}/pack365/delete/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -288,7 +288,7 @@ export const pack365Api = {
     courseId: string
   ): Promise<RazorpayOrderResponse> => {
     const res = await axios.post(
-      `${API_BASE_URL}/enrollments/create-order`,
+      `${API_BASE_URL}/packenroll365/create-order`,
       { courseId },
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -307,7 +307,7 @@ export const pack365Api = {
       razorpay_signature: string;
     }
   ): Promise<{ success: boolean; message: string; enrollment: Pack365Enrollment }> => {
-    const res = await axios.post(`${API_BASE_URL}/enrollments/enroll`, data, {
+    const res = await axios.post(`${API_BASE_URL}/packenroll365/enroll`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -317,7 +317,7 @@ export const pack365Api = {
   getMyEnrollments: async (
     token: string
   ): Promise<{ success: boolean; enrollments: Pack365Enrollment[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/enrollments/my-enrollments`, {
+    const res = await axios.get(`${API_BASE_URL}/packenroll365/my-enrollments`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

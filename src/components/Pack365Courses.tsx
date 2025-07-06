@@ -53,7 +53,7 @@ const Pack365Courses = () => {
       navigate('/login');
       return;
     }
-    navigate(`/pack365/payment/${course._id}`);
+    navigate(`/pack365/payment/${course.courseId}`);
   };
 
   if (loading) {
