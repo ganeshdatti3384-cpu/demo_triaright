@@ -82,9 +82,6 @@ const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
             <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.name}!</h1>
             <p className="text-gray-600 mt-2">Continue your learning journey</p>
           </div>
-          <Button variant="outline" onClick={onLogout}>
-            Logout
-          </Button>
         </div>
 
         {/* Stats Grid */}
