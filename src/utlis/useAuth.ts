@@ -1,3 +1,4 @@
+
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -178,7 +179,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
           id: newUser._id,
           email: newUser.email,
           firstName: newUser.firstName,
-          last: newUser.lastName,
+          lastName: newUser.lastName,
           role: newUser.role as UserRole,
           phoneNumber: newUser.phoneNumber,
           whatsappNumber: newUser.whatsappNumber,
@@ -293,7 +294,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
     refreshAuth,
   };
 
-
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {

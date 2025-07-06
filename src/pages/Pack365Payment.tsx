@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,21 +9,8 @@ import { ArrowLeft, CreditCard, Shield, Clock, IndianRupee } from 'lucide-react'
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PaymentGateway from '@/components/PaymentGateway';
-import { pack365Api } from '@/services/api';
+import { pack365Api, Pack365Course } from '@/services/api';
 import { useAuth } from '@/utlis/useAuth';
-import { courseData } from '@/data/courseData';
-
-interface Pack365Course {
-  documentLink: string;
-  id: string;
-  title: string;
-  description: string;
-  instructor: string;
-  duration: string;
-  price: number;
-  skills: string[];
-  image: string;
-}
 
 const Pack365Payment = () => {
   const { courseId } = useParams();
@@ -59,7 +47,7 @@ const Pack365Payment = () => {
       navigate('/pack365');
     }
   };
-  console.log(course)
+
   const handlePaymentComplete = (success: boolean) => {
     if (success) {
       navigate(`/payment-success?courseId=${courseId}&type=pack365`);
@@ -90,8 +78,8 @@ const Pack365Payment = () => {
     return (
       <div>
         <PaymentGateway
-          amount={course.price}
-          courseName={course.title}
+          amount={365}
+          courseName={course.courseName}
           onPaymentComplete={handlePaymentComplete}
           onBack={() => setShowPaymentGateway(false)}
         />
@@ -101,8 +89,12 @@ const Pack365Payment = () => {
 
   return (
     <>
-      <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
-        throw new Error('Function not implemented.');
+      <Navbar onOpenAuth={function (type: 'login' | 'register', userType?: string): void {
+        if (type === 'login') {
+          navigate('/login');
+        } else {
+          navigate('/register');
+        }
       }} />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="max-w-4xl mx-auto px-4 py-12">
@@ -132,18 +124,28 @@ const Pack365Payment = () => {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Instructor:</span>
-                    <span className="font-medium">{course.instructor}</span>
+                    <span className="text-sm text-gray-500">Stream:</span>
+                    <span className="font-medium capitalize">{course.stream}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Duration:</span>
                     <div className="flex items-center space-x-1">
                       <Clock className="h-4 w-4" />
-                      <span className="font-medium">{course.duration}</span>
+                      <span className="font-medium">365 days</span>
                     </div>
                   </div>
                 </div>
 
+                <div className="space-y-2">
+                  <span className="text-sm text-gray-500">Topics you'll learn:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {course.topics?.map((topic, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {topic.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -165,7 +167,7 @@ const Pack365Payment = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Full year access</span>
-                    <span className="text-2xl font-bold">Rs.{course.price}</span>
+                    <span className="text-2xl font-bold">₹365</span>
                   </div>
                 </div>
 
@@ -187,7 +189,7 @@ const Pack365Payment = () => {
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-medium">Total Amount</span>
-                    <span className="text-2xl font-bold text-blue-600">Rs{course.price}</span>
+                    <span className="text-2xl font-bold text-blue-600">₹365</span>
                   </div>
 
                   <Button
