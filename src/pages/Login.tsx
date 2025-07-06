@@ -1,81 +1,24 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import {authApi} from '@/services/api'; // Import your login API
+import { useAuth } from '@/utlis/useAuth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('student');
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const { login, isLoading } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const response = await authApi.login({ email, password });
-
-      if (response?.token && response?.user) {
-        const { token, user } = response;
-
-        // Store values in localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('userRole', user.role);
-
-        toast({
-          title: 'Login Successful',
-          description: `Welcome back, ${user.firstName}!`,
-        });
-
-        // Navigate based on actual backend role
-        switch (user.role) {
-          case 'student':
-            navigate('/student');
-            break;
-          case 'jobseeker':
-            navigate('/jobseeker');
-            break;
-          case 'employee':
-            navigate('/employee');
-            break;
-          case 'employer':
-            navigate('/employer');
-            break;
-          case 'college':
-            navigate('/college');
-            break;
-          case 'admin':
-            navigate('/admin');
-            break;
-          case 'superadmin':
-            navigate('/super-admin');
-            break;
-          default:
-            navigate('/');
-        }
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Login Failed',
-        description: error?.response?.data?.message || 'Invalid credentials',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    await login(email, password);
   };
 
   return (
@@ -106,23 +49,6 @@ const Login = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="role" className="text-gray-700">Login as</Label>
-                  <select
-                    value={selectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="student">Student</option>
-                    <option value="jobseeker">Job Seeker</option>
-                    <option value="employee">Employee</option>
-                    <option value="employer">Employer</option>
-                    <option value="college">College</option>
-                    <option value="admin">Admin</option>
-                    <option value="superadmin">Super Admin</option>
-                  </select>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-gray-700">Email</Label>
                   <Input
