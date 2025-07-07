@@ -2,7 +2,8 @@
 import axios from 'axios';
 import { College, Employer, JobSeekerProfile, StudentProfile } from '@/types/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://dev.triaright.com/api';
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api/api';
 
 export interface LoginPayload {
   email: string;
