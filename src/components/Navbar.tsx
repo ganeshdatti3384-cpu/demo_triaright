@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -127,7 +128,7 @@ const Navbar = ({ onOpenAuth, user: propUser, onLogout }: NavbarProps) => {
             </button>
           </div>
 
-          {/* Desktop Navigation */}
+           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             {isAuthenticated && (
               <button
