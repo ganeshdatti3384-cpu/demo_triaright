@@ -105,8 +105,11 @@ const Navbar = ({ onOpenAuth, user: propUser, onLogout }: NavbarProps) => {
 
   const getWelcomeMessage = () => {
     if (!user) return '';
-    const name = user.firstName || user.name || 'User';
-    return `Welcome, ${name}!`;
+    // Use firstName and lastName from user object, or fallback to name
+    const displayName = user.firstName 
+      ? `${user.firstName} ${user.lastName || ''}`.trim()
+      : user.name || 'User';
+    return `Welcome, ${displayName}!`;
   };
 
   return (
@@ -160,9 +163,6 @@ const Navbar = ({ onOpenAuth, user: propUser, onLogout }: NavbarProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ))}
-            
-            {/* Dashboard Link - Only show when authenticated */}
-            
           </div>
 
           {/* Desktop Auth/Profile Buttons */}
