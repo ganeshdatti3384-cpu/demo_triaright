@@ -1,8 +1,9 @@
+
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Mail, Lock, ArrowLeft } from "lucide-react";
+import { Mail, Lock, ArrowLeft, Shield, CheckCircle, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Form,
@@ -131,144 +132,261 @@ const ForgotPassword = () => {
     <>
       <Navbar onOpenAuth={() => {}} />
 
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-4">
-        <Card className="w-full max-w-4xl md:flex rounded-2xl shadow-2xl overflow-hidden -mt-16">
-          {/* Left Column */}
-          <div className="hidden md:flex w-1/2 items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 p-6">
-            <div className="text-center">
-              <img
-                src="/lovable-uploads/register.png"
-                alt="Reset Password"
-                className="h-64 mx-auto mb-4"
-              />
-              <h2 className="text-3xl font-bold text-blue-700">Reset Your Password</h2>
-              <p className="mt-2 text-sm text-gray-700">
-                We'll help you get back into your account quickly.
-              </p>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-cyan-400/20 to-blue-400/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-purple-400/10 to-pink-400/10 rounded-full blur-3xl"></div>
+        </div>
 
-          {/* Right Column */}
-          <div className="w-full md:w-1/2 bg-white p-6">
-            <CardHeader className="pb-4 text-center">
-              <CardTitle className="text-2xl text-gray-800">
-                {step === "EMAIL" ? "Forgot Password" : "Reset Password"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {step === "EMAIL" ? (
-                <Form {...emailForm}>
-                  <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)} className="space-y-4">
-                    <FormField
-                      control={emailForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email Address</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                              <Input
-                                type="email"
-                                placeholder="you@example.com"
-                                className="pl-10"
-                                disabled={loading}
-                                {...field}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white" disabled={loading}>
-                      {loading ? "Sending OTP..." : "Send OTP"}
-                    </Button>
-                  </form>
-                </Form>
-              ) : (
-                <Form {...resetForm}>
-                  <form onSubmit={resetForm.handleSubmit(handleResetSubmit)} className="space-y-4">
-                    <FormField
-                      control={resetForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="you@example.com" disabled={loading} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={resetForm.control}
-                      name="otp"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>OTP</FormLabel>
-                          <FormControl>
-                            <Input type="text" placeholder="Enter OTP" maxLength={6} disabled={loading} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={resetForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>New Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="New password" disabled={loading} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={resetForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="Confirm password" disabled={loading} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white" disabled={loading}>
-                      {loading ? "Resetting..." : "Reset Password"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="text-sm mt-2"
-                      onClick={() => {
-                        setStep("EMAIL");
-                        resetForm.reset();
-                      }}
-                    >
-                      ← Back to email
-                    </Button>
-                  </form>
-                </Form>
-              )}
-              <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
-                  Remember your password?{" "}
-                  <Link to="/login" className="text-blue-600 hover:underline font-semibold">
-                    Log in
-                  </Link>
-                </p>
+        <div className="relative w-full max-w-6xl mx-auto">
+          <Card className="backdrop-blur-xl bg-white/80 border-0 shadow-2xl overflow-hidden">
+            <div className="md:flex">
+              {/* Left side - Illustration */}
+              <div className="md:w-1/2 bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 p-8 flex flex-col justify-center items-center text-white relative overflow-hidden">
+                <div className="absolute inset-0 bg-black/10"></div>
+                <div className="relative z-10 text-center">
+                  <div className="mb-6">
+                    <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+                      <Shield className="h-10 w-10 text-white" />
+                    </div>
+                    <h2 className="text-4xl font-bold mb-4">
+                      {step === "EMAIL" ? "Reset Password" : "Create New Password"}
+                    </h2>
+                    <p className="text-blue-100 text-lg leading-relaxed">
+                      {step === "EMAIL" 
+                        ? "Don't worry! We'll help you regain access to your account quickly and securely."
+                        : "You're almost done! Create a strong new password for your account."
+                      }
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-4 text-sm">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-cyan-300 rounded-full"></div>
+                      <span>Secure password recovery</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-green-300 rounded-full"></div>
+                      <span>Email verification</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-yellow-300 rounded-full"></div>
+                      <span>Account protection</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Decorative shapes */}
+                <div className="absolute top-4 right-4 w-16 h-16 border border-white/20 rounded-xl rotate-12"></div>
+                <div className="absolute bottom-4 left-4 w-12 h-12 border border-white/20 rounded-full"></div>
+                <div className="absolute top-1/3 right-8 w-8 h-8 bg-white/10 rounded-lg"></div>
               </div>
-            </CardContent>
-          </div>
-        </Card>
+
+              {/* Right side - Form */}
+              <div className="md:w-1/2 p-8 lg:p-12">
+                <CardHeader className="text-center mb-8 p-0">
+                  <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                    {step === "EMAIL" ? "Forgot Password" : "Reset Password"}
+                  </CardTitle>
+                  <p className="text-gray-600">
+                    {step === "EMAIL" 
+                      ? "Enter your email to receive a verification code"
+                      : "Enter the code sent to your email and create a new password"
+                    }
+                  </p>
+                </CardHeader>
+
+                <CardContent className="p-0">
+                  {step === "EMAIL" ? (
+                    <Form {...emailForm}>
+                      <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)} className="space-y-6">
+                        <FormField
+                          control={emailForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-700 font-medium">Email Address</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                  <Input
+                                    type="email"
+                                    placeholder="Enter your email address"
+                                    className="pl-10 h-12 border-gray-200 focus:border-blue-500 transition-colors"
+                                    disabled={loading}
+                                    {...field}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <Button 
+                          type="submit" 
+                          className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-200 transform hover:scale-[1.02]" 
+                          disabled={loading}
+                        >
+                          {loading ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              <span>Sending OTP...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <Mail className="h-4 w-4" />
+                              <span>Send Verification Code</span>
+                            </div>
+                          )}
+                        </Button>
+                      </form>
+                    </Form>
+                  ) : (
+                    <Form {...resetForm}>
+                      <form onSubmit={resetForm.handleSubmit(handleResetSubmit)} className="space-y-6">
+                        <FormField
+                          control={resetForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-700 font-medium">Email Address</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                  <Input 
+                                    type="email" 
+                                    placeholder="your@email.com" 
+                                    disabled={true}
+                                    className="pl-10 h-11 bg-gray-50 border-gray-200"
+                                    {...field} 
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={resetForm.control}
+                          name="otp"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-700 font-medium">Verification Code</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                  <Input 
+                                    type="text" 
+                                    placeholder="Enter 6-digit code" 
+                                    maxLength={6} 
+                                    disabled={loading}
+                                    className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors text-center text-lg tracking-widest"
+                                    {...field} 
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={resetForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-700 font-medium">New Password</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                  <Input 
+                                    type="password" 
+                                    placeholder="Create a strong password" 
+                                    disabled={loading}
+                                    className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                                    {...field} 
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={resetForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-700 font-medium">Confirm New Password</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                  <Input 
+                                    type="password" 
+                                    placeholder="Confirm your password" 
+                                    disabled={loading}
+                                    className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                                    {...field} 
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <Button 
+                          type="submit" 
+                          className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-200 transform hover:scale-[1.02]" 
+                          disabled={loading}
+                        >
+                          {loading ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              <span>Resetting Password...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <CheckCircle className="h-4 w-4" />
+                              <span>Reset Password</span>
+                            </div>
+                          )}
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full text-gray-600 hover:text-gray-800"
+                          onClick={() => {
+                            setStep("EMAIL");
+                            resetForm.reset();
+                          }}
+                        >
+                          <ArrowLeft className="h-4 w-4 mr-2" />
+                          Back to email verification
+                        </Button>
+                      </form>
+                    </Form>
+                  )}
+                  
+                  <div className="mt-8 text-center">
+                    <p className="text-gray-600">
+                      Remember your password?{" "}
+                      <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
+                        Sign in
+                      </Link>
+                    </p>
+                  </div>
+                </CardContent>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
 
       <Footer />

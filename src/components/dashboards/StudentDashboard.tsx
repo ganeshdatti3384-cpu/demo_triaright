@@ -22,6 +22,7 @@ const StudentDashboard = ({ user: propUser, onLogout }: StudentDashboardProps) =
   const navigate = useNavigate();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
+  
   useEffect(() => {
     // Use prop user if provided, otherwise get from localStorage
     if (propUser) {
@@ -29,10 +30,12 @@ const StudentDashboard = ({ user: propUser, onLogout }: StudentDashboardProps) =
     } else {
       const currentUser = localStorage.getItem('currentUser');
       if (currentUser) {
-        setUser(JSON.parse(currentUser));
+        const userData = JSON.parse(currentUser);
+        setUser(userData);
       }
     }
   }, [propUser]);
+
   useEffect(() => {
     // Load enrolled courses from localStorage
     const savedEnrollments = localStorage.getItem('courseEnrollments');
@@ -42,7 +45,6 @@ const StudentDashboard = ({ user: propUser, onLogout }: StudentDashboardProps) =
       setCompletedCourses(enrollments.filter((e: any) => e.status === 'completed'));
     }
   }, []);
-  console.log(propUser)
 
   const courses = [
     { id: 1, name: 'React Fundamentals', progress: 75, status: 'in-progress', price: '₹2,999' },
@@ -62,12 +64,39 @@ const StudentDashboard = ({ user: propUser, onLogout }: StudentDashboardProps) =
     { id: 3, title: 'Career Guidance Workshop', date: '2024-01-30', time: '5:00 PM', type: 'workshop' },
   ];
 
+  const getUserDisplayName = () => {
+    if (!user) return 'Student';
+    
+    // Try different name properties in order of preference
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    if (user.firstName) {
+      return user.firstName;
+    }
+    if (user.name) {
+      return user.name;
+    }
+    if (user.email) {
+      return user.email.split('@')[0]; // Use email username as fallback
+    }
+    return 'Student';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Message */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome back, {getUserDisplayName()}!
+          </h1>
+          <p className="text-gray-600">Continue your learning journey</p>
+        </div>
+
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -301,11 +330,11 @@ const StudentDashboard = ({ user: propUser, onLogout }: StudentDashboardProps) =
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={user.name} />
+                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={getUserDisplayName()} />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                        <input type="email" className="w-full p-2 border rounded-md" defaultValue="student@example.com" />
+                        <input type="email" className="w-full p-2 border rounded-md" defaultValue={user?.email || "student@example.com"} />
                       </div>
                     </div>
                   </div>
