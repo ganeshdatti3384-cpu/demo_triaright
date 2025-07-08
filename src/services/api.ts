@@ -222,6 +222,50 @@ export const profileApi = {
   },
 };
 
+export interface Exam {
+  _id?: string;
+  examId: string;
+  courseId: string;
+  questions: Array<{
+    questionText: string;
+    options: string[];
+    correctAnswer: string;
+    type: 'easy' | 'medium' | 'hard';
+    description?: string;
+  }>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface EnrollmentCode {
+  _id?: string;
+  code: string;
+  courseId: string;
+  courseName: string;
+  usageLimit?: number;
+  usedCount: number;
+  expiresAt?: string;
+  isActive: boolean;
+  createdBy: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TopicProgress {
+  topicName: string;
+  watched: boolean;
+  watchedDuration: number;
+}
+
+export interface EnhancedPack365Enrollment extends Pack365Enrollment {
+  topicProgress: TopicProgress[];
+  videoProgress: number;
+  enrollmentType: 'payment' | 'code';
+  isExamCompleted?: boolean;
+  examScore?: number;
+}
+
 export const pack365Api = {
   // Get all Pack365 courses
   getAllCourses: async (): Promise<{ success: boolean; data: Pack365Course[] }> => {
@@ -282,14 +326,146 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Create Razorpay order
+  // Create enrollment code (admin only)
+  createEnrollmentCode: async (
+    token: string,
+    data: {
+      code: string;
+      courseId: string;
+      usageLimit?: number;
+      expiresAt?: string;
+      description?: string;
+    }
+  ): Promise<{ success: boolean; message: string; code: EnrollmentCode }> => {
+    const res = await axios.post(`${API_BASE_URL}/pack365/admin/create-code`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get all enrollment codes (admin only)
+  getAllEnrollmentCodes: async (
+    token: string
+  ): Promise<{ success: boolean; codes: EnrollmentCode[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/admin/codes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Deactivate enrollment code (admin only)
+  deactivateEnrollmentCode: async (
+    token: string,
+    codeId: string
+  ): Promise<{ success: boolean; message: string; code: EnrollmentCode }> => {
+    const res = await axios.put(`${API_BASE_URL}/pack365/admin/deactivate-code/${codeId}`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Upload exam from Excel (admin only)
+  uploadExamFromExcel: async (
+    token: string,
+    courseId: string,
+    file: File
+  ): Promise<{ message: string; exam: Exam }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('courseId', courseId);
+
+    const res = await axios.post(`${API_BASE_URL}/pack365/exam/upload`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+
+  // Get exam questions (admin only)
+  getExamQuestions: async (
+    token: string,
+    examId: string
+  ): Promise<{ questions: Exam['questions'] }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exam/${examId}/questions`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get all exams (admin only)
+  getAllExams: async (
+    token: string
+  ): Promise<Exam[]> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exam/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Submit exam (student only)
+  submitExam: async (
+    token: string,
+    data: {
+      courseId: string;
+      examId: string;
+      marks: number;
+    }
+  ): Promise<{ message: string; score: number }> => {
+    const res = await axios.post(`${API_BASE_URL}/pack365/exam/submit`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get available exams for user (student only)
+  getAvailableExamsForUser: async (
+    token: string
+  ): Promise<{ exams: Exam[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exam/available/user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Validate enrollment code
+  validateEnrollmentCode: async (
+    token: string,
+    data: {
+      code: string;
+      courseId?: string;
+    }
+  ): Promise<{ success: boolean; message: string; courseDetails?: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/validate-code`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Enroll with code
+  enrollWithCode: async (
+    token: string,
+    data: {
+      code: string;
+      courseId?: string;
+    }
+  ): Promise<{ success: boolean; message: string; enrollment: EnhancedPack365Enrollment; courseDetails: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/enroll-with-code`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Create Razorpay order (enhanced)
   createOrder: async (
     token: string,
-    courseId: string
+    courseId: string,
+    enrollmentType: 'payment' | 'code' = 'payment'
   ): Promise<RazorpayOrderResponse> => {
     const res = await axios.post(
-      `${API_BASE_URL}/packenroll365/create-order`,
-      { courseId },
+      `${API_BASE_URL}/pack365/packenroll365/create-order`,
+      { courseId, enrollmentType },
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -297,17 +473,29 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Enroll in course after payment
-  enrollInCourse: async (
+  // Verify payment
+  verifyPayment: async (
     token: string,
     data: {
-      courseId: string;
       razorpay_order_id: string;
       razorpay_payment_id: string;
       razorpay_signature: string;
     }
-  ): Promise<{ success: boolean; message: string; enrollment: Pack365Enrollment }> => {
-    const res = await axios.post(`${API_BASE_URL}/packenroll365/enroll`, data, {
+  ): Promise<{ success: boolean; message: string; enrollment: EnhancedPack365Enrollment }> => {
+    const res = await axios.post(`${API_BASE_URL}/pack365/verify-payment`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Handle payment failure
+  handlePaymentFailure: async (
+    token: string,
+    data: {
+      razorpay_order_id: string;
+    }
+  ): Promise<{ success: boolean; message: string }> => {
+    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/payment-failure`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -316,8 +504,34 @@ export const pack365Api = {
   // Get user's enrollments
   getMyEnrollments: async (
     token: string
-  ): Promise<{ success: boolean; enrollments: Pack365Enrollment[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/enrollments/my-enrollments`, {
+  ): Promise<{ success: boolean; enrollments: EnhancedPack365Enrollment[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/packenroll365/my-enrollments`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Check enrollment status
+  checkEnrollmentStatus: async (
+    token: string,
+    courseId: string
+  ): Promise<{ success: boolean; isEnrolled: boolean; enrollment: EnhancedPack365Enrollment | null }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/packenroll365/check-enrollment/${courseId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Update topic progress
+  updateTopicProgress: async (
+    token: string,
+    data: {
+      courseId: string;
+      topicName: string;
+      watchedDuration: number;
+    }
+  ): Promise<{ success: boolean; message: string; videoProgress: number; topicProgress: TopicProgress[] }> => {
+    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/update-topic-progress`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

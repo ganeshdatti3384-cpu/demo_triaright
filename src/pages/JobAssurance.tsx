@@ -55,9 +55,7 @@ const JobAssurance = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
-        throw new Error('Function not implemented.');
-      }} />
+      <Navbar />
       
       {/* Hero Section */}
       <div className="bg-blue-600 text-white">

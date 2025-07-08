@@ -93,7 +93,7 @@ const App = () => (
             {/* Job Seeker Dashboard Routes */}
             <Route path="/jobseeker" element={
               <ProtectedRoute allowedRoles={['jobseeker']}>
-                <JobSeekerDashboard user={{ role: 'jobseeker', name: 'Job Seeker' }} onLogout={() => window.location.href = '/'} />
+                <JobSeekerDashboard />
               </ProtectedRoute>
             } />
             <Route path="/jobseeker/profile" element={

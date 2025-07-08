@@ -13,6 +13,7 @@ import {
   TrendingUp, 
   Users, 
   Star,
+  MapPin,
   Calendar,
   Target,
   FileText,
