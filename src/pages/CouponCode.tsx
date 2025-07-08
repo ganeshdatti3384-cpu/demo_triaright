@@ -1,20 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { Gift, Check, X } from 'lucide-react';
-
-// Define valid coupons
-const validCoupons = [
-  { code: 'WELCOME20', discount: 20, description: '20% off on first purchase' },
-  { code: 'STUDENT50', discount: 50, description: '50% off for students' },
-  { code: 'EARLY25', discount: 25, description: '25% off early bird special' },
-];
+import { Gift, Check } from 'lucide-react';
+import { pack365Api } from '@/services/api';
 
 const CouponCode = () => {
   const [couponCode, setCouponCode] = useState('');
@@ -33,26 +27,28 @@ const CouponCode = () => {
     }
 
     setIsValidating(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const coupon = validCoupons.find(c => c.code.toLowerCase() === couponCode.toLowerCase());
-      
-      if (coupon) {
-        setAppliedCoupon(coupon);
+
+    try {
+      const response = await pack365Api.validateEnrollmentCode(couponCode.trim());
+
+      if (response?.success && response?.data) {
+        setAppliedCoupon(response.data);
         toast({
           title: 'Success!',
-          description: `Coupon "${coupon.code}" applied successfully!`,
+          description: `Coupon "${response.data.code}" applied successfully!`,
         });
       } else {
-        toast({
-          title: 'Invalid Coupon',
-          description: 'The coupon code you entered is not valid or has expired.',
-          variant: 'destructive',
-        });
+        throw new Error();
       }
+    } catch (error) {
+      toast({
+        title: 'Invalid Coupon',
+        description: 'The coupon code you entered is not valid or has expired.',
+        variant: 'destructive',
+      });
+    } finally {
       setIsValidating(false);
-    }, 1000);
+    }
   };
 
   const removeCoupon = () => {
@@ -77,7 +73,7 @@ const CouponCode = () => {
                 <h1 className="text-2xl font-semibold text-center">Apply Coupon Code</h1>
               </div>
               <div className="divide-y divide-gray-200">
-                <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
+                <div className="py-8 space-y-4 text-gray-700">
                   {appliedCoupon ? (
                     <div className="rounded-md bg-green-50 p-4">
                       <div className="flex">
@@ -85,12 +81,11 @@ const CouponCode = () => {
                           <Check className="h-5 w-5 text-green-400" aria-hidden="true" />
                         </div>
                         <div className="ml-3">
-                          <h3 className="text-sm font-medium text-green-800">
-                            Coupon Applied!
-                          </h3>
+                          <h3 className="text-sm font-medium text-green-800">Coupon Applied!</h3>
                           <div className="mt-2 text-sm text-green-700">
                             <p>
-                              {appliedCoupon.description} (Discount: {appliedCoupon.discount}%)
+                              {appliedCoupon.description || 'Valid enrollment code'} (Course:{' '}
+                              {appliedCoupon.courseName})
                             </p>
                           </div>
                           <div className="mt-2">
@@ -111,7 +106,6 @@ const CouponCode = () => {
                           placeholder="Enter coupon code"
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value)}
-                          className="mt-1 block w-full"
                         />
                       </div>
                       <Button type="submit" className="w-full" disabled={isValidating}>
