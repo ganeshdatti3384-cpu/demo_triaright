@@ -30,30 +30,6 @@ const CouponCode = () => {
   // Get course/pack data from navigation state
   const { courseData, originalAmount, courseName } = location.state || {};
 
-  // Mock coupon database
-  const validCoupons: Record<string, CouponData> = {
-    'SAVE20': {
-      code: 'SAVE20',
-      discount: 20,
-      type: 'percentage',
-      description: '20% off on all courses',
-      isValid: true
-    },
-    'FIRST50': {
-      code: 'FIRST50',
-      discount: 50,
-      type: 'fixed',
-      description: '$50 off for first-time users',
-      isValid: true
-    },
-    'STUDENT15': {
-      code: 'STUDENT15',
-      discount: 15,
-      type: 'percentage',
-      description: '15% student discount',
-      isValid: true
-    }
-  };
 
   const handleBack = () => {
     navigate(-1);
@@ -217,31 +193,6 @@ const CouponCode = () => {
                       </div>
                     </div>
 
-                    {/* Available Coupons */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-gray-800">Available Coupons:</h3>
-                      {Object.values(validCoupons).map((coupon) => (
-                        <div
-                          key={coupon.code}
-                          className="border border-dashed border-gray-300 p-3 rounded-lg cursor-pointer hover:border-blue-500 transition-colors"
-                          onClick={() => setCouponCode(coupon.code)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Badge variant="secondary" className="mb-1">
-                                {coupon.code}
-                              </Badge>
-                              <p className="text-sm text-gray-600">{coupon.description}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className="font-semibold text-green-600">
-                                {coupon.type === 'percentage' ? `${coupon.discount}% OFF` : `$${coupon.discount} OFF`}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">

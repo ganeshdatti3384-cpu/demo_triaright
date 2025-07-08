@@ -138,3 +138,91 @@ export interface StudentProfile {
   createdAt?: string;
   updatedAt?: string;
 }
+export interface User {
+  _id?: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  whatsappNumber: string;
+  password: string; // optional in responses
+  address: string;
+  role: 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface CourseTopic {
+  name: string;
+  link: string;
+  duration: number;
+}
+
+export interface Pack365Course {
+  _id?: string;
+  courseId: string;
+  courseName: string;
+  description: string;
+  stream: 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance';
+  documentLink: string;
+  price: number;
+  totalDuration: number;
+  topics: CourseTopic[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface TopicProgress {
+  topicName: string;
+  watched: boolean;
+  watchedDuration: number;
+}
+
+export interface Enrollment {
+  _id?: string;
+  userId: string | User;
+  courseId: string | Pack365Course;
+  courseName: string;
+  amountPaid: number;
+  paymentId: string;
+  orderId: string;
+  paymentStatus: 'pending' | 'completed' | 'failed';
+  enrollmentType: 'payment' | 'code';
+  enrollmentDate: string;
+  expiresAt: string;
+  topicProgress: TopicProgress[];
+  videoProgress: number;
+  examScore: number | null;
+  isExamCompleted: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface EnrollmentCode {
+  _id?: string;
+  code: string;
+  courseId: string | Pack365Course;
+  courseName: string;
+  isActive: boolean;
+  usageLimit: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+  createdBy: string | User;
+  description: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface ExamQuestion {
+  questionText: string;
+  options: string[]; // always 4
+  correctAnswer: string;
+  type: 'easy' | 'medium' | 'hard';
+  description?: string;
+}
+
+export interface Pack365Exam {
+  _id?: string;
+  examId: string;
+  courseId: string | Pack365Course;
+  questions: ExamQuestion[]; // always 30
+  createdAt?: string;
+  updatedAt?: string;
+}
