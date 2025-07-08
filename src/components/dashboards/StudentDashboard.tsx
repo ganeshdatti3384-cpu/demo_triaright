@@ -12,6 +12,7 @@ import CodeCompiler from '../CodeCompiler';
 import { useNavigate } from 'react-router-dom';
 import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
+import { pack365Api } from '@/services/api';
 
 
 
@@ -22,14 +23,24 @@ const StudentDashboard = () => {
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
 
   useEffect(() => {
-    // Load enrolled courses from localStorage
-    const savedEnrollments = localStorage.getItem('courseEnrollments');
-    if (savedEnrollments) {
-      const enrollments = JSON.parse(savedEnrollments);
-      setEnrolledCourses(enrollments.filter((e: any) => e.status === 'enrolled'));
-      setCompletedCourses(enrollments.filter((e: any) => e.status === 'completed'));
+  const fetchEnrollments = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await pack365Api.getMyEnrollments(token);
+      if (response.success && response.enrollments) {
+        setEnrolledCourses(response.enrollments.filter((e: any) => e.status === 'enrolled'));
+        setCompletedCourses(response.enrollments.filter((e: any) => e.status === 'completed'));
+      }
+    } catch (error) {
+      console.error('Failed to fetch enrollments:', error);
     }
-  }, []);
+  };
+
+  fetchEnrollments();
+}, []);
+console.log(user.id)
 
   const stats = [
     {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 
 export interface User {
