@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -106,11 +105,8 @@ const Navbar = ({ onOpenAuth, user: propUser, onLogout }: NavbarProps) => {
 
   const getWelcomeMessage = () => {
     if (!user) return '';
-    // Use firstName and lastName from user object, or fallback to name
-    const displayName = user.firstName 
-      ? `${user.firstName} ${user.lastName || ''}`.trim()
-      : user.name || 'User';
-    return `Welcome, ${displayName}!`;
+    const name = user.firstName || user.name || 'User';
+    return `Welcome, ${name}!`;
   };
 
   return (
@@ -128,7 +124,7 @@ const Navbar = ({ onOpenAuth, user: propUser, onLogout }: NavbarProps) => {
             </button>
           </div>
 
-           {/* Desktop Navigation */}
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             {isAuthenticated && (
               <button
@@ -164,6 +160,9 @@ const Navbar = ({ onOpenAuth, user: propUser, onLogout }: NavbarProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ))}
+            
+            {/* Dashboard Link - Only show when authenticated */}
+            
           </div>
 
           {/* Desktop Auth/Profile Buttons */}
