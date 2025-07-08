@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface NavbarProps {
   onOpenAuth?: (type: 'login' | 'register', userType: string) => void;
@@ -17,28 +18,10 @@ interface NavbarProps {
   onLogout?: () => void;
 }
 
-const Navbar = ({ onOpenAuth, user: propUser, onLogout }: NavbarProps) => {
+const Navbar = ({ onOpenAuth }: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Use prop user if provided, otherwise check localStorage
-    if (propUser) {
-      setUser(propUser);
-      setIsAuthenticated(true);
-    } else {
-      // Check authentication status from localStorage
-      const token = localStorage.getItem('token');
-      const currentUser = localStorage.getItem('currentUser');
-      
-      if (token && currentUser) {
-        setIsAuthenticated(true);
-        setUser(JSON.parse(currentUser));
-      }
-    }
-  }, [propUser]);
 
   const courseTypes = [
     { name: 'Live Courses', description: 'Interactive real-time learning', path: '/courses/live' },
@@ -94,12 +77,7 @@ const Navbar = ({ onOpenAuth, user: propUser, onLogout }: NavbarProps) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userRole');
-    setIsAuthenticated(false);
-    setUser(null);
+    logout();
     navigate('/');
   };
 

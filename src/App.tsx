@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -19,6 +19,7 @@ import Pack365 from "./pages/Pack365";
 import Pack365Payment from "./pages/Pack365Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
+import CouponCode from "./pages/CouponCode";
 import FreeCourseEnrollment from "./pages/FreeCourseEnrollment";
 import PaidCourseEnrollment from "./pages/PaidCourseEnrollment";
 import SimplifiedStudentDashboard from "./components/dashboards/SimplifiedStudentDashboard";
@@ -40,8 +41,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-          <Routes>
+        <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -55,8 +55,9 @@ const App = () => (
             <Route path="/internships/offline" element={<OfflineInternships />} />
             <Route path="/jobs/assurance" element={<JobAssurance />} />
             <Route path="/jobs/assistance" element={<JobAssistance />} />
-            <Route path="/payment-success" element={<PaymentSuccess />} />
-            <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/coupon-code" element={<CouponCode />} />
             <Route path="/course-enrollment/free/:courseId" element={<FreeCourseEnrollment />} />
             <Route path="/course-enrollment/paid/:courseId" element={<PaidCourseEnrollment />} />
             
@@ -153,8 +154,7 @@ const App = () => (
             
             {/* Catch-all route for 404 */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
-      </BrowserRouter>
+        </Routes>
     </TooltipProvider>
   </QueryClientProvider>
 );

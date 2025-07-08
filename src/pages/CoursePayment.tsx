@@ -180,12 +180,30 @@ const CoursePayment = () => {
                     <span className="text-2xl font-bold text-blue-600">{course.price}</span>
                   </div>
                   
-                  <Button 
-                    onClick={handleProceedToPayment}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
-                  >
-                    Proceed to Payment Gateway
-                  </Button>
+                  <div className="space-y-3">
+                    <Button 
+                      onClick={handleProceedToPayment}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
+                    >
+                      Proceed to Payment Gateway
+                    </Button>
+                    
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        const params = new URLSearchParams({
+                          courseId: courseId || '',
+                          courseName: course.title,
+                          amount: course.price.replace('₹', '').replace(',', ''),
+                          type: 'course'
+                        });
+                        navigate(`/coupon-code?${params.toString()}`);
+                      }}
+                      className="w-full border-purple-300 text-purple-600 hover:bg-purple-50"
+                    >
+                      Continue with Coupon Code
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="text-xs text-gray-500 text-center">

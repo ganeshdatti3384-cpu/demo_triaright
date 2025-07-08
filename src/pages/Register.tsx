@@ -67,9 +67,19 @@ const Register = () => {
     }
   });
 
-  const handleRegister = async (formData: RegisterPayload) => {
+  const handleRegister = async (formData: RegistrationFormData) => {
     try {
-      const response = await authApi.register(formData);
+      const registerPayload: RegisterPayload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber,
+        whatsappNumber: formData.whatsappNumber,
+        address: formData.address,
+        role: formData.role === 'trainer' ? 'admin' : formData.role,
+        password: formData.password
+      };
+      const response = await authApi.register(registerPayload);
       toast({ title: "Success", description: "Registration successful! Please login." });
       navigate("/login");
     } catch (error: any) {
