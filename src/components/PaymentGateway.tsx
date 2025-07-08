@@ -266,7 +266,33 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
             </Button>
 
             <div className="text-xs text-gray-500 text-center mt-4">
-              By proceeding, you agree to our Terms of Service and Privacy Policy
+              By proceeding, you agree to our{' '}
+              <a 
+                href="/terms-conditions" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-700"
+              >
+                Terms of Service
+              </a>
+              {', '}
+              <a 
+                href="/privacy-policy" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-700"
+              >
+                Privacy Policy
+              </a>
+              {', and '}
+              <a 
+                href="/refund-policy" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-700"
+              >
+                Refund Policy
+              </a>
             </div>
           </CardContent>
         </Card>

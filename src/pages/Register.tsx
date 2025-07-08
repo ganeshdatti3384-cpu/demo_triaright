@@ -336,22 +336,23 @@ const Register = () => {
                       />
                       <Label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed">
                         I accept the{' '}
-                        <Dialog>
-                          <DialogTrigger className="text-blue-600 underline cursor-pointer hover:text-blue-700">
-                            Terms and Conditions
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Terms and Conditions</DialogTitle>
-                              <p className="text-sm text-gray-600 mt-2">
-                                By registering, you agree to abide by our platform rules, respect others, and follow the guidelines provided by administrators.
-                                Your data is securely handled in compliance with privacy policies.
-                              </p>
-                            </DialogHeader>
-                          </DialogContent>
-                        </Dialog>
+                        <a 
+                          href="/terms-conditions" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline cursor-pointer hover:text-blue-700"
+                        >
+                          Terms and Conditions
+                        </a>
                         {' '}and{' '}
-                        <span className="text-blue-600 underline cursor-pointer hover:text-blue-700">Privacy Policy</span>
+                        <a 
+                          href="/privacy-policy" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline cursor-pointer hover:text-blue-700"
+                        >
+                          Privacy Policy
+                        </a>
                       </Label>
                     </div>
                     {errors.acceptTerms && <p className="text-red-500 text-sm">{errors.acceptTerms.message}</p>}
