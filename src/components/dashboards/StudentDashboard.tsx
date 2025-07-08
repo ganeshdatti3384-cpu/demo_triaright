@@ -62,12 +62,7 @@ const StudentDashboard = () => {
   const user = { name: "varun", email: "example@gmail.com" };
   return (
           <>
-          <Navbar
-          user={{ role:"student",name: "John Doe" }} // 👈 Must be defined
-          userRole="student"
-          onOpenAuth={(type, userType) => console.log(type, userType)}
-          onLogout={() => console.log('Logged out')}
-        />
+          <Navbar />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
