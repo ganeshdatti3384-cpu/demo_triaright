@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Gift, Check } from 'lucide-react';
@@ -15,6 +16,7 @@ const CouponCode = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
   const { toast } = useToast();
+  const { token } = useAuth();
 
   const validateCoupon = async () => {
     if (!couponCode.trim()) {
@@ -29,16 +31,20 @@ const CouponCode = () => {
     setIsValidating(true);
 
     try {
-      const response = await pack365Api.validateEnrollmentCode(couponCode.trim());
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+      
+      const response = await pack365Api.validateEnrollmentCode(token, { code: couponCode.trim() });
 
-      if (response?.success && response?.data) {
-        setAppliedCoupon(response.data);
+      if (response?.success && response?.courseDetails) {
+        setAppliedCoupon(response.courseDetails);
         toast({
           title: 'Success!',
-          description: `Coupon "${response.data.code}" applied successfully!`,
+          description: `Coupon "${couponCode}" applied successfully!`,
         });
       } else {
-        throw new Error();
+        throw new Error(response?.message || 'Invalid coupon code');
       }
     } catch (error) {
       toast({

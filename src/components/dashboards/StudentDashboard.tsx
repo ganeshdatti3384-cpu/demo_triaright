@@ -11,11 +11,13 @@ import Pack365Card from '../Pack365Card';
 import CodeCompiler from '../CodeCompiler';
 import { useNavigate } from 'react-router-dom';
 import CourseCards from '../CourseCards';
+import { useAuth } from '../../hooks/useAuth';
 
 
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
 
@@ -59,7 +61,6 @@ const StudentDashboard = () => {
       bgColor: 'bg-yellow-50'
     }
   ];
-  const user = { name: "varun", email: "example@gmail.com" };
   return (
           <>
           <Navbar />
@@ -68,7 +69,7 @@ const StudentDashboard = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.name}!</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.name || user?.firstName || 'Student'}!</h1>
             <p className="text-gray-600 mt-2">Continue your learning journey</p>
           </div>
         </div>
@@ -328,7 +329,7 @@ const StudentDashboard = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={user.name} />
+                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={user?.name || user?.firstName || 'Student'} />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
