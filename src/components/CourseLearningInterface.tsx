@@ -1,18 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
+import YouTube from 'react-youtube';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Play, 
-  Pause, 
-  CheckCircle2, 
-  Clock, 
-  BookOpen, 
+import {
+  Play,
+  Pause,
+  CheckCircle2,
+  Clock,
+  BookOpen,
   Award,
-  ArrowLeft 
+  ArrowLeft,
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import { Pack365Course, EnhancedPack365Enrollment, TopicProgress } from '@/types/api';
@@ -30,16 +32,16 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   const [watchedDuration, setWatchedDuration] = useState(0);
   const [topicProgress, setTopicProgress] = useState<TopicProgress[]>(enrollment.topicProgress || []);
   const [videoProgress, setVideoProgress] = useState(enrollment.videoProgress || 0);
+  const [player, setPlayer] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Initialize topic progress if empty
     if (topicProgress.length === 0) {
       const initialProgress = course.topics.map(topic => ({
         topicName: topic.name,
         watched: false,
-        watchedDuration: 0
+        watchedDuration: 0,
       }));
       setTopicProgress(initialProgress);
     }
@@ -53,14 +55,13 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
       const response = await pack365Api.updateTopicProgress(token, {
         courseId,
         topicName,
-        watchedDuration: duration
+        watchedDuration: duration,
       });
 
       if (response.success) {
         setTopicProgress(response.topicProgress);
         setVideoProgress(response.videoProgress);
-        
-        // Check if topic is now completed
+
         const updatedTopic = response.topicProgress.find(tp => tp.topicName === topicName);
         if (updatedTopic?.watched) {
           toast({
@@ -78,51 +79,47 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
     setCurrentTopic(index);
     setWatchedDuration(0);
     setIsPlaying(false);
+    if (player) player.stopVideo();
   };
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-    
-    if (!isPlaying) {
-      // Simulate video playing and update progress
-      const interval = setInterval(() => {
-        setWatchedDuration(prev => {
-          const newDuration = prev + 1;
-          const currentTopicData = course.topics[currentTopic];
-          
-          // If watched 80% of the topic, mark as completed
-          if (newDuration >= currentTopicData.duration * 0.8) {
-            updateProgress(currentTopicData.name, newDuration);
-            clearInterval(interval);
-            setIsPlaying(false);
-          }
-          
-          return newDuration;
-        });
-      }, 1000);
+    if (!player) return;
 
-      // Store interval ID to clear it when paused
-      (window as any).videoInterval = interval;
+    if (isPlaying) {
+      player.pauseVideo();
     } else {
-      // Clear interval when paused
-      if ((window as any).videoInterval) {
-        clearInterval((window as any).videoInterval);
-      }
+      player.playVideo();
     }
+
+    setIsPlaying(!isPlaying);
+  };
+
+  const onReady = (event: any) => {
+    setPlayer(event.target);
+  };
+
+  const onEnd = () => {
+    const currentTopicData = course.topics[currentTopic];
+    updateProgress(currentTopicData.name, currentTopicData.duration);
+    setIsPlaying(false);
+  };
+
+  const getYouTubeId = (url: string): string | null => {
+    const match = url.match(
+      /(?:youtu\.be\/|youtube\.com\/(?:embed\/|watch\?v=|v\/|shorts\/))([\w-]{11})/
+    );
+    return match ? match[1] : null;
   };
 
   const currentTopicData = course.topics[currentTopic];
   const currentTopicProgress = topicProgress.find(tp => tp.topicName === currentTopicData?.name);
   const completedTopics = topicProgress.filter(tp => tp.watched).length;
-
+  console.log(currentTopicData)
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="mb-6">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/pack365')}
-          >
+          <Button variant="outline" onClick={() => navigate('/pack365')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Courses
           </Button>
@@ -135,42 +132,79 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>{currentTopicData?.name}</span>
-                  <Badge variant={currentTopicProgress?.watched ? "default" : "outline"}>
+                  <Badge variant={currentTopicProgress?.watched ? 'default' : 'outline'}>
                     {currentTopicProgress?.watched ? 'Completed' : 'In Progress'}
                   </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {/* Video Player Placeholder */}
-                <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-4">
-                  <div className="text-center text-white">
-                    <div className="text-6xl mb-4">🎥</div>
-                    <h3 className="text-xl font-semibold mb-2">{currentTopicData?.name}</h3>
-                    <p className="text-gray-300">Duration: {currentTopicData?.duration} minutes</p>
+                {currentTopicData?.link && getYouTubeId(currentTopicData.link) ? (
+                  <div
+                    className="aspect-video mb-4 rounded-lg overflow-hidden relative"
+                    id="video-container"
+                  >
+                    <YouTube
+                      videoId={getYouTubeId(currentTopicData.link)}
+                      onReady={onReady}
+                      onEnd={onEnd}
+                      opts={{
+                        width: '100%',
+                        height: '100%',
+                        playerVars: {
+                          rel: 0,
+                          controls: 0,
+                          modestbranding: 1,
+                          showinfo: 0,
+                        },
+                        host: "https://www.youtube-nocookie.com",
+                      }}
+                      className="w-full h-full"
+                    />
+                    {/* Optional: overlay custom controls later if needed */}
                   </div>
-                </div>
+                ) : (
+                  <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-4 text-white text-lg">
+                    Video not available
+                  </div>
+                )}
 
                 {/* Video Controls */}
                 <div className="flex items-center justify-between mb-4">
-                  <Button
-                    onClick={handlePlayPause}
-                    className="flex items-center space-x-2"
-                  >
-                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    <span>{isPlaying ? 'Pause' : 'Play'}</span>
-                  </Button>
-                  
+                  <div className="flex space-x-2">
+                    <Button onClick={handlePlayPause} className="flex items-center space-x-2">
+                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      <span>{isPlaying ? 'Pause' : 'Play'}</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const container = document.getElementById('video-container');
+                        if (container) {
+                          if (document.fullscreenElement) {
+                            document.exitFullscreen();
+                          } else {
+                            container.requestFullscreen().catch(err => {
+                              console.error('Fullscreen error:', err);
+                            });
+                          }
+                        }
+                      }}
+                    >
+                      Fullscreen
+                    </Button>
+                  </div>
+
                   <div className="text-sm text-gray-600">
-                    {Math.floor(watchedDuration / 60)}:{(watchedDuration % 60).toString().padStart(2, '0')} / 
-                    {Math.floor(currentTopicData?.duration / 60)}:{(currentTopicData?.duration % 60).toString().padStart(2, '0')}
+                    {Math.floor(watchedDuration / 60)}:
+                    {(watchedDuration % 60).toString().padStart(2, '0')} /{' '}
+                    {Math.floor(currentTopicData?.duration / 60)}:
+                    {(currentTopicData?.duration % 60).toString().padStart(2, '0')}
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                <Progress 
-                  value={(watchedDuration / currentTopicData?.duration) * 100} 
-                  className="mb-4"
-                />
+                <Progress value={(watchedDuration / currentTopicData?.duration) * 100} className="mb-4" />
 
                 {/* Topic Navigation */}
                 <div className="flex space-x-2">
@@ -269,10 +303,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                   <p className="text-sm text-gray-600 mb-4">
                     Complete the final exam to get your certificate!
                   </p>
-                  <Button 
-                    className="w-full"
-                    onClick={() => navigate(`/exam/${courseId}`)}
-                  >
+                  <Button className="w-full" onClick={() => navigate(`/exam/${courseId}`)}>
                     Take Exam
                   </Button>
                 </CardContent>
