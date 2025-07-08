@@ -419,6 +419,80 @@ export const pack365Api = {
   },
 };
 
+export const collegeApi = {
+  // Create service request
+  createServiceRequest: async (
+    token: string,
+    data: {
+      contactPerson: string;
+      email: string;
+      phoneNumber: string;
+      expectedStudents: number;
+      preferredDate: string;
+      serviceCategory: string;
+      serviceDescription: string;
+      additionalRequirements?: string[];
+    }
+  ): Promise<{ success: boolean; request: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/college-requests/`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get college's service requests
+  getCollegeRequests: async (
+    token: string
+  ): Promise<{ success: boolean; requests: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/college-requests/college/my-requests`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get dashboard stats
+  getDashboardStats: async (
+    token: string
+  ): Promise<{ success: boolean; stats: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/college-requests/dashboard/stats`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get all service requests (admin only)
+  getAllServiceRequests: async (
+    token: string
+  ): Promise<{ success: boolean; requests: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/college-requests/admin/all`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Accept service request (admin only)
+  acceptServiceRequest: async (
+    token: string,
+    id: string
+  ): Promise<{ success: boolean; request: any }> => {
+    const res = await axios.put(`${API_BASE_URL}/college-requests/admin/accept/${id}`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Reject service request (admin only)
+  rejectServiceRequest: async (
+    token: string,
+    id: string
+  ): Promise<{ success: boolean; request: any }> => {
+    const res = await axios.put(`${API_BASE_URL}/college-requests/admin/reject/${id}`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+};
+
 // Export all types that are used by components
 export type { 
   Pack365Course, 
