@@ -14,6 +14,33 @@ export interface User {
   updatedAt?: string;
 }
 
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface RegisterPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+  whatsappNumber?: string;
+  address: string;
+  role: 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
+  password: string;
+}
+
+export interface UpdatePasswordPayload {
+  oldPassword: string;
+  newPassword: string;
+}
+
+export type UserRole = 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
+
+export interface LoginResponse {
+  token: string;
+  user: User;
+}
 // ---------- College ----------
 export interface College {
   _id?: string;
@@ -225,4 +252,55 @@ export interface Pack365Exam {
   questions: ExamQuestion[]; // always 30
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface Exam {
+  _id?: string;
+  examId: string;
+  courseId: string;
+  questions: Array<{
+    questionText: string;
+    options: string[];
+    correctAnswer: string;
+    type: 'easy' | 'medium' | 'hard';
+    description?: string;
+  }>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TopicProgress {
+  topicName: string;
+  watched: boolean;
+  watchedDuration: number;
+}
+
+export interface EnhancedPack365Enrollment extends Pack365Enrollment {
+  topicProgress: TopicProgress[];
+  videoProgress: number;
+  enrollmentType: 'payment' | 'code';
+  isExamCompleted?: boolean;
+  examScore?: number;
+}
+export interface Pack365Enrollment {
+  _id?: string;
+  userId: string;
+  courseId: string;
+  courseName: string;
+  amountPaid: number;
+  paymentId: string;
+  enrollmentDate: string;
+  expiresAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RazorpayOrderResponse {
+  success: boolean;
+  order: {
+    id: string;
+    amount: number;
+    currency: string;
+    receipt: string;
+  };
 }

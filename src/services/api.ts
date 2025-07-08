@@ -1,51 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
-import { College, Employer, JobSeekerProfile, StudentProfile } from '@/types/api';
+import { College, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 
-export interface LoginPayload {
-  email: string;
-  password: string;
-}
-
-export interface RegisterPayload {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber?: string;
-  whatsappNumber?: string;
-  address: string;
-  role: 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
-  password: string;
-}
-
-export interface UpdatePasswordPayload {
-  oldPassword: string;
-  newPassword: string;
-}
-
-export type UserRole = 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
-
-export interface User {
-  id: string;
-  _id: string;
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  whatsappNumber: string;
-  address: string;
-  role: UserRole;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface LoginResponse {
-  token: string;
-  user: User;
-}
 
 const toFormData = (data: Record<string, any>): FormData => {
   const formData = new FormData();
@@ -101,40 +59,6 @@ export const authApi = {
   },
 };
 
-export interface Pack365Course {
-  _id?: string;
-  courseId?: string;
-  courseName: string;
-  description: string;
-  stream: 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance';
-  documentLink: string;
-  topics: Array<{ name: string; link: string; }>;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Pack365Enrollment {
-  _id?: string;
-  userId: string;
-  courseId: string;
-  courseName: string;
-  amountPaid: number;
-  paymentId: string;
-  enrollmentDate: string;
-  expiresAt: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface RazorpayOrderResponse {
-  success: boolean;
-  order: {
-    id: string;
-    amount: number;
-    currency: string;
-    receipt: string;
-  };
-}
 
 export const profileApi = {
   // ✅ College
@@ -222,49 +146,6 @@ export const profileApi = {
   },
 };
 
-export interface Exam {
-  _id?: string;
-  examId: string;
-  courseId: string;
-  questions: Array<{
-    questionText: string;
-    options: string[];
-    correctAnswer: string;
-    type: 'easy' | 'medium' | 'hard';
-    description?: string;
-  }>;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface EnrollmentCode {
-  _id?: string;
-  code: string;
-  courseId: string;
-  courseName: string;
-  usageLimit?: number;
-  usedCount: number;
-  expiresAt?: string;
-  isActive: boolean;
-  createdBy: string;
-  description?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface TopicProgress {
-  topicName: string;
-  watched: boolean;
-  watchedDuration: number;
-}
-
-export interface EnhancedPack365Enrollment extends Pack365Enrollment {
-  topicProgress: TopicProgress[];
-  videoProgress: number;
-  enrollmentType: 'payment' | 'code';
-  isExamCompleted?: boolean;
-  examScore?: number;
-}
 
 export const pack365Api = {
   // Get all Pack365 courses
