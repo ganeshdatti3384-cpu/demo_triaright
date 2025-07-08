@@ -10,6 +10,7 @@ import UserManagement from '../admin/UserManagement';
 import JobManagement from '../admin/JobManagement';
 import Pack365Management from '../admin/Pack365Management';
 import PaymentAnalytics from '../admin/PaymentAnalytics';
+import Navbar from '../Navbar';
 
 interface AdminDashboardProps {
   user: { role: string; name: string };
@@ -41,26 +42,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-           <div className="flex items-center">
-              <img 
-                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
-                alt="TriaRight Logo" 
-                className="h-10 w-auto"
-              />
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Welcome, {user.name}</span>
-              <Button variant="outline" size="sm" onClick={onLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+  <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
