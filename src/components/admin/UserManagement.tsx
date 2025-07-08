@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,14 +7,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FileSpreadsheet, Eye, CheckCircle, XCircle } from 'lucide-react';
+import { Users, FileSpreadsheet, Eye, CheckCircle, XCircle, Plus } from 'lucide-react';
 
 interface User {
   id: string;
   name: string;
   email: string;
-  role: 'student' | 'employer' | 'college';
+  role: 'student' | 'employer' | 'college' | 'jobseeker';
   status: 'active' | 'inactive';
   joinDate: string;
 }
@@ -32,12 +33,35 @@ interface CollegeRequest {
   requestDate: string;
 }
 
+interface AddUserForm {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  role: 'student' | 'employer' | 'college' | 'jobseeker';
+  // Additional fields for specific roles
+  collegeName?: string;
+  university?: string;
+  companyName?: string;
+  industry?: string;
+  website?: string;
+}
+
 const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [collegeRequests, setCollegeRequests] = useState<CollegeRequest[]>([]);
   const [isExcelUploadOpen, setIsExcelUploadOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<CollegeRequest | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('students');
+  const [newUser, setNewUser] = useState<AddUserForm>({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    role: 'student'
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,14 +125,77 @@ const UserManagement = () => {
     setIsViewDialogOpen(true);
   };
 
-  const filterUsersByRole = (role: 'student' | 'employer' | 'college') => {
+  const filterUsersByRole = (role: 'student' | 'employer' | 'college' | 'jobseeker') => {
     return users.filter(user => user.role === role);
+  };
+
+  const handleAddUser = () => {
+    // Set role based on active tab
+    let userRole: 'student' | 'employer' | 'college' | 'jobseeker' = 'student';
+    if (activeTab === 'employers') userRole = 'employer';
+    else if (activeTab === 'colleges') userRole = 'college';
+    else if (activeTab === 'jobseekers') userRole = 'jobseeker';
+    
+    setNewUser({ 
+      name: '', 
+      email: '', 
+      phone: '', 
+      address: '', 
+      role: userRole,
+      collegeName: '',
+      university: '',
+      companyName: '',
+      industry: '',
+      website: ''
+    });
+    setIsAddUserOpen(true);
+  };
+
+  const handleSubmitUser = () => {
+    if (!newUser.name || !newUser.email || !newUser.phone) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newUserData: User = {
+      id: (users.length + 1).toString(),
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      status: 'active',
+      joinDate: new Date().toISOString().split('T')[0]
+    };
+
+    setUsers(prev => [...prev, newUserData]);
+    setIsAddUserOpen(false);
+    toast({
+      title: "Success",
+      description: `${newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1)} added successfully`
+    });
+  };
+
+  const getAddButtonText = () => {
+    switch (activeTab) {
+      case 'students': return 'Add Student';
+      case 'employers': return 'Add Employer';
+      case 'colleges': return 'Add College';
+      case 'jobseekers': return 'Add Job Seeker';
+      default: return 'Add User';
+    }
   };
 
   const UserTable = ({ users, title }: { users: User[], title: string }) => (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{title}</CardTitle>
+        <Button onClick={handleAddUser} size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          {getAddButtonText()}
+        </Button>
       </CardHeader>
       <CardContent>
         <Table>
@@ -179,9 +266,10 @@ const UserManagement = () => {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="students" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="students">Students ({filterUsersByRole('student').length})</TabsTrigger>
+          <TabsTrigger value="jobseekers">Job Seekers ({filterUsersByRole('jobseeker').length})</TabsTrigger>
           <TabsTrigger value="employers">Employers ({filterUsersByRole('employer').length})</TabsTrigger>
           <TabsTrigger value="colleges">Colleges ({filterUsersByRole('college').length})</TabsTrigger>
           <TabsTrigger value="requests">College Requests ({collegeRequests.filter(r => r.status === 'pending').length})</TabsTrigger>
@@ -189,6 +277,10 @@ const UserManagement = () => {
 
         <TabsContent value="students">
           <UserTable users={filterUsersByRole('student')} title="All Students" />
+        </TabsContent>
+
+        <TabsContent value="jobseekers">
+          <UserTable users={filterUsersByRole('jobseeker')} title="All Job Seekers" />
         </TabsContent>
 
         <TabsContent value="employers">
@@ -268,6 +360,130 @@ const UserManagement = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add User Dialog */}
+      <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{getAddButtonText()}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Full Name *</Label>
+                <Input
+                  id="name"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                  placeholder="Enter full name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                  placeholder="Enter email address"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input
+                  id="phone"
+                  value={newUser.phone}
+                  onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                  placeholder="Enter phone number"
+                />
+              </div>
+              <div>
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  value={newUser.address}
+                  onChange={(e) => setNewUser({...newUser, address: e.target.value})}
+                  placeholder="Enter address"
+                />
+              </div>
+            </div>
+
+            {/* Role-specific fields */}
+            {newUser.role === 'college' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="collegeName">College Name</Label>
+                  <Input
+                    id="collegeName"
+                    value={newUser.collegeName || ''}
+                    onChange={(e) => setNewUser({...newUser, collegeName: e.target.value})}
+                    placeholder="Enter college name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="university">University</Label>
+                  <Input
+                    id="university"
+                    value={newUser.university || ''}
+                    onChange={(e) => setNewUser({...newUser, university: e.target.value})}
+                    placeholder="Enter university name"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    value={newUser.website || ''}
+                    onChange={(e) => setNewUser({...newUser, website: e.target.value})}
+                    placeholder="Enter website URL"
+                  />
+                </div>
+              </div>
+            )}
+
+            {newUser.role === 'employer' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input
+                    id="companyName"
+                    value={newUser.companyName || ''}
+                    onChange={(e) => setNewUser({...newUser, companyName: e.target.value})}
+                    placeholder="Enter company name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="industry">Industry</Label>
+                  <Input
+                    id="industry"
+                    value={newUser.industry || ''}
+                    onChange={(e) => setNewUser({...newUser, industry: e.target.value})}
+                    placeholder="Enter industry"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="website">Company Website</Label>
+                  <Input
+                    id="website"
+                    value={newUser.website || ''}
+                    onChange={(e) => setNewUser({...newUser, website: e.target.value})}
+                    placeholder="Enter company website"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmitUser}>
+                Add {newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1)}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* College Request Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
