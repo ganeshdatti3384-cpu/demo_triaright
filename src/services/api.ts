@@ -205,7 +205,7 @@ export const profileApi = {
     token: string,
     data: Partial<StudentProfile>
   ): Promise<{ message: string }> => {
-    const res = await axios.put(`${API_BASE_URL}/students/profile`, toFormData(data), {
+    const res = await axios.put(`${API_BASE_URL}/users/students/profile`, toFormData(data), {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
