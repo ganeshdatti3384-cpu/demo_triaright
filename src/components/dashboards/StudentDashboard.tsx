@@ -1,23 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle } from 'lucide-react';
+import { BookOpen, Trophy, Calendar, Users, Clock, Star, LogOut, Bell, Play, Award, CheckCircle, FolderOpen, Code, Settings } from 'lucide-react';
 import Navbar from '../Navbar';
 import Pack365Card from '../Pack365Card';
-import CodeCompiler from '../CodeCompiler';
 import { useNavigate } from 'react-router-dom';
-import CourseCards from '../CourseCards';
+import CodeCompiler from '../CodeCompiler';
+
+interface StudentDashboardProps {
+  user: { role: string; name: string };
+  onLogout: () => void;
+}
 
 
-
-const StudentDashboard = () => {
+const StudentDashboard = ({ user: propUser, onLogout }: StudentDashboardProps) => {
+  const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
+  
+  useEffect(() => {
+    // Use prop user if provided, otherwise get from localStorage
+    if (propUser) {
+      setUser(propUser);
+    } else {
+      const currentUser = localStorage.getItem('currentUser');
+      if (currentUser) {
+        const userData = JSON.parse(currentUser);
+        setUser(userData);
+      }
+    }
+  }, [propUser]);
 
   useEffect(() => {
     // Load enrolled courses from localStorage
@@ -29,75 +46,55 @@ const StudentDashboard = () => {
     }
   }, []);
 
-  const stats = [
-    {
-      title: 'Enrolled Courses',
-      value: enrolledCourses.length.toString(),
-      icon: BookOpen,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
-    },
-    {
-      title: 'Completed Courses',
-      value: completedCourses.length.toString(),
-      icon: Award,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
-    },
-    {
-      title: 'Study Hours',
-      value: '48',
-      icon: Clock,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    },
-    {
-      title: 'Certificates',
-      value: completedCourses.length.toString(),
-      icon: Star,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50'
-    }
+  const courses = [
+    { id: 1, name: 'React Fundamentals', progress: 75, status: 'in-progress', price: '₹2,999' },
+    { id: 2, name: 'JavaScript Advanced', progress: 100, status: 'completed', price: '₹1,999' },
+    { id: 3, name: 'Node.js Backend', progress: 30, status: 'in-progress', price: '₹3,499' },
   ];
-  const user = { name: "varun", email: "example@gmail.com" };
-  return (
-          <>
-          <Navbar
-          user={{ role:"student",name: "John Doe" }} // 👈 Must be defined
-          userRole="student"
-          onOpenAuth={(type, userType) => console.log(type, userType)}
-          onLogout={() => console.log('Logged out')}
-        />
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.name}!</h1>
-            <p className="text-gray-600 mt-2">Continue your learning journey</p>
-          </div>
-        </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat) => {
-            const IconComponent = stat.icon;
-            return (
-              <Card key={stat.title}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                      <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                    </div>
-                    <div className={`${stat.bgColor} p-3 rounded-full`}>
-                      <IconComponent className={`h-6 w-6 ${stat.color}`} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+  const achievements = [
+    { id: 1, title: 'First Course Completed', description: 'Completed your first course', date: '2024-01-15' },
+    { id: 2, title: 'Quick Learner', description: 'Completed 3 lessons in one day', date: '2024-01-10' },
+    { id: 3, title: 'Consistent Student', description: '7-day learning streak', date: '2024-01-08' },
+  ];
+
+  const upcomingEvents = [
+    { id: 1, title: 'React Live Session', date: '2024-01-25', time: '7:00 PM', type: 'live-class' },
+    { id: 2, title: 'JavaScript Quiz', date: '2024-01-27', time: '6:00 PM', type: 'assessment' },
+    { id: 3, title: 'Career Guidance Workshop', date: '2024-01-30', time: '5:00 PM', type: 'workshop' },
+  ];
+
+  const getUserDisplayName = () => {
+    if (!user) return 'Student';
+    
+    // Try different name properties in order of preference
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    if (user.firstName) {
+      return user.firstName;
+    }
+    if (user.name) {
+      return user.name;
+    }
+    if (user.email) {
+      return user.email.split('@')[0]; // Use email username as fallback
+    }
+    return 'Student';
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <Navbar />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Message */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome back, {getUserDisplayName()}!
+          </h1>
+          <p className="text-gray-600">Continue your learning journey</p>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
@@ -207,7 +204,7 @@ const StudentDashboard = () => {
                   <div className="text-center py-8">
                     <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500 mb-4">You haven't enrolled in any courses yet.</p>
-                    <Button onClick={() => navigate('/courses/recorded')}>
+                    <Button onClick={() => navigate ('/courses/recorded')}>
                       Browse Courses
                     </Button>
                   </div>
@@ -333,11 +330,11 @@ const StudentDashboard = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={user.name} />
+                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={getUserDisplayName()} />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                        <input type="email" className="w-full p-2 border rounded-md" defaultValue="student@example.com" />
+                        <input type="email" className="w-full p-2 border rounded-md" defaultValue={user?.email || "student@example.com"} />
                       </div>
                     </div>
                   </div>
@@ -367,7 +364,7 @@ const StudentDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </div></>
+    </div>
   );
 };
 
