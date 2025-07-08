@@ -1,246 +1,130 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Tag, CheckCircle2, AlertCircle, Percent } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { useToast } from '@/hooks/use-toast';
+import { Gift, Check, X } from 'lucide-react';
 
-interface CouponData {
-  code: string;
-  discount: number;
-  type: 'percentage' | 'fixed';
-  description: string;
-  isValid: boolean;
-}
+// Define valid coupons
+const validCoupons = [
+  { code: 'WELCOME20', discount: 20, description: '20% off on first purchase' },
+  { code: 'STUDENT50', discount: 50, description: '50% off for students' },
+  { code: 'EARLY25', discount: 25, description: '25% off early bird special' },
+];
 
 const CouponCode = () => {
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<CouponData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const { toast } = useToast();
 
-  // Get course/pack data from navigation state
-  const { courseData, originalAmount, courseName } = location.state || {};
-
-
-  const handleBack = () => {
-    navigate(-1);
-  };
-
-  const applyCoupon = async () => {
+  const validateCoupon = async () => {
     if (!couponCode.trim()) {
       toast({
-        title: 'Invalid Coupon',
+        title: 'Error',
         description: 'Please enter a coupon code',
         variant: 'destructive',
       });
       return;
     }
 
-    setIsLoading(true);
+    setIsValidating(true);
     
     // Simulate API call
     setTimeout(() => {
-      const coupon = validCoupons[couponCode.toUpperCase()];
+      const coupon = validCoupons.find(c => c.code.toLowerCase() === couponCode.toLowerCase());
       
-      if (coupon && coupon.isValid) {
+      if (coupon) {
         setAppliedCoupon(coupon);
         toast({
-          title: 'Coupon Applied!',
-          description: `${coupon.description} has been applied successfully`,
+          title: 'Success!',
+          description: `Coupon "${coupon.code}" applied successfully!`,
         });
       } else {
         toast({
           title: 'Invalid Coupon',
-          description: 'The coupon code you entered is not valid or has expired',
+          description: 'The coupon code you entered is not valid or has expired.',
           variant: 'destructive',
         });
       }
-      setIsLoading(false);
+      setIsValidating(false);
     }, 1000);
   };
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setCouponCode('');
-    toast({
-      title: 'Coupon Removed',
-      description: 'Coupon has been removed from your order',
-    });
   };
 
-  const calculateDiscount = () => {
-    if (!appliedCoupon || !originalAmount) return 0;
-    
-    if (appliedCoupon.type === 'percentage') {
-      return (originalAmount * appliedCoupon.discount) / 100;
-    } else {
-      return appliedCoupon.discount;
-    }
-  };
-
-  const getFinalAmount = () => {
-    if (!originalAmount) return 0;
-    const discount = calculateDiscount();
-    return Math.max(0, originalAmount - discount);
-  };
-
-  const proceedToPayment = () => {
-    const finalAmount = getFinalAmount();
-    const discount = calculateDiscount();
-    
-    navigate('/payment', {
-      state: {
-        ...location.state,
-        finalAmount,
-        discount,
-        appliedCoupon,
-        originalAmount
-      }
-    });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    validateCoupon();
   };
 
   return (
     <>
       <Navbar />
-      
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            className="mb-6"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Left Column - Course Info */}
-            <Card className="h-fit">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Tag className="h-5 w-5 text-blue-600" />
-                  <span>Order Summary</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-blue-900">{courseName || 'Course/Pack'}</h3>
-                  <p className="text-sm text-blue-700 mt-1">Premium learning experience</p>
-                </div>
-                
-                <div className="space-y-3 border-t pt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Original Price:</span>
-                    <span className="font-semibold">${originalAmount || 0}</span>
-                  </div>
-                  
-                  {appliedCoupon && (
-                    <div className="flex justify-between items-center text-green-600">
-                      <span>Discount ({appliedCoupon.code}):</span>
-                      <span className="font-semibold">
-                        -{appliedCoupon.type === 'percentage' ? `${appliedCoupon.discount}%` : `$${appliedCoupon.discount}`}
-                        {' '}(${calculateDiscount()})
-                      </span>
-                    </div>
-                  )}
-                  
-                  <div className="border-t pt-3 flex justify-between items-center text-lg font-bold">
-                    <span>Total Amount:</span>
-                    <span className="text-blue-600">${getFinalAmount()}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Right Column - Coupon Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Percent className="h-5 w-5 text-green-600" />
-                  <span>Apply Coupon Code</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {!appliedCoupon ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="coupon">Enter Coupon Code</Label>
-                      <div className="flex space-x-2 mt-2">
-                        <Input
-                          id="coupon"
-                          placeholder="Enter your coupon code"
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                          className="flex-1"
-                        />
-                        <Button
-                          onClick={applyCoupon}
-                          disabled={isLoading}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          {isLoading ? 'Applying...' : 'Apply'}
-                        </Button>
-                      </div>
-                    </div>
-
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        <span className="font-semibold text-green-800">Coupon Applied Successfully!</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Badge className="bg-green-600 mb-1">{appliedCoupon.code}</Badge>
-                          <p className="text-sm text-green-700">{appliedCoupon.description}</p>
+      <div className="min-h-screen bg-gray-50 py-6 flex flex-col justify-center sm:py-12">
+        <div className="relative py-3 sm:max-w-xl sm:mx-auto">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-300 to-purple-400 shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl"></div>
+          <div className="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
+            <div className="max-w-md mx-auto">
+              <div>
+                <h1 className="text-2xl font-semibold text-center">Apply Coupon Code</h1>
+              </div>
+              <div className="divide-y divide-gray-200">
+                <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
+                  {appliedCoupon ? (
+                    <div className="rounded-md bg-green-50 p-4">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <Check className="h-5 w-5 text-green-400" aria-hidden="true" />
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={removeCoupon}
-                          className="text-red-600 border-red-300 hover:bg-red-50"
-                        >
-                          Remove
-                        </Button>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-green-800">
+                            Coupon Applied!
+                          </h3>
+                          <div className="mt-2 text-sm text-green-700">
+                            <p>
+                              {appliedCoupon.description} (Discount: {appliedCoupon.discount}%)
+                            </p>
+                          </div>
+                          <div className="mt-2">
+                            <Button size="sm" variant="destructive" onClick={removeCoupon}>
+                              Remove Coupon
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 text-blue-800">
-                        <AlertCircle className="h-4 w-4" />
-                        <span className="text-sm">
-                          You're saving ${calculateDiscount()} with this coupon!
-                        </span>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div>
+                        <Label htmlFor="couponCode">Coupon Code</Label>
+                        <Input
+                          id="couponCode"
+                          type="text"
+                          placeholder="Enter coupon code"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          className="mt-1 block w-full"
+                        />
                       </div>
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  onClick={proceedToPayment}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3"
-                  size="lg"
-                >
-                  Proceed to Payment - ${getFinalAmount()}
-                </Button>
-              </CardContent>
-            </Card>
+                      <Button type="submit" className="w-full" disabled={isValidating}>
+                        {isValidating ? 'Validating...' : 'Apply Coupon'}
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      
       <Footer />
     </>
   );

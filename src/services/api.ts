@@ -418,3 +418,16 @@ export const pack365Api = {
     return res.data;
   },
 };
+
+// Export all types that are used by components
+export type { 
+  Pack365Course, 
+  RegisterPayload, 
+  LoginPayload, 
+  LoginResponse,
+  TopicProgress,
+  EnhancedPack365Enrollment,
+  RazorpayOrderResponse,
+  EnrollmentCode,
+  Exam
+};

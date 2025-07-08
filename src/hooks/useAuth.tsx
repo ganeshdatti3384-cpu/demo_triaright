@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 
 export interface User {
   id: string;
+  userId?: string;
   firstName: string;
   lastName: string;
   name?: string;
@@ -49,16 +50,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const login = (userData: User, authToken: string) => {
-    setUser(userData);
+  const login = (userData: any, authToken: string) => {
+    // Transform the API user data to match our User interface
+    const transformedUser: User = {
+      id: userData.userId || userData._id || userData.id,
+      userId: userData.userId,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      name: userData.name || `${userData.firstName} ${userData.lastName}`,
+      email: userData.email,
+      role: userData.role,
+      phoneNumber: userData.phoneNumber,
+      whatsappNumber: userData.whatsappNumber,
+      address: userData.address
+    };
+
+    setUser(transformedUser);
     setToken(authToken);
     setIsAuthenticated(true);
     
     // Save to localStorage
     localStorage.setItem('token', authToken);
-    localStorage.setItem('currentUser', JSON.stringify(userData));
+    localStorage.setItem('currentUser', JSON.stringify(transformedUser));
     localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userRole', userData.role);
+    localStorage.setItem('userRole', transformedUser.role);
   };
 
   const logout = () => {

@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
@@ -28,7 +29,7 @@ const Pack365Management = () => {
     courseName: '',
     description: '',
     stream: 'it' as 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance',
-    topics: [{ name: '', link: '' }],
+    topics: [{ name: '', link: '', duration: 0 }],
     courseDocument: null as File | null
   });
 
@@ -64,7 +65,7 @@ const Pack365Management = () => {
     try {
       const courseData = {
         ...formData,
-        topics: formData.topics.filter(topic => topic.name.trim() !== '')
+        topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
 
       const response = await pack365Api.createCourse(token, courseData);
@@ -93,7 +94,7 @@ const Pack365Management = () => {
     try {
       const courseData = {
         ...formData,
-        topics: formData.topics.filter(topic => topic.name.trim() !== '')
+        topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
 
       const response = await pack365Api.updateCourse(token, editingCourse.courseId, courseData);
@@ -144,7 +145,7 @@ const Pack365Management = () => {
       courseName: '',
       description: '',
       stream: 'it',
-      topics: [{ name: '', link: '' }],
+      topics: [{ name: '', link: '', duration: 0 }],
       courseDocument: null
     });
   };
@@ -155,7 +156,7 @@ const Pack365Management = () => {
       courseName: course.courseName,
       description: course.description,
       stream: course.stream,
-      topics: course.topics?.length > 0 ? course.topics : [{ name: '', link: '' }],
+      topics: course.topics?.length > 0 ? course.topics : [{ name: '', link: '', duration: 0 }],
       courseDocument: null
     });
     setShowDialog(true);
@@ -175,15 +176,15 @@ const Pack365Management = () => {
   const addTopic = () => {
     setFormData(prev => ({
       ...prev,
-      topics: [...prev.topics, { name: '', link: '' }]
+      topics: [...prev.topics, { name: '', link: '', duration: 0 }]
     }));
   };
 
-  const updateTopic = (index: number, field: 'name' | 'link', value: string) => {
+  const updateTopic = (index: number, field: 'name' | 'link' | 'duration', value: string | number) => {
     setFormData(prev => ({
       ...prev,
       topics: prev.topics.map((topic, i) => 
-        i === index ? { ...topic, [field]: value } : topic
+        i === index ? { ...topic, [field]: field === 'duration' ? Number(value) : value } : topic
       )
     }));
   };
@@ -351,6 +352,13 @@ const Pack365Management = () => {
                       placeholder="Topic link"
                       value={topic.link}
                       onChange={(e) => updateTopic(index, 'link', e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Duration (min)"
+                      value={topic.duration}
+                      onChange={(e) => updateTopic(index, 'duration', e.target.value)}
+                      min="0"
                     />
                     {formData.topics.length > 1 && (
                       <Button
