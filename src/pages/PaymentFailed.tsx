@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -38,9 +37,9 @@ const PaymentFailed = () => {
   };
 
   return (
-    <><Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
-      throw new Error('Function not implemented.');
-    } } /><div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4">
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full shadow-xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 p-3 bg-red-100 rounded-full w-fit">
@@ -97,7 +96,7 @@ const PaymentFailed = () => {
         </Card>
       </div>
       <Footer />
-      </>
+    </>
   );
 };
 

@@ -43,7 +43,7 @@ const CourseDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar onOpenAuth={handleOpenAuth} />
+      <Navbar />
       
       <CourseHeader course={course} IconComponent={IconComponent} />
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -91,13 +90,7 @@ const Pack365Payment = () => {
 
   return (
     <>
-      <Navbar onOpenAuth={function (type: 'login' | 'register', userType?: string): void {
-        if (type === 'login') {
-          navigate('/login');
-        } else {
-          navigate('/register');
-        }
-      }} />
+      <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="max-w-4xl mx-auto px-4 py-12">
           <Button

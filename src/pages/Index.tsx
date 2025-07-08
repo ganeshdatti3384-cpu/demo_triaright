@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -76,7 +75,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar onOpenAuth={openLoginDialog} />
+      <Navbar />
       <Hero onOpenAuth={openLoginDialog} />
       
       <ImageSlider />

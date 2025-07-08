@@ -25,7 +25,7 @@ const Pack365 = () => {
 
   return (
     <>
-      <Navbar onOpenAuth={handleAuthClick} />
+      <Navbar />
       <Pack365Courses />
       <Footer />
     </>

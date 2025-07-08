@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -92,7 +91,7 @@ const CourseEnrollment = () => {
 
   return (
     <>
-      <Navbar onOpenAuth={() => {}} />
+      <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
         <div className="max-w-4xl mx-auto px-4">
           <Button

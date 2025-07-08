@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,9 +57,7 @@ const JobAssistance = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar onOpenAuth={function (type: 'login' | 'register', userType: string): void {
-        throw new Error('Function not implemented.');
-      }} />
+      <Navbar />
       
       {/* Hero Section */}
       <div className="bg-green-600 text-white">
