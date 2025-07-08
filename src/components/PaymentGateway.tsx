@@ -101,7 +101,7 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
             </div>
             <div className="flex justify-between items-center mt-2">
               <span className="text-lg">Total Amount</span>
-              <span className="text-2xl font-bold">₹{amount}</span>
+              <span className="text-2xl font-bold">${amount}</span>
             </div>
           </div>
         </CardHeader>
@@ -234,15 +234,15 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
           <div className="mt-6 space-y-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Course Price:</span>
-              <span>₹{amount}</span>
+              <span>${amount}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Processing Fee:</span>
-              <span>₹0</span>
+              <span>$0</span>
             </div>
             <div className="border-t pt-2 flex items-center justify-between font-semibold">
               <span>Total Amount:</span>
-              <span className="text-xl text-blue-600">₹{amount}</span>
+              <span className="text-xl text-blue-600">${amount}</span>
             </div>
           </div>
 
@@ -268,7 +268,7 @@ const PaymentGateway = ({ amount, courseName, onPaymentComplete, onBack }: Payme
                 <span>Processing Payment...</span>
               </div>
             ) : (
-              `Pay ₹${amount} Securely`
+              `Pay $${amount} Securely`
             )}
           </Button>
 
