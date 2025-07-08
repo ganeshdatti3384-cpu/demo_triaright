@@ -36,6 +36,7 @@ import StudentDashboard from "./components/dashboards/StudentDashboard";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import TermsConditions from "./pages/TermsConditions";
+import CourseLearning from "./pages/CourseLearning";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,11 @@ const App = () => (
             <Route path="/pack365/payment/:courseId" element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <Pack365Payment />
+              </ProtectedRoute>
+            } />
+            <Route path="/course-learning/:courseId" element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <CourseLearning />
               </ProtectedRoute>
             } />
             

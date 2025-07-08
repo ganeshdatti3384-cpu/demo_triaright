@@ -190,7 +190,10 @@ const StudentDashboard = () => {
                               </div>
                               <Progress value={45} className="h-2" />
                             </div>
-                            <Button className="w-full">
+                            <Button 
+                              className="w-full"
+                              onClick={() => navigate(`/course-learning/${course.courseId || course.id}`)}
+                            >
                               <Play className="h-4 w-4 mr-2" />
                               Continue Learning
                             </Button>
