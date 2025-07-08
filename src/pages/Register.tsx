@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -101,7 +100,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar onOpenAuth={function () {}} />
+      <Navbar />
       
       <main className="flex-1 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative overflow-hidden">
         {/* Background decorative elements */}

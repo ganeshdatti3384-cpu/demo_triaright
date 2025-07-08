@@ -119,12 +119,7 @@ const ProfileSection: React.FC = () => {
 
   return (
     <>
-      <Navbar
-        user={{ role: 'student', name: 'John Doe' }}
-        userRole="student"
-        onOpenAuth={(type, userType) => console.log(type, userType)}
-        onLogout={() => console.log('Logged out')}
-      />
+      <Navbar />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="p-8">
