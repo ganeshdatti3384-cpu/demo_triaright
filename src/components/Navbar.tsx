@@ -11,14 +11,7 @@ import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard } from 'lucide-reac
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
-interface NavbarProps {
-  onOpenAuth?: (type: 'login' | 'register', userType: string) => void;
-  user?: { role: string; name: string };
-  userRole?: string;
-  onLogout?: () => void;
-}
-
-const Navbar = ({ onOpenAuth }: NavbarProps) => {
+const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
@@ -138,9 +131,6 @@ const Navbar = ({ onOpenAuth }: NavbarProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ))}
-            
-            {/* Dashboard Link - Only show when authenticated */}
-            
           </div>
 
           {/* Desktop Auth/Profile Buttons */}

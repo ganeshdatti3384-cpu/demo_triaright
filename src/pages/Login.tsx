@@ -10,6 +10,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { authApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -18,6 +19,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +28,8 @@ const Login = () => {
     try {
       const response = await authApi.login({ email, password });
       
-      // Store authentication data in localStorage
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('currentUser', JSON.stringify(response.user));
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userRole', response.user.role);
+      // Use the login function from useAuth context
+      login(response.user, response.token);
 
       toast({
         title: 'Login successful!',
