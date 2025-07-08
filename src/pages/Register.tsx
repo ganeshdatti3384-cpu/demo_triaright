@@ -40,8 +40,7 @@ const registrationSchema = z.object({
   confirmPassword: z.string(),
   address: z.string().min(1, 'Address is required'),
   state: z.string().min(1, 'State is required'),
-  role: z.string(),
-  userType: z.enum(['trainer', 'jobseeker', 'student', 'employer', 'college']),
+  role: z.enum(['trainer', 'jobseeker', 'student', 'employer', 'college']),
   acceptTerms: z.boolean().refine(val => val === true, {
     message: 'You must accept terms and conditions'
   })
@@ -265,21 +264,6 @@ const Register = () => {
                         </div>
                         {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
                       </div>
-
-                      <div className="md:col-span-2">
-                        <Label htmlFor="address" className="text-gray-700 font-medium">Address *</Label>
-                        <div className="relative mt-1">
-                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input 
-                            id="address" 
-                            {...register('address')} 
-                            placeholder="Enter your address" 
-                            className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
-                          />
-                        </div>
-                        {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
-                      </div>
-
                       <div>
                         <Label htmlFor="state" className="text-gray-700 font-medium">State *</Label>
                         <Select onValueChange={(value) => setValue('state', value)}>
@@ -294,24 +278,25 @@ const Register = () => {
                         </Select>
                         {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>}
                       </div>
-
-                      <div>
-                        <Label htmlFor="role" className="text-gray-700 font-medium">Role *</Label>
+                      <div className="md:col-span-2">
+                        <Label htmlFor="address" className="text-gray-700 font-medium">Address *</Label>
                         <div className="relative mt-1">
-                          <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                           <Input 
-                            id="role" 
-                            {...register('role')} 
-                            placeholder="Enter your role" 
+                            id="address" 
+                            {...register('address')} 
+                            placeholder="Enter your address" 
                             className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                           />
                         </div>
-                        {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role.message}</p>}
+                        {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
                       </div>
 
+                      
+
                       <div className="md:col-span-2">
-                        <Label htmlFor="userType" className="text-gray-700 font-medium">User Type *</Label>
-                        <Select onValueChange={(value) => setValue('userType', value as any)}>
+                        <Label htmlFor="role" className="text-gray-700 font-medium">Role*</Label>
+                        <Select onValueChange={(value) => setValue('role', value as any)}>
                           <SelectTrigger className="h-11 border-gray-200 focus:border-blue-500 transition-colors">
                             <SelectValue placeholder="Select your user type" />
                           </SelectTrigger>
@@ -323,7 +308,7 @@ const Register = () => {
                             <SelectItem value="college">College</SelectItem>
                           </SelectContent>
                         </Select>
-                        {errors.userType && <p className="text-red-500 text-sm mt-1">{errors.userType.message}</p>}
+                        {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role.message}</p>}
                       </div>
                     </div>
 
