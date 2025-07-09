@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,17 +15,10 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Footer from '../components/Footer';
 import Navbar from '@/components/Navbar';
-import { User, Mail, Phone, Lock, MapPin, Briefcase, Users, ArrowRight, Sparkles, Star, Shield } from 'lucide-react';
+import { User, Mail, Phone, Lock, MapPin, ArrowRight, Sparkles, Star, Shield, ArrowLeft } from 'lucide-react';
 import { authApi, RegisterPayload } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -53,13 +46,9 @@ type RegistrationFormData = z.infer<typeof registrationSchema>;
 const Register = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    control,
-    formState: { errors },
-  } = useForm<RegistrationFormData>({
+  const [currentView, setCurrentView] = useState<'register' | 'terms' | 'privacy'>('register');
+  
+  const { register, handleSubmit, setValue, control, formState: { errors } } = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
       acceptTerms: false
@@ -97,6 +86,120 @@ const Register = () => {
     'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
     'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
   ];
+
+  const renderTermsAndConditions = () => (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
+      <main className="flex-1 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative overflow-hidden">
+        <div className="relative container mx-auto px-4 py-12 max-w-4xl">
+          <div className="flex items-center mb-8">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentView('register')}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Registration</span>
+            </Button>
+          </div>
+          
+          <Card className="backdrop-blur-xl bg-white/80 border-0 shadow-2xl">
+            <CardHeader>
+              <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Terms and Conditions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="prose max-w-none p-8">
+              <h2>1. Acceptance of Terms</h2>
+              <p>By accessing and using TriaRight, you accept and agree to be bound by the terms and provision of this agreement.</p>
+              
+              <h2>2. Use License</h2>
+              <p>Permission is granted to temporarily download one copy of the materials on TriaRight's website for personal, non-commercial transitory viewing only.</p>
+              
+              <h2>3. Disclaimer</h2>
+              <p>The materials on TriaRight's website are provided on an 'as is' basis. TriaRight makes no warranties, expressed or implied.</p>
+              
+              <h2>4. Limitations</h2>
+              <p>In no event shall TriaRight or its suppliers be liable for any damages arising out of the use or inability to use the materials on TriaRight's website.</p>
+              
+              <h2>5. Account Responsibilities</h2>
+              <p>You are responsible for maintaining the confidentiality of your account and password and for restricting access to your computer.</p>
+              
+              <h2>6. Privacy Policy</h2>
+              <p>Your privacy is important to us. Please review our Privacy Policy, which also governs your use of the Service.</p>
+              
+              <h2>7. Modifications</h2>
+              <p>TriaRight may revise these terms of service at any time without notice. By using this web site you are agreeing to be bound by the then current version of these terms of service.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+      
+      <Footer />
+    </div>
+  );
+
+  const renderPrivacyPolicy = () => (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
+      <main className="flex-1 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative overflow-hidden">
+        <div className="relative container mx-auto px-4 py-12 max-w-4xl">
+          <div className="flex items-center mb-8">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentView('register')}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Registration</span>
+            </Button>
+          </div>
+          
+          <Card className="backdrop-blur-xl bg-white/80 border-0 shadow-2xl">
+            <CardHeader>
+              <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Privacy Policy
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="prose max-w-none p-8">
+              <h2>1. Information We Collect</h2>
+              <p>We collect information you provide directly to us, such as when you create an account, update your profile, or contact us for support.</p>
+              
+              <h2>2. How We Use Your Information</h2>
+              <p>We use the information we collect to provide, maintain, and improve our services, process transactions, and communicate with you.</p>
+              
+              <h2>3. Information Sharing</h2>
+              <p>We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in this policy.</p>
+              
+              <h2>4. Data Security</h2>
+              <p>We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.</p>
+              
+              <h2>5. Cookies and Tracking</h2>
+              <p>We use cookies and similar technologies to enhance your experience, analyze usage patterns, and personalize content.</p>
+              
+              <h2>6. Your Rights</h2>
+              <p>You have the right to access, update, or delete your personal information. You may also opt out of certain communications from us.</p>
+              
+              <h2>7. Changes to This Policy</h2>
+              <p>We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+      
+      <Footer />
+    </div>
+  );
+
+  if (currentView === 'terms') {
+    return renderTermsAndConditions();
+  }
+
+  if (currentView === 'privacy') {
+    return renderPrivacyPolicy();
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -301,8 +404,6 @@ const Register = () => {
                         {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
                       </div>
 
-                      
-
                       <div className="md:col-span-2">
                         <Label htmlFor="role" className="text-gray-700 font-medium">Role*</Label>
                         <Select onValueChange={(value) => setValue('role', value as any)}>
@@ -336,23 +437,21 @@ const Register = () => {
                       />
                       <Label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed">
                         I accept the{' '}
-                        <a 
-                          href="/terms-conditions" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                        <button 
+                          type="button"
+                          onClick={() => setCurrentView('terms')}
                           className="text-blue-600 underline cursor-pointer hover:text-blue-700"
                         >
                           Terms and Conditions
-                        </a>
+                        </button>
                         {' '}and{' '}
-                        <a 
-                          href="/privacy-policy" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                        <button 
+                          type="button"
+                          onClick={() => setCurrentView('privacy')}
                           className="text-blue-600 underline cursor-pointer hover:text-blue-700"
                         >
                           Privacy Policy
-                        </a>
+                        </button>
                       </Label>
                     </div>
                     {errors.acceptTerms && <p className="text-red-500 text-sm">{errors.acceptTerms.message}</p>}
