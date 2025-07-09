@@ -37,6 +37,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   const [videoProgress, setVideoProgress] = useState(enrollment.videoProgress || 0);
   const [player, setPlayer] = useState<any>(null);
   const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
+  const [videoDuration, setVideoDuration] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -65,9 +66,9 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
     // Start progress tracking when playing
     if (isPlaying && player) {
       const interval = setInterval(() => {
-        const currentTimeSeconds = player.getCurrentTime();
-        setCurrentTime(currentTimeSeconds);
-        setWatchedDuration(Math.max(watchedDuration, currentTimeSeconds));
+        const youtubeCurrentTime = player.getCurrentTime();
+        setCurrentTime(youtubeCurrentTime);
+        setWatchedDuration(Math.max(watchedDuration, youtubeCurrentTime));
       }, 1000);
       setProgressInterval(interval);
     } else {
@@ -148,13 +149,15 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
     player.stopVideo();
     setIsPlaying(false);
 
-    // Update progress when stopping
+    // Get current YouTube time and update progress
+    const youtubeCurrentTime = player.getCurrentTime();
     const currentTopicData = course.topics[currentTopic];
-    if (watchedDuration > 0) {
-      updateProgress(currentTopicData.name, watchedDuration);
+    
+    if (youtubeCurrentTime > 0) {
+      updateProgress(currentTopicData.name, youtubeCurrentTime);
       toast({
         title: 'Progress Saved',
-        description: `Your progress has been saved at ${Math.floor(watchedDuration / 60)}:${(Math.floor(watchedDuration) % 60).toString().padStart(2, '0')}`,
+        description: `Your progress has been saved at ${Math.floor(youtubeCurrentTime / 60)}:${(Math.floor(youtubeCurrentTime) % 60).toString().padStart(2, '0')}`,
       });
     }
   };
@@ -162,6 +165,10 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   const onReady = (event: any) => {
     const playerInstance = event.target;
     setPlayer(playerInstance);
+    
+    // Get video duration from YouTube
+    const duration = playerInstance.getDuration();
+    setVideoDuration(duration);
     
     // Seek to last watched position on ready
     const currentTopicData = course.topics[currentTopic];
@@ -179,7 +186,8 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
 
   const onEnd = () => {
     const currentTopicData = course.topics[currentTopic];
-    updateProgress(currentTopicData.name, currentTopicData.duration);
+    const totalDuration = videoDuration || currentTopicData.duration * 60; // Use YouTube duration or fallback
+    updateProgress(currentTopicData.name, totalDuration);
     setIsPlaying(false);
   };
 
@@ -199,7 +207,10 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   const currentTopicData = course.topics[currentTopic];
   const currentTopicProgress = topicProgress.find(tp => tp.topicName === currentTopicData?.name);
   const completedTopics = topicProgress.filter(tp => tp.watched).length;
-  const topicWatchPercentage = currentTopicData ? (Math.max(watchedDuration, currentTopicProgress?.watchedDuration || 0) / currentTopicData.duration) * 100 : 0;
+  
+  // Use YouTube duration if available, otherwise fallback to database duration
+  const actualVideoDuration = videoDuration || (currentTopicData ? currentTopicData.duration * 60 : 0);
+  const topicWatchPercentage = actualVideoDuration > 0 ? (Math.max(watchedDuration, currentTopicProgress?.watchedDuration || 0) / actualVideoDuration) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -287,7 +298,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                   </div>
 
                   <div className="text-sm text-gray-600">
-                    {formatTime(currentTime)} / {formatTime(currentTopicData?.duration || 0)}
+                    {formatTime(currentTime)} / {formatTime(actualVideoDuration)}
                   </div>
                 </div>
 
@@ -354,7 +365,8 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
               <CardContent className="space-y-2">
                 {course.topics.map((topic, index) => {
                   const progress = topicProgress.find(tp => tp.topicName === topic.name);
-                  const progressPercentage = progress ? (progress.watchedDuration / topic.duration) * 100 : 0;
+                  const topicVideoDuration = index === currentTopic ? actualVideoDuration : (topic.duration * 60);
+                  const progressPercentage = progress && topicVideoDuration > 0 ? (progress.watchedDuration / topicVideoDuration) * 100 : 0;
                   
                   return (
                     <div
@@ -384,7 +396,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                         <Progress value={progressPercentage} className="h-2" />
                         <div className="flex justify-between text-xs text-gray-500">
                           <span>{Math.round(progressPercentage)}% watched</span>
-                          <span>{formatTime((progress?.watchedDuration || 0) * 60)} / {formatTime(topic.duration * 60)}</span>
+                          <span>{formatTime(progress?.watchedDuration || 0)} / {formatTime(topicVideoDuration)}</span>
                         </div>
                       </div>
                     </div>

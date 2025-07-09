@@ -37,17 +37,36 @@ interface CollegeRequest {
 }
 
 interface AddUserForm {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phone: string;
+  phoneNumber: string;
+  whatsappNumber: string;
+  password: string;
   address: string;
   role: 'student' | 'employer' | 'college' | 'jobseeker';
-  // Additional fields for specific roles
-  collegeName?: string;
-  university?: string;
+  
+  // Student specific fields
+  dateOfBirth?: string;
+  gender?: string;
+  course?: string;
+  year?: string;
+  
+  // Employer specific fields
   companyName?: string;
   industry?: string;
   website?: string;
+  companySize?: string;
+  
+  // College specific fields
+  collegeName?: string;
+  university?: string;
+  establishedYear?: string;
+  
+  // Job seeker specific fields
+  experience?: string;
+  skills?: string;
+  expectedSalary?: string;
 }
 
 const UserManagement = () => {
@@ -59,14 +78,17 @@ const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('students');
   const [newUser, setNewUser] = useState<AddUserForm>({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    phone: '',
+    phoneNumber: '',
+    whatsappNumber: '',
+    password: '',
     address: '',
     role: 'student'
   });
   const { toast } = useToast();
-  const { token } = useAuth(); // get the current token from auth context
+  const { token } = useAuth();
 
   useEffect(() => {
     // Load sample data
@@ -235,22 +257,20 @@ const UserManagement = () => {
     else if (activeTab === 'jobseekers') userRole = 'jobseeker';
     
     setNewUser({ 
-      name: '', 
-      email: '', 
-      phone: '', 
-      address: '', 
-      role: userRole,
-      collegeName: '',
-      university: '',
-      companyName: '',
-      industry: '',
-      website: ''
+      firstName: '',
+      lastName: '',
+      email: '',
+      phoneNumber: '',
+      whatsappNumber: '',
+      password: '',
+      address: '',
+      role: userRole
     });
     setIsAddUserOpen(true);
   };
 
   const handleSubmitUser = () => {
-    if (!newUser.name || !newUser.email || !newUser.phone) {
+    if (!newUser.firstName || !newUser.lastName || !newUser.email || !newUser.phoneNumber || !newUser.password) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -261,7 +281,7 @@ const UserManagement = () => {
 
     const newUserData: User = {
       id: (users.length + 1).toString(),
-      name: newUser.name,
+      name: `${newUser.firstName} ${newUser.lastName}`,
       email: newUser.email,
       role: newUser.role,
       status: 'active',
@@ -467,19 +487,29 @@ const UserManagement = () => {
 
       {/* Add User Dialog */}
       <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{getAddButtonText()}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Basic Information */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Full Name *</Label>
+                <Label htmlFor="firstName">First Name *</Label>
                 <Input
-                  id="name"
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                  placeholder="Enter full name"
+                  id="firstName"
+                  value={newUser.firstName}
+                  onChange={(e) => setNewUser({...newUser, firstName: e.target.value})}
+                  placeholder="Enter first name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName">Last Name *</Label>
+                <Input
+                  id="lastName"
+                  value={newUser.lastName}
+                  onChange={(e) => setNewUser({...newUser, lastName: e.target.value})}
+                  placeholder="Enter last name"
                 />
               </div>
               <div>
@@ -493,15 +523,34 @@ const UserManagement = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="phone">Phone Number *</Label>
+                <Label htmlFor="phoneNumber">Phone Number *</Label>
                 <Input
-                  id="phone"
-                  value={newUser.phone}
-                  onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                  id="phoneNumber"
+                  value={newUser.phoneNumber}
+                  onChange={(e) => setNewUser({...newUser, phoneNumber: e.target.value})}
                   placeholder="Enter phone number"
                 />
               </div>
               <div>
+                <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
+                <Input
+                  id="whatsappNumber"
+                  value={newUser.whatsappNumber}
+                  onChange={(e) => setNewUser({...newUser, whatsappNumber: e.target.value})}
+                  placeholder="Enter WhatsApp number"
+                />
+              </div>
+              <div>
+                <Label htmlFor="password">Password *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                  placeholder="Enter password"
+                />
+              </div>
+              <div className="col-span-2">
                 <Label htmlFor="address">Address</Label>
                 <Input
                   id="address"
@@ -513,66 +562,186 @@ const UserManagement = () => {
             </div>
 
             {/* Role-specific fields */}
-            {newUser.role === 'college' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="collegeName">College Name</Label>
-                  <Input
-                    id="collegeName"
-                    value={newUser.collegeName || ''}
-                    onChange={(e) => setNewUser({...newUser, collegeName: e.target.value})}
-                    placeholder="Enter college name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="university">University</Label>
-                  <Input
-                    id="university"
-                    value={newUser.university || ''}
-                    onChange={(e) => setNewUser({...newUser, university: e.target.value})}
-                    placeholder="Enter university name"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    value={newUser.website || ''}
-                    onChange={(e) => setNewUser({...newUser, website: e.target.value})}
-                    placeholder="Enter website URL"
-                  />
+            {newUser.role === 'student' && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Student Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                    <Input
+                      id="dateOfBirth"
+                      type="date"
+                      value={newUser.dateOfBirth || ''}
+                      onChange={(e) => setNewUser({...newUser, dateOfBirth: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select value={newUser.gender || ''} onValueChange={(value) => setNewUser({...newUser, gender: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="course">Course</Label>
+                    <Input
+                      id="course"
+                      value={newUser.course || ''}
+                      onChange={(e) => setNewUser({...newUser, course: e.target.value})}
+                      placeholder="Enter course name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="year">Year</Label>
+                    <Select value={newUser.year || ''} onValueChange={(value) => setNewUser({...newUser, year: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1st Year</SelectItem>
+                        <SelectItem value="2">2nd Year</SelectItem>
+                        <SelectItem value="3">3rd Year</SelectItem>
+                        <SelectItem value="4">4th Year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             )}
 
             {newUser.role === 'employer' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="companyName">Company Name</Label>
-                  <Input
-                    id="companyName"
-                    value={newUser.companyName || ''}
-                    onChange={(e) => setNewUser({...newUser, companyName: e.target.value})}
-                    placeholder="Enter company name"
-                  />
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Company Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="companyName">Company Name</Label>
+                    <Input
+                      id="companyName"
+                      value={newUser.companyName || ''}
+                      onChange={(e) => setNewUser({...newUser, companyName: e.target.value})}
+                      placeholder="Enter company name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="industry">Industry</Label>
+                    <Input
+                      id="industry"
+                      value={newUser.industry || ''}
+                      onChange={(e) => setNewUser({...newUser, industry: e.target.value})}
+                      placeholder="Enter industry"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      value={newUser.website || ''}
+                      onChange={(e) => setNewUser({...newUser, website: e.target.value})}
+                      placeholder="Enter website URL"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="companySize">Company Size</Label>
+                    <Select value={newUser.companySize || ''} onValueChange={(value) => setNewUser({...newUser, companySize: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select company size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1-10">1-10 employees</SelectItem>
+                        <SelectItem value="11-50">11-50 employees</SelectItem>
+                        <SelectItem value="51-200">51-200 employees</SelectItem>
+                        <SelectItem value="201-500">201-500 employees</SelectItem>
+                        <SelectItem value="500+">500+ employees</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="industry">Industry</Label>
-                  <Input
-                    id="industry"
-                    value={newUser.industry || ''}
-                    onChange={(e) => setNewUser({...newUser, industry: e.target.value})}
-                    placeholder="Enter industry"
-                  />
+              </div>
+            )}
+
+            {newUser.role === 'college' && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">College Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="collegeName">College Name</Label>
+                    <Input
+                      id="collegeName"
+                      value={newUser.collegeName || ''}
+                      onChange={(e) => setNewUser({...newUser, collegeName: e.target.value})}
+                      placeholder="Enter college name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="university">University</Label>
+                    <Input
+                      id="university"
+                      value={newUser.university || ''}
+                      onChange={(e) => setNewUser({...newUser, university: e.target.value})}
+                      placeholder="Enter university name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="establishedYear">Established Year</Label>
+                    <Input
+                      id="establishedYear"
+                      type="number"
+                      value={newUser.establishedYear || ''}
+                      onChange={(e) => setNewUser({...newUser, establishedYear: e.target.value})}
+                      placeholder="Enter established year"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      value={newUser.website || ''}
+                      onChange={(e) => setNewUser({...newUser, website: e.target.value})}
+                      placeholder="Enter website URL"
+                    />
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <Label htmlFor="website">Company Website</Label>
-                  <Input
-                    id="website"
-                    value={newUser.website || ''}
-                    onChange={(e) => setNewUser({...newUser, website: e.target.value})}
-                    placeholder="Enter company website"
-                  />
+              </div>
+            )}
+
+            {newUser.role === 'jobseeker' && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Job Seeker Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="experience">Experience (Years)</Label>
+                    <Input
+                      id="experience"
+                      type="number"
+                      value={newUser.experience || ''}
+                      onChange={(e) => setNewUser({...newUser, experience: e.target.value})}
+                      placeholder="Enter years of experience"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="expectedSalary">Expected Salary</Label>
+                    <Input
+                      id="expectedSalary"
+                      value={newUser.expectedSalary || ''}
+                      onChange={(e) => setNewUser({...newUser, expectedSalary: e.target.value})}
+                      placeholder="Enter expected salary"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="skills">Skills</Label>
+                    <Textarea
+                      id="skills"
+                      value={newUser.skills || ''}
+                      onChange={(e) => setNewUser({...newUser, skills: e.target.value})}
+                      placeholder="Enter skills (comma separated)"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -626,7 +795,7 @@ const UserManagement = () => {
                   <Label>Status</Label>
                   <Badge variant={
                     selectedRequest.status === 'approved' ? 'default' :
-                    selectedRequest.status === 'rejected' ? 'destructive' : 'secondary'
+                    selectedRequest.status === 'rejected' ? 'descriptive' : 'secondary'
                   }>
                     {selectedRequest.status}
                   </Badge>
