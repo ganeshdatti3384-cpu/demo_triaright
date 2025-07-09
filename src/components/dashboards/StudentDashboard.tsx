@@ -41,8 +41,7 @@ const StudentDashboard = () => {
 
   fetchEnrollments();
 }, []);
-console.log(user.id)
-
+  
   const stats = [
     {
       title: 'Enrolled Courses',

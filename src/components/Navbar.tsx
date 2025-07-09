@@ -16,29 +16,6 @@ const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  const courseTypes = [
-    { name: 'Live Courses', description: 'Interactive real-time learning', path: '/courses/live' },
-    { name: 'Recorded Courses', description: 'Learn at your own pace', path: '/courses/recorded' },
-    ...(user?.role === 'student' || user?.role === 'jobseeker'
-      ? [{ name: 'Pack365', description: 'Complete annual learning program', path: '/pack365' }]
-      : []),
-  ];
-
-  const jobTypes = [
-    { name: 'Job Assurance', description: 'Guaranteed placement programs', path: '/jobs/assurance' },
-    { name: 'Job Assistance', description: 'Career support and guidance', path: '/jobs/assistance' },
-  ];
-
-  const internshipTypes = [
-    { name: 'Online Internships', description: 'Remote opportunities', path: '/internships/online' },
-    { name: 'Offline Internships', description: 'On-site experiences', path: '/internships/offline' },
-  ];
-
-  const trainingTypes = [
-    { name: 'CRT Training', description: 'Campus Recruitment Training', path: '#' },
-    { name: 'Technical Training', description: 'Skill-specific programs', path: '#' },
-  ];
-
   const handleRegisterClick = () => {
     navigate('/register', { replace: true });
   };
@@ -95,43 +72,6 @@ const Navbar = () => {
             </button>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {isAuthenticated && (
-              <button
-                onClick={handleDashboardClick}
-                className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Dashboard</span>
-              </button>
-            )}
-            {[{ label: 'Courses', items: courseTypes },
-              { label: 'Jobs', items: jobTypes },
-              { label: 'Internships', items: internshipTypes },
-              { label: 'Training', items: trainingTypes }].map((menu) => (
-              <DropdownMenu key={menu.label}>
-                <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
-                  <span>{menu.label}</span>
-                  <ChevronDown className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-white border shadow-lg">
-                  {menu.items.map((item) => (
-                    <DropdownMenuItem
-                      key={item.name}
-                      className="p-3 cursor-pointer"
-                      onClick={() => handleMenuItemClick(item.path)}
-                    >
-                      <div>
-                        <div className="font-medium">{item.name}</div>
-                        <div className="text-sm text-gray-500">{item.description}</div>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ))}
-          </div>
 
           {/* Desktop Auth/Profile Buttons */}
           <div className="hidden md:flex items-center space-x-4">
@@ -214,90 +154,6 @@ const Navbar = () => {
             </Button>
           </div>
         </div>
-
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-200 py-4">
-            <div className="space-y-4">
-              {[{ title: 'Courses', items: courseTypes },
-                { title: 'Jobs', items: jobTypes },
-                { title: 'Internships', items: internshipTypes }].map((section) => (
-                <div className="space-y-2" key={section.title}>
-                  <h3 className="font-semibold text-gray-900">{section.title}</h3>
-                  {section.items.map((item) => (
-                    <div
-                      key={item.name}
-                      className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
-                      onClick={() => handleMenuItemClick(item.path)}
-                    >
-                      {item.name}
-                    </div>
-                  ))}
-                </div>
-              ))}
-
-              {/* Dashboard Link - Mobile */}
-              {isAuthenticated && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-gray-900">Navigation</h3>
-                  <div
-                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary flex items-center space-x-2"
-                    onClick={handleDashboardClick}
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span>Dashboard</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900">Account</h3>
-                <div className="flex flex-col space-y-2 pl-4">
-                  {isAuthenticated && user ? (
-                    <>
-                      <span className="text-sm text-gray-700">{getWelcomeMessage()}</span>
-                      {['student', 'jobseeker', 'employee', 'employer'].includes(user.role) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleProfileClick}
-                          className="border-brand-primary text-brand-primary"
-                        >
-                          Profile
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={handleLogout}
-                      >
-                        Logout
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate('/login')}
-                        className="border-brand-primary text-brand-primary"
-                      >
-                        Login
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleRegisterClick}
-                        className="bg-brand-primary hover:bg-blue-700"
-                      >
-                        Register
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );
