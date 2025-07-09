@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar } from 'lucide-react';
+import { pack365Api } from '@/services/api';
+import { toast } from 'sonner';
+import type { Pack365Course } from '@/types/api';
 
 interface SuperAdminDashboardProps {
   user: { role: string; name: string };
@@ -22,22 +24,105 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
+  const [discount, setDiscount] = useState('');
+  
+  // State for API data
+  const [courses, setCourses] = useState<Pack365Course[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Sample courses data
-  const courses = [
-    { id: '1', name: 'React Fundamentals', type: 'Live' },
-    { id: '2', name: 'JavaScript Mastery', type: 'Recorded' },
-    { id: '3', name: 'Full Stack Development', type: 'Live' },
-    { id: '4', name: 'Python for Beginners', type: 'Recorded' },
-    { id: '5', name: 'DevOps Essentials', type: 'Live' },
-  ];
+  // Fetch courses on component mount
+  useEffect(() => {
+    fetchCourses();
+    fetchCoupons();
+  }, []);
 
-  // Sample coupons data
-  const [coupons, setCoupons] = useState([
-    { id: '1', code: 'SAVE20', course: 'React Fundamentals', discount: '20%', expiry: '2024-12-31', status: 'Active' },
-    { id: '2', code: 'EARLYBIRD', course: 'JavaScript Mastery', discount: '30%', expiry: '2024-11-30', status: 'Active' },
-    { id: '3', code: 'WELCOME10', course: 'Full Stack Development', discount: '10%', expiry: '2024-10-15', status: 'Expired' },
-  ]);
+  const fetchCourses = async () => {
+    try {
+      const response = await pack365Api.getAllCourses();
+      if (response.success) {
+        setCourses(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      toast.error('Failed to fetch courses');
+    }
+  };
+
+  const fetchCoupons = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const response = await pack365Api.getAllCoupons(token);
+      if (response.success) {
+        setCoupons(response.coupons);
+      }
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+      toast.error('Failed to fetch coupons');
+    }
+  };
+
+  const handleCreateCoupon = async () => {
+    if (!selectedCourse || !couponCode || !expiryDate || !discount) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('No authentication token found');
+        return;
+      }
+
+      const selectedCourseData = courses.find(c => c._id === selectedCourse);
+      
+      await pack365Api.createCoupon(token, {
+        code: couponCode,
+        courseId: selectedCourse,
+        discount: parseInt(discount),
+        expiryDate: expiryDate,
+        description: `Coupon for ${selectedCourseData?.courseName || 'course'}`
+      });
+
+      toast.success('Coupon created successfully!');
+      setCreateCouponOpen(false);
+      setSelectedCourse('');
+      setCouponCode('');
+      setExpiryDate('');
+      setDiscount('');
+      
+      // Refresh coupons list
+      fetchCoupons();
+    } catch (error) {
+      console.error('Error creating coupon:', error);
+      toast.error('Failed to create coupon');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleCouponStatus = async (couponId: string, currentStatus: boolean) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('No authentication token found');
+        return;
+      }
+
+      await pack365Api.updateCouponStatus(token, couponId, !currentStatus);
+      toast.success(`Coupon ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+      
+      // Refresh coupons list
+      fetchCoupons();
+    } catch (error) {
+      console.error('Error updating coupon status:', error);
+      toast.error('Failed to update coupon status');
+    }
+  };
 
   const systemStats = {
     totalRevenue: '₹12,34,567',
@@ -58,29 +143,6 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     { id: 2, action: 'Database backup completed', severity: 'success', time: '2024-01-15 02:00' },
     { id: 3, action: 'Failed payment attempt', severity: 'warning', time: '2024-01-14 23:45' },
   ];
-
-  const handleCreateCoupon = () => {
-    if (selectedCourse && couponCode && expiryDate) {
-      const selectedCourseData = courses.find(c => c.id === selectedCourse);
-      const newCoupon = {
-        id: Date.now().toString(),
-        code: couponCode,
-        course: selectedCourseData?.name || '',
-        discount: '20%', // Default discount, can be made configurable
-        expiry: expiryDate,
-        status: 'Active'
-      };
-      
-      setCoupons([...coupons, newCoupon]);
-      setCreateCouponOpen(false);
-      setSelectedCourse('');
-      setCouponCode('');
-      setExpiryDate('');
-      
-      // Show success message (you can implement toast here)
-      console.log('Coupon created successfully!');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -378,8 +440,8 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                           </SelectTrigger>
                           <SelectContent>
                             {courses.map((course) => (
-                              <SelectItem key={course.id} value={course.id}>
-                                {course.name} ({course.type})
+                              <SelectItem key={course._id} value={course._id || ''}>
+                                {course.courseName} ({course.stream})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -395,6 +457,19 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value)}
                         placeholder="e.g., SAVE20"
+                        className="col-span-3"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="discount" className="text-right">
+                        Discount (%)
+                      </Label>
+                      <Input
+                        id="discount"
+                        type="number"
+                        value={discount}
+                        onChange={(e) => setDiscount(e.target.value)}
+                        placeholder="e.g., 20"
                         className="col-span-3"
                       />
                     </div>
@@ -415,8 +490,8 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                     <Button type="button" variant="outline" onClick={() => setCreateCouponOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="button" onClick={handleCreateCoupon}>
-                      Create Coupon
+                    <Button type="button" onClick={handleCreateCoupon} disabled={isLoading}>
+                      {isLoading ? 'Creating...' : 'Create Coupon'}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -435,12 +510,12 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                     <CardHeader>
                       <CardTitle className="flex items-center">
                         <Package className="h-5 w-5 mr-2 text-blue-600" />
-                        Active Pack365 Users
+                        Total Courses
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-blue-600">1,234</div>
-                      <p className="text-sm text-gray-500">Currently enrolled</p>
+                      <div className="text-3xl font-bold text-blue-600">{courses.length}</div>
+                      <p className="text-sm text-gray-500">Available courses</p>
                     </CardContent>
                   </Card>
 
@@ -452,7 +527,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-green-600">{coupons.filter(c => c.status === 'Active').length}</div>
+                      <div className="text-3xl font-bold text-green-600">{coupons.filter(c => c.isActive).length}</div>
                       <p className="text-sm text-gray-500">Currently available</p>
                     </CardContent>
                   </Card>
@@ -473,12 +548,23 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Pack365 Analytics</CardTitle>
-                    <CardDescription>Overview of Pack365 performance and metrics</CardDescription>
+                    <CardTitle>Pack365 Courses</CardTitle>
+                    <CardDescription>All available Pack365 courses</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64 bg-gray-100 rounded flex items-center justify-center">
-                      <p className="text-gray-500">Pack365 analytics chart would go here</p>
+                    <div className="space-y-4">
+                      {courses.map((course) => (
+                        <div key={course._id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{course.courseName}</p>
+                            <p className="text-sm text-gray-500">{course.stream} • ₹{course.price}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant="outline">{course.stream}</Badge>
+                            <span className="text-sm text-gray-500">{course.totalDuration} hrs</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -493,29 +579,33 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                   <CardContent>
                     <div className="space-y-4">
                       {coupons.map((coupon) => (
-                        <div key={coupon.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div key={coupon._id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center space-x-4">
                             <Ticket className="h-5 w-5 text-blue-600" />
                             <div>
                               <p className="font-medium">{coupon.code}</p>
-                              <p className="text-sm text-gray-500">{coupon.course}</p>
+                              <p className="text-sm text-gray-500">{coupon.description}</p>
                             </div>
                           </div>
                           <div className="flex items-center space-x-4">
                             <div className="text-right">
-                              <p className="font-medium">{coupon.discount}</p>
+                              <p className="font-medium">{coupon.discount}% off</p>
                               <p className="text-sm text-gray-500 flex items-center">
                                 <Calendar className="h-3 w-3 mr-1" />
-                                {coupon.expiry}
+                                {new Date(coupon.expiryDate).toLocaleDateString()}
                               </p>
                             </div>
-                            <Badge variant={coupon.status === 'Active' ? 'default' : 'secondary'}>
-                              {coupon.status}
+                            <Badge variant={coupon.isActive ? 'default' : 'secondary'}>
+                              {coupon.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                             <div className="flex space-x-2">
                               <Button variant="outline" size="sm">Edit</Button>
-                              <Button variant="outline" size="sm">
-                                {coupon.status === 'Active' ? 'Deactivate' : 'Activate'}
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleToggleCouponStatus(coupon._id, coupon.isActive)}
+                              >
+                                {coupon.isActive ? 'Deactivate' : 'Activate'}
                               </Button>
                             </div>
                           </div>

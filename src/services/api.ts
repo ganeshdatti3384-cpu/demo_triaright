@@ -417,6 +417,46 @@ export const pack365Api = {
     });
     return res.data;
   },
+
+  // Coupon Management APIs
+  createCoupon: async (
+    token: string,
+    data: {
+      code: string;
+      courseId: string;
+      discount: number;
+      expiryDate: string;
+      description?: string;
+    }
+  ): Promise<{ success: boolean; message: string; coupon: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/pack365/admin/coupons`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  getAllCoupons: async (
+    token: string
+  ): Promise<{ success: boolean; coupons: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/admin/coupons`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  updateCouponStatus: async (
+    token: string,
+    couponId: string,
+    isActive: boolean
+  ): Promise<{ success: boolean; message: string; coupon: any }> => {
+    const res = await axios.put(`${API_BASE_URL}/pack365/admin/coupons/${couponId}/status`, 
+      { isActive }, 
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return res.data;
+  },
 };
 
 export const collegeApi = {
