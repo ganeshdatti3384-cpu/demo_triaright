@@ -22,6 +22,7 @@ import {
 import { pack365Api } from '@/services/api';
 import { Pack365Course, EnhancedPack365Enrollment, TopicProgress } from '@/types/api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CourseLearningInterfaceProps {
   courseId: string;
@@ -41,7 +42,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   const [videoDuration, setVideoDuration] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
-
+  const {user}= useAuth()
   // Calculate total course duration and watched duration
   const calculateProgressMetrics = () => {
     const totalCourseDurationSeconds = course.topics.reduce((sum, topic) => sum + (topic.duration * 60), 0);
@@ -254,7 +255,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="mb-6">
-          <Button variant="outline" onClick={() => navigate('/pack365')}>
+          <Button variant="outline" onClick={() => navigate(`/${user.role}`)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Courses
           </Button>

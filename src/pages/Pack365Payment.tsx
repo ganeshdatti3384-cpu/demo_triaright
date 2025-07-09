@@ -12,6 +12,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { pack365Api } from '@/services/api';
 import { Pack365Course, EnhancedPack365Enrollment } from '@/types/api';
+import { useAuth } from '@/hooks/useAuth';
 
 declare global {
   interface Window {
@@ -27,7 +28,7 @@ const Pack365Payment = () => {
   const [loading, setLoading] = useState(false);
   const [enrollment, setEnrollment] = useState<EnhancedPack365Enrollment | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-
+  const {user} =useAuth()
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (courseId && token) {
@@ -63,7 +64,7 @@ const Pack365Payment = () => {
           title: 'Course not found.',
           variant: 'destructive'
         });
-        navigate('/pack365');
+        navigate(`/${user.role}`);
       }
     } catch (error) {
       console.error('Error fetching course:', error);
@@ -71,7 +72,7 @@ const Pack365Payment = () => {
         title: 'Error fetching course data.',
         variant: 'destructive'
       });
-      navigate('/pack365');
+      navigate(`/${user.role}`);
     } finally {
       setLoading(false);
     }
@@ -240,7 +241,7 @@ const Pack365Payment = () => {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Course not found</h2>
-            <Button onClick={() => navigate('/pack365')}>
+            <Button onClick={() => navigate(`/${user.role}`)}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Pack365
             </Button>
@@ -260,7 +261,7 @@ const Pack365Payment = () => {
           <div className="max-w-4xl mx-auto px-4 py-12">
             <Button
               variant="outline"
-              onClick={() => navigate('/pack365')}
+              onClick={() => navigate(`/${user.role}`)}
               className="mb-6"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -323,7 +324,7 @@ const Pack365Payment = () => {
         <div className="max-w-4xl mx-auto px-4 py-12">
           <Button
             variant="outline"
-            onClick={() => navigate('/pack365')}
+            onClick={() => navigate(`/${user.role}`)}
             className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
