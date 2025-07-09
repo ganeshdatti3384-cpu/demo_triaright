@@ -466,7 +466,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="discount" className="text-right">
-                        Discount (%)
+                        Users count
                       </Label>
                       <Input
                         id="discount"
