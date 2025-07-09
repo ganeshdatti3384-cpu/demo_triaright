@@ -36,6 +36,8 @@ const StudentDashboard = () => {
       try {
         const response = await pack365Api.getMyEnrollments(token);
         if (response.success && response.enrollments) {
+          console.log('Pack365 Enrollments fetched:', response.enrollments);
+          setPack365Enrollments(response.enrollments);
           setEnrolledCourses(response.enrollments.filter((e: any) => e.status === 'enrolled'));
           setCompletedCourses(response.enrollments.filter((e: any) => e.status === 'completed'));
         }
@@ -85,14 +87,19 @@ const StudentDashboard = () => {
 
     try {
       setLoadingEnrollments(true);
+      console.log('Loading Pack365 enrollments...');
       const response = await pack365Api.getMyEnrollments(token);
+      console.log('Pack365 Enrollments Response:', response);
+      
       if (response.success && response.enrollments) {
         setPack365Enrollments(response.enrollments);
+        console.log('Pack365 Enrollments set:', response.enrollments);
       } else {
+        console.log('No enrollments found or failed response');
         toast({
-          title: "Error", 
-          description: "Failed to load your enrollments",
-          variant: "destructive",
+          title: "Info", 
+          description: "No enrollments found or failed to load enrollments",
+          variant: "default",
         });
       }
     } catch (error: any) {
@@ -122,6 +129,7 @@ const StudentDashboard = () => {
   };
 
   const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
+    console.log('Navigating to course learning:', enrollment);
     navigate(`/course-learning/${enrollment.courseId}`);
   };
   
@@ -483,52 +491,63 @@ const StudentDashboard = () => {
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                           <span className="ml-2">Loading your enrollments...</span>
                         </div>
-                      ) : pack365Enrollments.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {pack365Enrollments.map((enrollment) => (
-                            <Card key={enrollment._id} className="hover:shadow-md transition-shadow border-blue-200">
-                              <CardContent className="p-6">
-                                <div className="space-y-4">
-                                  <div className="flex items-center justify-between">
-                                    <Badge className={enrollment.status === 'enrolled' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}>
-                                      {enrollment.status === 'enrolled' ? 'Active' : 'Completed'}
-                                    </Badge>
-                                    <span className="text-sm text-gray-500">
-                                      {new Date(enrollment.enrollmentDate).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                  
-                                  <div>
-                                    <h3 className="font-semibold text-lg mb-2">{enrollment.courseName}</h3>
-                                    <p className="text-sm text-gray-600 mb-3">Course ID: {enrollment.courseId}</p>
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                      <span>Progress</span>
-                                      <span>{enrollment.progress || 0}%</span>
+                      ) : pack365Enrollments && pack365Enrollments.length > 0 ? (
+                        <div className="space-y-4">
+                          <div className="text-sm text-gray-600 mb-4">
+                            Found {pack365Enrollments.length} enrollment(s)
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {pack365Enrollments.map((enrollment) => (
+                              <Card key={enrollment._id} className="hover:shadow-md transition-shadow border-blue-200">
+                                <CardContent className="p-6">
+                                  <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                      <Badge className={enrollment.status === 'enrolled' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}>
+                                        {enrollment.status === 'enrolled' ? 'Active' : 'Completed'}
+                                      </Badge>
+                                      <span className="text-sm text-gray-500">
+                                        {new Date(enrollment.enrollmentDate).toLocaleDateString()}
+                                      </span>
                                     </div>
-                                    <Progress value={enrollment.progress || 0} className="h-2" />
-                                  </div>
-
-                                  <div className="flex items-center justify-between text-sm text-gray-600">
-                                    <div className="flex items-center">
-                                      <Calendar className="h-4 w-4 mr-1" />
-                                      <span>Enrolled: {new Date(enrollment.enrollmentDate).toLocaleDateString()}</span>
+                                    
+                                    <div>
+                                      <h3 className="font-semibold text-lg mb-2">{enrollment.courseName || 'Pack365 Course'}</h3>
+                                      <p className="text-sm text-gray-600 mb-3">Course ID: {enrollment.courseId}</p>
                                     </div>
-                                  </div>
 
-                                  <Button 
-                                    className="w-full bg-blue-600 hover:bg-blue-700"
-                                    onClick={() => handleContinueLearning(enrollment)}
-                                  >
-                                    <Play className="h-4 w-4 mr-2" />
-                                    {enrollment.status === 'enrolled' ? 'Continue Learning' : 'Review Course'}
-                                  </Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between text-sm">
+                                        <span>Progress</span>
+                                        <span>{enrollment.totalWatchedPercentage || enrollment.progress || 0}%</span>
+                                      </div>
+                                      <Progress value={enrollment.totalWatchedPercentage || enrollment.progress || 0} className="h-2" />
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-sm text-gray-600">
+                                      <div className="flex items-center">
+                                        <Calendar className="h-4 w-4 mr-1" />
+                                        <span>Enrolled: {new Date(enrollment.enrollmentDate).toLocaleDateString()}</span>
+                                      </div>
+                                    </div>
+
+                                    {enrollment.topicProgress && enrollment.topicProgress.length > 0 && (
+                                      <div className="text-xs text-gray-500">
+                                        Topics completed: {enrollment.topicProgress.filter(tp => tp.watched).length} / {enrollment.topicProgress.length}
+                                      </div>
+                                    )}
+
+                                    <Button 
+                                      className="w-full bg-blue-600 hover:bg-blue-700"
+                                      onClick={() => handleContinueLearning(enrollment)}
+                                    >
+                                      <Play className="h-4 w-4 mr-2" />
+                                      {enrollment.status === 'enrolled' ? 'Continue Learning' : 'Review Course'}
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <div className="text-center py-12">
