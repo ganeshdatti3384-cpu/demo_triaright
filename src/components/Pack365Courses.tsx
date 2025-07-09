@@ -83,15 +83,6 @@ const Pack365Courses = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            Pack365 - All-in-One Learning
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Get access to comprehensive course packages for an entire year. Master multiple skills with our curated learning paths.
-          </p>
-        </div>
-
         {courses.length === 0 ? (
           <div className="text-center py-12">
             <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -103,9 +94,6 @@ const Pack365Courses = () => {
             {courses.map((course) => (
               <Card key={course._id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
                 <div className="relative">
-                  <div className="w-full h-48 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
-                    <BookOpen className="h-16 w-16 text-white" />
-                  </div>
                   <div className="absolute top-4 right-4">
                     <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
                       $365
@@ -119,7 +107,7 @@ const Pack365Courses = () => {
                 </div>
                 
                 <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-2 mt-6">
                     <Badge variant="outline">Professional</Badge>
                     <div className="flex items-center space-x-1">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />

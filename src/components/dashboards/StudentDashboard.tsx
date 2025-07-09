@@ -417,9 +417,34 @@ const StudentDashboard = () => {
             </Tabs>
           </TabsContent>
 
-          <TabsContent value="pack365" className="space-y-6" onFocus={loadPack365Courses}>
-          <Pack365Courses />
-          </TabsContent>
+         <TabsContent value="pack365" className="space-y-6" onFocus={loadPack365Courses}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Pack365 Courses</CardTitle>
+              <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
+            </CardHeader>
+
+            {/* Sub-tabs inside Pack365 */}
+            <CardContent>
+              <Tabs defaultValue="browse" className="w-full">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="browse">Browse Courses</TabsTrigger>
+                  <TabsTrigger value="enrollments">My Enrollments</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="browse">
+                  {/* Existing component shown in Browse tab */}
+                  <Pack365Courses />
+                </TabsContent>
+
+                <TabsContent value="enrollments">
+                  {/* Placeholder or actual component for enrolled courses */}
+                  {/* <MyPack365Enrollments /> */}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
           <TabsContent value="jobs" className="space-y-6">
             <Tabs defaultValue="job-assurance" className="space-y-4">
