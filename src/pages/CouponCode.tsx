@@ -10,85 +10,74 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Gift, Check } from 'lucide-react';
 import { pack365Api } from '@/services/api';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const CouponCode = () => {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
   const { toast } = useToast();
-  const { token } = useAuth();
+  const { user,token } = useAuth();
+  const navigate = useNavigate()
+
+    const location = useLocation();
+  const courseId = location.state?.courseId; // ✅ Now you can access course.courseId safely
 
   const validateCoupon = async () => {
-    if (!couponCode.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a coupon code',
-        variant: 'destructive',
-      });
-      return;
+  if (!couponCode.trim()) {
+    toast({
+      title: 'Error',
+      description: 'Please enter a coupon code',
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  if (!courseId) {
+    toast({
+      title: 'Error',
+      description: 'Course ID missing',
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  setIsValidating(true);
+
+  try {
+    if (!token) {
+      throw new Error('Authentication required');
     }
 
-    setIsValidating(true);
+    const response = await pack365Api.enrollWithCode(token, {
+      code: couponCode,
+      courseId: courseId
+    });
 
-    try {
-      if (!token) {
-        throw new Error('Authentication required');
-      }
-      
-      const response = await pack365Api.validateEnrollmentCode(token, { code: couponCode.trim() });
+    if (response?.success && response?.courseDetails) {
+      setAppliedCoupon(response.courseDetails);
 
-      if (response?.success && response?.courseDetails) {
-        setAppliedCoupon(response.courseDetails);
-        toast({
-          title: 'Success!',
-          description: `Coupon "${couponCode}" applied successfully!`,
-        });
-      } else {
-        throw new Error(response?.message || 'Invalid coupon code');
-      }
-    } catch (error) {
       toast({
-        title: 'Invalid Coupon',
-        description: 'The coupon code you entered is not valid or has expired.',
-        variant: 'destructive',
+        title: 'Successfully Enrolled!',
+        description: `You are now enrolled in the course: "${response.courseDetails.courseName}"`,
       });
-    } finally {
-      setIsValidating(false);
+    } else {
+      throw new Error(response?.message || 'Invalid coupon code');
     }
-  };
+  } catch (error) {
+    toast({
+      title: 'Invalid Coupon',
+      description: 'The coupon code you entered is not valid or has expired.',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsValidating(false);
+  }
+};
 
-  const enrollWithCoupon = async () => {
-    if (!appliedCoupon || !token) return;
-
-    setIsValidating(true);
-    try {
-      const response = await pack365Api.enrollWithCode(token, { code: couponCode.trim() });
-      
-      if (response?.success) {
-        toast({
-          title: 'Enrollment Successful!',
-          description: `You have been enrolled in ${appliedCoupon.courseName}`,
-        });
-        
-        // Redirect to course learning page
-        window.location.href = `/course-learning/${response.enrollment.courseId}`;
-      } else {
-        throw new Error(response?.message || 'Enrollment failed');
-      }
-    } catch (error) {
-      toast({
-        title: 'Enrollment Failed',
-        description: 'Failed to enroll in the course. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsValidating(false);
-    }
-  };
 
   const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponCode('');
+    navigate(`/${user.role}`)
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -124,15 +113,8 @@ const CouponCode = () => {
                             </p>
                           </div>
                            <div className="mt-4 flex space-x-2">
-                             <Button 
-                               size="sm" 
-                               onClick={enrollWithCoupon}
-                               disabled={isValidating}
-                             >
-                               {isValidating ? 'Enrolling...' : 'Enroll Now'}
-                             </Button>
                              <Button size="sm" variant="destructive" onClick={removeCoupon}>
-                               Remove Coupon
+                               Go to Dashboard
                              </Button>
                            </div>
                         </div>
