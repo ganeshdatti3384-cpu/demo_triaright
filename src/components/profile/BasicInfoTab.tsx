@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +16,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ form }) => {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Basic Information */}
       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
+        <CardHeader className="bg-teal-500 text-white rounded-t-lg">
           <CardTitle className="flex items-center">
             <User className="h-5 w-5 mr-2" />
             Personal Details
@@ -51,7 +52,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ form }) => {
 
       {/* Contact Information */}
       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-t-lg">
+        <CardHeader className="bg-teal-500 text-white rounded-t-lg">
           <CardTitle>Contact Information</CardTitle>
           <CardDescription className="text-white/90">
             How to reach you

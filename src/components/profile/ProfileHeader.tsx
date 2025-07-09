@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,7 +25,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, profilePic, onProfi
 
   return (
     <div className="relative mb-8">
-      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl transform perspective-1000 rotate-x-5">
+      <div className="bg-blue-600 rounded-3xl p-8 text-white shadow-2xl transform perspective-1000 rotate-x-5">
         <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-8">
           {/* Profile Picture Section */}
           <div className="relative group">

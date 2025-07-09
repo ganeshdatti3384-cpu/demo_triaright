@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +17,7 @@ interface ProjectsTabProps {
 const ProjectsTab: React.FC<ProjectsTabProps> = ({ form, projFields, appendProj }) => {
   return (
     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-      <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-lg">
+      <CardHeader className="bg-red-500 text-white rounded-t-lg">
         <CardTitle className="flex items-center">
           <Briefcase className="h-5 w-5 mr-2" />
           Projects & Experience

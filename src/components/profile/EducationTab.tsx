@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +16,7 @@ interface EducationTabProps {
 const EducationTab: React.FC<EducationTabProps> = ({ form, eduFields, appendEdu }) => {
   return (
     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-      <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
+      <CardHeader className=" bg-purple-500 text-white rounded-t-lg">
         <CardTitle className="flex items-center">
           <GraduationCap className="h-5 w-5 mr-2" />
           Education History

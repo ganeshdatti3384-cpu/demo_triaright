@@ -396,7 +396,7 @@ const EnhancedProfile: React.FC = () => {
                       type="submit"
                       size="lg"
                       disabled={isSubmitting}
-                      className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-12 py-3 text-lg shadow-lg transform transition-all duration-300 hover:scale-105"
+                      className="bg-blue-600 hover:bg-blue-900 text-white px-12 py-3 text-lg shadow-lg transform transition-all duration-300 hover:scale-105"
                     >
                       {isSubmitting ? (
                         <>
