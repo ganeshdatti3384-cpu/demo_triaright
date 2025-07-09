@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -85,33 +86,41 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
     };
   }, [isPlaying, player, watchedDuration]);
 
-  const updateProgress = async (topicName: string, duration: number) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+  const updateProgress = async (
+  topicName: string,
+  duration: number,
+  totalCourseDuration?: number,             // optional: pass if you have it
+  totalWatchedPercentage?: number           // optional: pass if you have it
+) => {
+  const token = localStorage.getItem('token');
+  if (!token) return;
 
-    try {
-      const response = await pack365Api.updateTopicProgress(token, {
-        courseId,
-        topicName,
-        watchedDuration: Math.floor(duration),
-      });
+  try {
+    const response = await pack365Api.updateTopicProgress(token, {
+      courseId,
+      topicName,
+      watchedDuration: Math.floor(duration),
+      totalCourseDuration,
+      totalWatchedPercentage,
+    });
 
-      if (response.success) {
-        setTopicProgress(response.topicProgress);
-        setVideoProgress(response.videoProgress);
+    if (response.success) {
+      setTopicProgress(response.topicProgress);
+      setVideoProgress(response.videoProgress);
 
-        const updatedTopic = response.topicProgress.find(tp => tp.topicName === topicName);
-        if (updatedTopic?.watched) {
-          toast({
-            title: 'Topic Completed!',
-            description: `You've successfully completed: ${topicName}`,
-          });
-        }
+      const updatedTopic = response.topicProgress.find(tp => tp.topicName === topicName);
+      if (updatedTopic?.watched) {
+        toast({
+          title: 'Topic Completed!',
+          description: `You've successfully completed: ${topicName}`,
+        });
       }
-    } catch (error) {
-      console.error('Error updating progress:', error);
     }
-  };
+  } catch (error) {
+    console.error('Error updating progress:', error);
+  }
+};
+
 
   const handleTopicSelect = (index: number) => {
     // Save current progress before switching
@@ -300,16 +309,6 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                     {formatTime(currentTime)} / {formatTime(actualVideoDuration)}
                   </div>
                 </div>
-
-                {/* Progress Bar */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
-                    <span>Progress: {Math.round(topicWatchPercentage)}%</span>
-                    <span>Watched: {formatTime(Math.max(watchedDuration, currentTopicProgress?.watchedDuration || 0))}</span>
-                  </div>
-                  <Progress value={topicWatchPercentage} className="mb-2" />
-                </div>
-
                 {/* Topic Navigation */}
                 <div className="flex space-x-2">
                   <Button

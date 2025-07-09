@@ -405,18 +405,33 @@ export const pack365Api = {
 
   // Update topic progress
   updateTopicProgress: async (
-    token: string,
-    data: {
-      courseId: string;
-      topicName: string;
-      watchedDuration: number;
+  token: string,
+  data: {
+    courseId: string;
+    topicName: string;
+    watchedDuration: number;
+    totalCourseDuration?: number;          // Optional but sent if available
+    totalWatchedPercentage?: number;       // Optional but sent if available
+  }
+): Promise<{
+  success: boolean;
+  message: string;
+  videoProgress: number;
+  totalWatchedPercentage: number;
+  topicProgress: TopicProgress[];
+}> => {
+  const res = await axios.post(
+    `${API_BASE_URL}/pack365/packenroll365/update-topic-progress`,
+    data,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     }
-  ): Promise<{ success: boolean; message: string; videoProgress: number; topicProgress: TopicProgress[] }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/update-topic-progress`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
+  );
+
+  return res.data;
+},
 
   // Coupon Management APIs
   createCoupon: async (
