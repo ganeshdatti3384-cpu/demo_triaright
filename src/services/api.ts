@@ -476,7 +476,7 @@ export const collegeApi = {
       additionalRequirements?: string[];
     }
   ): Promise<{ success: boolean; request: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/college-requests/`, data, {
+    const res = await axios.post(`${API_BASE_URL}/service-request`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -486,7 +486,7 @@ export const collegeApi = {
   getCollegeRequests: async (
     token: string
   ): Promise<{ success: boolean; requests: any[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/college-requests/college/my-requests`, {
+    const res = await axios.get(`${API_BASE_URL}/service-request/college/my-requests`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -496,7 +496,7 @@ export const collegeApi = {
   getDashboardStats: async (
     token: string
   ): Promise<{ success: boolean; stats: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/college-requests/dashboard/stats`, {
+    const res = await axios.get(`${API_BASE_URL}/service-request/dashboard/stats`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -506,7 +506,7 @@ export const collegeApi = {
   getAllServiceRequests: async (
     token: string
   ): Promise<{ success: boolean; requests: any[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/college-requests/admin/all`, {
+    const res = await axios.get(`${API_BASE_URL}/service-request/admin/all`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -517,7 +517,7 @@ export const collegeApi = {
     token: string,
     id: string
   ): Promise<{ success: boolean; request: any }> => {
-    const res = await axios.put(`${API_BASE_URL}/college-requests/admin/accept/${id}`, {}, {
+    const res = await axios.put(`${API_BASE_URL}/service-request/admin/accept/${id}`, {}, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -528,7 +528,7 @@ export const collegeApi = {
     token: string,
     id: string
   ): Promise<{ success: boolean; request: any }> => {
-    const res = await axios.put(`${API_BASE_URL}/college-requests/admin/reject/${id}`, {}, {
+    const res = await axios.put(`${API_BASE_URL}/service-request/admin/reject/${id}`, {}, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
