@@ -40,7 +40,7 @@ const StudentDashboard = () => {
 
   fetchEnrollments();
 }, []);
-console.log(user.role)
+console.log(user.id)
 
   const stats = [
     {
@@ -751,7 +751,7 @@ console.log(user.role)
                 <div className="text-center py-8">
                   <User className="h-12 w-12 text-blue-400 mx-auto mb-4" />
                   <p className="text-gray-500 mb-4">Access your complete profile here.</p>
-                  <Button onClick={() => navigate(`/${user.role}/profile`)} className="bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={() => navigate(`${userrole}/profile`)} className="bg-blue-600 hover:bg-blue-700">
                     View Full Profile
                   </Button>
                 </div>
