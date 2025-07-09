@@ -77,6 +77,7 @@ const EnhancedProfile: React.FC = () => {
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState('basic');
   const { toast } = useToast();
 
   const form = useForm<any>({
@@ -112,26 +113,25 @@ const EnhancedProfile: React.FC = () => {
   });
 
   useEffect(() => {
+    initializeProfile();
+  }, []);
+
+  const initializeProfile = async () => {
     const currentUser = localStorage.getItem('currentUser');
     const token = localStorage.getItem('token');
     
     if (currentUser && token) {
       const userData = JSON.parse(currentUser);
       setUser(userData);
-      fetchUserProfile(userData.role, token);
+      await fetchUserProfile(userData.role, token);
+    } else {
+      toast({
+        title: 'Error',
+        description: 'Please login to access profile',
+        variant: 'destructive'
+      });
     }
-
-    // Load stored documents and profile pic
-    const storedPic = localStorage.getItem('profilePic');
-    if (storedPic) {
-      setProfilePic(storedPic);
-    }
-
-    const storedDocs = localStorage.getItem('uploadedDocuments');
-    if (storedDocs) {
-      setUploadedDocuments(JSON.parse(storedDocs));
-    }
-  }, []);
+  };
 
   const fetchUserProfile = async (role: string, token: string) => {
     setIsLoading(true);
@@ -157,24 +157,24 @@ const EnhancedProfile: React.FC = () => {
       }
 
       if (profileData) {
-        // Map API data to form structure
         const formData = {
           fullName: profileData.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`,
-          dob: profileData.dob || '',
+          dob: profileData.dateOfBirth || profileData.dob || '',
           gender: profileData.gender || '',
           email: profileData.email || user?.email || '',
           phone: profileData.phone || user?.phoneNumber || '',
-          altPhone: profileData.altPhone || user?.whatsappNumber || '',
+          altPhone: profileData.alternatePhone || profileData.altPhone || user?.whatsappNumber || '',
           address: profileData.address || user?.address || '',
           fatherName: profileData.fatherName || '',
           maritalStatus: profileData.maritalStatus || '',
           nationality: profileData.nationality || '',
-          languages: profileData.languages || '',
+          languages: profileData.languagesKnown || profileData.languages || '',
           hobbies: profileData.hobbies || '',
-          education: profileData.education || [{ institute: '', course: '', year: '' }],
+          education: profileData.qualifications || profileData.education || [{ institute: '', course: '', year: '' }],
           projects: profileData.projects || [{ name: '', github: '', description: '' }],
           internships: profileData.internships || [{ company: '', role: '', responsibilities: '' }],
           username: profileData.username || user?.email || '',
+          certifications: profileData.certifications || '',
           ...profileData
         };
         
@@ -203,7 +203,6 @@ const EnhancedProfile: React.FC = () => {
       reader.onload = (e) => {
         const result = e.target?.result as string;
         setProfilePic(result);
-        localStorage.setItem('profilePic', result);
       };
       reader.readAsDataURL(file);
     }
@@ -222,9 +221,7 @@ const EnhancedProfile: React.FC = () => {
           category
         };
         
-        const updatedDocs = [...uploadedDocuments, newDoc];
-        setUploadedDocuments(updatedDocs);
-        localStorage.setItem('uploadedDocuments', JSON.stringify(updatedDocs));
+        setUploadedDocuments(prev => [...prev, newDoc]);
       });
 
       toast({
@@ -235,9 +232,7 @@ const EnhancedProfile: React.FC = () => {
   };
 
   const deleteDocument = (docId: string) => {
-    const updatedDocs = uploadedDocuments.filter(doc => doc.id !== docId);
-    setUploadedDocuments(updatedDocs);
-    localStorage.setItem('uploadedDocuments', JSON.stringify(updatedDocs));
+    setUploadedDocuments(prev => prev.filter(doc => doc.id !== docId));
     
     toast({
       title: 'Success',
@@ -247,12 +242,18 @@ const EnhancedProfile: React.FC = () => {
 
   const onSubmit = async (data: any) => {
     const token = localStorage.getItem('token');
-    if (!token || !user) return;
+    if (!token || !user) {
+      toast({
+        title: 'Error',
+        description: 'Please login to update profile',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     
     try {
-      // Add profile picture to form data if available
       const formDataToSubmit = {
         ...data,
         profilePicture: profilePic
@@ -282,8 +283,8 @@ const EnhancedProfile: React.FC = () => {
         description: response.message || 'Profile updated successfully!',
       });
 
-      // Also save to localStorage as backup
-      localStorage.setItem('profileData', JSON.stringify(data));
+      // Refresh profile data
+      await fetchUserProfile(user.role, token);
       
     } catch (error: any) {
       console.error('Error updating profile:', error);
@@ -331,7 +332,7 @@ const EnhancedProfile: React.FC = () => {
               <span className="ml-2">Loading profile...</span>
             </div>
           ) : (
-            <Tabs defaultValue="basic" className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
                 <TabsTrigger value="education">Education</TabsTrigger>
@@ -390,7 +391,6 @@ const EnhancedProfile: React.FC = () => {
                     </>
                   )}
 
-                  {/* Submit Button */}
                   <div className="flex justify-center mt-8">
                     <Button 
                       type="submit"
