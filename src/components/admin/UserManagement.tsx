@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Users, FileSpreadsheet, Eye, CheckCircle, XCircle, Plus } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { authApi, pack365Api } from '@/services/api';
 
 interface User {
   id: string;
@@ -63,6 +66,7 @@ const UserManagement = () => {
     role: 'student'
   });
   const { toast } = useToast();
+  const { token } = useAuth(); // get the current token from auth context
 
   useEffect(() => {
     // Load sample data
@@ -89,16 +93,42 @@ const UserManagement = () => {
     setCollegeRequests(sampleRequests);
   }, []);
 
-  const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      toast({
-        title: "Excel Upload",
-        description: `File ${file.name} uploaded successfully. Processing users...`
-      });
-      setIsExcelUploadOpen(false);
-    }
-  };
+const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  if (!token) {
+    toast({
+      title: 'Unauthorized',
+      description: 'You must be logged in to upload user data.',
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  toast({
+    title: 'Uploading Excel...',
+    description: `File "${file.name}" is being processed.`,
+  });
+
+  try {
+    const response = await authApi.bulkRegisterFromExcel(file, token);
+    toast({
+      title: 'Upload Successful',
+      description: `${response.results.length} users processed: ${response.message}`,
+    });
+  } catch (error: any) {
+    toast({
+      title: 'Upload Failed',
+      description: error?.response?.data?.message || 'Something went wrong while uploading.',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsExcelUploadOpen(false);
+  }
+};
+
 
   const handleApproveRequest = (requestId: string) => {
     setCollegeRequests(prev => prev.map(req => 
