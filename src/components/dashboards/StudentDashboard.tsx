@@ -706,34 +706,6 @@ const StudentDashboard = () => {
                       <Button>Create Project</Button>
                     </CardContent>
                   </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold">Todo App</h3>
-                        <Badge variant="outline">React</Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-4">A simple todo application with CRUD operations</p>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline">View</Button>
-                        <Button size="sm">Edit</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold">Calculator</h3>
-                        <Badge variant="outline">JavaScript</Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-4">Basic calculator with arithmetic operations</p>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline">View</Button>
-                        <Button size="sm">Edit</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               </CardContent>
             </Card>
