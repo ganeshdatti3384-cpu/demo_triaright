@@ -14,7 +14,7 @@ interface BasicInfoTabProps {
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ form }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Basic Information */}
+      {/* Personal Details */}
       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="bg-teal-500 text-white rounded-t-lg">
           <CardTitle className="flex items-center">
@@ -33,18 +33,46 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ form }) => {
               <FormMessage />
             </FormItem>
           )} />
-          
+
+          <FormField name="fatherName" control={form.control} render={({ field }) => (
+            <FormItem>
+              <FormLabel>Father's Name</FormLabel>
+              <FormControl><Input {...field} className="border-2 focus:border-blue-500" /></FormControl>
+            </FormItem>
+          )} />
+
           <FormField name="dob" control={form.control} render={({ field }) => (
             <FormItem>
               <FormLabel>Date of Birth</FormLabel>
               <FormControl><Input type="date" {...field} className="border-2 focus:border-blue-500" /></FormControl>
             </FormItem>
           )} />
-          
+
           <FormField name="gender" control={form.control} render={({ field }) => (
             <FormItem>
               <FormLabel>Gender</FormLabel>
               <FormControl><Input placeholder="Male / Female / Other" {...field} className="border-2 focus:border-blue-500" /></FormControl>
+            </FormItem>
+          )} />
+
+          <FormField name="maritalStatus" control={form.control} render={({ field }) => (
+            <FormItem>
+              <FormLabel>Marital Status</FormLabel>
+              <FormControl><Input placeholder="Single / Married / Other" {...field} className="border-2 focus:border-blue-500" /></FormControl>
+            </FormItem>
+          )} />
+
+          <FormField name="nationality" control={form.control} render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nationality</FormLabel>
+              <FormControl><Input {...field} className="border-2 focus:border-blue-500" /></FormControl>
+            </FormItem>
+          )} />
+
+          <FormField name="hobbies" control={form.control} render={({ field }) => (
+            <FormItem>
+              <FormLabel>Hobbies</FormLabel>
+              <FormControl><Textarea placeholder="e.g., Reading, Coding, Music" {...field} className="border-2 focus:border-blue-500" /></FormControl>
             </FormItem>
           )} />
         </CardContent>
@@ -65,21 +93,21 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ form }) => {
               <FormControl><Input type="email" {...field} className="border-2 focus:border-green-500" /></FormControl>
             </FormItem>
           )} />
-          
+
           <FormField name="phone" control={form.control} render={({ field }) => (
             <FormItem>
               <FormLabel>Phone</FormLabel>
               <FormControl><Input {...field} className="border-2 focus:border-green-500" /></FormControl>
             </FormItem>
           )} />
-          
+
           <FormField name="altPhone" control={form.control} render={({ field }) => (
             <FormItem>
               <FormLabel>Alternate Phone</FormLabel>
               <FormControl><Input {...field} className="border-2 focus:border-green-500" /></FormControl>
             </FormItem>
           )} />
-          
+
           <FormField name="address" control={form.control} render={({ field }) => (
             <FormItem>
               <FormLabel>Address</FormLabel>
