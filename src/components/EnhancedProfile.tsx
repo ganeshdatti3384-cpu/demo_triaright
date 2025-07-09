@@ -316,9 +316,7 @@ const EnhancedProfile: React.FC = () => {
   }
 
   return (
-    <>
-      <Navbar />
-      
+    <>      
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <ProfileHeader 
