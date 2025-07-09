@@ -250,7 +250,6 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                         height: '100%',
                         playerVars: {
                           rel: 0,
-                          controls: 0,
                           modestbranding: 1,
                           showinfo: 0,
                         },
