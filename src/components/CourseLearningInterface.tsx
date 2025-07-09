@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
@@ -10,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Play,
   Pause,
+  Square,
   CheckCircle2,
   Clock,
   BookOpen,
@@ -30,9 +32,11 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   const [currentTopic, setCurrentTopic] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [watchedDuration, setWatchedDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [topicProgress, setTopicProgress] = useState<TopicProgress[]>(enrollment.topicProgress || []);
   const [videoProgress, setVideoProgress] = useState(enrollment.videoProgress || 0);
   const [player, setPlayer] = useState<any>(null);
+  const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -47,6 +51,39 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
     }
   }, [course.topics, topicProgress.length]);
 
+  useEffect(() => {
+    // Set initial watched duration from topic progress when switching topics
+    const currentTopicData = course.topics[currentTopic];
+    const progress = topicProgress.find(tp => tp.topicName === currentTopicData?.name);
+    if (progress) {
+      setWatchedDuration(progress.watchedDuration);
+      setCurrentTime(progress.watchedDuration);
+    }
+  }, [currentTopic, course.topics, topicProgress]);
+
+  useEffect(() => {
+    // Start progress tracking when playing
+    if (isPlaying && player) {
+      const interval = setInterval(() => {
+        const currentTimeSeconds = player.getCurrentTime();
+        setCurrentTime(currentTimeSeconds);
+        setWatchedDuration(Math.max(watchedDuration, currentTimeSeconds));
+      }, 1000);
+      setProgressInterval(interval);
+    } else {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        setProgressInterval(null);
+      }
+    }
+
+    return () => {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+    };
+  }, [isPlaying, player, watchedDuration]);
+
   const updateProgress = async (topicName: string, duration: number) => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -55,7 +92,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
       const response = await pack365Api.updateTopicProgress(token, {
         courseId,
         topicName,
-        watchedDuration: duration,
+        watchedDuration: Math.floor(duration),
       });
 
       if (response.success) {
@@ -76,8 +113,15 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   };
 
   const handleTopicSelect = (index: number) => {
+    // Save current progress before switching
+    if (player && watchedDuration > 0) {
+      const currentTopicData = course.topics[currentTopic];
+      updateProgress(currentTopicData.name, watchedDuration);
+    }
+
     setCurrentTopic(index);
     setWatchedDuration(0);
+    setCurrentTime(0);
     setIsPlaying(false);
     if (player) player.stopVideo();
   };
@@ -88,14 +132,49 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
     if (isPlaying) {
       player.pauseVideo();
     } else {
+      // Seek to the last watched position when playing
+      if (watchedDuration > 0) {
+        player.seekTo(watchedDuration, true);
+      }
       player.playVideo();
     }
 
     setIsPlaying(!isPlaying);
   };
 
+  const handleStop = () => {
+    if (!player) return;
+
+    player.stopVideo();
+    setIsPlaying(false);
+
+    // Update progress when stopping
+    const currentTopicData = course.topics[currentTopic];
+    if (watchedDuration > 0) {
+      updateProgress(currentTopicData.name, watchedDuration);
+      toast({
+        title: 'Progress Saved',
+        description: `Your progress has been saved at ${Math.floor(watchedDuration / 60)}:${(Math.floor(watchedDuration) % 60).toString().padStart(2, '0')}`,
+      });
+    }
+  };
+
   const onReady = (event: any) => {
-    setPlayer(event.target);
+    const playerInstance = event.target;
+    setPlayer(playerInstance);
+    
+    // Seek to last watched position on ready
+    const currentTopicData = course.topics[currentTopic];
+    const progress = topicProgress.find(tp => tp.topicName === currentTopicData?.name);
+    if (progress && progress.watchedDuration > 0) {
+      playerInstance.seekTo(progress.watchedDuration, true);
+    }
+  };
+
+  const onStateChange = (event: any) => {
+    const playerState = event.data;
+    // YouTube player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
+    setIsPlaying(playerState === 1);
   };
 
   const onEnd = () => {
@@ -111,10 +190,17 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
     return match ? match[1] : null;
   };
 
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const currentTopicData = course.topics[currentTopic];
   const currentTopicProgress = topicProgress.find(tp => tp.topicName === currentTopicData?.name);
   const completedTopics = topicProgress.filter(tp => tp.watched).length;
-  console.log(currentTopicData)
+  const topicWatchPercentage = currentTopicData ? (Math.max(watchedDuration, currentTopicProgress?.watchedDuration || 0) / currentTopicData.duration) * 100 : 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -147,6 +233,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                       videoId={getYouTubeId(currentTopicData.link)}
                       onReady={onReady}
                       onEnd={onEnd}
+                      onStateChange={onStateChange}
                       opts={{
                         width: '100%',
                         height: '100%',
@@ -160,7 +247,6 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                       }}
                       className="w-full h-full"
                     />
-                    {/* Optional: overlay custom controls later if needed */}
                   </div>
                 ) : (
                   <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-4 text-white text-lg">
@@ -174,6 +260,11 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                     <Button onClick={handlePlayPause} className="flex items-center space-x-2">
                       {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                       <span>{isPlaying ? 'Pause' : 'Play'}</span>
+                    </Button>
+
+                    <Button onClick={handleStop} variant="outline" className="flex items-center space-x-2">
+                      <Square className="h-4 w-4" />
+                      <span>Stop</span>
                     </Button>
 
                     <Button
@@ -196,15 +287,18 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                   </div>
 
                   <div className="text-sm text-gray-600">
-                    {Math.floor(watchedDuration / 60)}:
-                    {(watchedDuration % 60).toString().padStart(2, '0')} /{' '}
-                    {Math.floor(currentTopicData?.duration / 60)}:
-                    {(currentTopicData?.duration % 60).toString().padStart(2, '0')}
+                    {formatTime(currentTime)} / {formatTime(currentTopicData?.duration || 0)}
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                <Progress value={(watchedDuration / currentTopicData?.duration) * 100} className="mb-4" />
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Progress: {Math.round(topicWatchPercentage)}%</span>
+                    <span>Watched: {formatTime(Math.max(watchedDuration, currentTopicProgress?.watchedDuration || 0))}</span>
+                  </div>
+                  <Progress value={topicWatchPercentage} className="mb-2" />
+                </div>
 
                 {/* Topic Navigation */}
                 <div className="flex space-x-2">
@@ -260,6 +354,8 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
               <CardContent className="space-y-2">
                 {course.topics.map((topic, index) => {
                   const progress = topicProgress.find(tp => tp.topicName === topic.name);
+                  const progressPercentage = progress ? (progress.watchedDuration / topic.duration) * 100 : 0;
+                  
                   return (
                     <div
                       key={index}
@@ -270,7 +366,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                           : 'bg-gray-50 hover:bg-gray-100'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-2">
                           {progress?.watched ? (
                             <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -282,6 +378,13 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                         <div className="flex items-center space-x-1 text-xs text-gray-500">
                           <Clock className="h-3 w-3" />
                           <span>{topic.duration}m</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Progress value={progressPercentage} className="h-2" />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>{Math.round(progressPercentage)}% watched</span>
+                          <span>{formatTime((progress?.watchedDuration || 0) * 60)} / {formatTime(topic.duration * 60)}</span>
                         </div>
                       </div>
                     </div>
