@@ -57,6 +57,35 @@ const CouponCode = () => {
     }
   };
 
+  const enrollWithCoupon = async () => {
+    if (!appliedCoupon || !token) return;
+
+    setIsValidating(true);
+    try {
+      const response = await pack365Api.enrollWithCode(token, { code: couponCode.trim() });
+      
+      if (response?.success) {
+        toast({
+          title: 'Enrollment Successful!',
+          description: `You have been enrolled in ${appliedCoupon.courseName}`,
+        });
+        
+        // Redirect to course learning page
+        window.location.href = `/course-learning/${response.enrollment.courseId}`;
+      } else {
+        throw new Error(response?.message || 'Enrollment failed');
+      }
+    } catch (error) {
+      toast({
+        title: 'Enrollment Failed',
+        description: 'Failed to enroll in the course. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setCouponCode('');
@@ -94,11 +123,18 @@ const CouponCode = () => {
                               {appliedCoupon.courseName})
                             </p>
                           </div>
-                          <div className="mt-2">
-                            <Button size="sm" variant="destructive" onClick={removeCoupon}>
-                              Remove Coupon
-                            </Button>
-                          </div>
+                           <div className="mt-4 flex space-x-2">
+                             <Button 
+                               size="sm" 
+                               onClick={enrollWithCoupon}
+                               disabled={isValidating}
+                             >
+                               {isValidating ? 'Enrolling...' : 'Enroll Now'}
+                             </Button>
+                             <Button size="sm" variant="destructive" onClick={removeCoupon}>
+                               Remove Coupon
+                             </Button>
+                           </div>
                         </div>
                       </div>
                     </div>
