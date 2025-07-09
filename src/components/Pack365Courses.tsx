@@ -5,29 +5,47 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Clock, BookOpen, Users, Star, AlertCircle } from 'lucide-react';
+import { Clock, BookOpen, Users, Star, AlertCircle, CheckCircle } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 const Pack365Courses = () => {
   const [courses, setCourses] = useState<Pack365Course[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    loadCourses();
+    loadCoursesAndEnrollments();
   }, []);
 
-  const loadCourses = async () => {
+  const loadCoursesAndEnrollments = async () => {
     try {
       setLoading(true);
-      const response = await pack365Api.getAllCourses();
-      if (response.success) {
-        setCourses(response.data);
+      
+      // Load courses
+      const coursesResponse = await pack365Api.getAllCourses();
+      if (coursesResponse.success) {
+        setCourses(coursesResponse.data);
       } else {
         setError('Failed to load courses');
+        return;
+      }
+
+      // Load user enrollments
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const enrollmentsResponse = await pack365Api.getMyEnrollments(token);
+          if (enrollmentsResponse.success && enrollmentsResponse.enrollments) {
+            setEnrollments(enrollmentsResponse.enrollments);
+          }
+        } catch (enrollError) {
+          console.log('No enrollments found or error loading enrollments:', enrollError);
+          // Don't set error here as this is optional
+        }
       }
     } catch (err: any) {
       console.error('Error loading courses:', err);
@@ -42,6 +60,10 @@ const Pack365Courses = () => {
     }
   };
 
+  const isUserEnrolled = (courseId: string) => {
+    return enrollments.some(enrollment => enrollment.courseId === courseId);
+  };
+
   const handleEnrollClick = (course: Pack365Course) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -53,6 +75,14 @@ const Pack365Courses = () => {
       navigate('/login');
       return;
     }
+
+    // If already enrolled, navigate to course learning
+    if (isUserEnrolled(course.courseId)) {
+      navigate(`/course-learning/${course.courseId}`);
+      return;
+    }
+
+    // Otherwise, navigate to payment
     navigate(`/pack365/payment/${course.courseId}`);
   };
 
@@ -74,7 +104,7 @@ const Pack365Courses = () => {
           <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Courses</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <Button onClick={loadCourses}>Try Again</Button>
+          <Button onClick={loadCoursesAndEnrollments}>Try Again</Button>
         </div>
       </div>
     );
@@ -91,74 +121,95 @@ const Pack365Courses = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {courses.map((course) => (
-              <Card key={course._id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                <div className="relative">
-                  <div className="absolute top-4 right-4">
-                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                      $365
-                    </Badge>
-                  </div>
-                  <div className="absolute top-4 left-4">
-                    <Badge variant="secondary" className="bg-white/90 text-gray-800">
-                      {course.stream.toUpperCase()}
-                    </Badge>
-                  </div>
-                </div>
-                
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2 mt-6">
-                    <Badge variant="outline">Professional</Badge>
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-medium">4.8</span>
-                    </div>
-                  </div>
-                  <CardTitle className="text-xl mb-2">{course.courseName}</CardTitle>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{course.description}</p>
-                </CardHeader>
-                
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <BookOpen className="h-4 w-4" />
-                        <span>{course.topics?.length || 0} Topics</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>365 days access</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-1 text-sm text-gray-500">
-                      <Users className="h-4 w-4" />
-                      <span>Premium Content</span>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-1">
-                      {course.topics?.slice(0, 3).map((topic, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {topic.name}
+            {courses.map((course) => {
+              const enrolled = isUserEnrolled(course.courseId);
+              
+              return (
+                <Card key={course._id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                  <div className="relative">
+                    <div className="absolute top-4 right-4">
+                      {enrolled ? (
+                        <Badge className="bg-green-600 text-white">
+                          Enrolled
                         </Badge>
-                      ))}
-                      {course.topics && course.topics.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{course.topics.length - 3} more
+                      ) : (
+                        <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                          $365
                         </Badge>
                       )}
                     </div>
-                    
-                    <Button 
-                      onClick={() => handleEnrollClick(course)}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                    >
-                      Enroll Now - $365
-                    </Button>
+                    <div className="absolute top-4 left-4">
+                      <Badge variant="secondary" className="bg-white/90 text-gray-800">
+                        {course.stream.toUpperCase()}
+                      </Badge>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  
+                  <CardHeader>
+                    <div className="flex items-center justify-between mb-2 mt-6">
+                      <Badge variant="outline">Professional</Badge>
+                      <div className="flex items-center space-x-1">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm font-medium">4.8</span>
+                      </div>
+                    </div>
+                    <CardTitle className="text-xl mb-2">{course.courseName}</CardTitle>
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{course.description}</p>
+                  </CardHeader>
+                  
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <div className="flex items-center space-x-1">
+                          <BookOpen className="h-4 w-4" />
+                          <span>{course.topics?.length || 0} Topics</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-4 w-4" />
+                          <span>365 days access</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-1 text-sm text-gray-500">
+                        <Users className="h-4 w-4" />
+                        <span>Premium Content</span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-1">
+                        {course.topics?.slice(0, 3).map((topic, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {topic.name}
+                          </Badge>
+                        ))}
+                        {course.topics && course.topics.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{course.topics.length - 3} more
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <Button 
+                        onClick={() => handleEnrollClick(course)}
+                        className={`w-full ${
+                          enrolled 
+                            ? 'bg-green-600 hover:bg-green-700' 
+                            : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
+                        }`}
+                      >
+                        {enrolled ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Continue Learning
+                          </>
+                        ) : (
+                          'Enroll Now - $365'
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
