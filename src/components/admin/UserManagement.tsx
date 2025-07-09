@@ -1,824 +1,778 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { Users, FileSpreadsheet, Eye, CheckCircle, XCircle, Plus, Download } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { authApi, pack365Api } from '@/services/api';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'student' | 'employer' | 'college' | 'jobseeker';
-  status: 'active' | 'inactive';
-  joinDate: string;
-}
-
-interface CollegeRequest {
-  id: string;
-  collegeName: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
-  address: string;
-  website: string;
-  status: 'pending' | 'approved' | 'rejected';
-  requestDate: string;
-}
-
-interface AddUserForm {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  whatsappNumber: string;
-  password: string;
-  address: string;
-  role: 'student' | 'employer' | 'college' | 'jobseeker';
-  
-  // Student specific fields
-  dateOfBirth?: string;
-  gender?: string;
-  course?: string;
-  year?: string;
-  
-  // Employer specific fields
-  companyName?: string;
-  industry?: string;
-  website?: string;
-  companySize?: string;
-  
-  // College specific fields
-  collegeName?: string;
-  university?: string;
-  establishedYear?: string;
-  
-  // Job seeker specific fields
-  experience?: string;
-  skills?: string;
-  expectedSalary?: string;
-}
+import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, Calendar, Building, GraduationCap, Briefcase } from 'lucide-react';
+import { toast } from 'sonner';
 
 const UserManagement = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [collegeRequests, setCollegeRequests] = useState<CollegeRequest[]>([]);
-  const [isExcelUploadOpen, setIsExcelUploadOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<CollegeRequest | null>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('students');
-  const [newUser, setNewUser] = useState<AddUserForm>({
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState('all');
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [editUserOpen, setEditUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+
+  // Form states for creating/editing users
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    phoneNumber: '',
-    whatsappNumber: '',
     password: '',
+    role: '',
+    phone: '',
     address: '',
-    role: 'student'
+    dateOfBirth: '',
+    // Student specific
+    collegeName: '',
+    course: '',
+    year: '',
+    branch: '',
+    // Employer specific
+    companyName: '',
+    designation: '',
+    industry: '',
+    companySize: '',
+    // College specific
+    instituteName: '',
+    instituteType: '',
+    location: '',
+    establishedYear: '',
+    // Job Seeker specific
+    experience: '',
+    skills: '',
+    expectedSalary: '',
+    currentLocation: ''
   });
-  const { toast } = useToast();
-  const { token } = useAuth();
 
   useEffect(() => {
-    // Load sample data
-    const sampleUsers: User[] = [
-      { id: '1', name: 'John Doe', email: 'john@example.com', role: 'student', status: 'active', joinDate: '2024-01-15' },
-      { id: '2', name: 'Jane Smith', email: 'jane@company.com', role: 'employer', status: 'active', joinDate: '2024-01-10' },
-      { id: '3', name: 'ABC College', email: 'admin@abc.edu', role: 'college', status: 'active', joinDate: '2024-01-05' },
-    ];
-    setUsers(sampleUsers);
-
-    const sampleRequests: CollegeRequest[] = [
-      {
-        id: '1',
-        collegeName: 'XYZ Engineering College',
-        contactPerson: 'Dr. Smith',
-        email: 'contact@xyz.edu',
-        phone: '+1234567890',
-        address: '123 College St, City',
-        website: 'www.xyz.edu',
-        status: 'pending',
-        requestDate: '2024-01-20'
-      }
-    ];
-    setCollegeRequests(sampleRequests);
+    fetchUsers();
   }, []);
 
-  const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      // Mock data - replace with actual API call
+      const mockUsers = [
+        {
+          id: 1,
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          role: 'student',
+          phone: '+1234567890',
+          status: 'active',
+          createdAt: '2024-01-15',
+          collegeName: 'ABC University',
+          course: 'Computer Science',
+          year: '3rd'
+        },
+        {
+          id: 2,
+          firstName: 'Jane',
+          lastName: 'Smith',
+          email: 'jane@company.com',
+          role: 'employer',
+          phone: '+1234567891',
+          status: 'active',
+          createdAt: '2024-01-14',
+          companyName: 'Tech Corp',
+          designation: 'HR Manager'
+        }
+      ];
+      setUsers(mockUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to fetch users');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    if (!file) return;
-
-    if (!token) {
-      toast({
-        title: 'Unauthorized',
-        description: 'You must be logged in to upload user data.',
-        variant: 'destructive',
-      });
+  const handleCreateUser = async () => {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.role) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
-    toast({
-      title: 'Uploading Excel...',
-      description: `File "${file.name}" is being processed.`,
-    });
-
     try {
-      const response = await authApi.bulkRegisterFromExcel(file, token);
-      toast({
-        title: 'Upload Successful',
-        description: `${response.results.length} users processed: ${response.message}`,
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Upload Failed',
-        description: error?.response?.data?.message || 'Something went wrong while uploading.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsExcelUploadOpen(false);
+      // Mock API call - replace with actual API
+      console.log('Creating user:', formData);
+      toast.success('User created successfully!');
+      setCreateUserOpen(false);
+      resetForm();
+      fetchUsers();
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast.error('Failed to create user');
     }
   };
 
-  const handleDownloadExcel = () => {
-    // Sample data for Excel download
-    const sampleData = [
-      {
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john@example.com',
-        phoneNumber: '9876543210',
-        whatsappNumber: '9876543211',
-        password: 'pass1234',
-        address: '123 Main Street',
-        role: 'student'
-      },
-      {
-        firstName: 'Alice',
-        lastName: 'Smith',
-        email: 'alice@example.com',
-        phoneNumber: '9123456789',
-        whatsappNumber: '9123456790',
-        password: 'hello123',
-        address: '56 Elm Avenue',
-        role: 'employer'
-      },
-      {
-        firstName: 'Bob',
-        lastName: 'Johnson',
-        email: 'bob@example.com',
-        phoneNumber: '9988776655',
-        whatsappNumber: '9988776656',
-        password: 'qwerty12',
-        address: '789 Oak Lane',
-        role: 'jobseeker'
-      },
-      {
-        firstName: 'Mary',
-        lastName: 'Brown',
-        email: 'mary@example.com',
-        phoneNumber: '8765432109',
-        whatsappNumber: '8765432110',
-        password: 'admin321',
-        address: '22 Park Blvd',
-        role: 'admin'
-      }
-    ];
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return;
 
-    // Convert data to CSV format
-    const headers = ['firstName', 'lastName', 'email', 'phoneNumber', 'whatsappNumber', 'password', 'address', 'role'];
-    const csvContent = [
-      headers.join(','),
-      ...sampleData.map(row => headers.map(header => `"${row[header as keyof typeof row]}"`).join(','))
-    ].join('\n');
-
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'sample_users_data.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: "Excel Downloaded",
-      description: "Sample users data has been downloaded successfully"
-    });
+    try {
+      // Mock API call - replace with actual API
+      console.log('Updating user:', { ...selectedUser, ...formData });
+      toast.success('User updated successfully!');
+      setEditUserOpen(false);
+      resetForm();
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
+    }
   };
 
-  const handleApproveRequest = (requestId: string) => {
-    setCollegeRequests(prev => prev.map(req => 
-      req.id === requestId ? { ...req, status: 'approved' as const } : req
-    ));
-    toast({
-      title: "Request Approved",
-      description: "College request has been approved successfully"
-    });
+  const handleDeleteUser = async (userId: number) => {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+
+    try {
+      // Mock API call - replace with actual API
+      console.log('Deleting user:', userId);
+      toast.success('User deleted successfully!');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error('Failed to delete user');
+    }
   };
 
-  const handleRejectRequest = (requestId: string) => {
-    setCollegeRequests(prev => prev.map(req => 
-      req.id === requestId ? { ...req, status: 'rejected' as const } : req
-    ));
-    toast({
-      title: "Request Rejected",
-      description: "College request has been rejected"
-    });
-  };
-
-  const viewRequestDetails = (request: CollegeRequest) => {
-    setSelectedRequest(request);
-    setIsViewDialogOpen(true);
-  };
-
-  const filterUsersByRole = (role: 'student' | 'employer' | 'college' | 'jobseeker') => {
-    return users.filter(user => user.role === role);
-  };
-
-  const handleAddUser = () => {
-    // Set role based on active tab
-    let userRole: 'student' | 'employer' | 'college' | 'jobseeker' = 'student';
-    if (activeTab === 'employers') userRole = 'employer';
-    else if (activeTab === 'colleges') userRole = 'college';
-    else if (activeTab === 'jobseekers') userRole = 'jobseeker';
-    
-    setNewUser({ 
+  const resetForm = () => {
+    setFormData({
       firstName: '',
       lastName: '',
       email: '',
-      phoneNumber: '',
-      whatsappNumber: '',
       password: '',
+      role: '',
+      phone: '',
       address: '',
-      role: userRole
+      dateOfBirth: '',
+      collegeName: '',
+      course: '',
+      year: '',
+      branch: '',
+      companyName: '',
+      designation: '',
+      industry: '',
+      companySize: '',
+      instituteName: '',
+      instituteType: '',
+      location: '',
+      establishedYear: '',
+      experience: '',
+      skills: '',
+      expectedSalary: '',
+      currentLocation: ''
     });
-    setIsAddUserOpen(true);
+    setSelectedUser(null);
   };
 
-  const handleSubmitUser = () => {
-    if (!newUser.firstName || !newUser.lastName || !newUser.email || !newUser.phoneNumber || !newUser.password) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const newUserData: User = {
-      id: (users.length + 1).toString(),
-      name: `${newUser.firstName} ${newUser.lastName}`,
-      email: newUser.email,
-      role: newUser.role,
-      status: 'active',
-      joinDate: new Date().toISOString().split('T')[0]
-    };
-
-    setUsers(prev => [...prev, newUserData]);
-    setIsAddUserOpen(false);
-    toast({
-      title: "Success",
-      description: `${newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1)} added successfully`
+  const openEditModal = (user: any) => {
+    setSelectedUser(user);
+    setFormData({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      password: '',
+      role: user.role || '',
+      phone: user.phone || '',
+      address: user.address || '',
+      dateOfBirth: user.dateOfBirth || '',
+      collegeName: user.collegeName || '',
+      course: user.course || '',
+      year: user.year || '',
+      branch: user.branch || '',
+      companyName: user.companyName || '',
+      designation: user.designation || '',
+      industry: user.industry || '',
+      companySize: user.companySize || '',
+      instituteName: user.instituteName || '',
+      instituteType: user.instituteType || '',
+      location: user.location || '',
+      establishedYear: user.establishedYear || '',
+      experience: user.experience || '',
+      skills: user.skills || '',
+      expectedSalary: user.expectedSalary || '',
+      currentLocation: user.currentLocation || ''
     });
+    setEditUserOpen(true);
   };
 
-  const getAddButtonText = () => {
-    switch (activeTab) {
-      case 'students': return 'Add Student';
-      case 'employers': return 'Add Employer';
-      case 'colleges': return 'Add College';
-      case 'jobseekers': return 'Add Job Seeker';
-      default: return 'Add User';
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+    return matchesSearch && matchesRole;
+  });
+
+  const downloadSampleExcel = () => {
+    const sampleData = `firstName,lastName,email,role,phone,address,dateOfBirth,collegeName,course,year,branch,companyName,designation,industry,companySize,instituteName,instituteType,location,establishedYear,experience,skills,expectedSalary,currentLocation
+John,Doe,john@example.com,student,+1234567890,123 Main St,1999-01-01,ABC University,Computer Science,3rd,CSE,,,,,,,,,,,,
+Jane,Smith,jane@company.com,employer,+1234567891,456 Business Ave,1985-05-15,,,,,TechCorp,HR Manager,Technology,100-500,,,,,,,,`;
+    
+    const blob = new Blob([sampleData], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'user_sample.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Mock bulk upload - replace with actual API
+      console.log('Uploading file:', file.name);
+      toast.success('Users uploaded successfully!');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error uploading users:', error);
+      toast.error('Failed to upload users');
     }
   };
 
-  const UserTable = ({ users, title }: { users: User[], title: string }) => (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>{title}</CardTitle>
-        <Button onClick={handleAddUser} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          {getAddButtonText()}
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Join Date</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>
-                  <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                    {user.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>{user.joinDate}</TableCell>
-                <TableCell>
-                  <Button variant="outline" size="sm">
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
+  const renderRoleSpecificFields = () => {
+    switch (formData.role) {
+      case 'student':
+        return (
+          <>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="collegeName" className="text-right">College Name *</Label>
+              <Input
+                id="collegeName"
+                value={formData.collegeName}
+                onChange={(e) => setFormData({...formData, collegeName: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="course" className="text-right">Course *</Label>
+              <Input
+                id="course"
+                value={formData.course}
+                onChange={(e) => setFormData({...formData, course: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="year" className="text-right">Year</Label>
+              <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1st">1st Year</SelectItem>
+                  <SelectItem value="2nd">2nd Year</SelectItem>
+                  <SelectItem value="3rd">3rd Year</SelectItem>
+                  <SelectItem value="4th">4th Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="branch" className="text-right">Branch</Label>
+              <Input
+                id="branch"
+                value={formData.branch}
+                onChange={(e) => setFormData({...formData, branch: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+          </>
+        );
+      
+      case 'employer':
+        return (
+          <>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="companyName" className="text-right">Company Name *</Label>
+              <Input
+                id="companyName"
+                value={formData.companyName}
+                onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="designation" className="text-right">Designation</Label>
+              <Input
+                id="designation"
+                value={formData.designation}
+                onChange={(e) => setFormData({...formData, designation: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="industry" className="text-right">Industry</Label>
+              <Input
+                id="industry"
+                value={formData.industry}
+                onChange={(e) => setFormData({...formData, industry: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="companySize" className="text-right">Company Size</Label>
+              <Select value={formData.companySize} onValueChange={(value) => setFormData({...formData, companySize: value})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1-10">1-10 employees</SelectItem>
+                  <SelectItem value="11-50">11-50 employees</SelectItem>
+                  <SelectItem value="51-200">51-200 employees</SelectItem>
+                  <SelectItem value="201-500">201-500 employees</SelectItem>
+                  <SelectItem value="500+">500+ employees</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        );
+
+      case 'college':
+        return (
+          <>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="instituteName" className="text-right">Institute Name *</Label>
+              <Input
+                id="instituteName"
+                value={formData.instituteName}
+                onChange={(e) => setFormData({...formData, instituteName: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="instituteType" className="text-right">Institute Type</Label>
+              <Select value={formData.instituteType} onValueChange={(value) => setFormData({...formData, instituteType: value})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="university">University</SelectItem>
+                  <SelectItem value="college">College</SelectItem>
+                  <SelectItem value="institute">Institute</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="location" className="text-right">Location</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="establishedYear" className="text-right">Established Year</Label>
+              <Input
+                id="establishedYear"
+                type="number"
+                value={formData.establishedYear}
+                onChange={(e) => setFormData({...formData, establishedYear: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+          </>
+        );
+
+      case 'jobseeker':
+        return (
+          <>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="experience" className="text-right">Experience (years)</Label>
+              <Input
+                id="experience"
+                type="number"
+                value={formData.experience}
+                onChange={(e) => setFormData({...formData, experience: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="skills" className="text-right">Skills</Label>
+              <Textarea
+                id="skills"
+                value={formData.skills}
+                onChange={(e) => setFormData({...formData, skills: e.target.value})}
+                className="col-span-3"
+                placeholder="List your skills separated by commas"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="expectedSalary" className="text-right">Expected Salary</Label>
+              <Input
+                id="expectedSalary"
+                value={formData.expectedSalary}
+                onChange={(e) => setFormData({...formData, expectedSalary: e.target.value})}
+                className="col-span-3"
+                placeholder="e.g., 5-8 LPA"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="currentLocation" className="text-right">Current Location</Label>
+              <Input
+                id="currentLocation"
+                value={formData.currentLocation}
+                onChange={(e) => setFormData({...formData, currentLocation: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">User Management</h2>
+        <div>
+          <h2 className="text-2xl font-bold">User Management</h2>
+          <p className="text-gray-600">Manage all platform users</p>
+        </div>
         <div className="flex space-x-2">
-          <Button onClick={handleDownloadExcel} variant="outline">
+          <Button variant="outline" onClick={downloadSampleExcel}>
             <Download className="h-4 w-4 mr-2" />
-            Download Sample Excel
+            Sample Excel
           </Button>
-          <Dialog open={isExcelUploadOpen} onOpenChange={setIsExcelUploadOpen}>
+          <label className="cursor-pointer">
+            <Button variant="outline" asChild>
+              <span>
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </span>
+            </Button>
+            <input
+              type="file"
+              accept=".csv,.xlsx"
+              onChange={handleBulkUpload}
+              className="hidden"
+            />
+          </label>
+          <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
             <DialogTrigger asChild>
               <Button>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Upload Users via Excel
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add User
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Upload Users via Excel</DialogTitle>
+                <DialogTitle>Create New User</DialogTitle>
+                <DialogDescription>
+                  Add a new user to the platform. Fill in the required information below.
+                </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="user-excel-file">Select Excel File</Label>
+              <div className="grid gap-4 py-4">
+                {/* Basic Information */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="firstName" className="text-right">First Name *</Label>
                   <Input
-                    id="user-excel-file"
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={handleExcelUpload}
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                    className="col-span-3"
+                    required
                   />
                 </div>
-                <p className="text-sm text-gray-600">
-                  Upload an Excel file with columns: firstName, lastName, email, phoneNumber, whatsappNumber, password, address, role
-                </p>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="lastName" className="text-right">Last Name *</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="email" className="text-right">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="password" className="text-right">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="role" className="text-right">Role *</Label>
+                  <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="employer">Employer</SelectItem>
+                      <SelectItem value="college">College</SelectItem>
+                      <SelectItem value="jobseeker">Job Seeker</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="phone" className="text-right">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="address" className="text-right">Address</Label>
+                  <Textarea
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="dateOfBirth" className="text-right">Date of Birth</Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+
+                {/* Role-specific fields */}
+                {renderRoleSpecificFields()}
               </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setCreateUserOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleCreateUser}>
+                  Create User
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="students">Students ({filterUsersByRole('student').length})</TabsTrigger>
-          <TabsTrigger value="jobseekers">Job Seekers ({filterUsersByRole('jobseeker').length})</TabsTrigger>
-          <TabsTrigger value="employers">Employers ({filterUsersByRole('employer').length})</TabsTrigger>
-          <TabsTrigger value="colleges">Colleges ({filterUsersByRole('college').length})</TabsTrigger>
-          <TabsTrigger value="requests">College Requests ({collegeRequests.filter(r => r.status === 'pending').length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="students">
-          <UserTable users={filterUsersByRole('student')} title="All Students" />
-        </TabsContent>
-
-        <TabsContent value="jobseekers">
-          <UserTable users={filterUsersByRole('jobseeker')} title="All Job Seekers" />
-        </TabsContent>
-
-        <TabsContent value="employers">
-          <UserTable users={filterUsersByRole('employer')} title="All Employers" />
-        </TabsContent>
-
-        <TabsContent value="colleges">
-          <UserTable users={filterUsersByRole('college')} title="All Colleges" />
-        </TabsContent>
-
-        <TabsContent value="requests">
-          <Card>
-            <CardHeader>
-              <CardTitle>College Registration Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>College Name</TableHead>
-                    <TableHead>Contact Person</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Request Date</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {collegeRequests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell>{request.collegeName}</TableCell>
-                      <TableCell>{request.contactPerson}</TableCell>
-                      <TableCell>{request.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          request.status === 'approved' ? 'default' :
-                          request.status === 'rejected' ? 'destructive' : 'secondary'
-                        }>
-                          {request.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{request.requestDate}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-1">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => viewRequestDetails(request)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {request.status === 'pending' && (
-                            <>
-                              <Button 
-                                variant="default" 
-                                size="sm"
-                                onClick={() => handleApproveRequest(request.id)}
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => handleRejectRequest(request.id)}
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Add User Dialog */}
-      <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{getAddButtonText()}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* Basic Information */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="firstName">First Name *</Label>
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex space-x-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  id="firstName"
-                  value={newUser.firstName}
-                  onChange={(e) => setNewUser({...newUser, firstName: e.target.value})}
-                  placeholder="Enter first name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name *</Label>
-                <Input
-                  id="lastName"
-                  value={newUser.lastName}
-                  onChange={(e) => setNewUser({...newUser, lastName: e.target.value})}
-                  placeholder="Enter last name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                  placeholder="Enter email address"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phoneNumber">Phone Number *</Label>
-                <Input
-                  id="phoneNumber"
-                  value={newUser.phoneNumber}
-                  onChange={(e) => setNewUser({...newUser, phoneNumber: e.target.value})}
-                  placeholder="Enter phone number"
-                />
-              </div>
-              <div>
-                <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
-                <Input
-                  id="whatsappNumber"
-                  value={newUser.whatsappNumber}
-                  onChange={(e) => setNewUser({...newUser, whatsappNumber: e.target.value})}
-                  placeholder="Enter WhatsApp number"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                  placeholder="Enter password"
-                />
-              </div>
-              <div className="col-span-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={newUser.address}
-                  onChange={(e) => setNewUser({...newUser, address: e.target.value})}
-                  placeholder="Enter address"
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
                 />
               </div>
             </div>
-
-            {/* Role-specific fields */}
-            {newUser.role === 'student' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Student Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                    <Input
-                      id="dateOfBirth"
-                      type="date"
-                      value={newUser.dateOfBirth || ''}
-                      onChange={(e) => setNewUser({...newUser, dateOfBirth: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="gender">Gender</Label>
-                    <Select value={newUser.gender || ''} onValueChange={(value) => setNewUser({...newUser, gender: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="course">Course</Label>
-                    <Input
-                      id="course"
-                      value={newUser.course || ''}
-                      onChange={(e) => setNewUser({...newUser, course: e.target.value})}
-                      placeholder="Enter course name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="year">Year</Label>
-                    <Select value={newUser.year || ''} onValueChange={(value) => setNewUser({...newUser, year: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1st Year</SelectItem>
-                        <SelectItem value="2">2nd Year</SelectItem>
-                        <SelectItem value="3">3rd Year</SelectItem>
-                        <SelectItem value="4">4th Year</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {newUser.role === 'employer' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Company Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="companyName">Company Name</Label>
-                    <Input
-                      id="companyName"
-                      value={newUser.companyName || ''}
-                      onChange={(e) => setNewUser({...newUser, companyName: e.target.value})}
-                      placeholder="Enter company name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="industry">Industry</Label>
-                    <Input
-                      id="industry"
-                      value={newUser.industry || ''}
-                      onChange={(e) => setNewUser({...newUser, industry: e.target.value})}
-                      placeholder="Enter industry"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="website">Website</Label>
-                    <Input
-                      id="website"
-                      value={newUser.website || ''}
-                      onChange={(e) => setNewUser({...newUser, website: e.target.value})}
-                      placeholder="Enter website URL"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="companySize">Company Size</Label>
-                    <Select value={newUser.companySize || ''} onValueChange={(value) => setNewUser({...newUser, companySize: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select company size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1-10">1-10 employees</SelectItem>
-                        <SelectItem value="11-50">11-50 employees</SelectItem>
-                        <SelectItem value="51-200">51-200 employees</SelectItem>
-                        <SelectItem value="201-500">201-500 employees</SelectItem>
-                        <SelectItem value="500+">500+ employees</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {newUser.role === 'college' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">College Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="collegeName">College Name</Label>
-                    <Input
-                      id="collegeName"
-                      value={newUser.collegeName || ''}
-                      onChange={(e) => setNewUser({...newUser, collegeName: e.target.value})}
-                      placeholder="Enter college name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="university">University</Label>
-                    <Input
-                      id="university"
-                      value={newUser.university || ''}
-                      onChange={(e) => setNewUser({...newUser, university: e.target.value})}
-                      placeholder="Enter university name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="establishedYear">Established Year</Label>
-                    <Input
-                      id="establishedYear"
-                      type="number"
-                      value={newUser.establishedYear || ''}
-                      onChange={(e) => setNewUser({...newUser, establishedYear: e.target.value})}
-                      placeholder="Enter established year"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="website">Website</Label>
-                    <Input
-                      id="website"
-                      value={newUser.website || ''}
-                      onChange={(e) => setNewUser({...newUser, website: e.target.value})}
-                      placeholder="Enter website URL"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {newUser.role === 'jobseeker' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Job Seeker Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="experience">Experience (Years)</Label>
-                    <Input
-                      id="experience"
-                      type="number"
-                      value={newUser.experience || ''}
-                      onChange={(e) => setNewUser({...newUser, experience: e.target.value})}
-                      placeholder="Enter years of experience"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="expectedSalary">Expected Salary</Label>
-                    <Input
-                      id="expectedSalary"
-                      value={newUser.expectedSalary || ''}
-                      onChange={(e) => setNewUser({...newUser, expectedSalary: e.target.value})}
-                      placeholder="Enter expected salary"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="skills">Skills</Label>
-                    <Textarea
-                      id="skills"
-                      value={newUser.skills || ''}
-                      onChange={(e) => setNewUser({...newUser, skills: e.target.value})}
-                      placeholder="Enter skills (comma separated)"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmitUser}>
-                Add {newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1)}
-              </Button>
-            </div>
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="student">Students</SelectItem>
+                <SelectItem value="employer">Employers</SelectItem>
+                <SelectItem value="college">Colleges</SelectItem>
+                <SelectItem value="jobseeker">Job Seekers</SelectItem>
+                <SelectItem value="admin">Admins</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
 
-      {/* College Request Details Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>College Request Details</DialogTitle>
-          </DialogHeader>
-          {selectedRequest && (
+      {/* Users List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Users className="h-5 w-5 mr-2" />
+            All Users ({filteredUsers.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-2 text-gray-600">Loading users...</p>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No users found</p>
+            </div>
+          ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>College Name</Label>
-                  <p className="text-sm font-medium">{selectedRequest.collegeName}</p>
+              {filteredUsers.map((user) => (
+                <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      {user.role === 'student' && <GraduationCap className="h-5 w-5 text-blue-600" />}
+                      {user.role === 'employer' && <Briefcase className="h-5 w-5 text-blue-600" />}
+                      {user.role === 'college' && <Building className="h-5 w-5 text-blue-600" />}
+                      {(user.role === 'jobseeker' || user.role === 'admin') && <Users className="h-5 w-5 text-blue-600" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">{user.firstName} {user.lastName}</p>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <span className="flex items-center">
+                          <Mail className="h-3 w-3 mr-1" />
+                          {user.email}
+                        </span>
+                        <span className="flex items-center">
+                          <Phone className="h-3 w-3 mr-1" />
+                          {user.phone}
+                        </span>
+                        <span className="flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {user.createdAt}
+                        </span>
+                      </div>
+                      {user.role === 'student' && user.collegeName && (
+                        <p className="text-xs text-gray-500 mt-1">{user.collegeName} - {user.course}</p>
+                      )}
+                      {user.role === 'employer' && user.companyName && (
+                        <p className="text-xs text-gray-500 mt-1">{user.companyName} - {user.designation}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={user.role === 'admin' ? 'secondary' : 'outline'}>
+                      {user.role}
+                    </Badge>
+                    <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
+                      {user.status}
+                    </Badge>
+                    <Button variant="outline" size="sm" onClick={() => openEditModal(user)}>
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <Label>Contact Person</Label>
-                  <p className="text-sm font-medium">{selectedRequest.contactPerson}</p>
-                </div>
-                <div>
-                  <Label>Email</Label>
-                  <p className="text-sm font-medium">{selectedRequest.email}</p>
-                </div>
-                <div>
-                  <Label>Phone</Label>
-                  <p className="text-sm font-medium">{selectedRequest.phone}</p>
-                </div>
-                <div className="col-span-2">
-                  <Label>Address</Label>
-                  <p className="text-sm font-medium">{selectedRequest.address}</p>
-                </div>
-                <div>
-                  <Label>Website</Label>
-                  <p className="text-sm font-medium">{selectedRequest.website}</p>
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <Badge variant={
-                    selectedRequest.status === 'approved' ? 'default' :
-                    selectedRequest.status === 'rejected' ? 'descriptive' : 'secondary'
-                  }>
-                    {selectedRequest.status}
-                  </Badge>
-                </div>
-              </div>
-              {selectedRequest.status === 'pending' && (
-                <div className="flex space-x-2 pt-4">
-                  <Button onClick={() => {
-                    handleApproveRequest(selectedRequest.id);
-                    setIsViewDialogOpen(false);
-                  }}>
-                    Approve Request
-                  </Button>
-                  <Button variant="destructive" onClick={() => {
-                    handleRejectRequest(selectedRequest.id);
-                    setIsViewDialogOpen(false);
-                  }}>
-                    Reject Request
-                  </Button>
-                </div>
-              )}
+              ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user information below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* Same form fields as create, but populated with existing data */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-firstName" className="text-right">First Name *</Label>
+              <Input
+                id="edit-firstName"
+                value={formData.firstName}
+                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-lastName" className="text-right">Last Name *</Label>
+              <Input
+                id="edit-lastName"
+                value={formData.lastName}
+                onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-email" className="text-right">Email *</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-role" className="text-right">Role *</Label>
+              <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">Student</SelectItem>
+                  <SelectItem value="employer">Employer</SelectItem>
+                  <SelectItem value="college">College</SelectItem>
+                  <SelectItem value="jobseeker">Job Seeker</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-phone" className="text-right">Phone</Label>
+              <Input
+                id="edit-phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+
+            {/* Role-specific fields for editing */}
+            {renderRoleSpecificFields()}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditUserOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleUpdateUser}>
+              Update User
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

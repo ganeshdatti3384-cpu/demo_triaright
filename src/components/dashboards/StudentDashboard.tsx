@@ -16,8 +16,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { pack365Api, Pack365Course } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
-
-
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -224,178 +222,165 @@ const StudentDashboard = () => {
           </TabsContent>
 
           <TabsContent value="courses" className="space-y-6">
-            <Tabs defaultValue="my-courses" className="space-y-4">
-              <TabsList className="bg-white">
-                <TabsTrigger value="my-courses">My Courses</TabsTrigger>
-                <TabsTrigger value="browse-courses" onClick={loadPack365Courses}>Browse Courses</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="my-courses" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>My Enrolled Courses</CardTitle>
-                    <CardDescription>Continue your learning journey</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {enrolledCourses.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {enrolledCourses.map((course, index) => (
-                          <Card key={index} className="hover:shadow-md transition-shadow border-blue-200">
-                            <CardContent className="p-6">
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <Badge className="bg-blue-500 text-white">Enrolled</Badge>
-                                  <span className="text-sm text-gray-500">{course.enrollmentDate}</span>
-                                </div>
-                                <h3 className="font-semibold">{course.courseName}</h3>
-                                <div className="space-y-2">
-                                  <div className="flex justify-between text-sm">
-                                    <span>Progress</span>
-                                    <span>45%</span>
-                                  </div>
-                                  <Progress value={45} className="h-2" />
-                                </div>
-                                <Button 
-                                  className="w-full bg-blue-600 hover:bg-blue-700"
-                                  onClick={() => navigate(`/course-learning/${course.courseId || course.id}`)}
-                                >
-                                  <Play className="h-4 w-4 mr-2" />
-                                  Continue Learning
-                                </Button>
+            <Card>
+              <CardHeader>
+                <CardTitle>My Enrolled Courses</CardTitle>
+                <CardDescription>Continue your learning journey</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {enrolledCourses.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {enrolledCourses.map((course, index) => (
+                      <Card key={index} className="hover:shadow-md transition-shadow border-blue-200">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Badge className="bg-blue-500 text-white">Enrolled</Badge>
+                              <span className="text-sm text-gray-500">{course.enrollmentDate}</span>
+                            </div>
+                            <h3 className="font-semibold">{course.courseName}</h3>
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span>Progress</span>
+                                <span>45%</span>
                               </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <BookOpen className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                        <p className="text-gray-500 mb-4">You haven't enrolled in any courses yet.</p>
-                        <Button onClick={() => navigate('/courses/recorded')} className="bg-blue-600 hover:bg-blue-700">
-                          Browse Courses
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {completedCourses.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Completed Courses</CardTitle>
-                      <CardDescription>Your learning achievements</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {completedCourses.map((course, index) => (
-                          <Card key={index} className="hover:shadow-md transition-shadow border-green-200">
-                            <CardContent className="p-6">
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <Badge className="bg-green-500 text-white">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Completed
-                                  </Badge>
-                                  <Award className="h-5 w-5 text-yellow-500" />
-                                </div>
-                                <h3 className="font-semibold">{course.courseName}</h3>
-                                <p className="text-sm text-gray-600">Completed on {course.completionDate}</p>
-                                <Button variant="outline" className="w-full border-green-500 text-green-600 hover:bg-green-50">
-                                  View Certificate
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                              <Progress value={45} className="h-2" />
+                            </div>
+                            <Button 
+                              className="w-full bg-blue-600 hover:bg-blue-700"
+                              onClick={() => navigate(`/course-learning/${course.courseId || course.id}`)}
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              Continue Learning
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <BookOpen className="h-12 w-12 text-blue-400 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-4">You haven't enrolled in any courses yet.</p>
+                    <Button onClick={() => navigate('/courses/recorded')} className="bg-blue-600 hover:bg-blue-700">
+                      Browse Courses
+                    </Button>
+                  </div>
                 )}
-              </TabsContent>
+              </CardContent>
+            </Card>
 
-              <TabsContent value="browse-courses" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Pack365 Courses</CardTitle>
-                    <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {loadingPack365 ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-600">Loading courses...</p>
-                      </div>
-                    ) : pack365Courses.length === 0 ? (
-                      <div className="text-center py-8">
-                        <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500 mb-4">No Pack365 courses available at the moment.</p>
-                        <Button onClick={loadPack365Courses} variant="outline">
-                          Refresh
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {pack365Courses.map((course) => (
-                          <Card key={course._id} className="hover:shadow-md transition-shadow border-purple-200">
-                            <CardContent className="p-6">
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <Badge className="bg-purple-500 text-white">Pack365</Badge>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {course.stream.toUpperCase()}
-                                  </Badge>
-                                </div>
-                                <h3 className="font-semibold text-lg">{course.courseName}</h3>
-                                <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
-                                <div className="flex items-center justify-between text-sm text-gray-500">
-                                  <div className="flex items-center space-x-1">
-                                    <BookOpen className="h-4 w-4" />
-                                    <span>{course.topics?.length || 0} Topics</span>
-                                  </div>
-                                  <div className="flex items-center space-x-1">
-                                    <Clock className="h-4 w-4" />
-                                    <span>365 days</span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <div className="text-2xl font-bold text-green-600">$365</div>
-                                  <div className="flex items-center space-x-1">
-                                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                    <span className="text-sm font-medium">4.8</span>
-                                  </div>
-                                </div>
-                                <div className="flex flex-wrap gap-1 mb-4">
-                                  {course.topics?.slice(0, 3).map((topic, index) => (
-                                    <Badge key={index} variant="outline" className="text-xs">
-                                      {topic.name}
-                                    </Badge>
-                                  ))}
-                                  {course.topics && course.topics.length > 3 && (
-                                    <Badge variant="outline" className="text-xs">
-                                      +{course.topics.length - 3} more
-                                    </Badge>
-                                  )}
-                                </div>
-                                <Button 
-                                  onClick={() => handlePack365EnrollClick(course)}
-                                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                                >
-                                  Enroll Now - $365
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+            {completedCourses.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Completed Courses</CardTitle>
+                  <CardDescription>Your learning achievements</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {completedCourses.map((course, index) => (
+                      <Card key={index} className="hover:shadow-md transition-shadow border-green-200">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Badge className="bg-green-500 text-white">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Completed
+                              </Badge>
+                              <Award className="h-5 w-5 text-yellow-500" />
+                            </div>
+                            <h3 className="font-semibold">{course.courseName}</h3>
+                            <p className="text-sm text-gray-600">Completed on {course.completionDate}</p>
+                            <Button variant="outline" className="w-full border-green-500 text-green-600 hover:bg-green-50">
+                              View Certificate
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
-          <TabsContent value="pack365" className="space-y-6">
-            <Pack365Card />
+          <TabsContent value="pack365" className="space-y-6" onFocus={loadPack365Courses}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Pack365 Courses</CardTitle>
+                <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingPack365 ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading courses...</p>
+                  </div>
+                ) : pack365Courses.length === 0 ? (
+                  <div className="text-center py-8">
+                    <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-4">No Pack365 courses available at the moment.</p>
+                    <Button onClick={loadPack365Courses} variant="outline">
+                      Refresh
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {pack365Courses.map((course) => (
+                      <Card key={course._id} className="hover:shadow-md transition-shadow border-purple-200">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Badge className="bg-purple-500 text-white">Pack365</Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                {course.stream.toUpperCase()}
+                              </Badge>
+                            </div>
+                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
+                            <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
+                            <div className="flex items-center justify-between text-sm text-gray-500">
+                              <div className="flex items-center space-x-1">
+                                <BookOpen className="h-4 w-4" />
+                                <span>{course.topics?.length || 0} Topics</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Clock className="h-4 w-4" />
+                                <span>365 days</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="text-2xl font-bold text-green-600">$365</div>
+                              <div className="flex items-center space-x-1">
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                <span className="text-sm font-medium">4.8</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-1 mb-4">
+                              {course.topics?.slice(0, 3).map((topic, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {topic.name}
+                                </Badge>
+                              ))}
+                              {course.topics && course.topics.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{course.topics.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                            <Button 
+                              onClick={() => handlePack365EnrollClick(course)}
+                              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                            >
+                              Enroll Now - $365
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="jobs" className="space-y-6">
