@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FileSpreadsheet, Eye, CheckCircle, XCircle, Plus } from 'lucide-react';
+import { Users, FileSpreadsheet, Eye, CheckCircle, XCircle, Plus, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { authApi, pack365Api } from '@/services/api';
 
@@ -93,42 +93,110 @@ const UserManagement = () => {
     setCollegeRequests(sampleRequests);
   }, []);
 
-const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  const file = event.target.files?.[0];
+  const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
 
-  if (!file) return;
+    if (!file) return;
 
-  if (!token) {
+    if (!token) {
+      toast({
+        title: 'Unauthorized',
+        description: 'You must be logged in to upload user data.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     toast({
-      title: 'Unauthorized',
-      description: 'You must be logged in to upload user data.',
-      variant: 'destructive',
+      title: 'Uploading Excel...',
+      description: `File "${file.name}" is being processed.`,
     });
-    return;
-  }
 
-  toast({
-    title: 'Uploading Excel...',
-    description: `File "${file.name}" is being processed.`,
-  });
+    try {
+      const response = await authApi.bulkRegisterFromExcel(file, token);
+      toast({
+        title: 'Upload Successful',
+        description: `${response.results.length} users processed: ${response.message}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Upload Failed',
+        description: error?.response?.data?.message || 'Something went wrong while uploading.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExcelUploadOpen(false);
+    }
+  };
 
-  try {
-    const response = await authApi.bulkRegisterFromExcel(file, token);
+  const handleDownloadExcel = () => {
+    // Sample data for Excel download
+    const sampleData = [
+      {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        phoneNumber: '9876543210',
+        whatsappNumber: '9876543211',
+        password: 'pass1234',
+        address: '123 Main Street',
+        role: 'student'
+      },
+      {
+        firstName: 'Alice',
+        lastName: 'Smith',
+        email: 'alice@example.com',
+        phoneNumber: '9123456789',
+        whatsappNumber: '9123456790',
+        password: 'hello123',
+        address: '56 Elm Avenue',
+        role: 'employer'
+      },
+      {
+        firstName: 'Bob',
+        lastName: 'Johnson',
+        email: 'bob@example.com',
+        phoneNumber: '9988776655',
+        whatsappNumber: '9988776656',
+        password: 'qwerty12',
+        address: '789 Oak Lane',
+        role: 'jobseeker'
+      },
+      {
+        firstName: 'Mary',
+        lastName: 'Brown',
+        email: 'mary@example.com',
+        phoneNumber: '8765432109',
+        whatsappNumber: '8765432110',
+        password: 'admin321',
+        address: '22 Park Blvd',
+        role: 'admin'
+      }
+    ];
+
+    // Convert data to CSV format
+    const headers = ['firstName', 'lastName', 'email', 'phoneNumber', 'whatsappNumber', 'password', 'address', 'role'];
+    const csvContent = [
+      headers.join(','),
+      ...sampleData.map(row => headers.map(header => `"${row[header as keyof typeof row]}"`).join(','))
+    ].join('\n');
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'sample_users_data.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
     toast({
-      title: 'Upload Successful',
-      description: `${response.results.length} users processed: ${response.message}`,
+      title: "Excel Downloaded",
+      description: "Sample users data has been downloaded successfully"
     });
-  } catch (error: any) {
-    toast({
-      title: 'Upload Failed',
-      description: error?.response?.data?.message || 'Something went wrong while uploading.',
-      variant: 'destructive',
-    });
-  } finally {
-    setIsExcelUploadOpen(false);
-  }
-};
-
+  };
 
   const handleApproveRequest = (requestId: string) => {
     setCollegeRequests(prev => prev.map(req => 
@@ -267,33 +335,39 @@ const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => 
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">User Management</h2>
-        <Dialog open={isExcelUploadOpen} onOpenChange={setIsExcelUploadOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Upload Users via Excel
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Upload Users via Excel</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="user-excel-file">Select Excel File</Label>
-                <Input
-                  id="user-excel-file"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleExcelUpload}
-                />
+        <div className="flex space-x-2">
+          <Button onClick={handleDownloadExcel} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Download Sample Excel
+          </Button>
+          <Dialog open={isExcelUploadOpen} onOpenChange={setIsExcelUploadOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Upload Users via Excel
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload Users via Excel</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="user-excel-file">Select Excel File</Label>
+                  <Input
+                    id="user-excel-file"
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleExcelUpload}
+                  />
+                </div>
+                <p className="text-sm text-gray-600">
+                  Upload an Excel file with columns: firstName, lastName, email, phoneNumber, whatsappNumber, password, address, role
+                </p>
               </div>
-              <p className="text-sm text-gray-600">
-                Upload an Excel file with columns: Name, Email, Role, Phone, Address
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
