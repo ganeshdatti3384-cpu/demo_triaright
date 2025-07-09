@@ -18,9 +18,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import Footer from '../components/Footer';
 import Navbar from '@/components/Navbar';
-import { User, Mail, Phone, Lock, MapPin, ArrowRight, Sparkles, Star, Shield, ArrowLeft } from 'lucide-react';
+import { User, Mail, Phone,  MapPin, ArrowRight, Sparkles, Star, Shield, ArrowLeft, Users } from 'lucide-react';
 import { authApi, RegisterPayload } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
+import { Lock, Eye, EyeOff } from "lucide-react";
 
 const registrationSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -47,7 +48,8 @@ const Register = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<'register' | 'terms' | 'privacy'>('register');
-  
+    const [showPassword, setShowPassword] = useState(false);
+
   const { register, handleSubmit, setValue, control, formState: { errors } } = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
@@ -347,19 +349,32 @@ const Register = () => {
                         {errors.whatsappNumber && <p className="text-red-500 text-sm mt-1">{errors.whatsappNumber.message}</p>}
                       </div>
 
-                      <div>
-                        <Label htmlFor="password" className="text-gray-700 font-medium">Password *</Label>
+                       <div>
+                        <Label htmlFor="password" className="text-gray-700 font-medium">
+                          Password *
+                        </Label>
                         <div className="relative mt-1">
                           <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input 
-                            id="password" 
-                            type="password" 
-                            {...register('password')} 
-                            placeholder="Enter your password" 
-                            className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            {...register("password")}
+                            placeholder="Enter your password"
+                            className="pl-10 pr-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
                         </div>
-                        {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
+                        {errors.password && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.password.message}
+                          </p>
+                        )}
                       </div>
 
                       <div>
