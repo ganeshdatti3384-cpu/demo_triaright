@@ -35,12 +35,25 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   const [watchedDuration, setWatchedDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [topicProgress, setTopicProgress] = useState<TopicProgress[]>(enrollment.topicProgress || []);
-  const [videoProgress, setVideoProgress] = useState(enrollment.videoProgress || 0);
+  const [videoProgress, setVideoProgress] = useState(enrollment.totalWatchedPercentage || 0);
   const [player, setPlayer] = useState<any>(null);
   const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Calculate total course duration and watched duration
+  const calculateProgressMetrics = () => {
+    const totalCourseDurationSeconds = course.topics.reduce((sum, topic) => sum + (topic.duration * 60), 0);
+    const totalWatchedSeconds = topicProgress.reduce((sum, tp) => sum + tp.watchedDuration, 0);
+    const totalWatchedPercentage = totalCourseDurationSeconds > 0 ? Math.round((totalWatchedSeconds / totalCourseDurationSeconds) * 100) : 0;
+    
+    return {
+      totalCourseDurationSeconds,
+      totalWatchedSeconds,
+      totalWatchedPercentage
+    };
+  };
 
   useEffect(() => {
     if (topicProgress.length === 0) {
@@ -50,6 +63,10 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
         watchedDuration: 0,
       }));
       setTopicProgress(initialProgress);
+    } else {
+      // Update video progress based on current topic progress
+      const { totalWatchedPercentage } = calculateProgressMetrics();
+      setVideoProgress(totalWatchedPercentage);
     }
   }, [course.topics, topicProgress.length]);
 
@@ -87,40 +104,54 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   }, [isPlaying, player, watchedDuration]);
 
   const updateProgress = async (
-  topicName: string,
-  duration: number,
-  totalCourseDuration?: number,             // optional: pass if you have it
-  totalWatchedPercentage?: number           // optional: pass if you have it
-) => {
-  const token = localStorage.getItem('token');
-  if (!token) return;
+    topicName: string,
+    duration: number
+  ) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-  try {
-    const response = await pack365Api.updateTopicProgress(token, {
-      courseId,
-      topicName,
-      watchedDuration: Math.floor(duration),
-      totalCourseDuration,
-      totalWatchedPercentage,
-    });
+    try {
+      // Calculate metrics before API call
+      const { totalCourseDurationSeconds } = calculateProgressMetrics();
+      
+      // Update local topic progress first
+      const updatedTopicProgress = topicProgress.map(tp => 
+        tp.topicName === topicName 
+          ? { ...tp, watchedDuration: Math.floor(duration) }
+          : tp
+      );
+      
+      // Calculate new total watched duration and percentage
+      const newTotalWatchedSeconds = updatedTopicProgress.reduce((sum, tp) => sum + tp.watchedDuration, 0);
+      const newTotalWatchedPercentage = totalCourseDurationSeconds > 0 ? Math.round((newTotalWatchedSeconds / totalCourseDurationSeconds) * 100) : 0;
 
-    if (response.success) {
-      setTopicProgress(response.topicProgress);
-      setVideoProgress(response.videoProgress);
+      const response = await pack365Api.updateTopicProgress(token, {
+        courseId,
+        topicName,
+        watchedDuration: Math.floor(duration),
+        totalCourseDuration: totalCourseDurationSeconds,
+        totalWatchedPercentage: newTotalWatchedPercentage,
+      });
 
-      const updatedTopic = response.topicProgress.find(tp => tp.topicName === topicName);
-      if (updatedTopic?.watched) {
-        toast({
-          title: 'Topic Completed!',
-          description: `You've successfully completed: ${topicName}`,
-        });
+      if (response.success) {
+        setTopicProgress(response.topicProgress);
+        
+        // Use the calculated percentage or fallback to response
+        const updatedPercentage = newTotalWatchedPercentage || response.videoProgress || 0;
+        setVideoProgress(updatedPercentage);
+
+        const updatedTopic = response.topicProgress.find(tp => tp.topicName === topicName);
+        if (updatedTopic?.watched) {
+          toast({
+            title: 'Topic Completed!',
+            description: `You've successfully completed: ${topicName}`,
+          });
+        }
       }
+    } catch (error) {
+      console.error('Error updating progress:', error);
     }
-  } catch (error) {
-    console.error('Error updating progress:', error);
-  }
-};
-
+  };
 
   const handleTopicSelect = (index: number) => {
     // Save current progress before switching
@@ -342,10 +373,10 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
               </CardHeader>
               <CardContent>
                 <div className="text-center mb-4">
-                  <div className="text-3xl font-bold text-blue-600">{videoProgress}%</div>
+                  <div className="text-3xl font-bold text-blue-600">{Math.round(videoProgress)}%</div>
                   <p className="text-sm text-gray-600">Complete</p>
                 </div>
-                <Progress value={videoProgress} className="mb-4" />
+                <Progress value={Math.round(videoProgress)} className="mb-4" />
                 <div className="text-sm text-gray-600">
                   {completedTopics} of {course.topics.length} topics completed
                 </div>
@@ -391,9 +422,9 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <Progress value={progressPercentage} className="h-2" />
+                        <Progress value={Math.min(progressPercentage, 100)} className="h-2" />
                         <div className="flex justify-between text-xs text-gray-500">
-                          <span>{Math.round(progressPercentage)}% watched</span>
+                          <span>{Math.round(Math.min(progressPercentage, 100))}% watched</span>
                           <span>{formatTime(progress?.watchedDuration || 0)} / {formatTime(topicVideoDuration)}</span>
                         </div>
                       </div>
