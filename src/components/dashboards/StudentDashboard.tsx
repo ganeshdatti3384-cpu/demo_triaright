@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search, Calculator, MapPin, DollarSign, Target, TrendingUp } from 'lucide-react';
+import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search, Calculator, MapPin, DollarSign, Target, TrendingUp, AlertCircle } from 'lucide-react';
 import Navbar from '../Navbar';
 import Pack365Card from '../Pack365Card';
 import CodeCompiler from '../CodeCompiler';
@@ -13,34 +13,77 @@ import EnhancedProfile from '../EnhancedProfile';
 import { useNavigate } from 'react-router-dom';
 import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
-import { pack365Api } from '@/services/api';
+import { pack365Api, Pack365Course } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
 
 
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
+  const [pack365Courses, setPack365Courses] = useState<Pack365Course[]>([]);
+  const [loadingPack365, setLoadingPack365] = useState(false);
 
   useEffect(() => {
-  const fetchEnrollments = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    const fetchEnrollments = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
 
-    try {
-      const response = await pack365Api.getMyEnrollments(token);
-      if (response.success && response.enrollments) {
-        setEnrolledCourses(response.enrollments.filter((e: any) => e.status === 'enrolled'));
-        setCompletedCourses(response.enrollments.filter((e: any) => e.status === 'completed'));
+      try {
+        const response = await pack365Api.getMyEnrollments(token);
+        if (response.success && response.enrollments) {
+          setEnrolledCourses(response.enrollments.filter((e: any) => e.status === 'enrolled'));
+          setCompletedCourses(response.enrollments.filter((e: any) => e.status === 'completed'));
+        }
+      } catch (error) {
+        console.error('Failed to fetch enrollments:', error);
       }
-    } catch (error) {
-      console.error('Failed to fetch enrollments:', error);
+    };
+
+    fetchEnrollments();
+  }, []);
+
+  const loadPack365Courses = async () => {
+    try {
+      setLoadingPack365(true);
+      const response = await pack365Api.getAllCourses();
+      if (response.success) {
+        setPack365Courses(response.data);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load Pack365 courses",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error loading Pack365 courses:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load Pack365 courses. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPack365(false);
     }
   };
 
-  fetchEnrollments();
-}, []);
+  const handlePack365EnrollClick = (course: Pack365Course) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: "Login Required",
+        description: "Please login to enroll in courses.",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+    navigate(`/pack365/payment/${course.courseId}`);
+  };
   
   const stats = [
     {
@@ -184,7 +227,7 @@ const StudentDashboard = () => {
             <Tabs defaultValue="my-courses" className="space-y-4">
               <TabsList className="bg-white">
                 <TabsTrigger value="my-courses">My Courses</TabsTrigger>
-                <TabsTrigger value="browse-courses">Browse Courses</TabsTrigger>
+                <TabsTrigger value="browse-courses" onClick={loadPack365Courses}>Browse Courses</TabsTrigger>
               </TabsList>
 
               <TabsContent value="my-courses" className="space-y-6">
@@ -271,106 +314,82 @@ const StudentDashboard = () => {
               </TabsContent>
 
               <TabsContent value="browse-courses" className="space-y-6">
-                <Tabs defaultValue="recorded" className="space-y-4">
-                  <TabsList className="bg-white">
-                    <TabsTrigger value="recorded">Recorded Courses</TabsTrigger>
-                    <TabsTrigger value="live">Live Courses</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="recorded" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {[
-                        { id: 'web-development', title: 'Web Development', description: 'Master HTML, CSS, JavaScript, React and build modern web applications', duration: '12 weeks', students: '2,500+', rating: 4.8, color: 'bg-blue-500', icon: Code, price: "₹2,999", originalPrice: "₹4,999", lessons: 45, level: "Beginner to Advanced" },
-                        { id: 'data-science', title: 'Data Science', description: 'Learn Python, Machine Learning, Statistics and Data Analysis', duration: '16 weeks', students: '1,800+', rating: 4.9, color: 'bg-orange-500', icon: BookOpen, price: "₹2,499", originalPrice: "₹3,999", lessons: 38, level: "Beginner" },
-                        { id: 3, title: 'Aptitude Training', description: 'Quantitative aptitude, logical reasoning, and verbal ability', duration: '8 weeks', students: '3,200+', rating: 4.7, color: 'bg-green-500', icon: Calculator, price: "₹1,999", originalPrice: "₹2,999", lessons: 30, level: "Beginner to Intermediate" }
-                      ].map((course) => (
-                        <Card key={course.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/courses/recorded/${course.id}`)}>
-                          <div className="relative flex items-center justify-center h-32">
-                            <div className={`h-16 w-16 ${course.color} rounded-full flex items-center justify-center`}>
-                              <course.icon className="h-8 w-8 text-white" />
-                            </div>
-                            <div className="absolute top-2 right-2">
-                              <Badge variant="secondary" className="bg-white/90 text-xs">{course.level}</Badge>
-                            </div>
-                          </div>
-                          <CardContent className="p-4">
-                            <CardTitle className="text-sm mb-2">{course.title}</CardTitle>
-                            <CardDescription className="text-xs mb-3">{course.description}</CardDescription>
-                            <div className="flex items-center space-x-3 text-xs text-gray-600 mb-3">
-                              <div className="flex items-center">
-                                <Clock className="h-3 w-3 mr-1" />
-                                {course.duration}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pack365 Courses</CardTitle>
+                    <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingPack365 ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <p className="text-gray-600">Loading courses...</p>
+                      </div>
+                    ) : pack365Courses.length === 0 ? (
+                      <div className="text-center py-8">
+                        <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500 mb-4">No Pack365 courses available at the moment.</p>
+                        <Button onClick={loadPack365Courses} variant="outline">
+                          Refresh
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {pack365Courses.map((course) => (
+                          <Card key={course._id} className="hover:shadow-md transition-shadow border-purple-200">
+                            <CardContent className="p-6">
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <Badge className="bg-purple-500 text-white">Pack365</Badge>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {course.stream.toUpperCase()}
+                                  </Badge>
+                                </div>
+                                <h3 className="font-semibold text-lg">{course.courseName}</h3>
+                                <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
+                                <div className="flex items-center justify-between text-sm text-gray-500">
+                                  <div className="flex items-center space-x-1">
+                                    <BookOpen className="h-4 w-4" />
+                                    <span>{course.topics?.length || 0} Topics</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Clock className="h-4 w-4" />
+                                    <span>365 days</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <div className="text-2xl font-bold text-green-600">$365</div>
+                                  <div className="flex items-center space-x-1">
+                                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                    <span className="text-sm font-medium">4.8</span>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-1 mb-4">
+                                  {course.topics?.slice(0, 3).map((topic, index) => (
+                                    <Badge key={index} variant="outline" className="text-xs">
+                                      {topic.name}
+                                    </Badge>
+                                  ))}
+                                  {course.topics && course.topics.length > 3 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{course.topics.length - 3} more
+                                    </Badge>
+                                  )}
+                                </div>
+                                <Button 
+                                  onClick={() => handlePack365EnrollClick(course)}
+                                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                                >
+                                  Enroll Now - $365
+                                </Button>
                               </div>
-                              <div className="flex items-center">
-                                <Users className="h-3 w-3 mr-1" />
-                                {course.students}
-                              </div>
-                              <div className="flex items-center">
-                                <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
-                                {course.rating}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-1">
-                                <span className="text-lg font-bold text-blue-600">{course.price}</span>
-                                <span className="text-sm text-gray-500 line-through">{course.originalPrice}</span>
-                              </div>
-                              <div className="text-xs text-gray-600">{course.lessons} lessons</div>
-                            </div>
-                            <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">View Details</Button>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="live" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {[
-                        { id: 'web-development', title: 'Web Development', description: 'Master HTML, CSS, JavaScript, React and build modern web applications', duration: '12 weeks', students: '2,500+', rating: 4.8, color: 'bg-blue-500', icon: Code, price: "₹2,999", originalPrice: "₹4,999", lessons: 45, level: "Beginner to Advanced" },
-                        { id: 'data-science', title: 'Data Science', description: 'Learn Python, Machine Learning, Statistics and Data Analysis', duration: '16 weeks', students: '1,800+', rating: 4.9, color: 'bg-orange-500', icon: BookOpen, price: "₹2,499", originalPrice: "₹3,999", lessons: 38, level: "Beginner" },
-                        { id: 5, title: 'Soft Skills', description: 'Communication, leadership and professional development', duration: '6 weeks', students: '4,000+', rating: 4.8, color: 'bg-pink-500', icon: Users, price: "₹2,299", originalPrice: "₹3,499", lessons: 35, level: "Beginner" }
-                      ].map((course) => (
-                        <Card key={course.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/courses/live/${course.id}`)}>
-                          <div className="relative flex items-center justify-center h-32">
-                            <div className={`h-16 w-16 ${course.color} rounded-full flex items-center justify-center`}>
-                              <course.icon className="h-8 w-8 text-white" />
-                            </div>
-                            <div className="absolute top-2 right-2">
-                              <Badge variant="secondary" className="bg-white/90 text-xs">{course.level}</Badge>
-                            </div>
-                          </div>
-                          <CardContent className="p-4">
-                            <CardTitle className="text-sm mb-2">{course.title}</CardTitle>
-                            <CardDescription className="text-xs mb-3">{course.description}</CardDescription>
-                            <div className="flex items-center space-x-3 text-xs text-gray-600 mb-3">
-                              <div className="flex items-center">
-                                <Clock className="h-3 w-3 mr-1" />
-                                {course.duration}
-                              </div>
-                              <div className="flex items-center">
-                                <Users className="h-3 w-3 mr-1" />
-                                {course.students}
-                              </div>
-                              <div className="flex items-center">
-                                <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
-                                {course.rating}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-1">
-                                <span className="text-lg font-bold text-blue-600">{course.price}</span>
-                                <span className="text-sm text-gray-500 line-through">{course.originalPrice}</span>
-                              </div>
-                              <div className="text-xs text-gray-600">{course.lessons} lessons</div>
-                            </div>
-                            <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">View Details</Button>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </TabsContent>
