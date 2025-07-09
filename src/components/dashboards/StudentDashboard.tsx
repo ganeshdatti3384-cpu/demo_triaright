@@ -237,9 +237,6 @@ const StudentDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Pack365 Highlight */}
-              <Pack365Card />
-
               {/* Recent Activity */}
               <Card>
                 <CardHeader>
