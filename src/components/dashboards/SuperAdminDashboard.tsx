@@ -4,7 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar } from 'lucide-react';
 
 interface SuperAdminDashboardProps {
   user: { role: string; name: string };
@@ -13,6 +17,27 @@ interface SuperAdminDashboardProps {
 
 const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [pack365Tab, setPack365Tab] = useState('overview');
+  const [createCouponOpen, setCreateCouponOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+
+  // Sample courses data
+  const courses = [
+    { id: '1', name: 'React Fundamentals', type: 'Live' },
+    { id: '2', name: 'JavaScript Mastery', type: 'Recorded' },
+    { id: '3', name: 'Full Stack Development', type: 'Live' },
+    { id: '4', name: 'Python for Beginners', type: 'Recorded' },
+    { id: '5', name: 'DevOps Essentials', type: 'Live' },
+  ];
+
+  // Sample coupons data
+  const [coupons, setCoupons] = useState([
+    { id: '1', code: 'SAVE20', course: 'React Fundamentals', discount: '20%', expiry: '2024-12-31', status: 'Active' },
+    { id: '2', code: 'EARLYBIRD', course: 'JavaScript Mastery', discount: '30%', expiry: '2024-11-30', status: 'Active' },
+    { id: '3', code: 'WELCOME10', course: 'Full Stack Development', discount: '10%', expiry: '2024-10-15', status: 'Expired' },
+  ]);
 
   const systemStats = {
     totalRevenue: '₹12,34,567',
@@ -34,6 +59,29 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     { id: 3, action: 'Failed payment attempt', severity: 'warning', time: '2024-01-14 23:45' },
   ];
 
+  const handleCreateCoupon = () => {
+    if (selectedCourse && couponCode && expiryDate) {
+      const selectedCourseData = courses.find(c => c.id === selectedCourse);
+      const newCoupon = {
+        id: Date.now().toString(),
+        code: couponCode,
+        course: selectedCourseData?.name || '',
+        discount: '20%', // Default discount, can be made configurable
+        expiry: expiryDate,
+        status: 'Active'
+      };
+      
+      setCoupons([...coupons, newCoupon]);
+      setCreateCouponOpen(false);
+      setSelectedCourse('');
+      setCouponCode('');
+      setExpiryDate('');
+      
+      // Show success message (you can implement toast here)
+      console.log('Coupon created successfully!');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -42,7 +90,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
               <Shield className="h-6 w-6 text-red-600" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold text-red-600">
                 Super Admin Dashboard
               </h1>
             </div>
@@ -59,10 +107,11 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">User Control</TabsTrigger>
             <TabsTrigger value="system">System</TabsTrigger>
+            <TabsTrigger value="pack365">Pack365</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="logs">System Logs</TabsTrigger>
@@ -298,6 +347,185 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="pack365" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Pack365 Management</h2>
+              <Dialog open={createCouponOpen} onOpenChange={setCreateCouponOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Coupon
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Create New Coupon</DialogTitle>
+                    <DialogDescription>
+                      Create a new coupon code for courses. Fill in all the details below.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="course" className="text-right">
+                        Course
+                      </Label>
+                      <div className="col-span-3">
+                        <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a course" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {courses.map((course) => (
+                              <SelectItem key={course.id} value={course.id}>
+                                {course.name} ({course.type})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="couponCode" className="text-right">
+                        Coupon Code
+                      </Label>
+                      <Input
+                        id="couponCode"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="e.g., SAVE20"
+                        className="col-span-3"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="expiryDate" className="text-right">
+                        Expiry Date
+                      </Label>
+                      <Input
+                        id="expiryDate"
+                        type="date"
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(e.target.value)}
+                        className="col-span-3"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setCreateCouponOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="button" onClick={handleCreateCoupon}>
+                      Create Coupon
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Tabs value={pack365Tab} onValueChange={setPack365Tab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="coupons">Coupons</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Package className="h-5 w-5 mr-2 text-blue-600" />
+                        Active Pack365 Users
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-blue-600">1,234</div>
+                      <p className="text-sm text-gray-500">Currently enrolled</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Ticket className="h-5 w-5 mr-2 text-green-600" />
+                        Active Coupons
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-green-600">{coupons.filter(c => c.status === 'Active').length}</div>
+                      <p className="text-sm text-gray-500">Currently available</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <CreditCard className="h-5 w-5 mr-2 text-purple-600" />
+                        Monthly Revenue
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-purple-600">₹5,67,890</div>
+                      <p className="text-sm text-gray-500">From Pack365</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pack365 Analytics</CardTitle>
+                    <CardDescription>Overview of Pack365 performance and metrics</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64 bg-gray-100 rounded flex items-center justify-center">
+                      <p className="text-gray-500">Pack365 analytics chart would go here</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="coupons" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>All Coupons</CardTitle>
+                    <CardDescription>Manage all coupon codes and their status</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {coupons.map((coupon) => (
+                        <div key={coupon.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center space-x-4">
+                            <Ticket className="h-5 w-5 text-blue-600" />
+                            <div>
+                              <p className="font-medium">{coupon.code}</p>
+                              <p className="text-sm text-gray-500">{coupon.course}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                              <p className="font-medium">{coupon.discount}</p>
+                              <p className="text-sm text-gray-500 flex items-center">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {coupon.expiry}
+                              </p>
+                            </div>
+                            <Badge variant={coupon.status === 'Active' ? 'default' : 'secondary'}>
+                              {coupon.status}
+                            </Badge>
+                            <div className="flex space-x-2">
+                              <Button variant="outline" size="sm">Edit</Button>
+                              <Button variant="outline" size="sm">
+                                {coupon.status === 'Active' ? 'Deactivate' : 'Activate'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="billing" className="space-y-6">
