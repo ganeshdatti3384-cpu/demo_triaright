@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search } from 'lucide-react';
+import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search, Calculator, MapPin, DollarSign, Target, TrendingUp } from 'lucide-react';
 import Navbar from '../Navbar';
 import Pack365Card from '../Pack365Card';
 import CodeCompiler from '../CodeCompiler';
@@ -270,37 +270,106 @@ console.log(user.id)
               </TabsContent>
 
               <TabsContent value="browse-courses" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Search className="h-5 w-5 mr-2 text-blue-600" />
-                      Browse Courses
-                    </CardTitle>
-                    <CardDescription>Discover new courses to enhance your skills</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-4 mb-6">
-                      <div className="flex items-center space-x-2">
-                        <Filter className="h-4 w-4 text-blue-600" />
-                        <Button variant="outline" size="sm" className="border-blue-200">Free</Button>
-                        <Button variant="outline" size="sm" className="border-blue-200">Paid</Button>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium">Category:</span>
-                        <Button variant="outline" size="sm" className="border-blue-200">Programming</Button>
-                        <Button variant="outline" size="sm" className="border-blue-200">Design</Button>
-                        <Button variant="outline" size="sm" className="border-blue-200">Business</Button>
-                      </div>
+                <Tabs defaultValue="recorded" className="space-y-4">
+                  <TabsList className="bg-white">
+                    <TabsTrigger value="recorded">Recorded Courses</TabsTrigger>
+                    <TabsTrigger value="live">Live Courses</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="recorded" className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {[
+                        { id: 'web-development', title: 'Web Development', description: 'Master HTML, CSS, JavaScript, React and build modern web applications', duration: '12 weeks', students: '2,500+', rating: 4.8, color: 'bg-blue-500', icon: Code, price: "₹2,999", originalPrice: "₹4,999", lessons: 45, level: "Beginner to Advanced" },
+                        { id: 'data-science', title: 'Data Science', description: 'Learn Python, Machine Learning, Statistics and Data Analysis', duration: '16 weeks', students: '1,800+', rating: 4.9, color: 'bg-orange-500', icon: BookOpen, price: "₹2,499", originalPrice: "₹3,999", lessons: 38, level: "Beginner" },
+                        { id: 3, title: 'Aptitude Training', description: 'Quantitative aptitude, logical reasoning, and verbal ability', duration: '8 weeks', students: '3,200+', rating: 4.7, color: 'bg-green-500', icon: Calculator, price: "₹1,999", originalPrice: "₹2,999", lessons: 30, level: "Beginner to Intermediate" }
+                      ].map((course) => (
+                        <Card key={course.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/courses/recorded/${course.id}`)}>
+                          <div className="relative flex items-center justify-center h-32">
+                            <div className={`h-16 w-16 ${course.color} rounded-full flex items-center justify-center`}>
+                              <course.icon className="h-8 w-8 text-white" />
+                            </div>
+                            <div className="absolute top-2 right-2">
+                              <Badge variant="secondary" className="bg-white/90 text-xs">{course.level}</Badge>
+                            </div>
+                          </div>
+                          <CardContent className="p-4">
+                            <CardTitle className="text-sm mb-2">{course.title}</CardTitle>
+                            <CardDescription className="text-xs mb-3">{course.description}</CardDescription>
+                            <div className="flex items-center space-x-3 text-xs text-gray-600 mb-3">
+                              <div className="flex items-center">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {course.duration}
+                              </div>
+                              <div className="flex items-center">
+                                <Users className="h-3 w-3 mr-1" />
+                                {course.students}
+                              </div>
+                              <div className="flex items-center">
+                                <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
+                                {course.rating}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-1">
+                                <span className="text-lg font-bold text-blue-600">{course.price}</span>
+                                <span className="text-sm text-gray-500 line-through">{course.originalPrice}</span>
+                              </div>
+                              <div className="text-xs text-gray-600">{course.lessons} lessons</div>
+                            </div>
+                            <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">View Details</Button>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                    <div className="text-center py-8">
-                      <BookOpen className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                      <p className="text-gray-500 mb-4">Course catalog coming soon!</p>
-                      <Button onClick={() => navigate('/courses/recorded')} className="bg-blue-600 hover:bg-blue-700">
-                        View Available Courses
-                      </Button>
+                  </TabsContent>
+
+                  <TabsContent value="live" className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {[
+                        { id: 'web-development', title: 'Web Development', description: 'Master HTML, CSS, JavaScript, React and build modern web applications', duration: '12 weeks', students: '2,500+', rating: 4.8, color: 'bg-blue-500', icon: Code, price: "₹2,999", originalPrice: "₹4,999", lessons: 45, level: "Beginner to Advanced" },
+                        { id: 'data-science', title: 'Data Science', description: 'Learn Python, Machine Learning, Statistics and Data Analysis', duration: '16 weeks', students: '1,800+', rating: 4.9, color: 'bg-orange-500', icon: BookOpen, price: "₹2,499", originalPrice: "₹3,999", lessons: 38, level: "Beginner" },
+                        { id: 5, title: 'Soft Skills', description: 'Communication, leadership and professional development', duration: '6 weeks', students: '4,000+', rating: 4.8, color: 'bg-pink-500', icon: Users, price: "₹2,299", originalPrice: "₹3,499", lessons: 35, level: "Beginner" }
+                      ].map((course) => (
+                        <Card key={course.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/courses/live/${course.id}`)}>
+                          <div className="relative flex items-center justify-center h-32">
+                            <div className={`h-16 w-16 ${course.color} rounded-full flex items-center justify-center`}>
+                              <course.icon className="h-8 w-8 text-white" />
+                            </div>
+                            <div className="absolute top-2 right-2">
+                              <Badge variant="secondary" className="bg-white/90 text-xs">{course.level}</Badge>
+                            </div>
+                          </div>
+                          <CardContent className="p-4">
+                            <CardTitle className="text-sm mb-2">{course.title}</CardTitle>
+                            <CardDescription className="text-xs mb-3">{course.description}</CardDescription>
+                            <div className="flex items-center space-x-3 text-xs text-gray-600 mb-3">
+                              <div className="flex items-center">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {course.duration}
+                              </div>
+                              <div className="flex items-center">
+                                <Users className="h-3 w-3 mr-1" />
+                                {course.students}
+                              </div>
+                              <div className="flex items-center">
+                                <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
+                                {course.rating}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-1">
+                                <span className="text-lg font-bold text-blue-600">{course.price}</span>
+                                <span className="text-sm text-gray-500 line-through">{course.originalPrice}</span>
+                              </div>
+                              <div className="text-xs text-gray-600">{course.lessons} lessons</div>
+                            </div>
+                            <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">View Details</Button>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                  </CardContent>
-                </Card>
+                  </TabsContent>
+                </Tabs>
               </TabsContent>
             </Tabs>
           </TabsContent>
@@ -317,45 +386,129 @@ console.log(user.id)
               </TabsList>
 
               <TabsContent value="job-assurance" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Briefcase className="h-5 w-5 mr-2 text-blue-600" />
-                      Job Assurance Program
-                    </CardTitle>
-                    <CardDescription>100% job guarantee programs</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8">
-                      <Briefcase className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                      <p className="text-gray-500 mb-4">Job assurance programs available soon!</p>
-                      <Button onClick={() => navigate('/job-assurance')} className="bg-blue-600 hover:bg-blue-700">
-                        Learn More
-                      </Button>
+                <div className="bg-blue-600 text-white rounded-lg p-8 mb-8">
+                  <div className="text-center">
+                    <h2 className="text-3xl font-bold mb-4">Triaright Job Assurance Program</h2>
+                    <p className="text-xl mb-6 text-blue-100">
+                      Personalized Training + Guaranteed Placement — Or 100% Refund!
+                    </p>
+                    <div className="inline-flex items-center bg-white/20 rounded-full px-6 py-3">
+                      🔥 Limited Slots Available – Apply Now!
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <Card className="border-2 border-blue-200 hover:border-blue-400 transition-colors">
+                    <CardHeader className="bg-blue-50">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xl text-blue-800">IT Track</CardTitle>
+                        <Badge className="bg-blue-600">Popular</Badge>
+                      </div>
+                      <div className="flex items-center space-x-2 mt-4">
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        <span className="text-blue-700 font-medium">1 Year Program</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="text-center mb-6">
+                        <div className="text-3xl font-bold text-blue-600 mb-2">₹30,000</div>
+                        <p className="text-gray-600">Includes training & placement support</p>
+                      </div>
+                      <ul className="space-y-2 mb-6">
+                        <li className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm">Full-stack development training</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm">Modern frameworks & technologies</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm">Real-world project experience</span>
+                        </li>
+                      </ul>
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700">Apply for IT Track</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-orange-200 hover:border-orange-400 transition-colors">
+                    <CardHeader className="bg-orange-50">
+                      <CardTitle className="text-xl text-orange-800">Non-IT Track</CardTitle>
+                      <div className="flex items-center space-x-2 mt-4">
+                        <Clock className="h-4 w-4 text-orange-600" />
+                        <span className="text-orange-700 font-medium">100-Day Program</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="text-center mb-6">
+                        <div className="text-3xl font-bold text-orange-600 mb-2">₹10,000</div>
+                        <p className="text-gray-600">Includes targeted training & job assistance</p>
+                      </div>
+                      <ul className="space-y-2 mb-6">
+                        <li className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm">Business skills development</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm">Communication & leadership training</span>
+                        </li>
+                        <li className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm">Industry-specific knowledge</span>
+                        </li>
+                      </ul>
+                      <Button className="w-full bg-orange-600 hover:bg-orange-700">Apply for Non-IT Track</Button>
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
 
               <TabsContent value="job-assistance" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Users className="h-5 w-5 mr-2 text-blue-600" />
-                      Job Assistance Program
-                    </CardTitle>
-                    <CardDescription>Career guidance and placement support</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8">
-                      <Users className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                      <p className="text-gray-500 mb-4">Career assistance services available!</p>
-                      <Button onClick={() => navigate('/job-assistance')} className="bg-blue-600 hover:bg-blue-700">
-                        Get Assistance
-                      </Button>
+                <div className="bg-green-600 text-white rounded-lg p-8 mb-8">
+                  <div className="text-center">
+                    <h2 className="text-3xl font-bold mb-4">Advance Your Career with Expert Guidance</h2>
+                    <p className="text-xl mb-6 text-green-100">
+                      🚀 Land Your Dream Job Faster with Triaright's Professional Job Assistance
+                    </p>
+                    <div className="bg-white/20 rounded-xl p-6 max-w-xl mx-auto">
+                      <div className="text-4xl font-bold mb-2">₹500 Only</div>
+                      <div className="text-lg mb-2">Lifetime Access</div>
+                      <p className="text-green-100">One-time investment for lifetime career support!</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[
+                    { icon: Bell, title: "Real-time updates on job opportunities", description: "Get instant notifications about new job openings that match your profile" },
+                    { icon: Target, title: "Customized preparation guidance", description: "Personalized interview preparation and skill development recommendations" },
+                    { icon: Trophy, title: "Insider tips to stand out from competition", description: "Learn industry secrets and strategies to make your application stand out" },
+                    { icon: Bell, title: "Direct notifications about openings", description: "Be the first to know about exclusive job opportunities from our partner companies" }
+                  ].map((benefit, index) => (
+                    <Card key={index} className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+                      <CardHeader>
+                        <div className="flex items-center space-x-3">
+                          <div className="bg-green-100 p-3 rounded-lg">
+                            <benefit.icon className="h-5 w-5 text-green-600" />
+                          </div>
+                          <CardTitle className="text-sm">{benefit.title}</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-gray-600 text-sm">{benefit.description}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                <div className="text-center mt-8">
+                  <Button onClick={() => navigate('/job-assistance')} size="lg" className="bg-green-600 hover:bg-green-700 font-semibold px-8 py-3">
+                    Get Started Now - ₹500 Only!
+                  </Button>
+                </div>
               </TabsContent>
             </Tabs>
           </TabsContent>
@@ -368,45 +521,101 @@ console.log(user.id)
               </TabsList>
 
               <TabsContent value="online" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Calendar className="h-5 w-5 mr-2 text-blue-600" />
-                      Online Internships
-                    </CardTitle>
-                    <CardDescription>Remote internship opportunities</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8">
-                      <Calendar className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                      <p className="text-gray-500 mb-4">Online internship programs coming soon!</p>
-                      <Button onClick={() => navigate('/online-internships')} className="bg-blue-600 hover:bg-blue-700">
-                        View Opportunities
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    { id: 1, role: "Frontend Developer Intern", company: "TechStart Solutions", duration: "3 months", technologies: ["React", "JavaScript", "CSS"], category: "IT", feeType: "Stipend", stipend: "₹8,000/month", description: "Work on modern web applications using React and contribute to real projects." },
+                    { id: 2, role: "Digital Marketing Intern", company: "Creative Agency", duration: "2 months", technologies: ["Google Ads", "SEO", "Social Media"], category: "Marketing", feeType: "Unpaid", stipend: null, description: "Learn digital marketing strategies and campaign management." },
+                    { id: 3, role: "Data Science Intern", company: "Analytics Pro", duration: "4 months", technologies: ["Python", "Machine Learning", "SQL"], category: "IT", feeType: "Stipend", stipend: "₹12,000/month", description: "Work with real datasets and build predictive models." }
+                  ].map((internship) => (
+                    <Card key={internship.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <CardTitle className="text-sm mb-2">{internship.role}</CardTitle>
+                            <p className="text-blue-600 font-medium text-sm">{internship.company}</p>
+                          </div>
+                          <Badge variant={internship.feeType === 'Unpaid' ? 'secondary' : 'default'} className="text-xs">
+                            {internship.feeType}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <p className="text-gray-600 text-xs">{internship.description}</p>
+                        <div className="flex items-center space-x-3 text-xs text-gray-600">
+                          <div className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {internship.duration}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            Remote
+                          </div>
+                        </div>
+                        {internship.stipend && (
+                          <div className="flex items-center text-green-600 font-medium text-sm">
+                            <DollarSign className="h-3 w-3 mr-1" />
+                            {internship.stipend}
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {internship.technologies.slice(0, 3).map((tech, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">{tech}</Badge>
+                          ))}
+                        </div>
+                        <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-xs">Apply Now</Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </TabsContent>
 
               <TabsContent value="offline" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Bell className="h-5 w-5 mr-2 text-blue-600" />
-                      Offline Internships
-                    </CardTitle>
-                    <CardDescription>On-site internship opportunities</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8">
-                      <Bell className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                      <p className="text-gray-500 mb-4">Offline internship programs available!</p>
-                      <Button onClick={() => navigate('/offline-internships')} className="bg-blue-600 hover:bg-blue-700">
-                        Find Internships
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    { id: 1, role: "Software Development Intern", company: "Tech Innovators", duration: "6 months", technologies: ["Java", "Spring Boot", "MySQL"], category: "IT", feeType: "Stipend", stipend: "₹15,000/month", location: "Hyderabad", description: "Work on enterprise applications and learn full-stack development." },
+                    { id: 2, role: "Marketing Assistant", company: "Brand Builders", duration: "3 months", technologies: ["Market Research", "Content Creation", "Analytics"], category: "Marketing", feeType: "Paid", stipend: "₹8,000/month", location: "Mumbai", description: "Support marketing campaigns and learn brand management." },
+                    { id: 3, role: "Business Operations Intern", company: "StartupHub", duration: "4 months", technologies: ["Process Optimization", "Data Analysis", "CRM"], category: "Business", feeType: "Stipend", stipend: "₹12,000/month", location: "Bangalore", description: "Learn business operations in a fast-paced startup environment." }
+                  ].map((internship) => (
+                    <Card key={internship.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <CardTitle className="text-sm mb-2">{internship.role}</CardTitle>
+                            <p className="text-blue-600 font-medium text-sm">{internship.company}</p>
+                          </div>
+                          <Badge variant={internship.feeType === 'Unpaid' ? 'secondary' : 'default'} className="text-xs">
+                            {internship.feeType}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <p className="text-gray-600 text-xs">{internship.description}</p>
+                        <div className="flex items-center space-x-3 text-xs text-gray-600">
+                          <div className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {internship.duration}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {internship.location}
+                          </div>
+                        </div>
+                        {internship.stipend && (
+                          <div className="flex items-center text-green-600 font-medium text-sm">
+                            <DollarSign className="h-3 w-3 mr-1" />
+                            {internship.stipend}
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {internship.technologies.slice(0, 3).map((tech, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">{tech}</Badge>
+                          ))}
+                        </div>
+                        <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-xs">Apply Now</Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </TabsContent>
             </Tabs>
           </TabsContent>
