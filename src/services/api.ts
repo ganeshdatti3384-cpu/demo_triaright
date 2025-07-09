@@ -438,7 +438,7 @@ export const pack365Api = {
   getAllCoupons: async (
     token: string
   ): Promise<{
-    codes(codes: any): unknown; success: boolean; coupons: any[] 
+    success: boolean; codes: any[]; coupons: any[] 
 }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/admin/codes`, {
       headers: { Authorization: `Bearer ${token}` },

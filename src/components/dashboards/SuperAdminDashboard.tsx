@@ -57,7 +57,9 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       
       const response = await pack365Api.getAllCoupons(token);
       if (response.success) {
-        setCoupons(response.codes || []);
+        setCoupons(Array.isArray(response.codes) ? response.codes : []);
+      } else {
+        setCoupons([]);
       }
     } catch (error) {
       console.error('Error fetching coupons:', error);
