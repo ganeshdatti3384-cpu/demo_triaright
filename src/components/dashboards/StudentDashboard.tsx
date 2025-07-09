@@ -9,6 +9,7 @@ import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings,
 import Navbar from '../Navbar';
 import Pack365Card from '../Pack365Card';
 import CodeCompiler from '../CodeCompiler';
+import EnhancedProfile from '../EnhancedProfile';
 import { useNavigate } from 'react-router-dom';
 import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
@@ -108,7 +109,7 @@ console.log(user.id)
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9 bg-white">
+          <TabsList className="grid w-full grid-cols-10 bg-white">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
@@ -117,6 +118,7 @@ console.log(user.id)
             <TabsTrigger value="trainings">Trainings</TabsTrigger>
             <TabsTrigger value="exams">Exams</TabsTrigger>
             <TabsTrigger value="compiler">Compiler</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
@@ -739,24 +741,9 @@ console.log(user.id)
           </TabsContent>
 
           <TabsContent value="profile" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="h-5 w-5 mr-2 text-blue-600" />
-                  User Profile
-                </CardTitle>
-                <CardDescription>View and manage your profile information</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <User className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                  <p className="text-gray-500 mb-4">Access your complete profile here.</p>
-                  <Button onClick={() => navigate('/profile')} className="bg-blue-600 hover:bg-blue-700">
-                    View Full Profile
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white rounded-lg">
+              <EnhancedProfile />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
