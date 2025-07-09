@@ -204,10 +204,24 @@ const Register = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
       
       <main className="flex-1  relative overflow-hidden">
+        <div className="absolute inset-0">
+          {/* Floating geometric shapes */}
+          <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full animate-bounce" style={{ animationDelay: '0s', animationDuration: '3s' }}></div>
+          <div className="absolute top-40 right-20 w-16 h-16 bg-gradient-to-r from-cyan-400/20 to-blue-400/20 rotate-45 animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-40 left-20 w-12 h-12 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full animate-bounce" style={{ animationDelay: '2s', animationDuration: '4s' }}></div>
+          <div className="absolute bottom-20 right-40 w-24 h-24 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rotate-12 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+          
+          {/* Grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+          
+          {/* Radial gradients */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-radial from-blue-500/10 to-transparent rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-radial from-purple-500/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        </div>
         {/* Background decorative elements */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-full blur-3xl"></div>
@@ -219,12 +233,12 @@ const Register = () => {
           {/* Header Section */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mb-6">
-              <Sparkles className="h-8 w-8 text-white" />
+              <Sparkles className="h-8 w-8 text-black" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
               Join TriaRight Today
             </h1>
-            <p className="text-xl text-white max-w-2xl mx-auto">
+            <p className="text-xl text-black max-w-2xl mx-auto">
               Start your journey to success with personalized learning and career advancement
             </p>
           </div>
@@ -234,14 +248,14 @@ const Register = () => {
             <div className="lg:col-span-1 space-y-6">
               <Card className="backdrop-blur-xl bg-white/10  border-0 shadow-xl">
                 <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-4 text-white">Why Choose TriaRight?</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-black">Why Choose TriaRight?</h3>
                   <div className="space-y-4">
                     <div className="flex items-start space-x-3">
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <Star className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-white">Expert-Led Courses</h4>
+                        <h4 className="font-medium text-black">Expert-Led Courses</h4>
                         <p className="text-sm text-gray-400">Learn from industry professionals</p>
                       </div>
                     </div>
@@ -250,7 +264,7 @@ const Register = () => {
                         <Shield className="h-4 w-4 text-green-600" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-white">Certified Learning</h4>
+                        <h4 className="font-medium text-black">Certified Learning</h4>
                         <p className="text-sm text-gray-400">Get recognized certifications</p>
                       </div>
                     </div>
@@ -259,7 +273,7 @@ const Register = () => {
                         <Users className="h-4 w-4 text-purple-600" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-white">Community Support</h4>
+                        <h4 className="font-medium text-black">Community Support</h4>
                         <p className="text-sm text-gray-400">Connect with learners worldwide</p>
                       </div>
                     </div>
@@ -272,16 +286,16 @@ const Register = () => {
             <div className="lg:col-span-2">
               <Card className="backdrop-blur-xl bg-white/10  border-0 shadow-2xl">
                 <CardHeader className="text-center pb-6">
-                  <CardTitle className="text-2xl font-bold text-white">Create Your Account</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-black">Create Your Account</CardTitle>
                   <p className="text-gray-400">Fill in your details to get started</p>
                 </CardHeader>
                 <CardContent className="p-8">
                   <form onSubmit={handleSubmit(handleRegister)} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <Label htmlFor="firstName" className="text-white-700 font-medium">First Name *</Label>
+                        <Label htmlFor="firstName" className="text-black-700 font-medium">First Name *</Label>
                         <div className="relative mt-1">
-                          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white-400" />
+                          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
                           <Input 
                             id="firstName" 
                             {...register('firstName')} 
@@ -293,9 +307,9 @@ const Register = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="lastName" className="text-white-700 font-medium">Last Name *</Label>
+                        <Label htmlFor="lastName" className="text-black-700 font-medium">Last Name *</Label>
                         <div className="relative mt-1">
-                          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white-400" />
+                          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
                           <Input 
                             id="lastName" 
                             {...register('lastName')} 
@@ -307,9 +321,9 @@ const Register = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="email" className="text-white-700 font-medium">Email Address *</Label>
+                        <Label htmlFor="email" className="text-black-700 font-medium">Email Address *</Label>
                         <div className="relative mt-1">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white-400" />
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
                           <Input 
                             id="email" 
                             type="email" 
@@ -322,9 +336,9 @@ const Register = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="phoneNumber" className="text-white-700 font-medium">Phone Number *</Label>
+                        <Label htmlFor="phoneNumber" className="text-black-700 font-medium">Phone Number *</Label>
                         <div className="relative mt-1">
-                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white-400" />
+                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
                           <Input 
                             id="phoneNumber" 
                             {...register('phoneNumber')} 
@@ -336,9 +350,9 @@ const Register = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="whatsappNumber" className="text-white-700 font-medium">WhatsApp Number *</Label>
+                        <Label htmlFor="whatsappNumber" className="text-black-700 font-medium">WhatsApp Number *</Label>
                         <div className="relative mt-1">
-                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white-400" />
+                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
                           <Input 
                             id="whatsappNumber" 
                             {...register('whatsappNumber')} 
@@ -350,11 +364,11 @@ const Register = () => {
                       </div>
 
                        <div>
-                        <Label htmlFor="password" className="text-white-700 font-medium">
+                        <Label htmlFor="password" className="text-black-700 font-medium">
                           Password *
                         </Label>
                         <div className="relative mt-1">
-                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white-400" />
+                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
                           <Input
                             id="password"
                             type={showPassword ? "text" : "password"}
@@ -365,7 +379,7 @@ const Register = () => {
                           <button
                             type="button"
                             onClick={() => setShowPassword((prev) => !prev)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white-400 hover:text-gray-400"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-black-400 hover:text-gray-400"
                           >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
@@ -378,9 +392,9 @@ const Register = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="confirmPassword" className="text-white-700 font-medium">Confirm Password *</Label>
+                        <Label htmlFor="confirmPassword" className="text-black-700 font-medium">Confirm Password *</Label>
                         <div className="relative mt-1">
-                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white-400" />
+                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
                           <Input 
                             id="confirmPassword" 
                             type="password" 
@@ -392,7 +406,7 @@ const Register = () => {
                         {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
                       </div>
                       <div>
-                        <Label htmlFor="state" className="text-white-700 font-medium">State *</Label>
+                        <Label htmlFor="state" className="text-black-700 font-medium">State *</Label>
                         <Select onValueChange={(value) => setValue('state', value)}>
                           <SelectTrigger className="h-11 border-gray-200 focus:border-blue-500 transition-colors">
                             <SelectValue placeholder="Select your state" />
@@ -406,9 +420,9 @@ const Register = () => {
                         {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>}
                       </div>
                       <div className="md:col-span-2">
-                        <Label htmlFor="address" className="text-white-700 font-medium">Address *</Label>
+                        <Label htmlFor="address" className="text-black-700 font-medium">Address *</Label>
                         <div className="relative mt-1">
-                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white-400" />
+                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
                           <Input 
                             id="address" 
                             {...register('address')} 
@@ -420,7 +434,7 @@ const Register = () => {
                       </div>
 
                       <div className="md:col-span-2">
-                        <Label htmlFor="role" className="text-white-700 font-medium">Role*</Label>
+                        <Label htmlFor="role" className="text-black-700 font-medium">Role*</Label>
                         <Select onValueChange={(value) => setValue('role', value as any)}>
                           <SelectTrigger className="h-11 border-gray-200 focus:border-blue-500 transition-colors">
                             <SelectValue placeholder="Select your user type" />
@@ -450,7 +464,7 @@ const Register = () => {
                           />
                         )}
                       />
-                      <Label htmlFor="terms" className="text-sm text-white-700 leading-relaxed">
+                      <Label htmlFor="terms" className="text-sm text-black-700 leading-relaxed">
                         I accept the{' '}
                         <button 
                           type="button"
@@ -473,7 +487,7 @@ const Register = () => {
 
                     <Button
                       type="submit"
-                      className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-200 transform hover:scale-[1.02]"
+                      className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-black font-medium transition-all duration-200 transform hover:scale-[1.02]"
                     >
                       <div className="flex items-center space-x-2">
                         <span>Create Account</span>
@@ -483,7 +497,7 @@ const Register = () => {
                   </form>
 
                   <div className="mt-8 text-center">
-                    <p className="text-white-400">
+                    <p className="text-black-400">
                       Already have an account?{' '}
                       <a href="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
                         Sign in
