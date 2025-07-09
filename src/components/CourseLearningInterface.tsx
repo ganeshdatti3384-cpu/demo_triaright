@@ -54,7 +54,6 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
       totalWatchedPercentage
     };
   };
-
   useEffect(() => {
     if (topicProgress.length === 0) {
       const initialProgress = course.topics.map(topic => ({
@@ -251,7 +250,6 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
   // Use YouTube duration if available, otherwise fallback to database duration
   const actualVideoDuration = videoDuration || (currentTopicData ? currentTopicData.duration * 60 : 0);
   const topicWatchPercentage = actualVideoDuration > 0 ? (Math.max(watchedDuration, currentTopicProgress?.watchedDuration || 0) / actualVideoDuration) * 100 : 0;
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -270,7 +268,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
                 <CardTitle className="flex items-center justify-between">
                   <span>{currentTopicData?.name}</span>
                   <Badge variant={currentTopicProgress?.watched ? 'default' : 'outline'}>
-                    {currentTopicProgress?.watched ? 'Completed' : 'In Progress'}
+                    {topicWatchPercentage === 100 ? 'Completed' : 'In Progress'}
                   </Badge>
                 </CardTitle>
               </CardHeader>

@@ -163,7 +163,6 @@ const StudentDashboard = () => {
       bgColor: 'bg-yellow-50'
     }
   ];
-
   return (
     <>
       <Navbar />
@@ -503,7 +502,7 @@ const StudentDashboard = () => {
                                   <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                       <Badge className={enrollment.status === 'enrolled' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}>
-                                        {enrollment.status === 'enrolled' ? 'Active' : 'Completed'}
+                                        {enrollment.status === 'enrolled' ? 'Completed' : 'Active'}
                                       </Badge>
                                       <span className="text-sm text-gray-500">
                                         {new Date(enrollment.enrollmentDate).toLocaleDateString()}

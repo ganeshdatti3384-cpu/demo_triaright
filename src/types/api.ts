@@ -276,6 +276,9 @@ export interface TopicProgress {
 }
 
 export interface EnhancedPack365Enrollment extends Pack365Enrollment {
+  status: string;
+  totalWatchedPercentage: any;
+  progress: any;
   topicProgress: TopicProgress[];
   videoProgress: number;
   enrollmentType: 'payment' | 'code';
