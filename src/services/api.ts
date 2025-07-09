@@ -429,7 +429,7 @@ export const pack365Api = {
       description?: string;
     }
   ): Promise<{ success: boolean; message: string; coupon: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/admin/coupons`, data, {
+    const res = await axios.post(`${API_BASE_URL}/pack365/admin/create-code`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -437,8 +437,10 @@ export const pack365Api = {
 
   getAllCoupons: async (
     token: string
-  ): Promise<{ success: boolean; coupons: any[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/admin/coupons`, {
+  ): Promise<{
+    codes(codes: any): unknown; success: boolean; coupons: any[] 
+}> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/admin/codes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -449,7 +451,7 @@ export const pack365Api = {
     couponId: string,
     isActive: boolean
   ): Promise<{ success: boolean; message: string; coupon: any }> => {
-    const res = await axios.put(`${API_BASE_URL}/pack365/admin/coupons/${couponId}/status`, 
+    const res = await axios.put(`${API_BASE_URL}/pack365/admin/deactivate-code/${couponId}`, 
       { isActive }, 
       {
         headers: { Authorization: `Bearer ${token}` },

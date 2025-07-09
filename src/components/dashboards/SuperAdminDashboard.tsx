@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,54 +57,57 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       
       const response = await pack365Api.getAllCoupons(token);
       if (response.success) {
-        setCoupons(response.coupons);
+        setCoupons(response.codes);
       }
     } catch (error) {
       console.error('Error fetching coupons:', error);
       toast.error('Failed to fetch coupons');
     }
   };
+ const handleCreateCoupon = async () => {
+  if (!selectedCourse || !couponCode || !expiryDate || !discount) {
+    toast.error('Please fill in all fields');
+    return;
+  }
 
-  const handleCreateCoupon = async () => {
-    if (!selectedCourse || !couponCode || !expiryDate || !discount) {
-      toast.error('Please fill in all fields');
+  setIsLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('No authentication token found');
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('No authentication token found');
-        return;
-      }
+    const selectedCourseData = courses.find(c => c._id === selectedCourse);
 
-      const selectedCourseData = courses.find(c => c._id === selectedCourse);
-      
-      await pack365Api.createCoupon(token, {
-        code: couponCode,
-        courseId: selectedCourse,
-        discount: parseInt(discount),
-        expiryDate: expiryDate,
-        description: `Coupon for ${selectedCourseData?.courseName || 'course'}`
-      });
-
-      toast.success('Coupon created successfully!');
-      setCreateCouponOpen(false);
-      setSelectedCourse('');
-      setCouponCode('');
-      setExpiryDate('');
-      setDiscount('');
-      
-      // Refresh coupons list
-      fetchCoupons();
-    } catch (error) {
-      console.error('Error creating coupon:', error);
-      toast.error('Failed to create coupon');
-    } finally {
-      setIsLoading(false);
+    if (!selectedCourseData?.courseId) {
+      toast.error('Invalid course selection');
+      return;
     }
-  };
+
+    await pack365Api.createCoupon(token, {
+      code: couponCode,
+      courseId: selectedCourseData.courseId, // ✅ Send courseId, not _id
+      discount: parseInt(discount),
+      expiryDate: expiryDate,
+      description: `Coupon for ${selectedCourseData.courseName || 'course'}`
+    });
+
+    toast.success('Coupon created successfully!');
+    setCreateCouponOpen(false);
+    setSelectedCourse('');
+    setCouponCode('');
+    setExpiryDate('');
+    setDiscount('');
+    
+    fetchCoupons();
+  } catch (error) {
+    console.error('Error creating coupon:', error);
+    toast.error('Failed to create coupon');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleToggleCouponStatus = async (couponId: string, currentStatus: boolean) => {
     try {
