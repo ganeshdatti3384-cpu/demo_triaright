@@ -2,10 +2,14 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Home, Construction } from "lucide-react";
+import { Home, Construction, ArrowLeft, Search } from "lucide-react";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { useNavigate } from "react-router-dom";
 
 const NotFound = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     console.error(
@@ -15,36 +19,80 @@ const NotFound = () => {
   }, [location.pathname]);
 
   const handleHomeClick = () => {
-    window.location.href = "/";
+    navigate("/");
+  };
+
+  const handleBackClick = () => {
+    navigate(-1);
+  };
+
+  const handleExploreClick = () => {
+    navigate("/courses/recorded");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="text-center max-w-md mx-auto px-6">
-        <div className="mb-8">
-          <Construction className="w-24 h-24 mx-auto text-brand-primary mb-4" />
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
+      <main className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 py-16">
+        <div className="text-center max-w-2xl mx-auto px-6">
+          <div className="mb-8">
+            <Construction className="w-32 h-32 mx-auto text-brand-primary mb-6 animate-pulse" />
+          </div>
+          
+          <h1 className="text-5xl font-bold text-gray-900 mb-4">
+            Development in Progress
+          </h1>
+          
+          <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+            We're working hard to bring you this feature. This page is currently under development 
+            and will be available soon with exciting new functionality.
+          </p>
+
+          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-6 mb-8 border border-white/20">
+            <p className="text-sm text-gray-500 mb-2">You tried to access:</p>
+            <code className="bg-gray-100 px-3 py-2 rounded text-brand-primary font-mono text-sm">
+              {location.pathname}
+            </code>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button 
+              onClick={handleHomeClick}
+              className="bg-brand-primary hover:bg-blue-700 text-white px-8 py-3 text-lg flex items-center gap-2"
+            >
+              <Home className="w-5 h-5" />
+              Return to Home
+            </Button>
+            
+            <Button 
+              onClick={handleBackClick}
+              variant="outline"
+              className="border-brand-primary text-brand-primary hover:bg-blue-50 px-8 py-3 text-lg flex items-center gap-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Go Back
+            </Button>
+            
+            <Button 
+              onClick={handleExploreClick}
+              variant="secondary"
+              className="px-8 py-3 text-lg flex items-center gap-2"
+            >
+              <Search className="w-5 h-5" />
+              Explore Courses
+            </Button>
+          </div>
+
+          <div className="mt-12 text-center">
+            <p className="text-gray-500 text-sm">
+              Need help? Contact our support team or check out our available features while we work on this page.
+            </p>
+          </div>
         </div>
-        
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Development in Progress
-        </h1>
-        
-        <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-          We're working hard to bring you this feature. Please check back soon or return to our homepage to explore what's currently available.
-        </p>
-        
-        <Button 
-          onClick={handleHomeClick}
-          className="bg-brand-primary hover:bg-blue-700 text-white px-8 py-3 text-lg flex items-center gap-2 mx-auto"
-        >
-          <Home className="w-5 h-5" />
-          Return to Home
-        </Button>
-        
-        <div className="mt-8 text-sm text-gray-500">
-          <p>Route: <code className="bg-gray-100 px-2 py-1 rounded">{location.pathname}</code></p>
-        </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };
