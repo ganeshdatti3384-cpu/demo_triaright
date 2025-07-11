@@ -37,6 +37,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import CourseLearning from "./pages/CourseLearning";
+import ChangePassword from "./pages/ChangePassword";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
             <Route path="/privacy-policy" element={<PrivacyPolicy />} /> 
             <Route path="/refund-policy" element={<RefundPolicy />} />
             <Route path="/terms-conditions" element={<TermsConditions />} />
+            <Route path="/changepassword" element={<ChangePassword />} />
             {/* Protected Pack365 Routes */}
             <Route path="/pack365" element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>

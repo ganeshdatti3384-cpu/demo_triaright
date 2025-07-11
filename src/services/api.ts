@@ -41,6 +41,14 @@ export const authApi = {
     });
     return res.data;
   },
+    changePasswordWithEmail : async (payload: {
+    email: string;
+    newPassword: string;
+  }): Promise<{ message: string }> => {
+    const res = await axios.put(`${API_BASE_URL}/users/forgot-password`, payload);
+    return res.data;
+  },
+
 
   bulkRegisterFromExcel: async (
     file: File,

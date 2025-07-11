@@ -550,9 +550,6 @@ const StudentDashboard = () => {
                           <BookOpen className="h-16 w-16 text-blue-400 mx-auto mb-4" />
                           <h3 className="text-xl font-semibold text-gray-900 mb-2">No Pack365 Enrollments</h3>
                           <p className="text-gray-600 mb-6">You haven't enrolled in any Pack365 courses yet.</p>
-                          <Button onClick={() => navigate('/pack365')} className="bg-blue-600 hover:bg-blue-700">
-                            Explore Pack365 Courses
-                          </Button>
                         </div>
                       )}
                     </TabsContent>

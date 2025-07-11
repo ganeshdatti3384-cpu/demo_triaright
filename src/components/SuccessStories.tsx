@@ -86,26 +86,6 @@ const SuccessStories = ({ onBack }: SuccessStoriesProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Navbar />
-      
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <Button variant="ghost" onClick={onBack} className="mr-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-             <div className="flex items-center">
-              <img 
-                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
-                alt="TriaRight Logo" 
-                className="h-10 w-auto"
-              />
-            </div>
-          </div>
-        </div>
-      </header>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section */}
         <div className="text-center mb-12">
