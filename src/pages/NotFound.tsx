@@ -48,13 +48,6 @@ const NotFound = () => {
             We're working hard to bring you this feature. This page is currently under development 
             and will be available soon with exciting new functionality.
           </p>
-
-          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-6 mb-8 border border-white/20">
-            <p className="text-sm text-gray-500 mb-2">You tried to access:</p>
-            <code className="bg-gray-100 px-3 py-2 rounded text-brand-primary font-mono text-sm">
-              {location.pathname}
-            </code>
-          </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button 

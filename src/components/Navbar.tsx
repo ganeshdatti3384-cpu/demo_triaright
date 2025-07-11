@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,6 +46,8 @@ const Navbar = () => {
     if (path !== '#') {
       navigate(path);
     }
+    // Close mobile menu after navigation
+    setIsMobileMenuOpen(false);
   };
 
   const handleLogoClick = () => {
@@ -128,7 +129,6 @@ const Navbar = () => {
             ))}
           </div>
         )}
-
 
           {/* Desktop Auth/Profile Buttons */}
           <div className="hidden md:flex items-center space-x-4">
@@ -213,7 +213,7 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Navigation */}
-        {!isMobileMenuOpen && (
+        {isMobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-200 py-4">
             <div className="space-y-4">
               {[{ title: 'Courses', items: courseTypes },
