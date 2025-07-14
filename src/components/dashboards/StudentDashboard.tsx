@@ -842,10 +842,125 @@ const StudentDashboard = () => {
                   <CardDescription>Track your exam progress and results</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-4">No exams scheduled yet.</p>
-                    <Button className="bg-blue-600 hover:bg-blue-700">View Available Exams</Button>
+                  <div className="space-y-4">
+                    {/* Quick Actions */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <Button 
+                        onClick={() => navigate('/exams')} 
+                        className="bg-blue-600 hover:bg-blue-700 flex items-center"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        View Available Exams
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          // This could navigate to exam history or results
+                          toast({
+                            title: "Feature Coming Soon",
+                            description: "Exam history will be available soon.",
+                          });
+                        }}
+                      >
+                        <Award className="h-4 w-4 mr-2" />
+                        Exam Results
+                      </Button>
+                    </div>
+
+                    {/* Exam Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                      <Card className="bg-blue-50 border-blue-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <BookOpen className="h-8 w-8 text-blue-600" />
+                            <div>
+                              <p className="text-sm font-medium text-blue-800">Available Exams</p>
+                              <p className="text-2xl font-bold text-blue-900">
+                                {pack365Enrollments?.filter(e => e.totalWatchedPercentage >= 80).length || 0}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-green-50 border-green-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle className="h-8 w-8 text-green-600" />
+                            <div>
+                              <p className="text-sm font-medium text-green-800">Exams Passed</p>
+                              <p className="text-2xl font-bold text-green-900">
+                                {pack365Enrollments?.filter(e => e.isExamCompleted && e.examScore >= 50).length || 0}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-orange-50 border-orange-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-8 w-8 text-orange-600" />
+                            <div>
+                              <p className="text-sm font-medium text-orange-800">Pending Exams</p>
+                              <p className="text-2xl font-bold text-orange-900">
+                                {pack365Enrollments?.filter(e => e.totalWatchedPercentage >= 80 && !e.isExamCompleted).length || 0}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Recent Exam Progress */}
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold mb-4">Course Progress for Exams</h3>
+                      <div className="space-y-3">
+                        {pack365Enrollments && pack365Enrollments.length > 0 ? (
+                          pack365Enrollments.slice(0, 3).map((enrollment) => (
+                            <div key={enrollment.courseId} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div className="flex-1">
+                                <h4 className="font-medium">{enrollment.courseName}</h4>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-blue-600 h-2 rounded-full" 
+                                      style={{ width: `${enrollment.totalWatchedPercentage}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-sm text-gray-600">{enrollment.totalWatchedPercentage}%</span>
+                                </div>
+                              </div>
+                              <div className="ml-4">
+                                {enrollment.totalWatchedPercentage >= 80 ? (
+                                  enrollment.isExamCompleted ? (
+                                    <Badge variant="default" className="bg-green-500">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Completed
+                                    </Badge>
+                                  ) : (
+                                    <Button size="sm" onClick={() => navigate('/exams')}>
+                                      Take Exam
+                                    </Button>
+                                  )
+                                ) : (
+                                  <Badge variant="secondary">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {80 - enrollment.totalWatchedPercentage}% to unlock
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-8">
+                            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-gray-500 mb-4">No course enrollments found.</p>
+                            <p className="text-sm text-gray-400">Enroll in Pack365 courses to access exams.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

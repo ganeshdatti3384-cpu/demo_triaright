@@ -253,70 +253,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Upload exam from Excel (admin only)
-  uploadExamFromExcel: async (
-    token: string,
-    courseId: string,
-    file: File
-  ): Promise<{ message: string; exam: Exam }> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('courseId', courseId);
-
-    const res = await axios.post(`${API_BASE_URL}/pack365/exam/upload`, formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return res.data;
-  },
-
-  // Get exam questions (admin only)
-  getExamQuestions: async (
-    token: string,
-    examId: string
-  ): Promise<{ questions: Exam['questions'] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exam/${examId}/questions`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
-
-  // Get all exams (admin only)
-  getAllExams: async (
-    token: string
-  ): Promise<Exam[]> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exam/`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
-
-  // Submit exam (student only)
-  submitExam: async (
-    token: string,
-    data: {
-      courseId: string;
-      examId: string;
-      marks: number;
-    }
-  ): Promise<{ message: string; score: number }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/exam/submit`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
-
-  // Get available exams for user (student only)
-  getAvailableExamsForUser: async (
-    token: string
-  ): Promise<{ exams: Exam[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exam/available/user`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
 
   // Validate enrollment code
   validateEnrollmentCode: async (
@@ -480,6 +416,122 @@ export const pack365Api = {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
+    return res.data;
+  },
+
+  // Exam Management APIs
+  uploadExamFromExcel: async (
+    token: string,
+    formData: FormData
+  ): Promise<{ success: boolean; message: string; exam: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/exam/upload`, formData, {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      },
+    });
+    return res.data;
+  },
+
+  getExamQuestions: async (
+    token: string,
+    examId: string
+  ): Promise<{ questions: any[]; maxAttempts: number; examId: string }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/questions`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  getExamDetails: async (
+    token: string,
+    examId: string
+  ): Promise<{ examDetails: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/details`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  getAllExams: async (
+    token: string
+  ): Promise<any[]> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/getexam`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  submitExam: async (
+    token: string,
+    data: {
+      courseId: string;
+      examId: string;
+      marks: number;
+      timeTaken?: number;
+    }
+  ): Promise<{
+    message: string;
+    currentScore: number;
+    bestScore: number;
+    attemptNumber: number;
+    maxAttempts: number;
+    remainingAttempts: number;
+    isPassed: boolean;
+    canRetake: boolean;
+  }> => {
+    const res = await axios.post(`${API_BASE_URL}/exam/submit`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  getAvailableExamsForUser: async (
+    token: string
+  ): Promise<{ message?: string; exams: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/available/user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  getExamHistory: async (
+    token: string,
+    courseId: string
+  ): Promise<{ examHistory: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/history/${courseId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  getExamStatistics: async (
+    token: string,
+    courseId: string
+  ): Promise<{ statistics: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/statistics/${courseId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  resetExamAttempts: async (
+    token: string,
+    data: { userId: string; courseId: string }
+  ): Promise<{ message: string; resetData: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/exam/reset-attempts`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  updateExamMaxAttempts: async (
+    token: string,
+    data: { examId: string; maxAttempts: number }
+  ): Promise<{ message: string; examId: string; maxAttempts: number }> => {
+    const res = await axios.put(`${API_BASE_URL}/exam/update-max-attempts`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     return res.data;
   },
 };

@@ -38,6 +38,8 @@ import RefundPolicy from "./pages/RefundPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import CourseLearning from "./pages/CourseLearning";
 import ChangePassword from "./pages/ChangePassword";
+import ExamList from "./pages/ExamList";
+import ExamInterface from "./pages/ExamInterface";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +85,18 @@ const App = () => (
             <Route path="/course-learning/:courseId" element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <CourseLearning />
+              </ProtectedRoute>
+            } />
+            
+            {/* Exam Routes */}
+            <Route path="/exams" element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <ExamList />
+              </ProtectedRoute>
+            } />
+            <Route path="/exam/:examId" element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <ExamInterface />
               </ProtectedRoute>
             } />
             
