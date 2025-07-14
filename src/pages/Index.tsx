@@ -109,7 +109,7 @@ const Index = () => {
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Pack365 - Premium Learning Program</h2>
             <p className="text-lg text-gray-600">Annual learning packages with complete course access, mentorship, and career support</p>
           </div>
-          <Pack365Courses showLoginRequired={true} onLoginRequired={() => setShowLoginDialog(true)} />
+          <Pack365Courses showLoginRequired={true} onLoginRequired={() => navigate('/login')} />
         </div>
       </section>
 
