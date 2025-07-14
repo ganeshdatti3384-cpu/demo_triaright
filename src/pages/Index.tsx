@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -10,6 +11,7 @@ import LoginDialog from '../components/LoginDialog';
 import ImageSlider from '../components/ImageSlider';
 import CourseCards from '../components/CourseCards';
 import SuccessStories from '../components/SuccessStories';
+import Pack365Courses from '../components/Pack365Courses';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 
@@ -97,6 +99,17 @@ const Index = () => {
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
+        </div>
+      </section>
+
+      {/* Pack365 Courses Section */}
+      <section className="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Pack365 - Premium Learning Program</h2>
+            <p className="text-lg text-gray-600">Annual learning packages with complete course access, mentorship, and career support</p>
+          </div>
+          <Pack365Courses showLoginRequired={true} onLoginRequired={() => setShowLoginDialog(true)} />
         </div>
       </section>
 

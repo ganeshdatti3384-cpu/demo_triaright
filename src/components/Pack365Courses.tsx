@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
@@ -5,11 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Clock, BookOpen, Users, Star, AlertCircle, CheckCircle } from 'lucide-react';
+import { Clock, BookOpen, Users, Star, AlertCircle, CheckCircle, Lock } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
-const Pack365Courses = () => {
+interface Pack365CoursesProps {
+  showLoginRequired?: boolean;
+  onLoginRequired?: () => void;
+}
+
+const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365CoursesProps) => {
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,9 +40,9 @@ const Pack365Courses = () => {
         return;
       }
 
-      // Load user enrollments
+      // Load user enrollments only if user is logged in
       const token = localStorage.getItem('token');
-      if (token) {
+      if (token && !showLoginRequired) {
         try {
           const enrollmentsResponse = await pack365Api.getMyEnrollments(token);
           if (enrollmentsResponse.success && enrollmentsResponse.enrollments) {
@@ -66,13 +72,19 @@ const Pack365Courses = () => {
 
   const handleEnrollClick = (course: Pack365Course) => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      toast({
-        title: "Login Required",
-        description: "Please login to enroll in courses.",
-        variant: "destructive",
-      });
-      navigate('/login');
+    
+    // If on landing page and not logged in, show login dialog
+    if (showLoginRequired || !token) {
+      if (onLoginRequired) {
+        onLoginRequired();
+      } else {
+        toast({
+          title: "Login Required",
+          description: "Please login to enroll in courses.",
+          variant: "destructive",
+        });
+        navigate('/login');
+      }
       return;
     }
 
@@ -111,7 +123,7 @@ const Pack365Courses = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+    <div className={showLoginRequired ? "" : "min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12"}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {courses.length === 0 ? (
           <div className="text-center py-12">
@@ -123,6 +135,7 @@ const Pack365Courses = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {courses.map((course) => {
               const enrolled = isUserEnrolled(course.courseId);
+              const isLoggedIn = localStorage.getItem('token');
               
               return (
                 <Card key={course._id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
@@ -143,6 +156,11 @@ const Pack365Courses = () => {
                         {course.stream.toUpperCase()}
                       </Badge>
                     </div>
+                    {showLoginRequired && (
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                        <Lock className="h-8 w-8 text-white" />
+                      </div>
+                    )}
                   </div>
                   
                   <CardHeader>
@@ -193,6 +211,8 @@ const Pack365Courses = () => {
                         className={`w-full ${
                           enrolled 
                             ? 'bg-green-600 hover:bg-green-700' 
+                            : showLoginRequired || !isLoggedIn
+                            ? 'bg-gray-600 hover:bg-gray-700'
                             : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
                         }`}
                       >
@@ -200,6 +220,11 @@ const Pack365Courses = () => {
                           <>
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Continue Learning
+                          </>
+                        ) : showLoginRequired || !isLoggedIn ? (
+                          <>
+                            <Lock className="h-4 w-4 mr-2" />
+                            Login to Enroll
                           </>
                         ) : (
                           'Enroll Now - $365'
