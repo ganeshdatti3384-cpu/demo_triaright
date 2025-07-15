@@ -196,7 +196,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
             color: #3b82f6; /* Tailwind blue-500 for hover */
           }
           .stream-card {
-            height: 480px;
+            height: 420px;
             transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
           }
           .stream-card:hover {
