@@ -1,6 +1,4 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,11 +13,15 @@ interface Pack365CoursesProps {
   onLoginRequired?: () => void;
 }
 
+const streamOptions = ['it', 'nonit', 'pharma', 'marketing', 'hr', 'finance'];
+
 const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365CoursesProps) => {
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedStream, setSelectedStream] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -30,8 +32,7 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
   const loadCoursesAndEnrollments = async () => {
     try {
       setLoading(true);
-      
-      // Load courses
+
       const coursesResponse = await pack365Api.getAllCourses();
       if (coursesResponse.success) {
         setCourses(coursesResponse.data);
@@ -40,7 +41,6 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
         return;
       }
 
-      // Load user enrollments only if user is logged in
       const token = localStorage.getItem('token');
       if (token && !showLoginRequired) {
         try {
@@ -50,7 +50,6 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
           }
         } catch (enrollError) {
           console.log('No enrollments found or error loading enrollments:', enrollError);
-          // Don't set error here as this is optional
         }
       }
     } catch (err: any) {
@@ -67,13 +66,12 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
   };
 
   const isUserEnrolled = (courseId: string) => {
-    return enrollments.some(enrollment => enrollment.courseId === courseId);
+    return enrollments.some((enrollment) => enrollment.courseId === courseId);
   };
 
   const handleEnrollClick = (course: Pack365Course) => {
     const token = localStorage.getItem('token');
-    
-    // If on landing page and not logged in, show login dialog
+
     if (showLoginRequired || !token) {
       if (onLoginRequired) {
         onLoginRequired();
@@ -88,15 +86,17 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
       return;
     }
 
-    // If already enrolled, navigate to course learning
     if (isUserEnrolled(course.courseId)) {
       navigate(`/course-learning/${course.courseId}`);
       return;
     }
 
-    // Otherwise, navigate to payment
     navigate(`/pack365/payment/${course.courseId}`);
   };
+
+  const filteredCourses = selectedStream
+    ? courses.filter((course) => course.stream.toLowerCase() === selectedStream)
+    : courses;
 
   if (loading) {
     return (
@@ -125,7 +125,28 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
   return (
     <div className={showLoginRequired ? "" : "min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12"}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {courses.length === 0 ? (
+
+        {/* Stream Filter */}
+        <div className="flex flex-wrap justify-center gap-3 mb-10">
+          <Button
+            variant={selectedStream === null ? 'default' : 'outline'}
+            onClick={() => setSelectedStream(null)}
+          >
+            All
+          </Button>
+          {streamOptions.map((stream) => (
+            <Button
+              key={stream}
+              variant={selectedStream === stream ? 'default' : 'outline'}
+              onClick={() => setSelectedStream(stream === selectedStream ? null : stream)}
+              className="capitalize"
+            >
+              {stream}
+            </Button>
+          ))}
+        </div>
+
+        {filteredCourses.length === 0 ? (
           <div className="text-center py-12">
             <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Courses Available</h3>
@@ -133,22 +154,18 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {courses.map((course) => {
+            {filteredCourses.map((course) => {
               const enrolled = isUserEnrolled(course.courseId);
               const isLoggedIn = localStorage.getItem('token');
-              
+
               return (
                 <Card key={course._id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
                   <div className="relative">
                     <div className="absolute top-4 right-4">
                       {enrolled ? (
-                        <Badge className="bg-green-600 text-white">
-                          Enrolled
-                        </Badge>
+                        <Badge className="bg-green-600 text-white">Enrolled</Badge>
                       ) : (
-                        <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                          $365
-                        </Badge>
+                        <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">$365</Badge>
                       )}
                     </div>
                     <div className="absolute top-4 left-4">
@@ -162,7 +179,7 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
                       </div>
                     )}
                   </div>
-                  
+
                   <CardHeader>
                     <div className="flex items-center justify-between mb-2 mt-6">
                       <Badge variant="outline">Professional</Badge>
@@ -174,7 +191,7 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
                     <CardTitle className="text-xl mb-2">{course.courseName}</CardTitle>
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">{course.description}</p>
                   </CardHeader>
-                  
+
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between text-sm text-gray-500">
@@ -187,12 +204,12 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
                           <span>365 days access</span>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-1 text-sm text-gray-500">
                         <Users className="h-4 w-4" />
                         <span>Premium Content</span>
                       </div>
-                      
+
                       <div className="flex flex-wrap gap-1">
                         {course.topics?.slice(0, 3).map((topic, index) => (
                           <Badge key={index} variant="outline" className="text-xs">
@@ -205,12 +222,12 @@ const Pack365Dashbord = ({ showLoginRequired = false, onLoginRequired }: Pack365
                           </Badge>
                         )}
                       </div>
-                      
-                      <Button 
+
+                      <Button
                         onClick={() => handleEnrollClick(course)}
                         className={`w-full ${
-                          enrolled 
-                            ? 'bg-green-600 hover:bg-green-700' 
+                          enrolled
+                            ? 'bg-green-600 hover:bg-green-700'
                             : showLoginRequired || !isLoggedIn
                             ? 'bg-gray-600 hover:bg-gray-700'
                             : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
