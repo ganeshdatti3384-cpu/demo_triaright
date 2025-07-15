@@ -160,9 +160,9 @@ const FeaturesSection = () => {
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
           <div className="grid md:grid-cols-4 gap-8 text-center">
             {[
-              { icon: Users, value: '50,000+', label: 'Active Learners' },
-              { icon: BookOpen, value: '500+', label: 'Courses Available' },
-              { icon: Briefcase, value: '10,000+', label: 'Jobs Posted' },
+              { icon: Users, value: '8,000+', label: 'Active Learners' },
+              { icon: BookOpen, value: '40+', label: 'Courses Available' },
+              { icon: Briefcase, value: '10,000+', label: 'Job Vacancies' },
               { icon: Award, value: '95%', label: 'Success Rate' }
             ].map((stat, index) => (
               <div key={index} className="group">

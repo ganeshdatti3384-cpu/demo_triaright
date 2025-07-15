@@ -118,15 +118,15 @@ const AboutSection = () => {
             
             <div className="mt-8 grid md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600 mb-2">500K+</div>
+                <div className="text-3xl font-bold text-blue-600 mb-2">6K+</div>
                 <div className="text-gray-600">Lives Transformed</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-purple-600 mb-2">1000+</div>
+                <div className="text-3xl font-bold text-purple-600 mb-2">20+</div>
                 <div className="text-gray-600">Partner Companies</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600 mb-2">95%</div>
+                <div className="text-3xl font-bold text-green-600 mb-2">97%</div>
                 <div className="text-gray-600">Placement Success</div>
               </div>
             </div>
