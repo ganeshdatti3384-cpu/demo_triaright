@@ -162,7 +162,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   const streamData = getStreamData();
 
   return (
-    <div className={showLoginRequired ? '' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12'}>
+    <div className={showLoginRequired ? '' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-2'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <style>{`
           .slick-dots {
@@ -176,6 +176,24 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
           .slick-dots li.slick-active button:before {
             opacity: 1;
             color: #1d4ed8;
+          }
+          .slick-prev,
+          .slick-next {
+            width: 36px;
+            height: 36px;
+            z-index: 1;
+          }
+
+          .slick-prev:before,
+          .slick-next:before {
+            font-size: 24px;
+            color: #bfdbfe; /* Tailwind blue-200 */
+            opacity: 1;
+          }
+
+          .slick-prev:hover:before,
+          .slick-next:hover:before {
+            color: #3b82f6; /* Tailwind blue-500 for hover */
           }
           .stream-card {
             height: 480px;
