@@ -19,6 +19,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { pack365Api, Pack365Course, EnhancedPack365Enrollment } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import Pack365Courses from '../Pack365Courses';
+import Pack365Dashboard from '../Pack365Dashboard';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -478,6 +479,7 @@ const StudentDashboard = () => {
                   </Tabs>
                 </TabsContent>
               </Tabs>
+            </TabsContent>
 
             <TabsContent value="pack365" className="space-y-6">
               <Card>
@@ -494,107 +496,7 @@ const StudentDashboard = () => {
                     </TabsList>
 
                     <TabsContent value="browse">
-                      {loadingPack365 ? (
-                        <div className="flex items-center justify-center py-12">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                          <span className="ml-2">Loading courses...</span>
-                        </div>
-                      ) : (
-                        <div className="space-y-6">
-                          {/* Filters */}
-                          <div className="flex flex-wrap gap-4 items-center">
-                            <div className="flex items-center space-x-2">
-                              <Filter className="h-4 w-4 text-gray-600" />
-                              <Select value={courseFilter} onValueChange={setCourseFilter}>
-                                <SelectTrigger className="w-[180px]">
-                                  <SelectValue placeholder="Filter by stream" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {streams.map((stream) => (
-                                    <SelectItem key={stream} value={stream}>
-                                      {stream === 'all' ? 'All Streams' : `${stream.charAt(0).toUpperCase() + stream.slice(1)} Pack 365`}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            
-                            <div className="flex items-center space-x-2 flex-1 max-w-md">
-                              <Search className="h-4 w-4 text-gray-600" />
-                              <Input
-                                placeholder="Search courses..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="flex-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Courses Table */}
-                          <div className="border rounded-lg">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Course Name</TableHead>
-                                  <TableHead>Stream</TableHead>
-                                  <TableHead>Duration</TableHead>
-                                  <TableHead>Price</TableHead>
-                                  <TableHead>Action</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {filteredCourses.length > 0 ? (
-                                  filteredCourses.map((course) => (
-                                    <TableRow key={course.courseId}>
-                                      <TableCell className="font-medium">{course.courseName}</TableCell>
-                                      <TableCell>
-                                        <Badge variant="secondary" className="capitalize">
-                                          {course.stream} Pack 365
-                                        </Badge>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center">
-                                          <Clock className="h-4 w-4 mr-1 text-gray-500" />
-                                          365 days
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="font-semibold text-green-600">
-                                        $365
-                                      </TableCell>
-                                      <TableCell>
-                                        <Button
-                                          size="sm"
-                                          onClick={() => handlePack365EnrollClick(course)}
-                                          className="bg-blue-600 hover:bg-blue-700"
-                                        >
-                                          Enroll Now
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))
-                                ) : (
-                                  <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-8">
-                                      <div className="flex flex-col items-center">
-                                        <BookOpen className="h-12 w-12 text-gray-400 mb-4" />
-                                        <p className="text-gray-500">No courses found</p>
-                                        <p className="text-sm text-gray-400 mt-1">
-                                          Try adjusting your filters or search term
-                                        </p>
-                                      </div>
-                                    </TableCell>
-                                  </TableRow>
-                                )}
-                              </TableBody>
-                            </Table>
-                          </div>
-
-                          {/* Results count */}
-                          <div className="text-sm text-gray-600">
-                            Showing {filteredCourses.length} of {pack365Courses.length} courses
-                          </div>
-                        </div>
-                      )}
+                      <Pack365Dashboard />
                     </TabsContent>
 
                     <TabsContent value="enrollments">
@@ -673,6 +575,7 @@ const StudentDashboard = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
 
             <TabsContent value="jobs" className="space-y-6">
               <Tabs defaultValue="job-assurance" className="space-y-4">
