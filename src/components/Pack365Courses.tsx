@@ -30,6 +30,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hoveredStream, setHoveredStream] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -103,6 +104,20 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     navigate(`/${userRole === 'student' || userRole === 'job-seeker' ? userRole : 'student'}?tab=pack365`);
   };
 
+  const handleStreamClick = (streamName: string) => {
+    const token = localStorage.getItem('token');
+    const userRole = localStorage.getItem('userRole');
+    if (showLoginRequired || !token) {
+      if (onLoginRequired) onLoginRequired();
+      else {
+        toast({ title: 'Login Required', description: 'Please login to access courses.', variant: 'destructive' });
+        navigate('/login');
+      }
+      return;
+    }
+    navigate(`/${userRole === 'student' || userRole === 'job-seeker' ? userRole : 'student'}?tab=pack365`);
+  };
+
   if (loading) {
     return (
       <div className={showLoginRequired ? 'py-8' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12'}>
@@ -130,12 +145,16 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   const sliderSettings = {
     dots: true,
     infinite: true,
-    speed: 500,
+    speed: 800,
     slidesToShow: 3,
     slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 4000,
+    pauseOnHover: true,
+    cssEase: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
     responsive: [
-      { breakpoint: 1024, settings: { slidesToShow: 2 } },
-      { breakpoint: 640, settings: { slidesToShow: 1 } }
+      { breakpoint: 1024, settings: { slidesToShow: 2, speed: 600 } },
+      { breakpoint: 640, settings: { slidesToShow: 1, speed: 500 } }
     ]
   };
 
@@ -144,72 +163,170 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   return (
     <div className={showLoginRequired ? '' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <style jsx>{`
+          .slick-dots {
+            bottom: -60px;
+          }
+          .slick-dots li button:before {
+            font-size: 12px;
+            color: #3b82f6;
+            opacity: 0.5;
+          }
+          .slick-dots li.slick-active button:before {
+            opacity: 1;
+            color: #1d4ed8;
+          }
+          .stream-card {
+            height: 480px;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          }
+          .stream-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          }
+          .stream-image {
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          }
+          .stream-card:hover .stream-image {
+            transform: scale(1.1);
+          }
+          .course-list {
+            max-height: 140px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 #f1f5f9;
+          }
+          .course-list::-webkit-scrollbar {
+            width: 4px;
+          }
+          .course-list::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 2px;
+          }
+          .course-list::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 2px;
+          }
+          .course-list::-webkit-scrollbar-thumb:hover {
+            background: #1d4ed8;
+          }
+          .course-item {
+            transition: all 0.3s ease;
+          }
+          .course-item:hover {
+            transform: translateX(4px);
+            color: #1d4ed8;
+          }
+          .hover-overlay {
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          }
+        `}</style>
+        
         <Slider {...sliderSettings}>
           {streamData.map((stream) => (
-            <div key={stream.name} className="px-2">
-              <Card className="overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:scale-105 group">
-                <div className="relative overflow-hidden">
+            <div key={stream.name} className="px-3">
+              <Card 
+                className="stream-card overflow-hidden cursor-pointer group bg-white/70 backdrop-blur-sm border-0 shadow-lg"
+                onMouseEnter={() => setHoveredStream(stream.name)}
+                onMouseLeave={() => setHoveredStream(null)}
+                onClick={() => handleStreamClick(stream.name)}
+              >
+                <div className="relative overflow-hidden h-48">
                   <img 
                     src={stream.image} 
                     alt={stream.displayName}
-                    className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
+                    className="stream-image w-full h-full object-cover"
                   />
-                  <div className="absolute top-4 right-4">
-                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">Pack 365</Badge>
+                  <div className="absolute top-4 right-4 z-10">
+                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+                      Pack 365
+                    </Badge>
                   </div>
+                  
+                  {/* Hover Overlay */}
+                  <div className={`hover-overlay absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent 
+                    ${hoveredStream === stream.name ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="absolute bottom-4 left-4 right-4 text-white">
+                      <h4 className="font-bold text-lg mb-2">Available Courses</h4>
+                      <div className="course-list bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                        {stream.courses.length > 0 ? (
+                          <ul className="space-y-1">
+                            {stream.courses.map((course, index) => (
+                              <li key={index}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCourseClick(course.courseName);
+                                  }}
+                                  className="course-item text-left w-full text-sm text-white/90 hover:text-white 
+                                    flex items-center justify-between group/course bg-white/5 rounded px-2 py-1"
+                                >
+                                  <span className="truncate pr-2">{course.courseName}</span>
+                                  <ArrowRight className="h-3 w-3 opacity-0 group-hover/course:opacity-100 transition-all duration-300 flex-shrink-0" />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-white/70 italic text-center py-2">
+                            Courses are being uploaded...
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {showLoginRequired && (
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <Lock className="h-8 w-8 text-white" />
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center 
+                      opacity-0 group-hover:opacity-100 transition-all duration-400">
+                      <div className="bg-white/90 backdrop-blur-sm rounded-full p-3">
+                        <Lock className="h-6 w-6 text-gray-700" />
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <CardHeader>
-                  <CardTitle className="text-xl mb-2 text-center">{stream.displayName}</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl text-center bg-gradient-to-r from-blue-600 to-purple-600 
+                    bg-clip-text text-transparent font-bold">
+                    {stream.displayName}
+                  </CardTitle>
                 </CardHeader>
 
-                <CardContent>
+                <CardContent className="pt-0">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                      <div className="flex items-center space-x-1">
-                        <BookOpen className="h-4 w-4" />
-                        <span>{stream.courses.length} Courses</span>
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <div className="flex items-center space-x-2">
+                        <BookOpen className="h-4 w-4 text-blue-500" />
+                        <span className="font-medium">{stream.courses.length} Courses</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>365 days access</span>
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4 text-purple-500" />
+                        <span className="font-medium">365 days access</span>
                       </div>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
-                      <h4 className="font-semibold text-sm mb-3 text-gray-700">Available Courses:</h4>
-                      {stream.courses.length > 0 ? (
-                        <ul className="space-y-2">
-                          {stream.courses.map((course, index) => (
-                            <li key={index}>
-                              <button
-                                onClick={() => handleCourseClick(course.courseName)}
-                                className="text-left w-full text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200 flex items-center justify-between group/course"
-                              >
-                                <span className="truncate pr-2">{course.courseName}</span>
-                                <ArrowRight className="h-3 w-3 opacity-0 group-hover/course:opacity-100 transition-opacity duration-200 flex-shrink-0" />
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-gray-500 italic text-center py-4">Courses are being Uploading...</p>
-                      )}
                     </div>
 
                     <Button 
-                      onClick={() => handleCourseClick('stream')}
-                      className={`w-full ${showLoginRequired ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStreamClick(stream.name);
+                      }}
+                      className={`w-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+                        showLoginRequired 
+                          ? 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800' 
+                          : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+                      }`}
                     >
                       {showLoginRequired ? (
-                        <><Lock className="h-4 w-4 mr-2" />Login to Explore</>
+                        <>
+                          <Lock className="h-4 w-4 mr-2" />
+                          Login to Explore
+                        </>
                       ) : (
-                        <>Explore Stream - $365<ArrowRight className="h-4 w-4 ml-2" /></>
+                        <>
+                          Explore Stream - $365
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </>
                       )}
                     </Button>
                   </div>
