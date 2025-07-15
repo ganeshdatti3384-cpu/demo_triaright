@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search, Calculator, MapPin, DollarSign, Target, TrendingUp, AlertCircle } from 'lucide-react';
 import Navbar from '../Navbar';
 import Pack365Card from '../Pack365Card';
@@ -27,6 +30,9 @@ const StudentDashboard = () => {
   const [pack365Enrollments, setPack365Enrollments] = useState<EnhancedPack365Enrollment[]>([]);
   const [loadingPack365, setLoadingPack365] = useState(false);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+
+  const [courseFilter, setCourseFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchEnrollments = async () => {
@@ -132,6 +138,16 @@ const StudentDashboard = () => {
     console.log('Navigating to course learning:', enrollment);
     navigate(`/course-learning/${enrollment.courseId}`);
   };
+
+  // Filter courses based on stream and search term
+  const filteredCourses = pack365Courses.filter(course => {
+    const matchesFilter = courseFilter === 'all' || course.stream.toLowerCase() === courseFilter.toLowerCase();
+    const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  // Get unique streams for filter options
+  const streams = ['all', ...Array.from(new Set(pack365Courses.map(course => course.stream)))];
   
   const stats = [
     {
@@ -163,6 +179,7 @@ const StudentDashboard = () => {
       bgColor: 'bg-yellow-50'
     }
   ];
+
   return (
     <>
       <Navbar />
@@ -461,7 +478,6 @@ const StudentDashboard = () => {
                   </Tabs>
                 </TabsContent>
               </Tabs>
-            </TabsContent>
 
             <TabsContent value="pack365" className="space-y-6">
               <Card>
@@ -478,7 +494,107 @@ const StudentDashboard = () => {
                     </TabsList>
 
                     <TabsContent value="browse">
-                      <Pack365Courses />
+                      {loadingPack365 ? (
+                        <div className="flex items-center justify-center py-12">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                          <span className="ml-2">Loading courses...</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          {/* Filters */}
+                          <div className="flex flex-wrap gap-4 items-center">
+                            <div className="flex items-center space-x-2">
+                              <Filter className="h-4 w-4 text-gray-600" />
+                              <Select value={courseFilter} onValueChange={setCourseFilter}>
+                                <SelectTrigger className="w-[180px]">
+                                  <SelectValue placeholder="Filter by stream" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {streams.map((stream) => (
+                                    <SelectItem key={stream} value={stream}>
+                                      {stream === 'all' ? 'All Streams' : `${stream.charAt(0).toUpperCase() + stream.slice(1)} Pack 365`}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2 flex-1 max-w-md">
+                              <Search className="h-4 w-4 text-gray-600" />
+                              <Input
+                                placeholder="Search courses..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Courses Table */}
+                          <div className="border rounded-lg">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Course Name</TableHead>
+                                  <TableHead>Stream</TableHead>
+                                  <TableHead>Duration</TableHead>
+                                  <TableHead>Price</TableHead>
+                                  <TableHead>Action</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {filteredCourses.length > 0 ? (
+                                  filteredCourses.map((course) => (
+                                    <TableRow key={course.courseId}>
+                                      <TableCell className="font-medium">{course.courseName}</TableCell>
+                                      <TableCell>
+                                        <Badge variant="secondary" className="capitalize">
+                                          {course.stream} Pack 365
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex items-center">
+                                          <Clock className="h-4 w-4 mr-1 text-gray-500" />
+                                          365 days
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="font-semibold text-green-600">
+                                        $365
+                                      </TableCell>
+                                      <TableCell>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handlePack365EnrollClick(course)}
+                                          className="bg-blue-600 hover:bg-blue-700"
+                                        >
+                                          Enroll Now
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))
+                                ) : (
+                                  <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-8">
+                                      <div className="flex flex-col items-center">
+                                        <BookOpen className="h-12 w-12 text-gray-400 mb-4" />
+                                        <p className="text-gray-500">No courses found</p>
+                                        <p className="text-sm text-gray-400 mt-1">
+                                          Try adjusting your filters or search term
+                                        </p>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+
+                          {/* Results count */}
+                          <div className="text-sm text-gray-600">
+                            Showing {filteredCourses.length} of {pack365Courses.length} courses
+                          </div>
+                        </div>
+                      )}
                     </TabsContent>
 
                     <TabsContent value="enrollments">
