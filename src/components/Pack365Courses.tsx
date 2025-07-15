@@ -1,3 +1,4 @@
+
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -163,7 +164,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   return (
     <div className={showLoginRequired ? '' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <style jsx>{`
+        <style>{`
           .slick-dots {
             bottom: -60px;
           }
