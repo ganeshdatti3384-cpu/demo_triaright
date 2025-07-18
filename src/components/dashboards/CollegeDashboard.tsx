@@ -6,15 +6,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, Users, BookOpen, LogOut, Send, User, Building, MapPin, Phone, Mail, Globe, Calendar } from 'lucide-react';
-import { collegeApi, profileApi } from '@/services/api';
+import { GraduationCap, Users, BookOpen, LogOut, Send, User, Building, MapPin, Phone, Mail, Globe, Calendar, Monitor, Pill, TrendingUp, UserCheck, Banknote } from 'lucide-react';
+import { collegeApi, profileApi, pack365Api } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import { College } from '@/types/api';
+import { College, Pack365Course } from '@/types/api';
 
 interface CollegeDashboardProps {
   user: { role: string; name: string };
   onLogout: () => void;
 }
+
+const streamData = [
+  { name: 'IT', icon: Monitor, color: 'bg-blue-500', description: 'Information Technology Courses' },
+  { name: 'PHARMA', icon: Pill, color: 'bg-green-500', description: 'Pharmaceutical Courses' },
+  { name: 'MARKETING', icon: TrendingUp, color: 'bg-purple-500', description: 'Marketing & Sales Courses' },
+  { name: 'HR', icon: UserCheck, color: 'bg-orange-500', description: 'Human Resources Courses' },
+  { name: 'FINANCE', icon: Banknote, color: 'bg-emerald-500', description: 'Finance & Accounting Courses' }
+];
 
 const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -23,6 +31,9 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
   const [requests, setRequests] = useState<any[]>([]);
   const [collegeProfile, setCollegeProfile] = useState<College | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [courses, setCourses] = useState<Pack365Course[]>([]);
+  const [selectedStream, setSelectedStream] = useState<string | null>(null);
+  const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
   const [formData, setFormData] = useState({
     contactPerson: '',
     email: '',
@@ -35,17 +46,31 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
   });
   const { toast } = useToast();
 
-  const availableServices = [
-    { id: 1, title: 'Campus Recruitment Training', description: 'Comprehensive CRT programs for final year students', category: 'Training' },
-    { id: 2, title: 'Technical Skill Development', description: 'Industry-relevant technical courses', category: 'Courses' },
-    { id: 3, title: 'Career Guidance Programs', description: 'Professional career counseling services', category: 'Guidance' },
-    { id: 4, title: 'Placement Assistance', description: 'Job placement support for graduates', category: 'Placement' },
-  ];
-
   useEffect(() => {
     fetchDashboardData();
     fetchCollegeProfile();
+    fetchCourses();
   }, []);
+
+  useEffect(() => {
+    if (selectedStream && courses.length > 0) {
+      const filtered = courses.filter(course => 
+        course.stream.toUpperCase() === selectedStream.toUpperCase()
+      );
+      setFilteredCourses(filtered);
+    }
+  }, [selectedStream, courses]);
+
+  const fetchCourses = async () => {
+    try {
+      const response = await pack365Api.getAllCourses();
+      if (response.success) {
+        setCourses(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
 
   const fetchDashboardData = async () => {
     const token = localStorage.getItem('token');
@@ -116,7 +141,7 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
         title: 'Success',
         description: 'Profile updated successfully',
       });
-      fetchCollegeProfile(); // Refresh profile data
+      fetchCollegeProfile();
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
@@ -162,7 +187,7 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
           serviceDescription: '',
           additionalRequirements: ''
         });
-        fetchDashboardData(); // Refresh data
+        fetchDashboardData();
       }
     } catch (error) {
       console.error('Error submitting request:', error);
@@ -174,6 +199,16 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStreamSelect = (streamName: string) => {
+    setSelectedStream(streamName);
+    setActiveTab('courses'); // Switch to courses tab when stream is selected
+  };
+
+  const handleBackToStreams = () => {
+    setSelectedStream(null);
+    setFilteredCourses([]);
   };
 
   return (
@@ -204,7 +239,7 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="services">Available Services</TabsTrigger>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="requests">My Requests</TabsTrigger>
             <TabsTrigger value="custom">Custom Request</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
@@ -288,28 +323,94 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="services" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Available Services</h2>
-              <p className="text-sm text-gray-600">Explore our educational offerings</p>
-            </div>
+          <TabsContent value="courses" className="space-y-6">
+            {!selectedStream ? (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Course Streams</h2>
+                  <p className="text-sm text-gray-600">Select a stream to view courses</p>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {availableServices.map((service) => (
-                <Card key={service.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">{service.title}</CardTitle>
-                      <Badge variant="outline">{service.category}</Badge>
-                    </div>
-                    <CardDescription>{service.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button className="w-full">Request This Service</Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {streamData.map((stream) => {
+                    const IconComponent = stream.icon;
+                    const streamCourseCount = courses.filter(course => 
+                      course.stream.toUpperCase() === stream.name.toUpperCase()
+                    ).length;
+
+                    return (
+                      <Card 
+                        key={stream.name} 
+                        className="hover:shadow-lg transition-shadow cursor-pointer transform hover:scale-105"
+                        onClick={() => handleStreamSelect(stream.name)}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-center space-x-4">
+                            <div className={`${stream.color} p-3 rounded-lg text-white`}>
+                              <IconComponent className="h-6 w-6" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold">{stream.name}</h3>
+                              <p className="text-sm text-gray-600">{stream.description}</p>
+                              <p className="text-xs text-gray-500 mt-2">
+                                {streamCourseCount} course{streamCourseCount !== 1 ? 's' : ''} available
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-4">
+                    <Button variant="outline" onClick={handleBackToStreams}>
+                      ← Back to Streams
+                    </Button>
+                    <h2 className="text-2xl font-bold">{selectedStream} Courses</h2>
+                  </div>
+                  <Badge variant="outline">
+                    {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
+
+                <div className="space-y-4">
+                  {filteredCourses.map((course) => (
+                    <Card key={course._id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold mb-2">{course.courseName}</h3>
+                            <p className="text-gray-600 mb-3">{course.description}</p>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              <span>Duration: {course.totalDuration} hours</span>
+                              <span>Topics: {course.topics?.length || 0}</span>
+                              <Badge variant="secondary">{course.stream.toUpperCase()}</Badge>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-green-600">₹{course.price}</p>
+                            <Button className="mt-2">
+                              Request Access
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {filteredCourses.length === 0 && (
+                    <Card>
+                      <CardContent className="p-8 text-center">
+                        <p className="text-gray-500">No courses available for {selectedStream} stream</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="requests" className="space-y-6">
