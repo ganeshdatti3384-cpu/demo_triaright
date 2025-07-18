@@ -125,7 +125,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   };
 
   const handleEnrollNow = () => {
-    navigate('/paymentgateway', { state: { streamName: selectedStream, fromStream: true } });
+    navigate('/payment-selection', { state: { streamName: selectedStream, fromStream: true } });
   };
 
   const handleBackToBundles = () => {

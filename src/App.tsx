@@ -41,6 +41,8 @@ import ExamList from '@/pages/ExamList';
 import ExamInterface from '@/pages/ExamInterface';
 import NotFound from '@/pages/NotFound';
 import CouponCode from './pages/CouponCode';
+import PaymentSelection from './pages/PaymentSelection';
+import RazorpayPayment from './pages/RazorpayPayment';
 
 const queryClient = new QueryClient();
 
@@ -85,7 +87,8 @@ const App = () => {
           <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
-          <Route path="/paymentgateway" element={<Pack365Payment />} />
+          <Route path="/payment-selection" element={<PaymentSelection />} />
+          <Route path="/razorpay-payment" element={<RazorpayPayment />} />
           <Route path="/Coupon-code" element={<CouponCode />} />
           
           {/* Protected Routes */}
