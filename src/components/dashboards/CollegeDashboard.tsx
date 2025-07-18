@@ -74,34 +74,53 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
   };
 
   const fetchDashboardData = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+  const token = localStorage.getItem('token');
+  if (!token) return;
 
-    try {
-      setLoading(true);
-      const [statsResponse, requestsResponse] = await Promise.all([
-        collegeApi.getDashboardStats(token),
-        collegeApi.getCollegeRequests(token)
-      ]);
+  setLoading(true);
 
-      if (statsResponse.success) {
-        setDashboardStats(statsResponse.stats);
-      }
-      
-      if (requestsResponse.success) {
-        setRequests(requestsResponse.requests);
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+  try {
+    const statsPromise = collegeApi.getDashboardStats(token);
+    const requestsPromise = collegeApi.getCollegeRequests(token);
+
+    const [statsResult, requestsResult] = await Promise.allSettled([statsPromise, requestsPromise]);
+
+    // Handle stats response
+    if (statsResult.status === 'fulfilled' && statsResult.value.success) {
+      setDashboardStats(statsResult.value.stats);
+    } else {
+      console.error('Failed to fetch stats:', statsResult.reason || statsResult);
       toast({
         title: 'Error',
-        description: 'Failed to load dashboard data',
+        description: 'Failed to load dashboard stats',
         variant: 'destructive'
       });
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // Handle requests response
+    if (requestsResult.status === 'fulfilled' && requestsResult.value.success) {
+      setRequests(requestsResult.value.requests);
+    } else {
+      console.error('Failed to fetch requests:', requestsResult.reason || requestsResult);
+      toast({
+        title: 'Error',
+        description: 'Failed to load college requests',
+        variant: 'destructive'
+      });
+    }
+  } catch (error) {
+    // Shouldn't usually reach here unless something very unexpected happens
+    console.error('Unexpected error:', error);
+    toast({
+      title: 'Error',
+      description: 'An unexpected error occurred',
+      variant: 'destructive'
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const fetchCollegeProfile = async () => {
     const token = localStorage.getItem('token');
