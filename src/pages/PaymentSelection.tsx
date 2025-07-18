@@ -26,64 +26,67 @@ const PaymentSelection = () => {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-12">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-16">
         <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                Choose Payment Method
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-12">
+              <h1 className="text-4xl font-extrabold text-gray-900 mb-3">
+                Select Your Payment Option
               </h1>
-              <p className="text-gray-600">
+              <p className="text-lg text-gray-700">
                 {fromStream 
-                  ? `Enroll in ${streamName} Bundle` 
-                  : `Enroll in ${courseName}`
-                }
+                  ? `You're enrolling in the ${streamName} Bundle` 
+                  : `You're enrolling in ${courseName}`}
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Razorpay Payment Option */}
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={handleRazorpayPayment}>
+            <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Razorpay Option */}
+              <Card 
+                onClick={handleRazorpayPayment}
+                className="cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] border border-blue-200"
+              >
                 <CardHeader className="text-center">
-                  <div className="mx-auto mb-4 p-3 bg-blue-100 rounded-full w-fit">
-                    <CreditCard className="h-8 w-8 text-blue-600" />
+                  <div className="mx-auto mb-4 p-4 rounded-full bg-gradient-to-tr from-blue-400 to-blue-600 text-white shadow-md">
+                    <CreditCard className="h-8 w-8" />
                   </div>
-                  <CardTitle className="text-xl">Pay with Razorpay</CardTitle>
+                  <CardTitle className="text-2xl font-semibold text-blue-700">Pay with Razorpay</CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
-                  <p className="text-gray-600 mb-4">
-                    Secure payment using credit card, debit card, UPI, or net banking
+                <CardContent className="text-center px-6 pb-6">
+                  <p className="text-gray-600 mb-6">
+                    Use UPI, card, or net banking with secure Razorpay integration.
                   </p>
-                  <Button className="w-full" onClick={handleRazorpayPayment}>
-                    Proceed to Payment
-                  </Button>
+                  <Button className="w-full text-lg py-2">Proceed to Payment</Button>
                 </CardContent>
               </Card>
 
-              {/* Coupon Code Option */}
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={handleCouponCode}>
+              {/* Coupon Option */}
+              <Card 
+                onClick={handleCouponCode}
+                className="cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] border border-green-200"
+              >
                 <CardHeader className="text-center">
-                  <div className="mx-auto mb-4 p-3 bg-green-100 rounded-full w-fit">
-                    <Gift className="h-8 w-8 text-green-600" />
+                  <div className="mx-auto mb-4 p-4 rounded-full bg-gradient-to-tr from-green-400 to-green-600 text-white shadow-md">
+                    <Gift className="h-8 w-8" />
                   </div>
-                  <CardTitle className="text-xl">Have a Coupon?</CardTitle>
+                  <CardTitle className="text-2xl font-semibold text-green-700">Have a Coupon?</CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
-                  <p className="text-gray-600 mb-4">
-                    Enter your coupon code to get instant access to the course
+                <CardContent className="text-center px-6 pb-6">
+                  <p className="text-gray-600 mb-6">
+                    Enter a valid coupon code for instant enrollment.
                   </p>
-                  <Button variant="outline" className="w-full" onClick={handleCouponCode}>
+                  <Button variant="outline" className="w-full text-lg py-2 border-green-500 text-green-700 hover:bg-green-100">
                     Use Coupon Code
                   </Button>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="text-center mt-8">
+            <div className="text-center mt-10">
               <Button 
                 variant="ghost" 
                 onClick={() => navigate(-1)}
-                className="text-gray-600 hover:text-gray-900"
+                className="text-gray-500 hover:text-gray-900 text-base"
               >
                 ← Go Back
               </Button>
