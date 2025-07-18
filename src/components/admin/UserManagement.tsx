@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -69,7 +68,7 @@ const UserManagement = () => {
           lastName: 'Doe',
           email: 'john@example.com',
           role: 'student',
-          phone: '+1234567890',
+          phone: '+91-9876543210',
           status: 'active',
           createdAt: '2024-01-15',
           collegeName: 'ABC University',
@@ -82,7 +81,7 @@ const UserManagement = () => {
           lastName: 'Smith',
           email: 'jane@company.com',
           role: 'employer',
-          phone: '+1234567891',
+          phone: '+91-9876543211',
           status: 'active',
           createdAt: '2024-01-14',
           companyName: 'Tech Corp',
@@ -98,38 +97,111 @@ const UserManagement = () => {
     }
   };
 
+  const validateForm = () => {
+    if (!formData.firstName.trim()) {
+      toast.error('First name is required');
+      return false;
+    }
+    if (!formData.lastName.trim()) {
+      toast.error('Last name is required');
+      return false;
+    }
+    if (!formData.email.trim()) {
+      toast.error('Email is required');
+      return false;
+    }
+    if (!formData.email.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return false;
+    }
+    if (!formData.password && !selectedUser) {
+      toast.error('Password is required');
+      return false;
+    }
+    if (!formData.role) {
+      toast.error('Role is required');
+      return false;
+    }
+
+    // Role-specific validation
+    if (formData.role === 'student') {
+      if (!formData.collegeName.trim()) {
+        toast.error('College name is required for students');
+        return false;
+      }
+      if (!formData.course.trim()) {
+        toast.error('Course is required for students');
+        return false;
+      }
+    }
+
+    if (formData.role === 'employer') {
+      if (!formData.companyName.trim()) {
+        toast.error('Company name is required for employers');
+        return false;
+      }
+    }
+
+    if (formData.role === 'college') {
+      if (!formData.instituteName.trim()) {
+        toast.error('Institute name is required for colleges');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleCreateUser = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.role) {
-      toast.error('Please fill in all required fields');
+    if (!validateForm()) {
       return;
     }
 
+    setLoading(true);
     try {
-      // Mock API call - replace with actual API
-      console.log('Creating user:', formData);
+      // Simulate API call - replace with actual implementation
+      const newUser = {
+        id: Date.now(),
+        ...formData,
+        status: 'active',
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+
+      // Add to users list
+      setUsers(prevUsers => [...prevUsers, newUser]);
+      
       toast.success('User created successfully!');
       setCreateUserOpen(false);
       resetForm();
-      fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
       toast.error('Failed to create user');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleUpdateUser = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser || !validateForm()) return;
 
+    setLoading(true);
     try {
-      // Mock API call - replace with actual API
-      console.log('Updating user:', { ...selectedUser, ...formData });
+      // Simulate API call - replace with actual implementation
+      const updatedUsers = users.map(user => 
+        user.id === selectedUser.id 
+          ? { ...user, ...formData }
+          : user
+      );
+      
+      setUsers(updatedUsers);
       toast.success('User updated successfully!');
       setEditUserOpen(false);
       resetForm();
-      fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
       toast.error('Failed to update user');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -137,10 +209,8 @@ const UserManagement = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      // Mock API call - replace with actual API
-      console.log('Deleting user:', userId);
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
       toast.success('User deleted successfully!');
-      fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
       toast.error('Failed to delete user');
@@ -219,8 +289,8 @@ const UserManagement = () => {
 
   const downloadSampleExcel = () => {
     const sampleData = `firstName,lastName,email,role,phone,address,dateOfBirth,collegeName,course,year,branch,companyName,designation,industry,companySize,instituteName,instituteType,location,establishedYear,experience,skills,expectedSalary,currentLocation
-John,Doe,john@example.com,student,+1234567890,123 Main St,1999-01-01,ABC University,Computer Science,3rd,CSE,,,,,,,,,,,,
-Jane,Smith,jane@company.com,employer,+1234567891,456 Business Ave,1985-05-15,,,,,TechCorp,HR Manager,Technology,100-500,,,,,,,,`;
+John,Doe,john@example.com,student,+91-9876543210,123 Main St,1999-01-01,ABC University,Computer Science,3rd,CSE,,,,,,,,,,,,
+Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,,,,,TechCorp,HR Manager,Technology,100-500,,,,,,,,`;
     
     const blob = new Blob([sampleData], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -550,6 +620,7 @@ Jane,Smith,jane@company.com,employer,+1234567891,456 Business Ave,1985-05-15,,,,
                     value={formData.phone}
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     className="col-span-3"
+                    placeholder="+91-XXXXXXXXXX"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -576,11 +647,14 @@ Jane,Smith,jane@company.com,employer,+1234567891,456 Business Ave,1985-05-15,,,,
                 {renderRoleSpecificFields()}
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setCreateUserOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => {
+                  setCreateUserOpen(false);
+                  resetForm();
+                }}>
                   Cancel
                 </Button>
-                <Button type="button" onClick={handleCreateUser}>
-                  Create User
+                <Button type="button" onClick={handleCreateUser} disabled={loading}>
+                  {loading ? 'Creating...' : 'Create User'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -759,6 +833,7 @@ Jane,Smith,jane@company.com,employer,+1234567891,456 Business Ave,1985-05-15,,,,
                 value={formData.phone}
                 onChange={(e) => setFormData({...formData, phone: e.target.value})}
                 className="col-span-3"
+                placeholder="+91-XXXXXXXXXX"
               />
             </div>
 
@@ -766,11 +841,14 @@ Jane,Smith,jane@company.com,employer,+1234567891,456 Business Ave,1985-05-15,,,,
             {renderRoleSpecificFields()}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setEditUserOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => {
+              setEditUserOpen(false);
+              resetForm();
+            }}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleUpdateUser}>
-              Update User
+            <Button type="button" onClick={handleUpdateUser} disabled={loading}>
+              {loading ? 'Updating...' : 'Update User'}
             </Button>
           </DialogFooter>
         </DialogContent>
