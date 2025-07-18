@@ -137,7 +137,7 @@ const App = () => {
           <Route
             path="/super-admin"
             element={
-              <ProtectedRoute allowedRoles={['super-admin']}>
+              <ProtectedRoute allowedRoles={['superadmin']}>
                 <SuperAdminDashboard user={getCurrentUser()} onLogout={handleLogout} />
               </ProtectedRoute>
             }
