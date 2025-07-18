@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { College, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload } from '@/types/api';
@@ -392,33 +393,33 @@ export const pack365Api = {
 
   // Update topic progress
   updateTopicProgress: async (
-  token: string,
-  data: {
-    courseId: string;
-    topicName: string;
-    watchedDuration: number;
-    totalCourseDuration?: number;
-    totalWatchedPercentage?: number;
-  }
-): Promise<{
-  success: boolean;
-  message: string;
-  videoProgress: number;
-  totalWatchedPercentage: number;
-  topicProgress: TopicProgress[];
-}> => {
-  const res = await axios.post(
-    `${API_BASE_URL}/pack365/packenroll365/update-topic-progress`,
-    data,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    token: string,
+    data: {
+      courseId: string;
+      topicName: string;
+      watchedDuration: number;
+      totalCourseDuration?: number;
+      totalWatchedPercentage?: number;
     }
-  );
+  ): Promise<{
+    success: boolean;
+    message: string;
+    videoProgress: number;
+    totalWatchedPercentage: number;
+    topicProgress: TopicProgress[];
+  }> => {
+    const res = await axios.post(
+      `${API_BASE_URL}/pack365/packenroll365/update-topic-progress`,
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-  return res.data;
-},
+    return res.data;
+  },
 
   // Coupon Management APIs
   createCoupon: async (
@@ -584,14 +585,15 @@ export const collegeApi = {
   createServiceRequest: async (
     token: string,
     data: {
+      institutionName: string;
       contactPerson: string;
       email: string;
       phoneNumber: string;
       expectedStudents: number;
       preferredDate: string;
-      serviceCategory: string;
+      serviceCategory: string[];
       serviceDescription: string;
-      additionalRequirements?: string[];
+      additionalRequirements?: string;
     }
   ): Promise<{ success: boolean; request: any }> => {
     const res = await axios.post(`${API_BASE_URL}/colleges/service-request`, data, {
@@ -601,10 +603,20 @@ export const collegeApi = {
   },
 
   // Get college's service requests
-  getCollegeRequests: async (
+  getMyServiceRequests: async (
     token: string
-  ): Promise<{ success: boolean; requests: any[] }> => {
+  ): Promise<{ success: boolean; data: any[] }> => {
     const res = await axios.get(`${API_BASE_URL}/colleges/college/my-requests`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get college stats
+  getCollegeStats: async (
+    token: string
+  ): Promise<{ success: boolean; data: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/colleges/dashboard/stats`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

@@ -1,3 +1,4 @@
+
 // ---------- User ----------
 export interface User {
   _id?: string;
@@ -5,8 +6,8 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
-  phoneNumber: string;
-  whatsappNumber: string;
+  phoneNumber?: string;
+  whatsappNumber?: string;
   password: string;
   address: string;
   role: 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
@@ -165,20 +166,7 @@ export interface StudentProfile {
   createdAt?: string;
   updatedAt?: string;
 }
-export interface User {
-  _id?: string;
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  whatsappNumber: string;
-  password: string; // optional in responses
-  address: string;
-  role: 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
-  createdAt?: string;
-  updatedAt?: string;
-}
+
 export interface CourseTopic {
   name: string;
   link: string;
@@ -191,13 +179,14 @@ export interface Pack365Course {
   courseName: string;
   description: string;
   stream: 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance';
-  documentLink: string;
+  documentLink?: string;
   price: number;
   totalDuration: number;
   topics: CourseTopic[];
   createdAt?: string;
   updatedAt?: string;
 }
+
 export interface TopicProgress {
   topicName: string;
   watched: boolean;
@@ -223,6 +212,7 @@ export interface Enrollment {
   createdAt?: string;
   updatedAt?: string;
 }
+
 export interface EnrollmentCode {
   _id?: string;
   code: string;
@@ -237,6 +227,7 @@ export interface EnrollmentCode {
   createdAt?: string;
   updatedAt?: string;
 }
+
 export interface ExamQuestion {
   questionText: string;
   options: string[]; // always 4
@@ -269,22 +260,17 @@ export interface Exam {
   updatedAt?: string;
 }
 
-export interface TopicProgress {
-  topicName: string;
-  watched: boolean;
-  watchedDuration: number;
-}
-
 export interface EnhancedPack365Enrollment extends Pack365Enrollment {
-  status: string;
-  totalWatchedPercentage: any;
-  progress: any;
+  status?: string;
+  totalWatchedPercentage?: number;
+  progress?: any;
   topicProgress: TopicProgress[];
   videoProgress: number;
   enrollmentType: 'payment' | 'code';
   isExamCompleted?: boolean;
   examScore?: number;
 }
+
 export interface Pack365Enrollment {
   _id?: string;
   userId: string;

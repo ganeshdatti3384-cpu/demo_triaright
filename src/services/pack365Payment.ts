@@ -1,4 +1,5 @@
 
+
 import { pack365Api } from './api';
 
 declare global {
@@ -51,7 +52,7 @@ export class Pack365PaymentService {
       const response = await pack365Api.createOrder(token, options.courseId, 'payment');
 
       if (!response.success) {
-        throw new Error(response.message || 'Failed to create order');
+        throw new Error('Failed to create order');
       }
 
       return {
