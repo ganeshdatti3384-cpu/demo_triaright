@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -87,9 +86,32 @@ const App = () => {
           <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
-          <Route path="/payment-selection" element={<PaymentSelection />} />
-          <Route path="/razorpay-payment" element={<RazorpayPayment />} />
-          <Route path="/Coupon-code" element={<CouponCode />} />
+          
+          {/* Protected Payment Routes */}
+          <Route
+            path="/payment-selection"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <PaymentSelection />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/razorpay-payment"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <RazorpayPayment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/Coupon-code"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <CouponCode />
+              </ProtectedRoute>
+            }
+          />
           
           {/* Protected Routes */}
           <Route
@@ -101,7 +123,7 @@ const App = () => {
             }
           />
           <Route
-            path="/jobseeker"
+            path="/job-seeker"
             element={
               <ProtectedRoute allowedRoles={['jobseeker']}>
                 <JobSeekerDashboard />
@@ -212,4 +234,3 @@ const App = () => {
 };
 
 export default App;
-

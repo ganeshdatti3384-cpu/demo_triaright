@@ -1,165 +1,263 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, CreditCard, QrCode, Wallet2, Lock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CreditCard, Shield, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { Pack365PaymentService } from '@/services/pack365Payment';
+import { useToast } from '@/hooks/use-toast';
 
 const RazorpayPayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { streamName, courseId, courseName, fromStream, fromCourse } = location.state || {};
   const [isProcessing, setIsProcessing] = useState(false);
-  const [method, setMethod] = useState<'card' | 'upi' | 'qr'>('card');
-  const [formData, setFormData] = useState({
-    cardNumber: '',
-    expiry: '',
-    cvv: '',
-    name: '',
-    upi: '',
-  });
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please login to continue with payment',
+        variant: 'destructive'
+      });
+      navigate('/login');
+      return;
+    }
+
+    // Validate required data
+    if (!streamName && !courseName) {
+      toast({
+        title: 'Error',
+        description: 'Invalid payment data. Please try again.',
+        variant: 'destructive'
+      });
+      navigate('/pack365');
+      return;
+    }
+  }, [navigate, streamName, courseName, toast]);
 
   const handlePayment = async () => {
     setIsProcessing(true);
-    setTimeout(() => {
-      const isSuccess = Math.random() > 0.2;
-      navigate(isSuccess ? '/payment-success' : '/payment-failed', {
-        state: { streamName, courseId, courseName, fromStream, fromCourse }
+    
+    try {
+      await Pack365PaymentService.processPayment(
+        {
+          streamName: streamName || '',
+          courseId,
+          courseName,
+          fromStream: fromStream || false,
+          fromCourse: fromCourse || false
+        },
+        (response) => {
+          // Payment successful
+          console.log('Payment successful:', response);
+          toast({
+            title: 'Payment Successful!',
+            description: 'Your enrollment has been completed successfully.',
+          });
+          
+          // Navigate to success page
+          navigate('/payment-success', {
+            state: {
+              paymentId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id,
+              streamName,
+              courseName,
+              fromStream,
+              fromCourse
+            }
+          });
+        },
+        (error) => {
+          // Payment failed
+          console.error('Payment failed:', error);
+          toast({
+            title: 'Payment Failed',
+            description: error.message || 'Payment could not be processed. Please try again.',
+            variant: 'destructive'
+          });
+          
+          // Navigate to failure page
+          navigate('/payment-failed', {
+            state: {
+              error: error.message,
+              streamName,
+              courseName
+            }
+          });
+        }
+      );
+    } catch (error) {
+      console.error('Error initiating payment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to initiate payment. Please try again.',
+        variant: 'destructive'
       });
+    } finally {
       setIsProcessing(false);
-    }, 3000);
+    }
   };
 
-  const amount = fromStream ? 365 : 499;
+  const handleBack = () => {
+    navigate(-1);
+  };
 
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-tr from-blue-50 to-purple-100 py-10 px-4">
-        <div className="max-w-xl mx-auto">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="mb-4 text-gray-700 hover:text-black flex items-center"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto">
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              className="mb-6"
+              disabled={isProcessing}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
 
-          <Card className="bg-white/80 backdrop-blur shadow-xl rounded-2xl">
-            <CardHeader className="text-center space-y-2">
-              <div className="mx-auto w-fit p-4 bg-blue-100 rounded-full shadow">
-                <CreditCard className="text-blue-600 w-7 h-7" />
-              </div>
-              <CardTitle className="text-2xl font-semibold">Secure Payment</CardTitle>
-              <p className="text-sm text-gray-500">Complete your payment below</p>
-            </CardHeader>
-
-            <CardContent className="space-y-6 px-6 pb-6">
-              <div className="rounded-lg p-4 border bg-white shadow-sm">
-                <h3 className="font-semibold text-lg text-gray-800">
-                  {fromStream ? `${streamName} Bundle` : courseName}
-                </h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  {fromStream ? `Access all ${streamName} courses` : 'Single course access'}
-                </p>
-                <div className="flex justify-between items-center font-medium text-base">
-                  <span>Total</span>
-                  <span className="text-blue-600 font-semibold">₹{amount}</span>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-700">Select Payment Method</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <button onClick={() => setMethod('card')} className={`p-3 border rounded-lg text-sm ${method === 'card' ? 'bg-blue-100 font-semibold' : 'bg-gray-50'}`}>
-                    <CreditCard className="w-4 h-4 mb-1 mx-auto" />
-                    Card
-                  </button>
-                  <button onClick={() => setMethod('upi')} className={`p-3 border rounded-lg text-sm ${method === 'upi' ? 'bg-blue-100 font-semibold' : 'bg-gray-50'}`}>
-                    <Wallet2 className="w-4 h-4 mb-1 mx-auto" />
-                    UPI
-                  </button>
-                  <button onClick={() => setMethod('qr')} className={`p-3 border rounded-lg text-sm ${method === 'qr' ? 'bg-blue-100 font-semibold' : 'bg-gray-50'}`}>
-                    <QrCode className="w-4 h-4 mb-1 mx-auto" />
-                    QR Code
-                  </button>
-                </div>
-              </div>
-
-              {method === 'card' && (
-                <div className="space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Card Number"
-                    maxLength={16}
-                    className="w-full p-2 border rounded-md text-sm"
-                    value={formData.cardNumber}
-                    onChange={(e) => setFormData({ ...formData, cardNumber: e.target.value })}
-                  />
-                  <div className="flex gap-3">
-                    <input
-                      type="text"
-                      placeholder="MM/YY"
-                      maxLength={5}
-                      className="w-1/2 p-2 border rounded-md text-sm"
-                      value={formData.expiry}
-                      onChange={(e) => setFormData({ ...formData, expiry: e.target.value })}
-                    />
-                    <input
-                      type="password"
-                      placeholder="CVV"
-                      maxLength={3}
-                      className="w-1/2 p-2 border rounded-md text-sm"
-                      value={formData.cvv}
-                      onChange={(e) => setFormData({ ...formData, cvv: e.target.value })}
-                    />
+            <Card className="shadow-xl border-0">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+                <CardTitle className="text-2xl flex items-center">
+                  <Shield className="h-6 w-6 mr-2" />
+                  Secure Payment - Pack365
+                </CardTitle>
+                <div className="mt-4 bg-white/10 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm opacity-90">
+                      {fromStream 
+                        ? `${streamName} Bundle` 
+                        : `${courseName}`}
+                    </span>
+                    <Badge className="bg-white text-blue-600">Pack365</Badge>
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Name on Card"
-                    className="w-full p-2 border rounded-md text-sm"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-lg">Total Amount</span>
+                    <span className="text-2xl font-bold">₹365</span>
+                  </div>
                 </div>
-              )}
+              </CardHeader>
 
-              {method === 'upi' && (
-                <input
-                  type="text"
-                  placeholder="Enter your UPI ID"
-                  className="w-full p-2 border rounded-md text-sm"
-                  value={formData.upi}
-                  onChange={(e) => setFormData({ ...formData, upi: e.target.value })}
-                />
-              )}
+              <CardContent className="p-8">
+                <div className="space-y-6">
+                  {/* Payment Details */}
+                  <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <h3 className="text-lg font-semibold text-blue-800 mb-3">Payment Details</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Course/Bundle:</span>
+                        <span className="font-medium">
+                          {fromStream ? `${streamName} Bundle` : courseName}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Package:</span>
+                        <span className="font-medium">Pack365</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Access Duration:</span>
+                        <span className="font-medium">365 Days</span>
+                      </div>
+                      <div className="border-t pt-2 mt-2 flex justify-between font-semibold">
+                        <span>Total Amount:</span>
+                        <span className="text-xl text-blue-600">₹365</span>
+                      </div>
+                    </div>
+                  </div>
 
-              {method === 'qr' && (
-                <div className="flex flex-col items-center gap-2">
-                  <img
-                    src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=your@upi&pn=Your%20Name&am=999"
-                    alt="QR Code"
-                    className="w-40 h-40"
-                  />
-                  <p className="text-xs text-gray-500">Scan with your UPI app</p>
+                  {/* Payment Features */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                      <Shield className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-green-800">Secure Payment</p>
+                      <p className="text-xs text-green-600">SSL Encrypted</p>
+                    </div>
+                    <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <CheckCircle2 className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-purple-800">Instant Access</p>
+                      <p className="text-xs text-purple-600">Immediate enrollment</p>
+                    </div>
+                    <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <CreditCard className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-orange-800">Multiple Options</p>
+                      <p className="text-xs text-orange-600">UPI, Cards, Wallets</p>
+                    </div>
+                  </div>
+
+                  {/* Payment Button */}
+                  <Button
+                    onClick={handlePayment}
+                    disabled={isProcessing || isLoading}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-6"
+                  >
+                    {isProcessing ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Processing Payment...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <CreditCard className="h-5 w-5 mr-2" />
+                        Pay ₹365 Securely
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Security Notice */}
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <div className="flex items-start space-x-3">
+                      <Shield className="h-5 w-5 text-gray-600 mt-0.5" />
+                      <div className="text-sm text-gray-700">
+                        <p className="font-medium mb-1">Secure Payment Gateway</p>
+                        <p>Your payment is processed through Razorpay's secure payment gateway. We don't store your payment information.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Terms */}
+                  <div className="text-xs text-gray-500 text-center">
+                    By proceeding, you agree to our{' '}
+                    <a 
+                      href="/terms-conditions" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline hover:text-blue-700"
+                    >
+                      Terms of Service
+                    </a>
+                    {', '}
+                    <a 
+                      href="/privacy-policy" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline hover:text-blue-700"
+                    >
+                      Privacy Policy
+                    </a>
+                    {', and '}
+                    <a 
+                      href="/refund-policy" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline hover:text-blue-700"
+                    >
+                      Refund Policy
+                    </a>
+                  </div>
                 </div>
-              )}
-
-              <Button
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
-                onClick={handlePayment}
-                disabled={isProcessing}
-              >
-                {isProcessing ? 'Processing Payment...' : `Pay ₹${amount}`}
-              </Button>
-
-              <div className="flex items-center justify-center mt-2 text-xs text-gray-500 gap-1">
-                <Lock className="w-3 h-3" />
-                100% secure payment • Powered by Razorpay
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
       <Footer />

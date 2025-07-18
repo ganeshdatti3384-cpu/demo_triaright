@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar } from 'lucide-react';
-import { pack365Api } from '@/services/api';
+import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2 } from 'lucide-react';
+import { pack365Api, collegeApi } from '@/services/api';
 import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import type { Pack365Course } from '@/types/api';
 
 interface SuperAdminDashboardProps {
@@ -26,16 +27,19 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const [couponCode, setCouponCode] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [discount, setDiscount] = useState('');
+  const { toast: useToastHook } = useToast();
   
   // State for API data
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
+  const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch courses on component mount
   useEffect(() => {
     fetchCourses();
     fetchCoupons();
+    fetchCollegeRequests();
   }, []);
 
   const fetchCourses = async () => {
@@ -64,6 +68,74 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     } catch (error) {
       console.error('Error fetching coupons:', error);
       toast.error('Failed to fetch coupons');
+    }
+  };
+
+  const fetchCollegeRequests = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      setIsLoading(true);
+      const response = await collegeApi.getAllServiceRequests(token);
+      if (response.success) {
+        setCollegeRequests(response.requests);
+      }
+    } catch (error) {
+      console.error('Error fetching college requests:', error);
+      useToastHook({
+        title: 'Error',
+        description: 'Failed to load college requests',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await collegeApi.acceptServiceRequest(token, requestId);
+      if (response.success) {
+        useToastHook({
+          title: 'Success',
+          description: 'Request accepted successfully',
+        });
+        fetchCollegeRequests();
+      }
+    } catch (error) {
+      console.error('Error accepting request:', error);
+      useToastHook({
+        title: 'Error',
+        description: 'Failed to accept request',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await collegeApi.rejectServiceRequest(token, requestId);
+      if (response.success) {
+        useToastHook({
+          title: 'Success',
+          description: 'Request rejected successfully',
+        });
+        fetchCollegeRequests();
+      }
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+      useToastHook({
+        title: 'Error',
+        description: 'Failed to reject request',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -151,6 +223,8 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     { id: 3, action: 'Failed payment attempt', severity: 'warning', time: '2024-01-14 23:45' },
   ];
 
+  const pendingRequests = collegeRequests.filter(request => request.status === 'Pending');
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -176,11 +250,12 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">User Control</TabsTrigger>
             <TabsTrigger value="system">System</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
+            <TabsTrigger value="college-approvals">College Approvals</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="logs">System Logs</TabsTrigger>
@@ -244,6 +319,34 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Pending College Approvals */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending College Approvals</CardTitle>
+                <CardDescription>College service requests requiring super admin approval</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {pendingRequests.slice(0, 3).map((request) => (
+                    <div key={request._id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{request.institutionName}</p>
+                        <p className="text-sm text-gray-500">College Service Request - {request.serviceCategory?.join(', ') || 'General'}</p>
+                        <p className="text-xs text-gray-400">Requested on {new Date(request.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline">Pending</Badge>
+                        <Button variant="outline" size="sm" onClick={() => setActiveTab('college-approvals')}>Review</Button>
+                      </div>
+                    </div>
+                  ))}
+                  {pendingRequests.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">No pending approvals</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Critical Alerts */}
             <Card className="border-red-200">
@@ -623,6 +726,90 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                 </Card>
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          <TabsContent value="college-approvals" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">College Service Approvals</h2>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline">{pendingRequests.length} Pending Approvals</Badge>
+                <Button onClick={fetchCollegeRequests} disabled={isLoading}>
+                  {isLoading ? 'Loading...' : 'Refresh'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {collegeRequests.map((request) => (
+                <Card key={request._id}>
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Building2 className="h-5 w-5 text-blue-600" />
+                          <h3 className="font-semibold text-lg">{request.institutionName}</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div>
+                            <p><span className="font-medium">Contact:</span> {request.contactPerson}</p>
+                            <p><span className="font-medium">Email:</span> {request.email}</p>
+                            <p><span className="font-medium">Phone:</span> {request.phoneNumber}</p>
+                          </div>
+                          <div>
+                            <p><span className="font-medium">Expected Students:</span> {request.expectedStudents}</p>
+                            <p><span className="font-medium">Preferred Date:</span> {request.preferredDate}</p>
+                            <p><span className="font-medium">Type:</span> {request.serviceCategory?.join(', ') || 'College Service Request'}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-sm"><span className="font-medium">Description:</span> {request.serviceDescription}</p>
+                          {request.additionalRequirements && (
+                            <p className="text-sm"><span className="font-medium">Additional Requirements:</span> {request.additionalRequirements}</p>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">
+                          Requested on: {new Date(request.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end space-y-2">
+                        <Badge
+                          variant={
+                            request.status === 'Accepted' ? 'default' :
+                            request.status === 'Rejected' ? 'destructive' : 'outline'
+                          }
+                        >
+                          {request.status}
+                        </Badge>
+                        {request.status === 'Pending' && (
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleRejectRequest(request._id)}
+                            >
+                              Reject
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => handleAcceptRequest(request._id)}
+                            >
+                              Accept
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {collegeRequests.length === 0 && !isLoading && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-center text-gray-500">No college service requests found</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="billing" className="space-y-6">
