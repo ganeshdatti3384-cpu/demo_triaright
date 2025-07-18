@@ -416,40 +416,52 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
           <TabsContent value="requests" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">My Service Requests</h2>
-              <Badge variant="outline">{requests.length} Total Requests</Badge>
+              <Badge variant="outline">
+                {collegeProfile ? requests.filter(request => request.email === collegeProfile.email).length : requests.length} Total Requests
+              </Badge>
             </div>
 
             <div className="space-y-4">
-              {requests.map((request) => (
-                <Card key={request._id}>
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold text-lg">{request.serviceCategory}</h3>
-                        <p className="text-gray-600">Requested on: {new Date(request.createdAt).toLocaleDateString()}</p>
-                        <p className="text-sm text-gray-500">Expected students: {request.expectedStudents}</p>
-                        <p className="text-sm text-gray-500">Contact: {request.contactPerson}</p>
-                        <p className="text-sm text-gray-500">Preferred Date: {request.preferredDate}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge
-                          variant={
-                            request.status === 'Accepted' ? 'default' :
-                            request.status === 'Rejected' ? 'destructive' : 'outline'
-                          }
-                        >
-                          {request.status}
-                        </Badge>
-                        <Button variant="outline" size="sm">
-                          View Details
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {requests.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No service requests found</p>
+              {collegeProfile ? (
+                requests
+                  .filter(request => request.email === collegeProfile.email)
+                  .map((request) => (
+                    <Card key={request._id}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-lg">{request.serviceCategory?.join(', ') || request.serviceDescription}</h3>
+                            <p className="text-gray-600">Requested on: {new Date(request.createdAt).toLocaleDateString()}</p>
+                            <p className="text-sm text-gray-500">Expected students: {request.expectedStudents}</p>
+                            <p className="text-sm text-gray-500">Contact: {request.contactPerson}</p>
+                            <p className="text-sm text-gray-500">Preferred Date: {request.preferredDate}</p>
+                            <p className="text-sm text-gray-500">Institution: {request.institutionName}</p>
+                            {request.additionalRequirements && (
+                              <p className="text-sm text-gray-500">Additional: {request.additionalRequirements}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge
+                              variant={
+                                request.status === 'Accepted' ? 'default' :
+                                request.status === 'Rejected' ? 'destructive' : 'outline'
+                              }
+                            >
+                              {request.status}
+                            </Badge>
+                            <Button variant="outline" size="sm">
+                              View Details
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+              ) : (
+                <p className="text-center text-gray-500 py-8">Loading profile...</p>
+              )}
+              {collegeProfile && requests.filter(request => request.email === collegeProfile.email).length === 0 && (
+                <p className="text-center text-gray-500 py-8">No service requests found for your email</p>
               )}
             </div>
           </TabsContent>
