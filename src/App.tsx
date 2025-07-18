@@ -121,7 +121,7 @@ const App = () => {
           <Route
             path="/college"
             element={
-              <ProtectedRoute allowedRoles={['colleges']}>
+              <ProtectedRoute allowedRoles={['college']}>
                 <CollegeDashboard user={getCurrentUser()} onLogout={handleLogout} />
               </ProtectedRoute>
             }
@@ -137,7 +137,7 @@ const App = () => {
           <Route
             path="/super-admin"
             element={
-              <ProtectedRoute allowedRoles={['super-admin']}>
+              <ProtectedRoute allowedRoles={['superadmin']}>
                 <SuperAdminDashboard user={getCurrentUser()} onLogout={handleLogout} />
               </ProtectedRoute>
             }
