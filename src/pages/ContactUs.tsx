@@ -14,6 +14,8 @@ import {
   User,
   Building,
 } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 const ContactUs = () => {
   const { toast } = useToast();
@@ -88,7 +90,7 @@ const ContactUs = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+    <><Navbar /><div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-20">
         <div className="max-w-6xl mx-auto px-4 text-center">
@@ -129,8 +131,7 @@ const ContactUs = () => {
                         onChange={handleChange}
                         placeholder="Enter your full name"
                         required
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
+                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20" />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
@@ -144,8 +145,7 @@ const ContactUs = () => {
                         onChange={handleChange}
                         placeholder="Enter your email"
                         required
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
+                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20" />
                     </div>
                   </div>
 
@@ -160,8 +160,7 @@ const ContactUs = () => {
                         value={formData.phone}
                         onChange={handleChange}
                         placeholder="Enter your phone number"
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
+                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20" />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
@@ -173,8 +172,7 @@ const ContactUs = () => {
                         value={formData.company}
                         onChange={handleChange}
                         placeholder="Enter company name"
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
+                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20" />
                     </div>
                   </div>
 
@@ -186,8 +184,7 @@ const ContactUs = () => {
                       onChange={handleChange}
                       placeholder="What is this regarding?"
                       required
-                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                    />
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20" />
                   </div>
 
                   <div className="space-y-2">
@@ -199,12 +196,11 @@ const ContactUs = () => {
                       placeholder="Tell us more about your inquiry..."
                       rows={5}
                       required
-                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 resize-none"
-                    />
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 resize-none" />
                   </div>
 
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-200 transform hover:scale-[1.02]"
                     size="lg"
                   >
@@ -254,7 +250,7 @@ const ContactUs = () => {
                 Quick Response Guarantee
               </h3>
               <p className="text-muted-foreground">
-                We typically respond to all inquiries within 24 hours during business days. 
+                We typically respond to all inquiries within 24 hours during business days.
                 For urgent matters, please call us directly.
               </p>
             </Card>
@@ -262,6 +258,8 @@ const ContactUs = () => {
         </div>
       </div>
     </div>
+    <Footer />
+    </>
   );
 };
 

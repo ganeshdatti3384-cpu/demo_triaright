@@ -15,6 +15,8 @@ import {
   Zap,
   Globe,
 } from 'lucide-react';
+import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 
 const AboutUs = () => {
   const stats = [
@@ -88,6 +90,8 @@ const AboutUs = () => {
   ];
 
   return (
+    <>
+    <Navbar />
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-20">
@@ -96,7 +100,7 @@ const AboutUs = () => {
             About TriaRight
           </h1>
           <p className="text-xl opacity-90 max-w-3xl mx-auto animate-fade-in">
-            Empowering careers through innovative education, comprehensive skill development, 
+            Empowering careers through innovative education, comprehensive skill development,
             and guaranteed placement services since 2010.
           </p>
         </div>
@@ -113,8 +117,8 @@ const AboutUs = () => {
               <h2 className="text-3xl font-bold">Our Mission</h2>
             </div>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              To bridge the gap between traditional education and industry requirements by providing 
-              comprehensive, practical, and job-oriented training programs that guarantee career success 
+              To bridge the gap between traditional education and industry requirements by providing
+              comprehensive, practical, and job-oriented training programs that guarantee career success
               for every student.
             </p>
           </Card>
@@ -127,8 +131,8 @@ const AboutUs = () => {
               <h2 className="text-3xl font-bold">Our Vision</h2>
             </div>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              To become the leading global platform for career transformation, where every individual 
-              can access world-class education and achieve their professional dreams regardless of 
+              To become the leading global platform for career transformation, where every individual
+              can access world-class education and achieve their professional dreams regardless of
               their background.
             </p>
           </Card>
@@ -153,18 +157,18 @@ const AboutUs = () => {
           <div className="max-w-4xl mx-auto">
             <Card className="p-8 border-0 bg-gradient-to-r from-muted/30 to-muted/10 backdrop-blur-sm">
               <p className="text-lg leading-relaxed text-muted-foreground mb-6">
-                Founded in 2010 with a simple yet powerful vision, TriaRight began as a small training center 
-                in Hyderabad with just 20 students. Our founders recognized a critical gap between what 
+                Founded in 2010 with a simple yet powerful vision, TriaRight began as a small training center
+                in Hyderabad with just 20 students. Our founders recognized a critical gap between what
                 educational institutions were teaching and what the industry actually needed.
               </p>
               <p className="text-lg leading-relaxed text-muted-foreground mb-6">
-                What started as weekend programming classes quickly evolved into comprehensive career 
-                transformation programs. We introduced innovative teaching methodologies, industry-relevant 
+                What started as weekend programming classes quickly evolved into comprehensive career
+                transformation programs. We introduced innovative teaching methodologies, industry-relevant
                 curricula, and most importantly, guaranteed placement assistance.
               </p>
               <p className="text-lg leading-relaxed text-muted-foreground">
-                Today, TriaRight stands as a testament to the power of quality education combined with 
-                practical industry exposure. Our Pack365 programs have revolutionized how professionals 
+                Today, TriaRight stands as a testament to the power of quality education combined with
+                practical industry exposure. Our Pack365 programs have revolutionized how professionals
                 approach skill development, making world-class training accessible to everyone.
               </p>
             </Card>
@@ -196,7 +200,7 @@ const AboutUs = () => {
           <h2 className="text-4xl font-bold text-center mb-12 animate-fade-in">Our Journey</h2>
           <div className="space-y-8">
             {milestones.map((milestone, index) => (
-              <div key={index} className="flex items-start gap-6 animate-fade-in" style={{animationDelay: `${index * 0.1}s`}}>
+              <div key={index} className="flex items-start gap-6 animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
                 <div className="flex-shrink-0">
                   <Badge variant="outline" className="px-4 py-2 text-lg font-bold bg-primary/10 border-primary/30">
                     {milestone.year}
@@ -237,7 +241,7 @@ const AboutUs = () => {
           <Card className="p-12 border-0 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10">
             <h2 className="text-3xl font-bold mb-6">Ready to Transform Your Career?</h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join thousands of successful professionals who have transformed their careers with TriaRight. 
+              Join thousands of successful professionals who have transformed their careers with TriaRight.
               Your journey to success starts here.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -253,7 +257,7 @@ const AboutUs = () => {
           </Card>
         </div>
       </div>
-    </div>
+    </div><Footer /></>
   );
 };
 

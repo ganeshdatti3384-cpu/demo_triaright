@@ -24,6 +24,8 @@ import {
   Globe,
   Shield,
 } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 const Services = () => {
   const [activeTab, setActiveTab] = useState('courses');
@@ -158,6 +160,7 @@ const Services = () => {
   ];
 
   return (
+    <><Navbar />
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-20">
@@ -424,6 +427,8 @@ const Services = () => {
         </div>
       </div>
     </div>
+    <Footer />
+    </>
   );
 };
 

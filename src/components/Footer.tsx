@@ -92,7 +92,7 @@ const Footer = () => {
 
       {/* Main Footer Content */}
       <div className="py-14">
-        <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+        <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {/* Company Info */}
           <div>
             <img
@@ -131,38 +131,6 @@ const Footer = () => {
                 </li>
               ))}
             </ul>
-          </div>
-
-          {/* Contact Info */}
-          <div>
-            <h4 className="text-lg font-semibold text-white mb-4">Contact Us</h4>
-            <div className="space-y-5 text-sm">
-              <div className="flex items-start gap-3">
-                <Mail className="h-5 w-5 text-brand-primary mt-1" />
-                <div className="space-y-1">
-                  <p>📧 info@triaright.com <span className="text-gray-400 block">General Info</span></p>
-                  <p>📧 business@triaright.com <span className="text-gray-400 block">Business</span></p>
-                  <p>📧 hr@triaright.com <span className="text-gray-400 block">HR Related</span></p>
-                  <p>📧 kk@triaright.com <span className="text-gray-400 block">Leadership</span></p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Phone className="h-5 w-5 text-brand-primary mt-1" />
-                <div>
-                  <p>📞 +91 9059373300</p>
-                  <p>📞 +91 8341044141</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-brand-primary mt-1" />
-                <div>
-                  <p>🏢 #7-1-58, 401, Surekha Chambers,</p>
-                  <p>Ameerpet, Hyderabad, Telangana 500016</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
