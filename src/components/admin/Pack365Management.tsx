@@ -156,7 +156,7 @@ const Pack365Management = () => {
       courseName: course.courseName,
       description: course.description,
       stream: course.stream,
-      topics: course.topics?.length > 0 ? course.topics : [{ name: '', link: '', duration: 0 }],
+      topics: course.topics?.length ? course.topics : [{ name: '', link: '', duration: 0 }],
       courseDocument: null
     });
     setShowDialog(true);
@@ -306,7 +306,7 @@ const Pack365Management = () => {
               <Label htmlFor="stream">Stream</Label>
               <Select
                 value={formData.stream}
-                onValueChange={(value: any) => setFormData(prev => ({ ...prev, stream: value }))}
+                onValueChange={(value: 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance') => setFormData(prev => ({ ...prev, stream: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select stream" />

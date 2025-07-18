@@ -89,6 +89,13 @@ export const pack365Api = {
     return response.data;
   },
 
+  updateCouponStatus: async (token: string, couponId: string, status: any) => {
+    const response = await api.patch(`/pack365/coupons/${couponId}/status`, { status }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
   deleteCoupon: async (token: string, couponId: string) => {
     const response = await api.delete(`/pack365/coupons/${couponId}`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -117,12 +124,11 @@ export const pack365Api = {
     return response.data;
   },
 
-  updateTopicProgress: async (token: string, courseId: string, topicName: string, watchedDuration: number, totalCourseDuration: number) => {
+  updateTopicProgress: async (token: string, courseId: string, topicName: string, watchedDuration: number) => {
     const response = await api.post('/pack365/update-topic-progress', {
       courseId,
       topicName,
-      watchedDuration,
-      totalCourseDuration
+      watchedDuration
     }, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -180,6 +186,13 @@ export const pack365Api = {
 
   createOrder: async (token: string, stream: string) => {
     const response = await api.post('/pack365/packenroll365/create-order', { stream }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  createPaymentOrder: async (token: string, orderData: any) => {
+    const response = await api.post('/pack365/payment/create-order', orderData, {
       headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;
@@ -273,20 +286,59 @@ export const profileApi = {
   }
 };
 
+// College API
+export const collegeApi = {
+  getAllColleges: async (token: string) => {
+    const response = await api.get('/colleges', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  getCollegeById: async (token: string, collegeId: string) => {
+    const response = await api.get(`/colleges/${collegeId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  createCollege: async (token: string, collegeData: any) => {
+    const response = await api.post('/colleges', collegeData, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  updateCollege: async (token: string, collegeId: string, collegeData: any) => {
+    const response = await api.put(`/colleges/${collegeId}`, collegeData, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  deleteCollege: async (token: string, collegeId: string) => {
+    const response = await api.delete(`/colleges/${collegeId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  }
+};
+
 // Export types
 export interface Pack365Course {
-  _id: string;
+  _id?: string;
   courseId: string;
   courseName: string;
   description: string;
-  stream: string;
-  topics: Array<{
-    _id: string;
+  stream: 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance';
+  documentLink?: string;
+  topics?: Array<{
+    _id?: string;
     name: string;
     link: string;
     duration: number;
   }>;
-  totalDuration: number;
+  totalDuration?: number;
 }
 
 export interface EnhancedPack365Enrollment {
@@ -296,12 +348,16 @@ export interface EnhancedPack365Enrollment {
   courseName: string;
   enrollmentDate: Date;
   paymentStatus: string;
+  status: string;
+  progress: number;
   topicProgress: Array<{
     topicName: string;
     watched: boolean;
     watchedDuration: number;
   }>;
   totalWatchedPercentage: number;
+  isExamCompleted?: boolean;
+  examScore?: number;
 }
 
 export interface RegisterPayload {
@@ -311,6 +367,7 @@ export interface RegisterPayload {
   password: string;
   role: string;
   phone?: string;
+  phoneNumber?: string;
   collegeName?: string;
   companyName?: string;
 }
