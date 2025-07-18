@@ -125,13 +125,7 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
       const newTotalWatchedSeconds = updatedTopicProgress.reduce((sum, tp) => sum + tp.watchedDuration, 0);
       const newTotalWatchedPercentage = totalCourseDurationSeconds > 0 ? Math.round((newTotalWatchedSeconds / totalCourseDurationSeconds) * 100) : 0;
 
-      const response = await pack365Api.updateTopicProgress(token, {
-        courseId,
-        topicName,
-        watchedDuration: Math.floor(duration),
-        totalCourseDuration: totalCourseDurationSeconds,
-        totalWatchedPercentage: newTotalWatchedPercentage,
-      });
+      const response = await pack365Api.updateTopicProgress(token, courseId, topicName, Math.floor(duration), totalCourseDurationSeconds);
 
       if (response.success) {
         setTopicProgress(response.topicProgress);
