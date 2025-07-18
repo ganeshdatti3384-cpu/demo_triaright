@@ -642,6 +642,16 @@ export const collegeApi = {
     return res.data;
   },
 
+  // Get college requests (alias for getAllServiceRequests)
+  getCollegeRequests: async (
+    token: string
+  ): Promise<{ success: boolean; requests: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/colleges/admin/all`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
   // Accept service request (admin only)
   acceptServiceRequest: async (
     token: string,

@@ -48,8 +48,12 @@ export class Pack365PaymentService {
       throw new Error('Course ID is required');
     }
 
+    console.log('Creating order with courseId:', options.courseId);
+
     try {
       const response = await pack365Api.createOrder(token, options.courseId, 'payment');
+
+      console.log('Order response:', response);
 
       if (!response.success) {
         throw new Error('Failed to create order');
