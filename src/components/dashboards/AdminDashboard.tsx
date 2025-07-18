@@ -14,7 +14,7 @@ import JobManagement from '../admin/JobManagement';
 import Pack365Management from '../admin/Pack365Management';
 import PaymentAnalytics from '../admin/PaymentAnalytics';
 import Navbar from '../Navbar';
-import { collegeApi, statisticsApi } from '@/services/api';
+import { collegeApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface AdminDashboardProps {
@@ -22,30 +22,19 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
-interface Statistics {
-  totalUsers: number;
-  activeStudents: number;
-  registeredEmployers: number;
-  registeredColleges: number;
-  jobSeekers: number;
-  liveCourses: number;
-  completedPlacements: number;
-}
-
 const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [statistics, setStatistics] = useState<Statistics>({
-    totalUsers: 0,
-    activeStudents: 0,
-    registeredEmployers: 0,
-    registeredColleges: 0,
-    jobSeekers: 0,
+  const { toast } = useToast();
+
+  const platformStats = {
+    totalUsers: 15234,
+    activeStudents: 8967,
+    registeredEmployers: 456,
     liveCourses: 89,
     completedPlacements: 1234
-  });
-  const { toast } = useToast();
+  };
 
   const recentActivity = [
     { id: 1, action: 'New employer registration', entity: 'TechStart Inc', time: '2 hours ago' },
@@ -54,46 +43,10 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   ];
 
   useEffect(() => {
-    fetchStatistics();
     if (activeTab === 'college-requests' || activeTab === 'approvals') {
       fetchCollegeRequests();
     }
   }, [activeTab]);
-
-  const fetchStatistics = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      setLoading(true);
-      const [studentsRes, collegesRes, employersRes, jobseekersRes] = await Promise.all([
-        statisticsApi.getStudentCount(token),
-        statisticsApi.getCollegeCount(token),
-        statisticsApi.getEmployerCount(token),
-        statisticsApi.getJobseekerCount(token)
-      ]);
-
-      const totalUsers = studentsRes.count + collegesRes.count + employersRes.count + jobseekersRes.count;
-
-      setStatistics(prev => ({
-        ...prev,
-        totalUsers,
-        activeStudents: studentsRes.count,
-        registeredEmployers: employersRes.count,
-        registeredColleges: collegesRes.count,
-        jobSeekers: jobseekersRes.count
-      }));
-    } catch (error) {
-      console.error('Error fetching statistics:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load statistics',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchCollegeRequests = async () => {
     const token = localStorage.getItem('token');
@@ -184,66 +137,48 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Platform Overview</h2>
-              <Button onClick={fetchStatistics} disabled={loading}>
-                {loading ? 'Refreshing...' : 'Refresh Stats'}
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Users</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{statistics.totalUsers.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">All platform users</p>
+                  <div className="text-2xl font-bold">{platformStats.totalUsers.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">+12% from last month</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Students</CardTitle>
+                  <CardTitle className="text-sm font-medium">Active Students</CardTitle>
                   <GraduationCap className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{statistics.activeStudents.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">Registered students</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Job Seekers</CardTitle>
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{statistics.jobSeekers.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">Active job seekers</p>
+                  <div className="text-2xl font-bold">{platformStats.activeStudents.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">Currently enrolled</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Employers</CardTitle>
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{statistics.registeredEmployers}</div>
+                  <div className="text-2xl font-bold">{platformStats.registeredEmployers}</div>
                   <p className="text-xs text-muted-foreground">Registered companies</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Colleges</CardTitle>
+                  <CardTitle className="text-sm font-medium">Live Courses</CardTitle>
                   <BookOpen className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{statistics.registeredColleges}</div>
-                  <p className="text-xs text-muted-foreground">Partner colleges</p>
+                  <div className="text-2xl font-bold">{platformStats.liveCourses}</div>
+                  <p className="text-xs text-muted-foreground">Active programs</p>
                 </CardContent>
               </Card>
 
@@ -253,7 +188,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{statistics.completedPlacements.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">{platformStats.completedPlacements.toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">Successfully placed</p>
                 </CardContent>
               </Card>
