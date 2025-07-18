@@ -35,6 +35,7 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
   const [selectedStream, setSelectedStream] = useState<string | null>(null);
   const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
   const [formData, setFormData] = useState({
+    institutionName: '',
     contactPerson: '',
     email: '',
     phoneNumber: '',
@@ -162,14 +163,15 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
     try {
       setLoading(true);
       const response = await collegeApi.createServiceRequest(token, {
+        institutionName: formData.institutionName,
         contactPerson: formData.contactPerson,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         expectedStudents: parseInt(formData.expectedStudents),
         preferredDate: formData.preferredDate,
-        serviceCategory: formData.serviceCategory,
+        serviceCategory: [formData.serviceCategory],
         serviceDescription: formData.serviceDescription,
-        additionalRequirements: formData.additionalRequirements ? [formData.additionalRequirements] : []
+        additionalRequirements: formData.additionalRequirements
       });
 
       if (response.success) {
@@ -178,6 +180,7 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
           description: 'Service request submitted successfully',
         });
         setFormData({
+          institutionName: '',
           contactPerson: '',
           email: '',
           phoneNumber: '',
@@ -477,6 +480,16 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
               <CardContent>
                 <form onSubmit={handleSubmitRequest} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Institution Name</label>
+                      <Input 
+                        name="institutionName"
+                        value={formData.institutionName}
+                        onChange={handleInputChange}
+                        placeholder="Your institution name" 
+                        required
+                      />
+                    </div>
                     <div>
                       <label className="text-sm font-medium">Contact Person</label>
                       <Input 

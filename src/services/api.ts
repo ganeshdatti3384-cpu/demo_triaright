@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { College, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload } from '@/types/api';
@@ -541,14 +542,15 @@ export const collegeApi = {
   createServiceRequest: async (
     token: string,
     data: {
+      institutionName: string;
       contactPerson: string;
       email: string;
       phoneNumber: string;
       expectedStudents: number;
       preferredDate: string;
-      serviceCategory: string;
+      serviceCategory: string[];
       serviceDescription: string;
-      additionalRequirements?: string[];
+      additionalRequirements?: string;
     }
   ): Promise<{ success: boolean; request: any }> => {
     const res = await axios.post(`${API_BASE_URL}/colleges/service-request`, data, {
