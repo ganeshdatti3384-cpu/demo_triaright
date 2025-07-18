@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, Calendar, Building, GraduationCap, Briefcase } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, Calendar, Building, GraduationCap, Briefcase, ChevronDown, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 const UserManagement = () => {
@@ -20,37 +23,43 @@ const UserManagement = () => {
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [editUserOpen, setEditUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
+    basic: true,
+    personal: false,
+    education: false,
+    projects: false,
+    certifications: false,
+    internships: false,
+    account: false,
+  });
 
-  // Form states for creating/editing users
+  // Form states matching registration form
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    role: '',
-    phone: '',
-    address: '',
+    role: 'student',
+    profilePicture: null,
+    fullName: '',
     dateOfBirth: '',
-    // Student specific
-    collegeName: '',
-    course: '',
-    year: '',
-    branch: '',
-    // Employer specific
-    companyName: '',
-    designation: '',
-    industry: '',
-    companySize: '',
-    // College specific
-    instituteName: '',
-    instituteType: '',
-    location: '',
-    establishedYear: '',
-    // Job Seeker specific
-    experience: '',
-    skills: '',
-    expectedSalary: '',
-    currentLocation: ''
+    gender: '',
+    email: '',
+    phone: '',
+    alternatePhone: '',
+    address: '',
+    fatherName: '',
+    maritalStatus: '',
+    nationality: '',
+    languagesKnown: '',
+    hobbies: '',
+    education: [{ instituteName: '', stream: '', yearOfPassing: '' }],
+    projects: [],
+    certifications: [],
+    internships: [],
+    username: '',
+    password: '',
+    confirmPassword: '',
+    // Job seeker specific
+    jobCategory: '',
+    experience: [],
+    resume: null,
   });
 
   useEffect(() => {
@@ -64,8 +73,7 @@ const UserManagement = () => {
       const mockUsers = [
         {
           id: 1,
-          firstName: 'John',
-          lastName: 'Doe',
+          fullName: 'John Doe',
           email: 'john@example.com',
           role: 'student',
           phone: '+91-9876543210',
@@ -77,10 +85,9 @@ const UserManagement = () => {
         },
         {
           id: 2,
-          firstName: 'Jane',
-          lastName: 'Smith',
+          fullName: 'Jane Smith',
           email: 'jane@company.com',
-          role: 'employer',
+          role: 'job-seeker',
           phone: '+91-9876543211',
           status: 'active',
           createdAt: '2024-01-14',
@@ -98,12 +105,8 @@ const UserManagement = () => {
   };
 
   const validateForm = () => {
-    if (!formData.firstName.trim()) {
-      toast.error('First name is required');
-      return false;
-    }
-    if (!formData.lastName.trim()) {
-      toast.error('Last name is required');
+    if (!formData.fullName.trim()) {
+      toast.error('Full name is required');
       return false;
     }
     if (!formData.email.trim()) {
@@ -122,31 +125,53 @@ const UserManagement = () => {
       toast.error('Role is required');
       return false;
     }
+    if (!formData.dateOfBirth) {
+      toast.error('Date of birth is required');
+      return false;
+    }
+    if (!formData.gender) {
+      toast.error('Gender is required');
+      return false;
+    }
+    if (!formData.phone.trim()) {
+      toast.error('Phone number is required');
+      return false;
+    }
+    if (!formData.address.trim()) {
+      toast.error('Address is required');
+      return false;
+    }
+    if (!formData.maritalStatus) {
+      toast.error('Marital status is required');
+      return false;
+    }
+    if (!formData.nationality.trim()) {
+      toast.error('Nationality is required');
+      return false;
+    }
+    if (!formData.languagesKnown.trim()) {
+      toast.error('Languages known is required');
+      return false;
+    }
+    if (!formData.username.trim()) {
+      toast.error('Username is required');
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return false;
+    }
+
+    // Validate education
+    if (formData.education.length === 0 || !formData.education[0].instituteName.trim()) {
+      toast.error('At least one education entry is required');
+      return false;
+    }
 
     // Role-specific validation
-    if (formData.role === 'student') {
-      if (!formData.collegeName.trim()) {
-        toast.error('College name is required for students');
-        return false;
-      }
-      if (!formData.course.trim()) {
-        toast.error('Course is required for students');
-        return false;
-      }
-    }
-
-    if (formData.role === 'employer') {
-      if (!formData.companyName.trim()) {
-        toast.error('Company name is required for employers');
-        return false;
-      }
-    }
-
-    if (formData.role === 'college') {
-      if (!formData.instituteName.trim()) {
-        toast.error('Institute name is required for colleges');
-        return false;
-      }
+    if (formData.role === 'job-seeker' && !formData.jobCategory) {
+      toast.error('Job category is required for job seekers');
+      return false;
     }
 
     return true;
@@ -219,78 +244,162 @@ const UserManagement = () => {
 
   const resetForm = () => {
     setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      role: '',
-      phone: '',
-      address: '',
+      role: 'student',
+      profilePicture: null,
+      fullName: '',
       dateOfBirth: '',
-      collegeName: '',
-      course: '',
-      year: '',
-      branch: '',
-      companyName: '',
-      designation: '',
-      industry: '',
-      companySize: '',
-      instituteName: '',
-      instituteType: '',
-      location: '',
-      establishedYear: '',
-      experience: '',
-      skills: '',
-      expectedSalary: '',
-      currentLocation: ''
+      gender: '',
+      email: '',
+      phone: '',
+      alternatePhone: '',
+      address: '',
+      fatherName: '',
+      maritalStatus: '',
+      nationality: '',
+      languagesKnown: '',
+      hobbies: '',
+      education: [{ instituteName: '', stream: '', yearOfPassing: '' }],
+      projects: [],
+      certifications: [],
+      internships: [],
+      username: '',
+      password: '',
+      confirmPassword: '',
+      jobCategory: '',
+      experience: [],
+      resume: null,
     });
     setSelectedUser(null);
+    setOpenSections({
+      basic: true,
+      personal: false,
+      education: false,
+      projects: false,
+      certifications: false,
+      internships: false,
+      account: false,
+    });
   };
 
   const openEditModal = (user: any) => {
     setSelectedUser(user);
     setFormData({
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
-      email: user.email || '',
-      password: '',
-      role: user.role || '',
-      phone: user.phone || '',
-      address: user.address || '',
+      role: user.role || 'student',
+      profilePicture: user.profilePicture || null,
+      fullName: user.fullName || '',
       dateOfBirth: user.dateOfBirth || '',
-      collegeName: user.collegeName || '',
-      course: user.course || '',
-      year: user.year || '',
-      branch: user.branch || '',
-      companyName: user.companyName || '',
-      designation: user.designation || '',
-      industry: user.industry || '',
-      companySize: user.companySize || '',
-      instituteName: user.instituteName || '',
-      instituteType: user.instituteType || '',
-      location: user.location || '',
-      establishedYear: user.establishedYear || '',
-      experience: user.experience || '',
-      skills: user.skills || '',
-      expectedSalary: user.expectedSalary || '',
-      currentLocation: user.currentLocation || ''
+      gender: user.gender || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      alternatePhone: user.alternatePhone || '',
+      address: user.address || '',
+      fatherName: user.fatherName || '',
+      maritalStatus: user.maritalStatus || '',
+      nationality: user.nationality || '',
+      languagesKnown: user.languagesKnown || '',
+      hobbies: user.hobbies || '',
+      education: user.education || [{ instituteName: '', stream: '', yearOfPassing: '' }],
+      projects: user.projects || [],
+      certifications: user.certifications || [],
+      internships: user.internships || [],
+      username: user.username || '',
+      password: '',
+      confirmPassword: '',
+      jobCategory: user.jobCategory || '',
+      experience: user.experience || [],
+      resume: user.resume || null,
     });
     setEditUserOpen(true);
   };
 
+  const toggleSection = (section: string) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const addEducation = () => {
+    setFormData(prev => ({
+      ...prev,
+      education: [...prev.education, { instituteName: '', stream: '', yearOfPassing: '' }]
+    }));
+  };
+
+  const removeEducation = (index: number) => {
+    if (formData.education.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        education: prev.education.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const addProject = () => {
+    setFormData(prev => ({
+      ...prev,
+      projects: [...prev.projects, { name: '', githubLink: '', description: '' }]
+    }));
+  };
+
+  const removeProject = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      projects: prev.projects.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addCertification = () => {
+    setFormData(prev => ({
+      ...prev,
+      certifications: [...prev.certifications, { name: '', details: '' }]
+    }));
+  };
+
+  const removeCertification = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      certifications: prev.certifications.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addInternship = () => {
+    setFormData(prev => ({
+      ...prev,
+      internships: [...prev.internships, { companyName: '', role: '', responsibilities: '' }]
+    }));
+  };
+
+  const removeInternship = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      internships: prev.internships.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addExperience = () => {
+    setFormData(prev => ({
+      ...prev,
+      experience: [...prev.experience, { companyName: '', role: '', duration: '', responsibilities: '' }]
+    }));
+  };
+
+  const removeExperience = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      experience: prev.experience.filter((_, i) => i !== index)
+    }));
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = selectedRole === 'all' || user.role === selectedRole;
     return matchesSearch && matchesRole;
   });
 
   const downloadSampleExcel = () => {
-    const sampleData = `firstName,lastName,email,role,phone,address,dateOfBirth,collegeName,course,year,branch,companyName,designation,industry,companySize,instituteName,instituteType,location,establishedYear,experience,skills,expectedSalary,currentLocation
-John,Doe,john@example.com,student,+91-9876543210,123 Main St,1999-01-01,ABC University,Computer Science,3rd,CSE,,,,,,,,,,,,
-Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,,,,,TechCorp,HR Manager,Technology,100-500,,,,,,,,`;
+    const sampleData = `fullName,email,role,phone,address,dateOfBirth,gender,nationality,languagesKnown,maritalStatus,username,password
+John Doe,john@example.com,student,+91-9876543210,123 Main St,1999-01-01,male,Indian,English Hindi,single,johndoe,password123
+Jane Smith,jane@company.com,job-seeker,+91-9876543211,456 Business Ave,1985-05-15,female,Indian,English Tamil,married,janesmith,password123`;
     
     const blob = new Blob([sampleData], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -306,7 +415,6 @@ Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,
     if (!file) return;
 
     try {
-      // Mock bulk upload - replace with actual API
       console.log('Uploading file:', file.name);
       toast.success('Users uploaded successfully!');
       fetchUsers();
@@ -316,203 +424,328 @@ Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,
     }
   };
 
-  const renderRoleSpecificFields = () => {
-    switch (formData.role) {
-      case 'student':
-        return (
-          <>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="collegeName" className="text-right">College Name *</Label>
+  const renderBasicInformation = () => (
+    <Collapsible open={openSections.basic} onOpenChange={() => toggleSection('basic')}>
+      <CollapsibleTrigger asChild>
+        <Card className="cursor-pointer hover:bg-gray-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Basic Information</CardTitle>
+            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.basic ? 'rotate-180' : ''}`} />
+          </CardHeader>
+        </Card>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <CardContent className="space-y-4 pt-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="fullName">Full Name *</Label>
               <Input
-                id="collegeName"
-                value={formData.collegeName}
-                onChange={(e) => setFormData({...formData, collegeName: e.target.value})}
-                className="col-span-3"
+                id="fullName"
+                value={formData.fullName}
+                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="course" className="text-right">Course *</Label>
+            <div>
+              <Label htmlFor="dateOfBirth">Date of Birth *</Label>
               <Input
-                id="course"
-                value={formData.course}
-                onChange={(e) => setFormData({...formData, course: e.target.value})}
-                className="col-span-3"
+                id="dateOfBirth"
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="year" className="text-right">Year</Label>
-              <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select year" />
+          </div>
+
+          <div>
+            <Label>Gender *</Label>
+            <RadioGroup value={formData.gender} onValueChange={(value) => setFormData({...formData, gender: value})}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="male" id="male" />
+                <Label htmlFor="male">Male</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="female" id="female" />
+                <Label htmlFor="female">Female</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="other" id="other" />
+                <Label htmlFor="other">Other</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone *</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="alternatePhone">Alternate Phone</Label>
+            <Input
+              id="alternatePhone"
+              value={formData.alternatePhone}
+              onChange={(e) => setFormData({...formData, alternatePhone: e.target.value})}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="address">Address *</Label>
+            <Textarea
+              id="address"
+              value={formData.address}
+              onChange={(e) => setFormData({...formData, address: e.target.value})}
+              required
+            />
+          </div>
+        </CardContent>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+
+  const renderPersonalInfo = () => (
+    <Collapsible open={openSections.personal} onOpenChange={() => toggleSection('personal')}>
+      <CollapsibleTrigger asChild>
+        <Card className="cursor-pointer hover:bg-gray-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Family & Personal Info</CardTitle>
+            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.personal ? 'rotate-180' : ''}`} />
+          </CardHeader>
+        </Card>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <CardContent className="space-y-4 pt-4">
+          <div>
+            <Label htmlFor="fatherName">Father's Name</Label>
+            <Input
+              id="fatherName"
+              value={formData.fatherName}
+              onChange={(e) => setFormData({...formData, fatherName: e.target.value})}
+            />
+          </div>
+
+          <div>
+            <Label>Marital Status *</Label>
+            <RadioGroup value={formData.maritalStatus} onValueChange={(value) => setFormData({...formData, maritalStatus: value})}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="single" id="single" />
+                <Label htmlFor="single">Single</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="married" id="married" />
+                <Label htmlFor="married">Married</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="nationality">Nationality *</Label>
+              <Input
+                id="nationality"
+                value={formData.nationality}
+                onChange={(e) => setFormData({...formData, nationality: e.target.value})}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="languagesKnown">Languages Known *</Label>
+              <Input
+                id="languagesKnown"
+                value={formData.languagesKnown}
+                onChange={(e) => setFormData({...formData, languagesKnown: e.target.value})}
+                placeholder="e.g., English, Hindi, Telugu"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="hobbies">Hobbies</Label>
+            <Textarea
+              id="hobbies"
+              value={formData.hobbies}
+              onChange={(e) => setFormData({...formData, hobbies: e.target.value})}
+            />
+          </div>
+
+          {formData.role === 'job-seeker' && (
+            <div>
+              <Label htmlFor="jobCategory">Looking for Job Category *</Label>
+              <Select value={formData.jobCategory} onValueChange={(value) => setFormData({...formData, jobCategory: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select job category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1st">1st Year</SelectItem>
-                  <SelectItem value="2nd">2nd Year</SelectItem>
-                  <SelectItem value="3rd">3rd Year</SelectItem>
-                  <SelectItem value="4th">4th Year</SelectItem>
+                  <SelectItem value="IT">IT</SelectItem>
+                  <SelectItem value="Non-IT">Non-IT</SelectItem>
+                  <SelectItem value="Finance">Finance</SelectItem>
+                  <SelectItem value="Marketing">Marketing</SelectItem>
+                  <SelectItem value="HR">HR</SelectItem>
+                  <SelectItem value="Management">Management</SelectItem>
+                  <SelectItem value="Pharma">Pharma</SelectItem>
+                  <SelectItem value="Business">Business</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="branch" className="text-right">Branch</Label>
-              <Input
-                id="branch"
-                value={formData.branch}
-                onChange={(e) => setFormData({...formData, branch: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-          </>
-        );
-      
-      case 'employer':
-        return (
-          <>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="companyName" className="text-right">Company Name *</Label>
-              <Input
-                id="companyName"
-                value={formData.companyName}
-                onChange={(e) => setFormData({...formData, companyName: e.target.value})}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="designation" className="text-right">Designation</Label>
-              <Input
-                id="designation"
-                value={formData.designation}
-                onChange={(e) => setFormData({...formData, designation: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="industry" className="text-right">Industry</Label>
-              <Input
-                id="industry"
-                value={formData.industry}
-                onChange={(e) => setFormData({...formData, industry: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="companySize" className="text-right">Company Size</Label>
-              <Select value={formData.companySize} onValueChange={(value) => setFormData({...formData, companySize: value})}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1-10">1-10 employees</SelectItem>
-                  <SelectItem value="11-50">11-50 employees</SelectItem>
-                  <SelectItem value="51-200">51-200 employees</SelectItem>
-                  <SelectItem value="201-500">201-500 employees</SelectItem>
-                  <SelectItem value="500+">500+ employees</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </>
-        );
+          )}
+        </CardContent>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 
-      case 'college':
-        return (
-          <>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="instituteName" className="text-right">Institute Name *</Label>
-              <Input
-                id="instituteName"
-                value={formData.instituteName}
-                onChange={(e) => setFormData({...formData, instituteName: e.target.value})}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="instituteType" className="text-right">Institute Type</Label>
-              <Select value={formData.instituteType} onValueChange={(value) => setFormData({...formData, instituteType: value})}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="university">University</SelectItem>
-                  <SelectItem value="college">College</SelectItem>
-                  <SelectItem value="institute">Institute</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="location" className="text-right">Location</Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="establishedYear" className="text-right">Established Year</Label>
-              <Input
-                id="establishedYear"
-                type="number"
-                value={formData.establishedYear}
-                onChange={(e) => setFormData({...formData, establishedYear: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-          </>
-        );
+  const renderEducation = () => (
+    <Collapsible open={openSections.education} onOpenChange={() => toggleSection('education')}>
+      <CollapsibleTrigger asChild>
+        <Card className="cursor-pointer hover:bg-gray-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Education</CardTitle>
+            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.education ? 'rotate-180' : ''}`} />
+          </CardHeader>
+        </Card>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <CardContent className="space-y-4 pt-4">
+          {formData.education.map((edu, index) => (
+            <div key={index} className="border p-4 rounded-lg space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium">Education {index + 1}</h4>
+                {formData.education.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeEducation(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
 
-      case 'jobseeker':
-        return (
-          <>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="experience" className="text-right">Experience (years)</Label>
-              <Input
-                id="experience"
-                type="number"
-                value={formData.experience}
-                onChange={(e) => setFormData({...formData, experience: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="skills" className="text-right">Skills</Label>
-              <Textarea
-                id="skills"
-                value={formData.skills}
-                onChange={(e) => setFormData({...formData, skills: e.target.value})}
-                className="col-span-3"
-                placeholder="List your skills separated by commas"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="expectedSalary" className="text-right">Expected Salary</Label>
-              <Input
-                id="expectedSalary"
-                value={formData.expectedSalary}
-                onChange={(e) => setFormData({...formData, expectedSalary: e.target.value})}
-                className="col-span-3"
-                placeholder="e.g., 5-8 LPA"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="currentLocation" className="text-right">Current Location</Label>
-              <Input
-                id="currentLocation"
-                value={formData.currentLocation}
-                onChange={(e) => setFormData({...formData, currentLocation: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-          </>
-        );
+              <div>
+                <Label>Institute Name *</Label>
+                <Input
+                  value={edu.instituteName}
+                  onChange={(e) => {
+                    const newEducation = [...formData.education];
+                    newEducation[index].instituteName = e.target.value;
+                    setFormData({...formData, education: newEducation});
+                  }}
+                />
+              </div>
 
-      default:
-        return null;
-    }
-  };
+              <div>
+                <Label>Stream/Course *</Label>
+                <Select value={edu.stream} onValueChange={(value) => {
+                  const newEducation = [...formData.education];
+                  newEducation[index].stream = value;
+                  setFormData({...formData, education: newEducation});
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select stream" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="B.Tech">B.Tech</SelectItem>
+                    <SelectItem value="MCA">MCA</SelectItem>
+                    <SelectItem value="B.Sc">B.Sc</SelectItem>
+                    <SelectItem value="M.Sc">M.Sc</SelectItem>
+                    <SelectItem value="MBA">MBA</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Year of Passing *</Label>
+                <Input
+                  type="number"
+                  min="1950"
+                  max="2030"
+                  value={edu.yearOfPassing}
+                  onChange={(e) => {
+                    const newEducation = [...formData.education];
+                    newEducation[index].yearOfPassing = e.target.value;
+                    setFormData({...formData, education: newEducation});
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+
+          <Button type="button" variant="outline" onClick={addEducation}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Education
+          </Button>
+        </CardContent>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+
+  const renderAccountSetup = () => (
+    <Collapsible open={openSections.account} onOpenChange={() => toggleSection('account')}>
+      <CollapsibleTrigger asChild>
+        <Card className="cursor-pointer hover:bg-gray-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Account Setup</CardTitle>
+            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.account ? 'rotate-180' : ''}`} />
+          </CardHeader>
+        </Card>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <CardContent className="space-y-4 pt-4">
+          <div>
+            <Label htmlFor="username">Username *</Label>
+            <Input
+              id="username"
+              value={formData.username}
+              onChange={(e) => setFormData({...formData, username: e.target.value})}
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="password">Password *</Label>
+            <Input
+              id="password"
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="confirmPassword">Re-enter Password *</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+              required
+            />
+          </div>
+        </CardContent>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 
   return (
     <div className="space-y-6">
@@ -547,105 +780,42 @@ Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,
                 Add User
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New User</DialogTitle>
+                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Create New User
+                </DialogTitle>
                 <DialogDescription>
-                  Add a new user to the platform. Fill in the required information below.
+                  Add a new user to the platform with complete registration details.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                {/* Basic Information */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="firstName" className="text-right">First Name *</Label>
-                  <Input
-                    id="firstName"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="lastName" className="text-right">Last Name *</Label>
-                  <Input
-                    id="lastName"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="password" className="text-right">Password *</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="role" className="text-right">Role *</Label>
-                  <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="employer">Employer</SelectItem>
-                      <SelectItem value="college">College</SelectItem>
-                      <SelectItem value="jobseeker">Job Seeker</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phone" className="text-right">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="col-span-3"
-                    placeholder="+91-XXXXXXXXXX"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="address" className="text-right">Address</Label>
-                  <Textarea
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="dateOfBirth" className="text-right">Date of Birth</Label>
-                  <Input
-                    id="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
-                    className="col-span-3"
-                  />
-                </div>
+              
+              <div className="space-y-6">
+                {/* Role Selection */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Select Role</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <RadioGroup value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="student" id="student-role" />
+                        <Label htmlFor="student-role">User / Student</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="job-seeker" id="job-seeker-role" />
+                        <Label htmlFor="job-seeker-role">Job Seeker</Label>
+                      </div>
+                    </RadioGroup>
+                  </CardContent>
+                </Card>
 
-                {/* Role-specific fields */}
-                {renderRoleSpecificFields()}
+                {renderBasicInformation()}
+                {renderPersonalInfo()}
+                {renderEducation()}
+                {renderAccountSetup()}
               </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => {
                   setCreateUserOpen(false);
@@ -654,7 +824,7 @@ Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,
                   Cancel
                 </Button>
                 <Button type="button" onClick={handleCreateUser} disabled={loading}>
-                  {loading ? 'Creating...' : 'Create User'}
+                  {loading ? 'Creating...' : `Register as ${formData.role === 'student' ? 'Student' : 'Job Seeker'}`}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -684,9 +854,7 @@ Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="student">Students</SelectItem>
-                <SelectItem value="employer">Employers</SelectItem>
-                <SelectItem value="college">Colleges</SelectItem>
-                <SelectItem value="jobseeker">Job Seekers</SelectItem>
+                <SelectItem value="job-seeker">Job Seekers</SelectItem>
                 <SelectItem value="admin">Admins</SelectItem>
               </SelectContent>
             </Select>
@@ -720,12 +888,11 @@ Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                       {user.role === 'student' && <GraduationCap className="h-5 w-5 text-blue-600" />}
-                      {user.role === 'employer' && <Briefcase className="h-5 w-5 text-blue-600" />}
-                      {user.role === 'college' && <Building className="h-5 w-5 text-blue-600" />}
-                      {(user.role === 'jobseeker' || user.role === 'admin') && <Users className="h-5 w-5 text-blue-600" />}
+                      {user.role === 'job-seeker' && <Briefcase className="h-5 w-5 text-blue-600" />}
+                      {user.role === 'admin' && <Users className="h-5 w-5 text-blue-600" />}
                     </div>
                     <div>
-                      <p className="font-medium">{user.firstName} {user.lastName}</p>
+                      <p className="font-medium">{user.fullName}</p>
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <span className="flex items-center">
                           <Mail className="h-3 w-3 mr-1" />
@@ -740,12 +907,6 @@ Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,
                           {user.createdAt}
                         </span>
                       </div>
-                      {user.role === 'student' && user.collegeName && (
-                        <p className="text-xs text-gray-500 mt-1">{user.collegeName} - {user.course}</p>
-                      )}
-                      {user.role === 'employer' && user.companyName && (
-                        <p className="text-xs text-gray-500 mt-1">{user.companyName} - {user.designation}</p>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -771,75 +932,21 @@ Jane,Smith,jane@company.com,employer,+91-9876543211,456 Business Ave,1985-05-15,
 
       {/* Edit User Dialog */}
       <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
               Update user information below.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {/* Same form fields as create, but populated with existing data */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-firstName" className="text-right">First Name *</Label>
-              <Input
-                id="edit-firstName"
-                value={formData.firstName}
-                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-lastName" className="text-right">Last Name *</Label>
-              <Input
-                id="edit-lastName"
-                value={formData.lastName}
-                onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-email" className="text-right">Email *</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-role" className="text-right">Role *</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student">Student</SelectItem>
-                  <SelectItem value="employer">Employer</SelectItem>
-                  <SelectItem value="college">College</SelectItem>
-                  <SelectItem value="jobseeker">Job Seeker</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-phone" className="text-right">Phone</Label>
-              <Input
-                id="edit-phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                className="col-span-3"
-                placeholder="+91-XXXXXXXXXX"
-              />
-            </div>
-
-            {/* Role-specific fields for editing */}
-            {renderRoleSpecificFields()}
+          
+          <div className="space-y-6">
+            {renderBasicInformation()}
+            {renderPersonalInfo()}
+            {renderEducation()}
+            {renderAccountSetup()}
           </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => {
               setEditUserOpen(false);
