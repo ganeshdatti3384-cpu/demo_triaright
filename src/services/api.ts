@@ -4,6 +4,32 @@ import { College, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, Job
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 
+// Add request interceptor for better error handling
+axios.interceptors.request.use(
+  (config) => {
+    console.log(`Making API request to: ${config.baseURL || ''}${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('Request error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for better error handling
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data
+    });
+    return Promise.reject(error);
+  }
+);
 
 const toFormData = (data: Record<string, any>): FormData => {
   const formData = new FormData();
@@ -41,14 +67,14 @@ export const authApi = {
     });
     return res.data;
   },
-    changePasswordWithEmail : async (payload: {
+
+  changePasswordWithEmail : async (payload: {
     email: string;
     newPassword: string;
   }): Promise<{ message: string }> => {
     const res = await axios.put(`${API_BASE_URL}/users/forgot-password`, payload);
     return res.data;
   },
-
 
   bulkRegisterFromExcel: async (
     file: File,
@@ -66,7 +92,6 @@ export const authApi = {
     return res.data;
   },
 };
-
 
 export const profileApi = {
   // ✅ College
@@ -152,8 +177,27 @@ export const profileApi = {
     });
     return res.data;
   },
-};
 
+  // Generic methods for compatibility
+  getProfile: async (token: string): Promise<any> => {
+    // This is a generic method that components might expect
+    const res = await axios.get(`${API_BASE_URL}/users/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  updateProfile: async (token: string, profileData: any): Promise<any> => {
+    // This is a generic method that components might expect
+    const res = await axios.put(`${API_BASE_URL}/users/profile`, toFormData(profileData), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+};
 
 export const pack365Api = {
   // Get all Pack365 courses
@@ -252,7 +296,6 @@ export const pack365Api = {
     });
     return res.data;
   },
-
 
   // Validate enrollment code
   validateEnrollmentCode: async (
@@ -354,8 +397,8 @@ export const pack365Api = {
     courseId: string;
     topicName: string;
     watchedDuration: number;
-    totalCourseDuration?: number;          // Optional but sent if available
-    totalWatchedPercentage?: number;       // Optional but sent if available
+    totalCourseDuration?: number;
+    totalWatchedPercentage?: number;
   }
 ): Promise<{
   success: boolean;

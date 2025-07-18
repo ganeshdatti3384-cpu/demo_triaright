@@ -43,21 +43,20 @@ export class Pack365PaymentService {
       throw new Error('Authentication required');
     }
 
+    if (!options.courseId) {
+      throw new Error('Course ID is required');
+    }
+
     try {
-      const response = await pack365Api.createPaymentOrder(token, {
-        stream: options.streamName,
-        courseId: options.courseId,
-        fromStream: options.fromStream,
-        fromCourse: options.fromCourse
-      });
+      const response = await pack365Api.createOrder(token, options.courseId, 'payment');
 
       if (!response.success) {
         throw new Error(response.message || 'Failed to create order');
       }
 
       return {
-        orderId: response.orderId,
-        key: response.key
+        orderId: response.order.id,
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_PGrSvKSsu8PlqK'
       };
     } catch (error) {
       console.error('Error creating order:', error);
