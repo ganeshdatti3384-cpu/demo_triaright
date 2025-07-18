@@ -101,7 +101,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
       }
       return;
     }
-    navigate(`/${userRole === 'student' || userRole === 'job-seeker' ? userRole : 'student'}?tab=pack365`);
+    navigate(`/${userRole === 'student' || userRole === 'job-seeker' ? userRole : 'student'}/${courseName}`);
   };
 
   const handleStreamClick = (streamName: string) => {
@@ -115,7 +115,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
       }
       return;
     }
-    navigate(`/${userRole === 'student' || userRole === 'job-seeker' ? userRole : 'student'}?tab=pack365`);
+    navigate(`/${userRole === 'student' || userRole === 'job-seeker' ? userRole : 'student'}/pack365/${streamName}`);
   };
 
   if (loading) {

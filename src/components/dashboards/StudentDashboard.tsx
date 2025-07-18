@@ -496,7 +496,7 @@ const StudentDashboard = () => {
                     </TabsList>
 
                     <TabsContent value="browse">
-                      <Pack365Dashboard />
+                      <Pack365Courses />
                     </TabsContent>
 
                     <TabsContent value="enrollments">
