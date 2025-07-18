@@ -52,7 +52,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
     try {
       setLoading(true);
-      const response = await collegeApi.getAllServiceRequests(token);
+      const response = await collegeApi.getMyServiceRequests(token);
       if (response.success) {
         setCollegeRequests(response.requests);
       }
