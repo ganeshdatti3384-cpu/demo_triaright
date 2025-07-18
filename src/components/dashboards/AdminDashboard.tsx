@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,12 +34,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     completedPlacements: 1234
   };
 
-  const pendingApprovals = [
-    { id: 1, type: 'Employer', name: 'TechCorp Solutions', requestDate: '2024-01-15', status: 'pending' },
-    { id: 2, type: 'College', name: 'ABC Engineering College', requestDate: '2024-01-14', status: 'pending' },
-    { id: 3, type: 'Course', name: 'Advanced React Development', requestDate: '2024-01-13', status: 'pending' },
-  ];
-
   const recentActivity = [
     { id: 1, action: 'New employer registration', entity: 'TechStart Inc', time: '2 hours ago' },
     { id: 2, action: 'Course completion', entity: 'React Fundamentals', time: '4 hours ago' },
@@ -46,7 +41,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   ];
 
   useEffect(() => {
-    if (activeTab === 'college-requests') {
+    if (activeTab === 'college-requests' || activeTab === 'approvals') {
       fetchCollegeRequests();
     }
   }, [activeTab]);
@@ -118,6 +113,8 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       });
     }
   };
+
+  const pendingRequests = collegeRequests.filter(request => request.status === 'Pending');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -198,23 +195,26 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             <Card>
               <CardHeader>
                 <CardTitle>Pending Approvals</CardTitle>
-                <CardDescription>Items requiring admin approval</CardDescription>
+                <CardDescription>College service requests requiring admin approval</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {pendingApprovals.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  {pendingRequests.slice(0, 3).map((request) => (
+                    <div key={request._id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-gray-500">{item.type} - Requested on {item.requestDate}</p>
+                        <p className="font-medium">{request.institutionName}</p>
+                        <p className="text-sm text-gray-500">College Service Request - {request.serviceCategory?.join(', ') || 'General'}</p>
+                        <p className="text-xs text-gray-400">Requested on {new Date(request.createdAt).toLocaleDateString()}</p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Badge variant="outline">Pending</Badge>
-                        <Button variant="outline" size="sm">Review</Button>
-                        <Button size="sm">Approve</Button>
+                        <Button variant="outline" size="sm" onClick={() => setActiveTab('approvals')}>Review</Button>
                       </div>
                     </div>
                   ))}
+                  {pendingRequests.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">No pending approvals</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -347,28 +347,84 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           <TabsContent value="approvals" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Approval Management</h2>
-              <Badge variant="outline">{pendingApprovals.length} Pending</Badge>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline">{pendingRequests.length} Pending Approvals</Badge>
+                <Button onClick={fetchCollegeRequests} disabled={loading}>
+                  {loading ? 'Loading...' : 'Refresh'}
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-4">
-              {pendingApprovals.map((item) => (
-                <Card key={item.id}>
+              {collegeRequests.map((request) => (
+                <Card key={request._id}>
                   <CardContent className="pt-6">
                     <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold text-lg">{item.name}</h3>
-                        <p className="text-gray-600">Type: {item.type}</p>
-                        <p className="text-sm text-gray-500">Requested on: {item.requestDate}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Building2 className="h-5 w-5 text-blue-600" />
+                          <h3 className="font-semibold text-lg">{request.institutionName}</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div>
+                            <p><span className="font-medium">Contact:</span> {request.contactPerson}</p>
+                            <p><span className="font-medium">Email:</span> {request.email}</p>
+                            <p><span className="font-medium">Phone:</span> {request.phoneNumber}</p>
+                          </div>
+                          <div>
+                            <p><span className="font-medium">Expected Students:</span> {request.expectedStudents}</p>
+                            <p><span className="font-medium">Preferred Date:</span> {request.preferredDate}</p>
+                            <p><span className="font-medium">Type:</span> {request.serviceCategory?.join(', ') || 'College Service Request'}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-sm"><span className="font-medium">Description:</span> {request.serviceDescription}</p>
+                          {request.additionalRequirements && (
+                            <p className="text-sm"><span className="font-medium">Additional Requirements:</span> {request.additionalRequirements}</p>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">
+                          Requested on: {new Date(request.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm">View Details</Button>
-                        <Button variant="destructive" size="sm">Reject</Button>
-                        <Button size="sm">Approve</Button>
+                      <div className="flex flex-col items-end space-y-2">
+                        <Badge
+                          variant={
+                            request.status === 'Accepted' ? 'default' :
+                            request.status === 'Rejected' ? 'destructive' : 'outline'
+                          }
+                        >
+                          {request.status}
+                        </Badge>
+                        {request.status === 'Pending' && (
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleRejectRequest(request._id)}
+                            >
+                              Reject
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => handleAcceptRequest(request._id)}
+                            >
+                              Accept
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
+              {collegeRequests.length === 0 && !loading && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-center text-gray-500">No requests found</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
 
