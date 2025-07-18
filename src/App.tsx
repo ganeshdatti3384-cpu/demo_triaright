@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -156,7 +155,7 @@ const App = () => {
             path="/college"
             element={
               <ProtectedRoute allowedRoles={['college']}>
-                <CollegeDashboard />
+                <CollegeDashboard user={getCurrentUser() || { name: 'College', role: 'college' }} onLogout={handleLogout} />
               </ProtectedRoute>
             }
           />
