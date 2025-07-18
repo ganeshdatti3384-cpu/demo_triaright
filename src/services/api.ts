@@ -1,8 +1,9 @@
+
 import axios from 'axios';
 
 const API_BASE_URL = 'https://triaright.com/api';
 
-const api = axios.createInstance({
+const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
@@ -89,6 +90,26 @@ export const authApi = {
     }
   },
 
+  updatePassword: async (passwords: any) => {
+    try {
+      const response = await api.post('/auth/change-password', passwords);
+      return response.data;
+    } catch (error) {
+      console.error('Updating password failed', error);
+      throw error;
+    }
+  },
+
+  changePasswordWithEmail: async (data: any) => {
+    try {
+      const response = await api.post('/auth/change-password-with-email', data);
+      return response.data;
+    } catch (error) {
+      console.error('Change password with email failed', error);
+      throw error;
+    }
+  },
+
   updateProfile: async (token: string, profileData: any) => {
     try {
       const response = await api.put('/auth/update-profile', profileData, {
@@ -109,6 +130,33 @@ export const authApi = {
       return response.data;
     } catch (error) {
       console.error('Fetching user profile failed:', error);
+      throw error;
+    }
+  }
+};
+
+// Profile API
+export const profileApi = {
+  getProfile: async (token: string) => {
+    try {
+      const response = await api.get('/auth/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Fetching profile failed:', error);
+      throw error;
+    }
+  },
+
+  updateProfile: async (token: string, profileData: any) => {
+    try {
+      const response = await api.put('/auth/update-profile', profileData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Updating profile failed:', error);
       throw error;
     }
   }
@@ -243,6 +291,129 @@ export const pack365Api = {
     }
   },
 
+  getMyEnrollments: async (token: string) => {
+    try {
+      const response = await api.get('/pack365/my-enrollments', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching enrollments:', error);
+      throw error;
+    }
+  },
+
+  updateTopicProgress: async (token: string, courseId: string, topicId: string, watchedDuration: number) => {
+    try {
+      const response = await api.post(`/pack365/update-progress/${courseId}/${topicId}`, 
+        { watchedDuration }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error updating topic progress:', error);
+      throw error;
+    }
+  },
+
+  createCourse: async (token: string, courseData: any) => {
+    try {
+      const response = await api.post('/pack365/create-course', courseData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating course:', error);
+      throw error;
+    }
+  },
+
+  updateCourse: async (token: string, courseId: string, courseData: any) => {
+    try {
+      const response = await api.put(`/pack365/update-course/${courseId}`, courseData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating course:', error);
+      throw error;
+    }
+  },
+
+  deleteCourse: async (token: string, courseId: string) => {
+    try {
+      const response = await api.delete(`/pack365/delete-course/${courseId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      throw error;
+    }
+  },
+
+  enrollWithCode: async (token: string, code: string, courseId: string) => {
+    try {
+      const response = await api.post('/pack365/enroll-with-code', 
+        { code, courseId }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error enrolling with code:', error);
+      throw error;
+    }
+  },
+
+  getExamDetails: async (token: string, examId: string) => {
+    try {
+      const response = await api.get(`/pack365/exam/${examId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching exam details:', error);
+      throw error;
+    }
+  },
+
+  getExamQuestions: async (token: string, examId: string) => {
+    try {
+      const response = await api.get(`/pack365/exam/${examId}/questions`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching exam questions:', error);
+      throw error;
+    }
+  },
+
+  submitExam: async (token: string, examId: string, answers: any) => {
+    try {
+      const response = await api.post(`/pack365/submit-exam/${examId}`, 
+        { answers }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+      throw error;
+    }
+  },
+
+  getAvailableExamsForUser: async (token: string) => {
+    try {
+      const response = await api.get('/pack365/available-exams', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching available exams:', error);
+      throw error;
+    }
+  },
+
   getAllCoupons: async (token: string) => {
     try {
       const response = await api.get('/pack365/coupons/get-all', {
@@ -293,7 +464,20 @@ export const pack365Api = {
     }
   },
 
-  // New Pack365 Payment endpoints
+  // Enhanced Pack365 Payment endpoints
+  createOrder: async (token: string, courseId: string, enrollmentType: string) => {
+    try {
+      const response = await api.post('/pack365/packenroll365/create-order', 
+        { courseId, enrollmentType }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error;
+    }
+  },
+
   createPaymentOrder: async (token: string, orderData: {
     stream: string;
     courseId?: string;
@@ -485,3 +669,6 @@ export const jobsApi = {
     }
   }
 };
+
+// Export types from api.ts
+export type { Pack365Course, EnhancedPack365Enrollment, RegisterPayload } from '@/types/api';
