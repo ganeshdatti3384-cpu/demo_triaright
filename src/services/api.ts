@@ -90,9 +90,11 @@ export const authApi = {
     }
   },
 
-  updatePassword: async (passwords: any) => {
+  updatePassword: async (passwords: any, token: string) => {
     try {
-      const response = await api.post('/auth/change-password', passwords);
+      const response = await api.post('/auth/change-password', passwords, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       return response.data;
     } catch (error) {
       console.error('Updating password failed', error);
@@ -100,9 +102,11 @@ export const authApi = {
     }
   },
 
-  changePasswordWithEmail: async (data: any) => {
+  changePasswordWithEmail: async (data: any, token: string) => {
     try {
-      const response = await api.post('/auth/change-password-with-email', data);
+      const response = await api.post('/auth/change-password-with-email', data, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       return response.data;
     } catch (error) {
       console.error('Change password with email failed', error);
@@ -159,6 +163,103 @@ export const profileApi = {
       console.error('Updating profile failed:', error);
       throw error;
     }
+  },
+
+  // Role-specific profile methods
+  getStudentProfile: async (token: string) => {
+    try {
+      const response = await api.get('/students/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Fetching student profile failed:', error);
+      throw error;
+    }
+  },
+
+  updateStudentProfile: async (token: string, profileData: any) => {
+    try {
+      const response = await api.put('/students/update-profile', profileData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Updating student profile failed:', error);
+      throw error;
+    }
+  },
+
+  getJobSeekerProfile: async (token: string) => {
+    try {
+      const response = await api.get('/jobseekers/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Fetching jobseeker profile failed:', error);
+      throw error;
+    }
+  },
+
+  updateJobSeekerProfile: async (token: string, profileData: any) => {
+    try {
+      const response = await api.put('/jobseekers/update-profile', profileData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Updating jobseeker profile failed:', error);
+      throw error;
+    }
+  },
+
+  getEmployerProfile: async (token: string) => {
+    try {
+      const response = await api.get('/employers/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Fetching employer profile failed:', error);
+      throw error;
+    }
+  },
+
+  updateEmployerProfile: async (token: string, profileData: any) => {
+    try {
+      const response = await api.put('/employers/update-profile', profileData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Updating employer profile failed:', error);
+      throw error;
+    }
+  },
+
+  getCollegeProfile: async (token: string) => {
+    try {
+      const response = await api.get('/colleges/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Fetching college profile failed:', error);
+      throw error;
+    }
+  },
+
+  updateCollegeProfile: async (token: string, profileData: any) => {
+    try {
+      const response = await api.put('/colleges/update-profile', profileData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Updating college profile failed:', error);
+      throw error;
+    }
   }
 };
 
@@ -208,11 +309,9 @@ export const courseApi = {
     }
   },
 
-  getCourseContent: async (courseId: string, token: string) => {
+  getCourseContent: async (courseId: string) => {
     try {
-      const response = await api.get(`/courses/content/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get(`/courses/content/${courseId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching course content:', error);
@@ -281,9 +380,11 @@ export const pack365Api = {
     }
   },
 
-  getCourseById: async (courseId: string) => {
+  getCourseById: async (courseId: string, token: string) => {
     try {
-      const response = await api.get(`/pack365/course/${courseId}`);
+      const response = await api.get(`/pack365/course/${courseId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       return response.data;
     } catch (error) {
       console.error('Error loading course:', error);
