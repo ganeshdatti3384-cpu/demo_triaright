@@ -40,6 +40,7 @@ import CourseLearning from '@/pages/CourseLearning';
 import ExamList from '@/pages/ExamList';
 import ExamInterface from '@/pages/ExamInterface';
 import NotFound from '@/pages/NotFound';
+import CouponCode from './pages/CouponCode';
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,8 @@ const App = () => {
           <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/paymentgateway" element={<Pack365Payment />} />
+          <Route path="/Coupon-code" element={<CouponCode />} />
           
           {/* Protected Routes */}
           <Route
