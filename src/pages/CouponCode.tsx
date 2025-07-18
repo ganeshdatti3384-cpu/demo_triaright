@@ -20,60 +20,68 @@ const CouponCode = () => {
   const { user,token } = useAuth();
   const navigate = useNavigate()
 
-    const location = useLocation();
-  const courseId = location.state?.courseId; // ✅ Now you can access course.courseId safely
+  const location = useLocation();
+  const { courseId, courseName, streamName, fromStream, fromCourse } = location.state || {};
 
   const validateCoupon = async () => {
-  if (!couponCode.trim()) {
-    toast({
-      title: 'Error',
-      description: 'Please enter a coupon code',
-      variant: 'destructive',
-    });
-    return;
-  }
-
-  if (!courseId) {
-    toast({
-      title: 'Error',
-      description: 'Course ID missing',
-      variant: 'destructive',
-    });
-    return;
-  }
-
-  setIsValidating(true);
-
-  try {
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
-    const response = await pack365Api.enrollWithCode(token, {
-      code: couponCode,
-      courseId: courseId
-    });
-
-    if (response?.success && response?.courseDetails) {
-      setAppliedCoupon(response.courseDetails);
-
+    if (!couponCode.trim()) {
       toast({
-        title: 'Successfully Enrolled!',
-        description: `You are now enrolled in the course: "${response.courseDetails.courseName}"`,
+        title: 'Error',
+        description: 'Please enter a coupon code',
+        variant: 'destructive',
       });
-    } else {
-      throw new Error(response?.message || 'Invalid coupon code');
+      return;
     }
-  } catch (error) {
-    toast({
-      title: 'Invalid Coupon',
-      description: 'The coupon code you entered is not valid or has expired.',
-      variant: 'destructive',
-    });
-  } finally {
-    setIsValidating(false);
-  }
-};
+
+    setIsValidating(true);
+
+    try {
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const response = await pack365Api.enrollWithCode(token, {
+        code: couponCode,
+        courseId: courseId || courseName || streamName
+      });
+
+      if (response?.success) {
+        if (fromStream && streamName) {
+          setAppliedCoupon({ 
+            courseName: `${streamName} Bundle`, 
+            description: 'Stream access granted' 
+          });
+
+          toast({
+            title: 'Successfully Enrolled!',
+            description: `You now have access to all ${streamName} courses`,
+          });
+          
+          // Navigate back to pack365 with success state to show courses
+          setTimeout(() => {
+            navigate(`/${user.role}?tab=pack365&stream=${streamName}&enrolled=true`);
+          }, 2000);
+        } else if (fromCourse && response?.courseDetails) {
+          setAppliedCoupon(response.courseDetails);
+
+          toast({
+            title: 'Successfully Enrolled!',
+            description: `You are now enrolled in the course: "${response.courseDetails.courseName}"`,
+          });
+        }
+      } else {
+        throw new Error(response?.message || 'Invalid coupon code');
+      }
+    } catch (error) {
+      toast({
+        title: 'Invalid Coupon',
+        description: 'The coupon code you entered is not valid or has expired.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
 
   const removeCoupon = () => {

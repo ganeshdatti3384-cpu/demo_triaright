@@ -1,4 +1,3 @@
-
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Clock, BookOpen, ArrowRight, Lock, AlertCircle } from 'lucide-react';
+import { Clock, BookOpen, ArrowRight, Lock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import Slider from 'react-slick';
@@ -32,6 +31,9 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [hoveredStream, setHoveredStream] = useState<string | null>(null);
+  const [selectedStream, setSelectedStream] = useState<string | null>(null);
+  const [showEnrollment, setShowEnrollment] = useState(false);
+  const [showCourses, setShowCourses] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -45,6 +47,20 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
 
   useEffect(() => {
     loadCoursesAndEnrollments();
+    
+    // Check URL params for post-coupon flow
+    const urlParams = new URLSearchParams(window.location.search);
+    const streamParam = urlParams.get('stream');
+    const enrolledParam = urlParams.get('enrolled');
+    
+    if (streamParam && enrolledParam === 'true') {
+      setSelectedStream(streamParam);
+      setShowCourses(true);
+      setShowEnrollment(false);
+      
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const loadCoursesAndEnrollments = async () => {
@@ -91,22 +107,11 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   };
 
   const handleCourseClick = (courseName: string) => {
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    if (showLoginRequired || !token) {
-      if (onLoginRequired) onLoginRequired();
-      else {
-        toast({ title: 'Login Required', description: 'Please login to access courses.', variant: 'destructive' });
-        navigate('/login');
-      }
-      return;
-    }
-    navigate(`/${userRole === 'student' || userRole === 'job-seeker' ? userRole : 'student'}/${courseName}`);
+    navigate('/coupon-code', { state: { courseName, fromCourse: true } });
   };
 
   const handleStreamClick = (streamName: string) => {
     const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
     if (showLoginRequired || !token) {
       if (onLoginRequired) onLoginRequired();
       else {
@@ -115,7 +120,28 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
       }
       return;
     }
-    navigate(`/${userRole === 'student' || userRole === 'job-seeker' ? userRole : 'student'}/pack365/${streamName}`);
+    setSelectedStream(streamName);
+    setShowEnrollment(true);
+  };
+
+  const handleEnrollNow = () => {
+    navigate('/coupon-code', { state: { streamName: selectedStream, fromStream: true } });
+  };
+
+  const handleBackToBundles = () => {
+    setSelectedStream(null);
+    setShowEnrollment(false);
+    setShowCourses(false);
+  };
+
+  const handleBackFromCourses = () => {
+    setShowCourses(false);
+    setShowEnrollment(true);
+  };
+
+  const getFilteredCourses = () => {
+    if (!selectedStream) return [];
+    return courses.filter(course => course.stream.toLowerCase() === selectedStream.toLowerCase());
   };
 
   if (loading) {
@@ -142,6 +168,136 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     );
   }
 
+  // Show enrollment view after clicking explore more
+  if (showEnrollment && selectedStream) {
+    const streamData = streamConfig[selectedStream];
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Button 
+            onClick={handleBackToBundles}
+            variant="outline"
+            className="mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Bundles
+          </Button>
+          
+          <Card className="overflow-hidden shadow-2xl bg-white/80 backdrop-blur-sm">
+            <div className="relative h-64">
+              <img 
+                src={streamData.image} 
+                alt={streamData.displayName}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute bottom-6 left-6 text-white">
+                <h1 className="text-3xl font-bold mb-2">{streamData.displayName}</h1>
+                <Badge className="bg-blue-600 text-white">Pack 365</Badge>
+              </div>
+            </div>
+            
+            <CardContent className="p-8">
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <h3 className="text-xl font-semibold mb-4">What's Included</h3>
+                  <ul className="space-y-3">
+                    <li className="flex items-center">
+                      <BookOpen className="h-5 w-5 text-blue-500 mr-3" />
+                      <span>All {selectedStream} courses</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Clock className="h-5 w-5 text-purple-500 mr-3" />
+                      <span>365 days access</span>
+                    </li>
+                    <li className="flex items-center">
+                      <ArrowRight className="h-5 w-5 text-green-500 mr-3" />
+                      <span>Lifetime updates</span>
+                    </li>
+                    <li className="flex items-center">
+                      <ArrowRight className="h-5 w-5 text-orange-500 mr-3" />
+                      <span>Certificate of completion</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="text-center">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Special Price</h3>
+                    <div className="text-4xl font-bold text-blue-600 mb-4">$365</div>
+                    <p className="text-gray-600 mb-6">One-time payment for full access</p>
+                    
+                    <Button 
+                      onClick={handleEnrollNow}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
+                    >
+                      Enroll Now
+                      <ArrowRight className="h-5 w-5 ml-2" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show courses after coupon success (this would be triggered from a success callback)
+  if (showCourses && selectedStream) {
+    const filteredCourses = getFilteredCourses();
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Button 
+            onClick={handleBackFromCourses}
+            variant="outline"
+            className="mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Enrollment
+          </Button>
+          
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {streamConfig[selectedStream].displayName} Courses
+            </h1>
+            <p className="text-gray-600">Access all courses in this stream</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCourses.map((course, index) => (
+              <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="text-lg">{course.courseName}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>Stream: {course.stream}</span>
+                      <Badge variant="secondary">All Levels</Badge>
+                    </div>
+                    
+                    <Button 
+                      onClick={() => handleCourseClick(course.courseName)}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      Enroll in Course
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default bundle view
   const sliderSettings = {
     dots: true,
     infinite: true,
@@ -186,13 +342,13 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
           .slick-prev:before,
           .slick-next:before {
             font-size: 24px;
-            color: #bfdbfe; /* Tailwind blue-200 */
+            color: #bfdbfe;
             opacity: 1;
           }
 
           .slick-prev:hover:before,
           .slick-next:hover:before {
-            color: #3b82f6; /* Tailwind blue-500 for hover */
+            color: #3b82f6;
           }
           .stream-card {
             height: 420px;
@@ -269,21 +425,20 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                       <div className="course-list bg-white/10 backdrop-blur-sm rounded-lg p-3">
                         {stream.courses.length > 0 ? (
                           <ul className="space-y-1">
-                            {stream.courses.map((course, index) => (
+                            {stream.courses.slice(0, 4).map((course, index) => (
                               <li key={index}>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCourseClick(course.courseName);
-                                  }}
-                                  className="course-item text-left w-full text-sm text-white/90 hover:text-white 
-                                    flex items-center justify-between group/course bg-white/5 rounded px-2 py-1"
-                                >
+                                <div className="course-item text-left w-full text-sm text-white/90 
+                                  flex items-center justify-between bg-white/5 rounded px-2 py-1">
                                   <span className="truncate pr-2">{course.courseName}</span>
-                                  <ArrowRight className="h-3 w-3 opacity-0 group-hover/course:opacity-100 transition-all duration-300 flex-shrink-0" />
-                                </button>
+                                  <ArrowRight className="h-3 w-3 flex-shrink-0" />
+                                </div>
                               </li>
                             ))}
+                            {stream.courses.length > 4 && (
+                              <li className="text-center text-xs text-white/70 pt-1">
+                                +{stream.courses.length - 4} more courses
+                              </li>
+                            )}
                           </ul>
                         ) : (
                           <p className="text-sm text-white/70 italic text-center py-2">
@@ -342,7 +497,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                         </>
                       ) : (
                         <>
-                          Explore Stream - $365
+                          Explore More
                           <ArrowRight className="h-4 w-4 ml-2" />
                         </>
                       )}
