@@ -122,9 +122,9 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px- py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
@@ -132,7 +132,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="college-requests">College Requests</TabsTrigger>
-            <TabsTrigger value="approvals">Approvals</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
@@ -340,90 +339,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                 <Card>
                   <CardContent className="pt-6">
                     <p className="text-center text-gray-500">No college service requests found</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="approvals" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Approval Management</h2>
-              <div className="flex items-center space-x-2">
-                <Badge variant="outline">{pendingRequests.length} Pending Approvals</Badge>
-                <Button onClick={fetchCollegeRequests} disabled={loading}>
-                  {loading ? 'Loading...' : 'Refresh'}
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {collegeRequests.map((request) => (
-                <Card key={request._id}>
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Building2 className="h-5 w-5 text-blue-600" />
-                          <h3 className="font-semibold text-lg">{request.institutionName}</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                          <div>
-                            <p><span className="font-medium">Contact:</span> {request.contactPerson}</p>
-                            <p><span className="font-medium">Email:</span> {request.email}</p>
-                            <p><span className="font-medium">Phone:</span> {request.phoneNumber}</p>
-                          </div>
-                          <div>
-                            <p><span className="font-medium">Expected Students:</span> {request.expectedStudents}</p>
-                            <p><span className="font-medium">Preferred Date:</span> {request.preferredDate}</p>
-                            <p><span className="font-medium">Type:</span> {request.serviceCategory?.join(', ') || 'College Service Request'}</p>
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <p className="text-sm"><span className="font-medium">Description:</span> {request.serviceDescription}</p>
-                          {request.additionalRequirements && (
-                            <p className="text-sm"><span className="font-medium">Additional Requirements:</span> {request.additionalRequirements}</p>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-2">
-                          Requested on: {new Date(request.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end space-y-2">
-                        <Badge
-                          variant={
-                            request.status === 'Accepted' ? 'default' :
-                            request.status === 'Rejected' ? 'destructive' : 'outline'
-                          }
-                        >
-                          {request.status}
-                        </Badge>
-                        {request.status === 'Pending' && (
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="destructive" 
-                              size="sm"
-                              onClick={() => handleRejectRequest(request._id)}
-                            >
-                              Reject
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => handleAcceptRequest(request._id)}
-                            >
-                              Accept
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {collegeRequests.length === 0 && !loading && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-center text-gray-500">No requests found</p>
                   </CardContent>
                 </Card>
               )}
