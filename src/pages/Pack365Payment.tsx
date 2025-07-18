@@ -110,7 +110,7 @@ const Pack365Payment = () => {
       }
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_your_key_id',
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_PGrSvKSsu8PlqK',
         amount: orderResponse.order.amount,
         currency: orderResponse.order.currency,
         name: 'Pack365 Course',
