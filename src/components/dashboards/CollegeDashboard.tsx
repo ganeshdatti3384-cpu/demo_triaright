@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { GraduationCap, Users, BookOpen, LogOut, Send, User, Building, MapPin, P
 import { collegeApi, profileApi, pack365Api } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { College, Pack365Course } from '@/types/api';
+import Navbar from '../Navbar';
 
 interface CollegeDashboardProps {
   user: { role: string; name: string };
@@ -34,6 +36,7 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [selectedStream, setSelectedStream] = useState<string | null>(null);
   const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
+;
   const [formData, setFormData] = useState({
     institutionName: '',
     contactPerson: '',
@@ -234,34 +237,13 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
   };
 
   return (
+    <><Navbar />
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <img 
-                src="/lovable-uploads/93e33449-ffbe-4c83-9fcf-6012873a863c.png" 
-                alt="TriaRight" 
-                className="h-8 w-auto"
-              />
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Welcome</span>
-              <Button variant="outline" size="sm" onClick={onLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="courses">Courses</TabsTrigger>
+            <TabsTrigger value="courses">Pack 365</TabsTrigger>
             <TabsTrigger value="requests">My Requests</TabsTrigger>
             <TabsTrigger value="custom">Custom Request</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
@@ -328,10 +310,8 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
                         <p className="text-sm text-gray-500">{request.expectedStudents} students</p>
                       </div>
                       <Badge
-                        variant={
-                          request.status === 'Accepted' ? 'default' :
-                          request.status === 'Rejected' ? 'destructive' : 'outline'
-                        }
+                        variant={request.status === 'Accepted' ? 'default' :
+                          request.status === 'Rejected' ? 'destructive' : 'outline'}
                       >
                         {request.status}
                       </Badge>
@@ -349,20 +329,19 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
             {!selectedStream ? (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Course Streams</h2>
-                  <p className="text-sm text-gray-600">Select a stream to view courses</p>
+                  <h2 className="text-2xl font-bold">Course Bundels</h2>
+                  <p className="text-sm text-gray-600">Select a Bundel to view courses</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {streamData.map((stream) => {
                     const IconComponent = stream.icon;
-                    const streamCourseCount = courses.filter(course => 
-                      course.stream.toUpperCase() === stream.name.toUpperCase()
+                    const streamCourseCount = courses.filter(course => course.stream.toUpperCase() === stream.name.toUpperCase()
                     ).length;
 
                     return (
-                      <Card 
-                        key={stream.name} 
+                      <Card
+                        key={stream.name}
                         className="hover:shadow-lg transition-shadow cursor-pointer transform hover:scale-105"
                         onClick={() => handleStreamSelect(stream.name)}
                       >
@@ -464,10 +443,8 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
                           </div>
                           <div className="flex items-center space-x-2">
                             <Badge
-                              variant={
-                                request.status === 'Accepted' ? 'default' :
-                                request.status === 'Rejected' ? 'destructive' : 'outline'
-                              }
+                              variant={request.status === 'Accepted' ? 'default' :
+                                request.status === 'Rejected' ? 'destructive' : 'outline'}
                             >
                               {request.status}
                             </Badge>
@@ -501,71 +478,65 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium">Institution Name</label>
-                      <Input 
+                      <Input
                         name="institutionName"
                         value={formData.institutionName}
                         onChange={handleInputChange}
-                        placeholder="Your institution name" 
-                        required
-                      />
+                        placeholder="Your institution name"
+                        required />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Contact Person</label>
-                      <Input 
+                      <Input
                         name="contactPerson"
                         value={formData.contactPerson}
                         onChange={handleInputChange}
-                        placeholder="Your name" 
-                        required
-                      />
+                        placeholder="Your name"
+                        required />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Email</label>
-                      <Input 
+                      <Input
                         name="email"
-                        type="email" 
+                        type="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        placeholder="contact@institution.edu" 
-                        required
-                      />
+                        placeholder="contact@institution.edu"
+                        required />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Phone Number</label>
-                      <Input 
+                      <Input
                         name="phoneNumber"
                         value={formData.phoneNumber}
                         onChange={handleInputChange}
-                        placeholder="Contact number" 
-                        required
-                      />
+                        placeholder="Contact number"
+                        required />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Expected Students</label>
-                      <Input 
+                      <Input
                         name="expectedStudents"
-                        type="number" 
+                        type="number"
                         value={formData.expectedStudents}
                         onChange={handleInputChange}
-                        placeholder="Number of students" 
-                        required
-                      />
+                        placeholder="Number of students"
+                        required />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Preferred Date</label>
-                      <Input 
+                      <Input
                         name="preferredDate"
-                        type="date" 
+                        type="date"
                         value={formData.preferredDate}
                         onChange={handleInputChange}
-                        required
-                      />
+                        required />
                     </div>
                   </div>
 
                   <div>
                     <label className="text-sm font-medium">Service Category</label>
-                    <select 
+                    <select
                       name="serviceCategory"
                       value={formData.serviceCategory}
                       onChange={handleInputChange}
@@ -590,8 +561,7 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
                       onChange={handleInputChange}
                       placeholder="Please describe your requirements in detail..."
                       className="mt-1 h-32"
-                      required
-                    />
+                      required />
                   </div>
 
                   <div>
@@ -601,8 +571,7 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
                       value={formData.additionalRequirements}
                       onChange={handleInputChange}
                       placeholder="Any specific requirements or constraints..."
-                      className="mt-1 h-24"
-                    />
+                      className="mt-1 h-24" />
                   </div>
 
                   <Button type="submit" className="w-full" disabled={loading}>
@@ -768,7 +737,7 @@ const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </div></>
   );
 };
 

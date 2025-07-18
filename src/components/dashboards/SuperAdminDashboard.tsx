@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2 } from 'lucide-react';
+import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote } from 'lucide-react';
 import { pack365Api, collegeApi } from '@/services/api';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
@@ -29,13 +29,21 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const [expiryDate, setExpiryDate] = useState('');
   const [discount, setDiscount] = useState('');
   const { toast: useToastHook } = useToast();
+    const [selectedStream, setSelectedStream] = useState<string | null>(null);
+    const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
   
   // State for API data
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
+  const streamData = [
+  { name: 'IT', icon: Monitor, color: 'bg-blue-500', description: 'Information Technology Courses' },
+  { name: 'PHARMA', icon: Pill, color: 'bg-green-500', description: 'Pharmaceutical Courses' },
+  { name: 'MARKETING', icon: TrendingUp, color: 'bg-purple-500', description: 'Marketing & Sales Courses' },
+  { name: 'HR', icon: UserCheck, color: 'bg-orange-500', description: 'Human Resources Courses' },
+  { name: 'FINANCE', icon: Banknote, color: 'bg-emerald-500', description: 'Finance & Accounting Courses' }
+];
   // Fetch courses on component mount
   useEffect(() => {
     fetchCourses();
@@ -43,16 +51,32 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     fetchCollegeRequests();
   }, []);
 
-  const fetchCourses = async () => {
-    try {
-      const response = await pack365Api.getAllCourses();
-      if (response.success) {
-        setCourses(response.data);
+  
+   useEffect(() => {
+      if (selectedStream && courses.length > 0) {
+        const filtered = courses.filter(course => 
+          course.stream.toUpperCase() === selectedStream.toUpperCase()
+        );
+        setFilteredCourses(filtered);
       }
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-      toast.error('Failed to fetch courses');
-    }
+    }, [selectedStream, courses]);
+  
+    const fetchCourses = async () => {
+      try {
+        const response = await pack365Api.getAllCourses();
+        if (response.success) {
+          setCourses(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching courses:', error);
+      }
+    };
+  const handleStreamSelect = (streamName: string) => {
+    setSelectedStream(streamName);
+  };
+ const handleBackToStreams = () => {
+    setSelectedStream(null);
+    setFilteredCourses([]);
   };
 
   const fetchCoupons = async () => {
@@ -656,27 +680,99 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                     </CardContent>
                   </Card>
                 </div>
-
+                                  
                 <Card>
                   <CardHeader>
                     <CardTitle>Pack365 Courses</CardTitle>
                     <CardDescription>All available Pack365 courses</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {courses.map((course) => (
-                        <div key={course._id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{course.courseName}</p>
-                            <p className="text-sm text-gray-500">{course.stream} • ₹{course.price}</p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant="outline">{course.stream}</Badge>
-                            <span className="text-sm text-gray-500">{course.totalDuration} hrs</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    {!selectedStream ? (
+                                  <div>
+                                    <div className="flex justify-between items-center mb-6">
+                                      <h2 className="text-2xl font-bold">Course Bundels</h2>
+                                      <p className="text-sm text-gray-600">Select a Bundel to view courses</p>
+                                    </div>
+                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                      {streamData.map((stream) => {
+                                        const IconComponent = stream.icon;
+                                        const streamCourseCount = courses.filter(course => course.stream.toUpperCase() === stream.name.toUpperCase()
+                                        ).length;
+                    
+                                        return (
+                                          <Card
+                                            key={stream.name}
+                                            className="hover:shadow-lg transition-shadow cursor-pointer transform hover:scale-105"
+                                            onClick={() => handleStreamSelect(stream.name)}
+                                          >
+                                            <CardContent className="p-6">
+                                              <div className="flex items-center space-x-4">
+                                                <div className={`${stream.color} p-3 rounded-lg text-white`}>
+                                                  <IconComponent className="h-6 w-6" />
+                                                </div>
+                                                <div>
+                                                  <h3 className="text-lg font-semibold">{stream.name}</h3>
+                                                  <p className="text-sm text-gray-600">{stream.description}</p>
+                                                  <p className="text-xs text-gray-500 mt-2">
+                                                    {streamCourseCount} course{streamCourseCount !== 1 ? 's' : ''} available
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            </CardContent>
+                                          </Card>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="flex items-center justify-between mb-6">
+                                      <div className="flex items-center space-x-4">
+                                        <Button variant="outline" onClick={handleBackToStreams}>
+                                          ← Back to Streams
+                                        </Button>
+                                        <h2 className="text-2xl font-bold">{selectedStream} Courses</h2>
+                                      </div>
+                                      <Badge variant="outline">
+                                        {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
+                                      </Badge>
+                                    </div>
+                    
+                                    <div className="space-y-4">
+                                      {filteredCourses.map((course) => (
+                                        <Card key={course._id} className="hover:shadow-md transition-shadow">
+                                          <CardContent className="p-6">
+                                            <div className="flex justify-between items-start">
+                                              <div className="flex-1">
+                                                <h3 className="text-lg font-semibold mb-2">{course.courseName}</h3>
+                                                <p className="text-gray-600 mb-3">{course.description}</p>
+                                                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                                  <span>Duration: {course.totalDuration} hours</span>
+                                                  <span>Topics: {course.topics?.length || 0}</span>
+                                                  <Badge variant="secondary">{course.stream.toUpperCase()}</Badge>
+                                                </div>
+                                              </div>
+                                              <div className="text-right">
+                                                <p className="text-2xl font-bold text-green-600">₹{course.price}</p>
+                                                <Button className="mt-2">
+                                                  Request Access
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+                                      ))}
+                                      {filteredCourses.length === 0 && (
+                                        <Card>
+                                          <CardContent className="p-8 text-center">
+                                            <p className="text-gray-500">No courses available for {selectedStream} stream</p>
+                                          </CardContent>
+                                        </Card>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                   </CardContent>
                 </Card>
               </TabsContent>
