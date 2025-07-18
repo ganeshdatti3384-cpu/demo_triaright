@@ -26,6 +26,9 @@ import CoursePayment from '@/pages/CoursePayment';
 import Pack365Payment from '@/pages/Pack365Payment';
 import PaymentSuccess from '@/pages/PaymentSuccess';
 import PaymentFailed from '@/pages/PaymentFailed';
+import AboutUs from '@/pages/AboutUs';
+import Services from '@/pages/Services';
+import ContactUs from '@/pages/ContactUs';
 import StudentDashboard from '@/components/dashboards/StudentDashboard';
 import JobSeekerDashboard from '@/components/dashboards/JobSeekerDashboard';
 import EmployeeDashboard from '@/components/dashboards/EmployeeDashboard';
@@ -80,6 +83,9 @@ const App = () => {
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/contact" element={<ContactUs />} />
           <Route path="/course/:id" element={<CourseDetail />} />
           <Route path="/course-enrollment/:id" element={<CourseEnrollment />} />
           <Route path="/course-payment/:id" element={<CoursePayment />} />

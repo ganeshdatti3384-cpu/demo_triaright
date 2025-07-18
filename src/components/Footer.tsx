@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -14,11 +15,44 @@ import {
 } from 'lucide-react';
 
 const Footer = () => {
+  const navigate = useNavigate();
+
+  const getHomeLink = () => {
+    const currentUser = localStorage.getItem('currentUser');
+    if (currentUser) {
+      try {
+        const user = JSON.parse(currentUser);
+        const role = user.role;
+        switch (role) {
+          case 'student':
+            return '/student';
+          case 'jobseeker':
+            return '/job-seeker';
+          case 'employee':
+            return '/employee';
+          case 'employer':
+            return '/employer';
+          case 'college':
+            return '/college';
+          case 'admin':
+            return '/admin';
+          case 'superadmin':
+            return '/super-admin';
+          default:
+            return '/';
+        }
+      } catch {
+        return '/';
+      }
+    }
+    return '/';
+  };
+
   const quickLinks = [
-    { name: 'Home', href: '#home' },
-    { name: 'About Us', href: '#about' },
-    { name: 'Services', href: '#services' },
-    { name: 'Contact', href: '#contact' },
+    { name: 'Home', href: getHomeLink() },
+    { name: 'About Us', href: '/about' },
+    { name: 'Services', href: '/services' },
+    { name: 'Contact', href: '/contact' },
   ];
 
   const services = [
@@ -77,9 +111,9 @@ const Footer = () => {
             <ul className="space-y-3">
               {quickLinks.map((link, idx) => (
                 <li key={idx}>
-                  <a href={link.href} className="hover:text-white transition-colors">
+                  <Link to={link.href} className="hover:text-white transition-colors">
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
