@@ -36,12 +36,11 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   const { toast } = useToast();
 
   const streamConfig: { [key: string]: { displayName: string; image: string } } = {
-    'it': { displayName: 'IT Bundle', image: '/lovable-uploads/IT Pack365.png' },
-    'nonit': { displayName: 'Non-IT Bundle', image: '/lovable-uploads/Non It Pack 365.png' },
-    'pharma': { displayName: 'Pharma Bundle', image: '/lovable-uploads/Pharma Pack 365.png' },
-    'marketing': { displayName: 'Marketing Bundle', image: '/lovable-uploads/Marketing Pack 365.png' },
-    'hr': { displayName: 'HR Bundle', image: '/lovable-uploads/HR Pack 365.png' },
-    'finance': { displayName: 'Finance Bundle', image: '/lovable-uploads/Finance Pack 365.png' }
+    'IT': { displayName: 'IT Bundle', image: '/lovable-uploads/IT Pack365.png' },
+    'PHARMA': { displayName: 'Pharma Bundle', image: '/lovable-uploads/Pharma Pack 365.png' },
+    'MARKETING': { displayName: 'Marketing Bundle', image: '/lovable-uploads/Marketing Pack 365.png' },
+    'HR': { displayName: 'HR Bundle', image: '/lovable-uploads/HR Pack 365.png' },
+    'FINANCE': { displayName: 'Finance Bundle', image: '/lovable-uploads/Finance Pack 365.png' }
   };
 
   useEffect(() => {
