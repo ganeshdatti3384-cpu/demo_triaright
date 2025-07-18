@@ -77,7 +77,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
 
     try {
       setIsLoading(true);
-      const response = await collegeApi.getAllServiceRequests(token);
+      const response = await collegeApi.getCollegeRequests(token);
       if (response.success) {
         setCollegeRequests(response.requests);
       }
