@@ -397,9 +397,9 @@ const UserManagement = () => {
   });
 
   const downloadSampleExcel = () => {
-    const sampleData = `fullName,email,role,phone,address,dateOfBirth,gender,nationality,languagesKnown,maritalStatus,username,password
-John Doe,john@example.com,student,+91-9876543210,123 Main St,1999-01-01,male,Indian,English Hindi,single,johndoe,password123
-Jane Smith,jane@company.com,job-seeker,+91-9876543211,456 Business Ave,1985-05-15,female,Indian,English Tamil,married,janesmith,password123`;
+    const sampleData = `firstname,lastname,email,role,phone,whatsappnumber,address,dateOfBirth,gender,password,collegename
+    John,Doe,john@example.com,student,9876543210,9876543210,123 Main St,1999-01-01,male,password123,Bcd College
+    Jane,Smith,jane@company.com,job-seeker,9876543211,9876543211,456 Business Ave,1985-05-15,female,password123,JHJ College`;
     
     const blob = new Blob([sampleData], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
