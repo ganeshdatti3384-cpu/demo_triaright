@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -19,24 +18,10 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
-
-interface EnrollmentData {
-  _id: string;
-  courseId: string;
-  courseName: string;
-  enrollmentDate: string;
-  videoProgress: number;
-  isExamCompleted: boolean;
-  examScore: number | null;
-  topicProgress: {
-    topicName: string;
-    watched: boolean;
-    watchedDuration: number;
-  }[];
-}
+import { EnhancedPack365Enrollment } from '@/types/api';
 
 const Pack365Dashboard = () => {
-  const [enrollments, setEnrollments] = useState<EnrollmentData[]>([]);
+  const [enrollments, setEnrollments] = useState<EnhancedPack365Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalCourses: 0,
@@ -73,10 +58,10 @@ const Pack365Dashboard = () => {
         // Calculate stats
         const totalCourses = response.enrollments.length;
         const completedCourses = response.enrollments.filter(
-          (enrollment: EnrollmentData) => enrollment.videoProgress >= 100
+          (enrollment: EnhancedPack365Enrollment) => enrollment.videoProgress >= 100
         ).length;
         const certificatesEarned = response.enrollments.filter(
-          (enrollment: EnrollmentData) => enrollment.isExamCompleted && enrollment.examScore && enrollment.examScore >= 70
+          (enrollment: EnhancedPack365Enrollment) => enrollment.isExamCompleted && enrollment.examScore && enrollment.examScore >= 70
         ).length;
         
         setStats({

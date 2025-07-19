@@ -200,6 +200,17 @@ export interface TopicProgress {
   watchedDuration: number;
 }
 
+export interface EnrollmentData {
+  _id: string;
+  courseId: string;
+  courseName: string;
+  enrollmentDate: string;
+  videoProgress: number;
+  isExamCompleted: boolean;
+  examScore: number | null;
+  topicProgress: TopicProgress[];
+}
+
 export interface Enrollment {
   _id?: string;
   userId: string | User;
@@ -268,6 +279,7 @@ export interface Exam {
 }
 
 export interface EnhancedPack365Enrollment extends Pack365Enrollment {
+  _id: string;
   status?: string;
   totalWatchedPercentage?: number;
   progress?: any;
@@ -306,7 +318,6 @@ export interface PaymentOptions {
   currency: string;
   receipt: string;
   notes?: {
-    courseId?: string;
     userId?: string;
   };
 }

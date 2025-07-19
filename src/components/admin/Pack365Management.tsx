@@ -166,7 +166,14 @@ const Pack365Management = () => {
       // In a real implementation, this would upload to a backend service
       const updatedCourses = courses.map(course => 
         course._id === examCourse._id 
-          ? { ...course, examFile: { name: examFile.name, uploadDate: new Date().toISOString() } }
+          ? { 
+              ...course, 
+              examFile: { 
+                filename: examFile.name, 
+                originalName: examFile.name,
+                uploadDate: new Date().toISOString() 
+              } 
+            }
           : course
       );
       setCourses(updatedCourses);
@@ -193,7 +200,7 @@ const Pack365Management = () => {
       // In a real implementation, this would download from the backend
       toast({
         title: 'Download started',
-        description: `Downloading exam file: ${course.examFile.name}`,
+        description: `Downloading exam file: ${course.examFile.originalName}`,
       });
     }
   };
@@ -566,7 +573,7 @@ const Pack365Management = () => {
                     <FileText className="h-5 w-5 text-green-600" />
                     <div>
                       <p className="font-medium text-green-800">Current Exam File</p>
-                      <p className="text-sm text-green-600">{examCourse.examFile.name}</p>
+                      <p className="text-sm text-green-600">{examCourse.examFile.originalName}</p>
                       <p className="text-xs text-green-500">
                         Uploaded: {new Date(examCourse.examFile.uploadDate).toLocaleDateString()}
                       </p>
