@@ -86,15 +86,16 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
 
     try {
       const statsPromise = collegeApi.getDashboardStats(token);
-      const requestsPromise = collegeApi.getCollegeRequests(token);
+      const requestsPromise = collegeApi.getMyServiceRequests(token);
 
       const [statsResult, requestsResult] = await Promise.allSettled([statsPromise, requestsPromise]);
 
       // Handle stats response
-      if (statsResult.status === 'fulfilled' || statsResult.value.success) {
+      if (statsResult.status === 'fulfilled' && statsResult.value.success) {
         setDashboardStats(statsResult.value.stats || statsResult.value);
       } else {
-        console.error('Failed to fetch stats:', statsResult.status === 'rejected' ? statsResult.reason : 'Unknown error');
+        const errorReason = statsResult.status === 'rejected' ? statsResult.reason : 'Failed to fetch stats';
+        console.error('Failed to fetch stats:', errorReason);
         toast({
           title: 'Error',
           description: 'Failed to load dashboard stats',
@@ -103,10 +104,11 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
       }
 
       // Handle requests response
-      if (requestsResult.status === 'fulfilled' || requestsResult.value.success) {
-        setRequests(requestsResult.value.data || []);
+      if (requestsResult.status === 'fulfilled' && requestsResult.value.success) {
+        setRequests(requestsResult.value.data || requestsResult.value.requests || []);
       } else {
-        console.error('Failed to fetch requests:', requestsResult.status === 'rejected' ? requestsResult.reason : 'Unknown error');
+        const errorReason = requestsResult.status === 'rejected' ? requestsResult.reason : 'Failed to fetch requests';
+        console.error('Failed to fetch requests:', errorReason);
         toast({
           title: 'Error',
           description: 'Failed to load college requests',
