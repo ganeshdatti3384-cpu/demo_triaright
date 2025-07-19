@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Shield, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Shield, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Pack365PaymentService } from '@/services/pack365Payment';
@@ -15,7 +15,6 @@ const RazorpayPayment = () => {
   const location = useLocation();
   const { streamName, courseId, courseName, fromStream, fromCourse } = location.state || {};
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -41,12 +40,26 @@ const RazorpayPayment = () => {
       navigate('/pack365');
       return;
     }
-  }, [navigate, streamName, courseName, toast]);
+
+    // Log payment data for debugging
+    console.log('Payment data:', { streamName, courseId, courseName, fromStream, fromCourse });
+  }, [navigate, streamName, courseName, toast, courseId, fromStream, fromCourse]);
 
   const handlePayment = async () => {
+    if (!courseId) {
+      toast({
+        title: 'Error',
+        description: 'Course ID is missing. Please try again.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
+      console.log('Starting Razorpay payment process...');
+
       await Pack365PaymentService.processPayment(
         {
           streamName: streamName || '',
@@ -55,8 +68,8 @@ const RazorpayPayment = () => {
           fromStream: fromStream || false,
           fromCourse: fromCourse || false
         },
+        // Success callback
         (response) => {
-          // Payment successful
           console.log('Payment successful:', response);
           toast({
             title: 'Payment Successful!',
@@ -71,34 +84,38 @@ const RazorpayPayment = () => {
               streamName,
               courseName,
               fromStream,
-              fromCourse
+              fromCourse,
+              courseId
             }
           });
         },
+        // Error callback
         (error) => {
-          // Payment failed
           console.error('Payment failed:', error);
+          const errorMessage = error.message || 'Payment could not be processed. Please try again.';
+          
           toast({
             title: 'Payment Failed',
-            description: error.message || 'Payment could not be processed. Please try again.',
+            description: errorMessage,
             variant: 'destructive'
           });
           
           // Navigate to failure page
           navigate('/payment-failed', {
             state: {
-              error: error.message,
+              error: errorMessage,
               streamName,
-              courseName
+              courseName,
+              courseId
             }
           });
         }
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error initiating payment:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to initiate payment. Please try again.',
+        title: 'Payment Error',
+        description: error.message || 'Failed to initiate payment. Please try again.',
         variant: 'destructive'
       });
     } finally {
@@ -109,6 +126,31 @@ const RazorpayPayment = () => {
   const handleBack = () => {
     navigate(-1);
   };
+
+  // Show error if required data is missing
+  if (!streamName && !courseName) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-16">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl mx-auto text-center">
+              <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Payment Data Missing</h2>
+              <p className="text-gray-600 mb-6">
+                Required payment information is missing. Please go back and try again.
+              </p>
+              <Button onClick={() => navigate('/pack365')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Pack365
+              </Button>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
@@ -197,13 +239,13 @@ const RazorpayPayment = () => {
                   {/* Payment Button */}
                   <Button
                     onClick={handlePayment}
-                    disabled={isProcessing || isLoading}
+                    disabled={isProcessing}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-6"
                   >
                     {isProcessing ? (
                       <div className="flex items-center space-x-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Processing Payment...</span>
+                        <span>Opening Payment Gateway...</span>
                       </div>
                     ) : (
                       <>

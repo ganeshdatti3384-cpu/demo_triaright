@@ -7,18 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, CreditCard, Shield, Clock, IndianRupee } from 'lucide-react';
+import { ArrowLeft, CreditCard, Shield, Clock, IndianRupee, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { pack365Api } from '@/services/api';
 import { Pack365Course, EnhancedPack365Enrollment } from '@/types/api';
 import { useAuth } from '@/hooks/useAuth';
-
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
+import { Pack365PaymentService } from '@/services/pack365Payment';
 
 const Pack365Payment = () => {
   const { courseId } = useParams();
@@ -28,29 +23,22 @@ const Pack365Payment = () => {
   const [loading, setLoading] = useState(false);
   const [enrollment, setEnrollment] = useState<EnhancedPack365Enrollment | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const {user} =useAuth()
+  const { user } = useAuth();
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (courseId && token) {
       fetchCourse(courseId, token);
       checkEnrollmentStatus(courseId, token);
     } else if (!token) {
-      toast({ title: 'Please login to continue.', variant: 'destructive' });
+      toast({ 
+        title: 'Authentication Required', 
+        description: 'Please login to continue with payment.',
+        variant: 'destructive' 
+      });
       navigate('/login');
     }
   }, [courseId, navigate, toast]);
-
-  useEffect(() => {
-    // Load Razorpay script
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
 
   const fetchCourse = async (id: string, token: string) => {
     try {
@@ -61,18 +49,20 @@ const Pack365Payment = () => {
         setCourse(courseData);
       } else {
         toast({
-          title: 'Course not found.',
+          title: 'Course not found',
+          description: 'The requested course could not be found.',
           variant: 'destructive'
         });
-        navigate(`/${user.role}`);
+        navigate(`/${user?.role || 'student'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching course:', error);
       toast({
-        title: 'Error fetching course data.',
+        title: 'Error',
+        description: 'Failed to load course details. Please try again.',
         variant: 'destructive'
       });
-      navigate(`/${user.role}`);
+      navigate(`/${user?.role || 'student'}`);
     } finally {
       setLoading(false);
     }
@@ -90,118 +80,75 @@ const Pack365Payment = () => {
   };
 
   const handleProceedToPayment = async () => {
-    if (!courseId || !course) return;
+    if (!courseId || !course) {
+      toast({
+        title: 'Error',
+        description: 'Course information is missing. Please try again.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     const token = localStorage.getItem('token');
     if (!token) {
-      toast({ title: 'Please login to continue.', variant: 'destructive' });
+      toast({ 
+        title: 'Authentication Required',
+        description: 'Please login to continue with payment.',
+        variant: 'destructive' 
+      });
       navigate('/login');
       return;
     }
 
+    setIsProcessingPayment(true);
+
     try {
-      setIsProcessingPayment(true);
-      
-      // Create order
-      const orderResponse = await pack365Api.createOrder(token, courseId, 'payment');
-      
-      if (!orderResponse.success) {
-        throw new Error('Failed to create order');
-      }
+      console.log('Initiating payment for course:', course.courseName);
 
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_PGrSvKSsu8PlqK',
-        amount: orderResponse.order.amount,
-        currency: orderResponse.order.currency,
-        name: 'Pack365 Course',
-        description: course.courseName,
-        order_id: orderResponse.order.id,
-        handler: async (response: any) => {
-          await handlePaymentSuccess(response, token);
+      await Pack365PaymentService.processPayment(
+        {
+          streamName: course.stream,
+          courseId: courseId,
+          courseName: course.courseName,
+          fromStream: false,
+          fromCourse: true
         },
-        prefill: {
-          name: 'Student',
-          email: 'student@example.com',
+        // Success callback
+        (response) => {
+          console.log('Payment completed successfully:', response);
+          toast({
+            title: 'Payment Successful!',
+            description: 'You have been successfully enrolled in the course.',
+          });
+          
+          // Navigate to success page
+          navigate(`/payment-success?courseId=${courseId}&type=pack365&paymentId=${response.razorpay_payment_id}`);
         },
-        theme: {
-          color: '#3B82F6'
-        },
-        modal: {
-          ondismiss: () => {
-            handlePaymentFailure(orderResponse.order.id, token);
-          }
+        // Error callback
+        (error) => {
+          console.error('Payment failed:', error);
+          const errorMessage = error.message || 'Payment could not be processed. Please try again.';
+          
+          toast({
+            title: 'Payment Failed',
+            description: errorMessage,
+            variant: 'destructive'
+          });
+          
+          // Navigate to failure page
+          navigate(`/payment-failed?courseId=${courseId}&type=pack365&error=${encodeURIComponent(errorMessage)}`);
         }
-      };
-
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
+      );
 
     } catch (error: any) {
-      console.error('Payment initiation error:', error);
+      console.error('Error initiating payment:', error);
       toast({
         title: 'Payment Error',
-        description: error.message || 'Failed to initiate payment',
+        description: error.message || 'Failed to initiate payment. Please try again.',
         variant: 'destructive'
       });
     } finally {
       setIsProcessingPayment(false);
-    }
-  };
-
-  const handlePaymentSuccess = async (paymentResponse: any, token: string) => {
-    try {
-      setIsProcessingPayment(true);
-      
-      // Verify payment
-      const verifyResponse = await pack365Api.verifyPayment(token, {
-        razorpay_order_id: paymentResponse.razorpay_order_id,
-        razorpay_payment_id: paymentResponse.razorpay_payment_id,
-        razorpay_signature: paymentResponse.razorpay_signature
-      });
-
-      if (verifyResponse.success) {
-        toast({
-          title: 'Payment Successful!',
-          description: 'You have been successfully enrolled in the course.',
-        });
-        
-        // Update enrollment state
-        setEnrollment(verifyResponse.enrollment);
-        
-        // Redirect to success page
-        navigate(`/payment-success?courseId=${courseId}&type=pack365`);
-      } else {
-        throw new Error('Payment verification failed');
-      }
-
-    } catch (error: any) {
-      console.error('Payment verification error:', error);
-      toast({
-        title: 'Payment Verification Failed',
-        description: error.message || 'Please contact support',
-        variant: 'destructive'
-      });
-      navigate(`/payment-failed?courseId=${courseId}&type=pack365`);
-    } finally {
-      setIsProcessingPayment(false);
-    }
-  };
-
-  const handlePaymentFailure = async (orderId: string, token: string) => {
-    try {
-      await pack365Api.handlePaymentFailure(token, {
-        razorpay_order_id: orderId
-      });
-      
-      toast({
-        title: 'Payment Failed',
-        description: 'Your payment could not be processed. Please try again.',
-        variant: 'destructive'
-      });
-      
-      navigate(`/payment-failed?courseId=${courseId}&type=pack365`);
-    } catch (error) {
-      console.error('Error handling payment failure:', error);
     }
   };
 
@@ -240,10 +187,12 @@ const Pack365Payment = () => {
         <Navbar />
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Course not found</h2>
-            <Button onClick={() => navigate(`/${user.role}`)}>
+            <p className="text-gray-600 mb-6">The requested course could not be found.</p>
+            <Button onClick={() => navigate(`/${user?.role || 'student'}`)}>
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Pack365
+              Back to Dashboard
             </Button>
           </div>
         </div>
@@ -261,11 +210,11 @@ const Pack365Payment = () => {
           <div className="max-w-4xl mx-auto px-4 py-12">
             <Button
               variant="outline"
-              onClick={() => navigate(`/${user.role}`)}
+              onClick={() => navigate(`/${user?.role || 'student'}`)}
               className="mb-6"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Pack365
+              Back to Dashboard
             </Button>
 
             <Card className="mb-6">
@@ -324,11 +273,11 @@ const Pack365Payment = () => {
         <div className="max-w-4xl mx-auto px-4 py-12">
           <Button
             variant="outline"
-            onClick={() => navigate(`/${user.role}`)}
+            onClick={() => navigate(`/${user?.role || 'student'}`)}
             className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Pack365
+            Back to Dashboard
           </Button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -342,6 +291,10 @@ const Pack365Payment = () => {
                   src={course.documentLink}
                   alt={course.courseName}
                   className="w-full h-48 object-cover rounded-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/placeholder.svg';
+                  }}
                 />
                 <h3 className="text-xl font-semibold">{course.courseName}</h3>
                 <p className="text-gray-600">{course.description}</p>
@@ -425,12 +378,12 @@ const Pack365Payment = () => {
                       {isProcessingPayment ? (
                         <div className="flex items-center space-x-2">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>Processing...</span>
+                          <span>Opening Payment Gateway...</span>
                         </div>
                       ) : (
                         <>
                           <IndianRupee className="h-5 w-5 mr-2" />
-                          Proceed with ₹365
+                          Pay ₹365 Securely
                         </>
                       )}
                     </Button>

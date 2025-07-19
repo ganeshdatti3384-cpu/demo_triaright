@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { pack365Api } from './api';
 
@@ -33,13 +33,19 @@ export class Pack365PaymentService {
 
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
+      script.onload = () => {
+        console.log('Razorpay script loaded successfully');
+        resolve(true);
+      };
+      script.onerror = () => {
+        console.error('Failed to load Razorpay script');
+        resolve(false);
+      };
       document.body.appendChild(script);
     });
   }
 
-  static async createOrder(options: PaymentOptions): Promise<{ orderId: string; key: string }> {
+  static async createOrder(options: PaymentOptions): Promise<{ orderId: string; key: string; amount: number }> {
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Authentication required');
@@ -57,16 +63,17 @@ export class Pack365PaymentService {
       console.log('Order response:', response);
 
       if (!response.success) {
-        throw new Error('Failed to create order');
+        throw new Error(response.message || 'Failed to create order');
       }
 
       return {
         orderId: response.order.id,
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_PGrSvKSsu8PlqK'
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_PGrSvKSsu8PlqK',
+        amount: response.order.amount
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating order:', error);
-      throw error;
+      throw new Error(error.message || 'Failed to create payment order');
     }
   }
 
@@ -76,14 +83,17 @@ export class Pack365PaymentService {
     onError: (error: any) => void
   ): Promise<void> {
     try {
+      console.log('Starting payment process...');
+      
       // Load Razorpay script
       const isScriptLoaded = await this.loadRazorpayScript();
       if (!isScriptLoaded) {
-        throw new Error('Failed to load Razorpay script');
+        throw new Error('Failed to load Razorpay payment gateway. Please check your internet connection and try again.');
       }
 
       // Create order
-      const { orderId, key } = await this.createOrder(options);
+      const { orderId, key, amount } = await this.createOrder(options);
+      console.log('Order created:', { orderId, key, amount });
 
       // Get user info
       const currentUser = localStorage.getItem('currentUser');
@@ -92,7 +102,7 @@ export class Pack365PaymentService {
       // Configure Razorpay options
       const razorpayOptions = {
         key: key,
-        amount: 36500, // ₹365 in paise
+        amount: amount, // Amount from backend
         currency: 'INR',
         name: 'Pack365',
         description: options.fromStream 
@@ -108,6 +118,7 @@ export class Pack365PaymentService {
           color: '#3B82F6'
         },
         handler: async (response: RazorpayResponse) => {
+          console.log('Payment successful:', response);
           try {
             await this.verifyPayment(response);
             onSuccess(response);
@@ -119,16 +130,29 @@ export class Pack365PaymentService {
         modal: {
           ondismiss: () => {
             console.log('Payment cancelled by user');
-            this.handlePaymentFailure(orderId);
+            onError(new Error('Payment was cancelled by user'));
           }
         }
       };
 
+      console.log('Opening Razorpay checkout with options:', razorpayOptions);
+
+      // Check if Razorpay is available
+      if (!window.Razorpay) {
+        throw new Error('Razorpay is not loaded. Please refresh the page and try again.');
+      }
+
       // Open Razorpay checkout
       const razorpay = new window.Razorpay(razorpayOptions);
+      
+      razorpay.on('payment.failed', (response: any) => {
+        console.error('Payment failed:', response.error);
+        onError(new Error(response.error.description || 'Payment failed'));
+      });
+
       razorpay.open();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing payment:', error);
       onError(error);
     }
@@ -148,13 +172,13 @@ export class Pack365PaymentService {
       });
 
       if (!verificationResponse.success) {
-        throw new Error('Payment verification failed');
+        throw new Error(verificationResponse.message || 'Payment verification failed');
       }
 
       return verificationResponse;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying payment:', error);
-      throw error;
+      throw new Error(error.message || 'Payment verification failed');
     }
   }
 
@@ -178,9 +202,9 @@ export class Pack365PaymentService {
     try {
       const response = await pack365Api.checkEnrollmentStatus(token, courseId);
       return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error checking enrollment status:', error);
-      throw error;
+      throw new Error(error.message || 'Failed to check enrollment status');
     }
   }
 }
