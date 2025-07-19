@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 
@@ -65,7 +66,9 @@ const RazorpayPayment = () => {
       await Pack365PaymentService.processPayment(
         {
           streamName: streamName || '',
+          courseName: `${streamName} Bundle`,
           fromStream: fromStream || false,
+          fromCourse: false,
         },
         // Success callback
         (response) => {

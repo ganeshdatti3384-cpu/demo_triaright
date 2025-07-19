@@ -1,5 +1,5 @@
 
-import { authApi } from './api';
+import { pack365Api } from './api';
 
 interface PaymentOptions {
   streamName: string;
@@ -27,16 +27,13 @@ export class Pack365PaymentService {
         throw new Error('Authentication token not found');
       }
 
-      // Create order with backend
-      const orderResponse = await authApi.createOrderEnhanced(token, {
-        stream: options.streamName,
-        courseId: options.courseId,
-        fromStream: options.fromStream,
-        fromCourse: options.fromCourse
+      // Create order with backend using pack365Api
+      const orderResponse = await pack365Api.createOrder(token, {
+        stream: options.streamName
       });
 
-      if (!orderResponse.success) {
-        throw new Error(orderResponse.message || 'Failed to create order');
+      if (!orderResponse.orderId || !orderResponse.key) {
+        throw new Error('Failed to create order');
       }
 
       // Initialize Razorpay
@@ -49,8 +46,8 @@ export class Pack365PaymentService {
         order_id: orderResponse.orderId,
         handler: async (response: RazorpayResponse) => {
           try {
-            // Verify payment with backend
-            const verifyResponse = await authApi.verifyPayment(token, {
+            // Verify payment with backend using pack365Api
+            const verifyResponse = await pack365Api.verifyPayment(token, {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature

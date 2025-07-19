@@ -17,7 +17,7 @@ const handlePasswordUpdate = async (values: {
 }) => {
   const token = localStorage.getItem('token');
   const { oldPassword, newPassword, confirmPassword } = values;
-  const toast = useToast();
+  const { toast } = useToast();
 
   if (!token) {
     toast({
