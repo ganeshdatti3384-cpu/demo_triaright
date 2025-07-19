@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -13,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 const RazorpayPayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { streamName, courseId, courseName, fromStream, fromCourse } = location.state || {};
+  const { streamName, fromStream } = location.state || {};
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
@@ -31,7 +33,7 @@ const RazorpayPayment = () => {
     }
 
     // Validate required data
-    if (!streamName && !courseName) {
+    if (!streamName ) {
       toast({
         title: 'Error',
         description: 'Invalid payment data. Please try again.',
@@ -42,14 +44,14 @@ const RazorpayPayment = () => {
     }
 
     // Log payment data for debugging
-    console.log('Payment data:', { streamName, courseId, courseName, fromStream, fromCourse });
-  }, [navigate, streamName, courseName, toast, courseId, fromStream, fromCourse]);
+    console.log('Payment data:', { streamName, fromStream });
+  }, [navigate, streamName, toast, fromStream]);
 
   const handlePayment = async () => {
-    if (!courseId) {
+    if (!streamName) {
       toast({
         title: 'Error',
-        description: 'Course ID is missing. Please try again.',
+        description: 'Stream Name is missing. Please try again.',
         variant: 'destructive'
       });
       return;
@@ -63,10 +65,7 @@ const RazorpayPayment = () => {
       await Pack365PaymentService.processPayment(
         {
           streamName: streamName || '',
-          courseId,
-          courseName,
           fromStream: fromStream || false,
-          fromCourse: fromCourse || false
         },
         // Success callback
         (response) => {
@@ -82,10 +81,7 @@ const RazorpayPayment = () => {
               paymentId: response.razorpay_payment_id,
               orderId: response.razorpay_order_id,
               streamName,
-              courseName,
               fromStream,
-              fromCourse,
-              courseId
             }
           });
         },
@@ -104,9 +100,7 @@ const RazorpayPayment = () => {
           navigate('/payment-failed', {
             state: {
               error: errorMessage,
-              streamName,
-              courseName,
-              courseId
+              streamName
             }
           });
         }
@@ -128,7 +122,7 @@ const RazorpayPayment = () => {
   };
 
   // Show error if required data is missing
-  if (!streamName && !courseName) {
+  if (!streamName) {
     return (
       <>
         <Navbar />
@@ -177,9 +171,7 @@ const RazorpayPayment = () => {
                 <div className="mt-4 bg-white/10 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-sm opacity-90">
-                      {fromStream 
-                        ? `${streamName} Bundle` 
-                        : `${courseName}`}
+                      {`${streamName} Bundle` }
                     </span>
                     <Badge className="bg-white text-blue-600">Pack365</Badge>
                   </div>
@@ -199,7 +191,7 @@ const RazorpayPayment = () => {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Course/Bundle:</span>
                         <span className="font-medium">
-                          {fromStream ? `${streamName} Bundle` : courseName}
+                          {fromStream ? `${streamName} Bundle` : "no Stream Name"}
                         </span>
                       </div>
                       <div className="flex justify-between">

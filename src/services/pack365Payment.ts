@@ -11,10 +11,7 @@ declare global {
 
 interface PaymentOptions {
   streamName: string;
-  courseId?: string;
-  courseName?: string;
   fromStream: boolean;
-  fromCourse: boolean;
 }
 
 interface RazorpayResponse {
@@ -25,7 +22,6 @@ interface RazorpayResponse {
 
 interface OrderResponse {
   orderId: string;
-  key: string;
 }
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
@@ -63,15 +59,13 @@ export class Pack365PaymentService {
     try {
       const requestData = {
         stream: options.streamName || 'it',
-        courseId: options.courseId,
         fromStream: options.fromStream,
-        fromCourse: options.fromCourse
       };
 
       console.log('Sending request to backend:', requestData);
 
       const response = await axios.post(
-        `${API_BASE_URL}/pack365/create-order-enhanced`,
+        `${API_BASE_URL}/pack365/packenroll365/create-order`,
         requestData,
         {
           headers: {
@@ -83,13 +77,12 @@ export class Pack365PaymentService {
 
       console.log('Order response:', response.data);
 
-      if (!response.data.orderId || !response.data.key) {
+      if (!response.data.orderId) {
         throw new Error('Invalid order response from server');
       }
 
       return {
         orderId: response.data.orderId,
-        key: response.data.key
       };
     } catch (error: any) {
       console.error('Error creating order:', error);
@@ -119,8 +112,8 @@ export class Pack365PaymentService {
       }
 
       // Create order
-      const { orderId, key } = await this.createOrder(options);
-      console.log('Order created:', { orderId, key });
+      const { orderId } = await this.createOrder(options);
+      console.log('Order created:', { orderId});
 
       // Get user info
       const currentUser = localStorage.getItem('currentUser');
@@ -128,13 +121,10 @@ export class Pack365PaymentService {
 
       // Configure Razorpay options
       const razorpayOptions = {
-        key: key,
         amount: 36500, // ₹365 in paise
         currency: 'INR',
         name: 'Pack365',
-        description: options.fromStream 
-          ? `${options.streamName} Bundle - Pack365` 
-          : `${options.courseName} - Pack365`,
+        description: options.streamName ,
         order_id: orderId,
         prefill: {
           name: user ? `${user.firstName} ${user.lastName}` : '',
