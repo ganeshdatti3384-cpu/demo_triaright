@@ -85,7 +85,7 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
     setLoading(true);
 
     try {
-      const statsPromise = collegeApi.getDashboardStats(token);
+      const statsPromise = collegeApi.getCollegeStats(token);
       const requestsPromise = collegeApi.getMyServiceRequests(token);
 
       const [statsResult, requestsResult] = await Promise.allSettled([statsPromise, requestsPromise]);
