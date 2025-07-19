@@ -13,6 +13,7 @@ import UserManagement from '../admin/UserManagement';
 import JobManagement from '../admin/JobManagement';
 import Pack365Management from '../admin/Pack365Management';
 import PaymentAnalytics from '../admin/PaymentAnalytics';
+import CollegeManagement from '../admin/CollegeManagement';
 import Navbar from '../Navbar';
 import { collegeApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -122,15 +123,16 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px- py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="colleges">Colleges</TabsTrigger>
             <TabsTrigger value="college-requests">College Requests</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
@@ -258,6 +260,10 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
           <TabsContent value="payments" className="space-y-6">
             <PaymentAnalytics />
+          </TabsContent>
+
+          <TabsContent value="colleges" className="space-y-6">
+            <CollegeManagement />
           </TabsContent>
 
           <TabsContent value="college-requests" className="space-y-6">
