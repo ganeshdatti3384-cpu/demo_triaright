@@ -1,5 +1,6 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,7 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import Footer from '../components/Footer';
 import Navbar from '@/components/Navbar';
-import { User, Mail, Phone,  MapPin, ArrowRight, Sparkles, Star, Shield, ArrowLeft, Users } from 'lucide-react';
+import { User, Mail, Phone,  MapPin, ArrowRight, Sparkles, Star, Shield, ArrowLeft, Users, GraduationCap } from 'lucide-react';
 import { authApi, RegisterPayload } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff } from "lucide-react";
@@ -34,28 +35,73 @@ const registrationSchema = z.object({
   address: z.string().min(1, 'Address is required'),
   state: z.string().min(1, 'State is required'),
   role: z.enum(['trainer', 'jobseeker', 'student', 'employer', 'college']),
+  collegeName: z.string().optional(),
   acceptTerms: z.boolean().refine(val => val === true, {
     message: 'You must accept terms and conditions'
   })
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+}).refine((data) => {
+  if (data.role === 'student' && !data.collegeName) {
+    return false;
+  }
+  return true;
+}, {
+  message: "College selection is required for students",
+  path: ["collegeName"],
 });
 
 type RegistrationFormData = z.infer<typeof registrationSchema>;
+
+interface College {
+  _id: string;
+  collegeName: string;
+  userId: string;
+  university: string;
+  city: string;
+  state: string;
+}
 
 const Register = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<'register' | 'terms' | 'privacy'>('register');
-    const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [loadingColleges, setLoadingColleges] = useState(false);
 
-  const { register, handleSubmit, setValue, control, formState: { errors } } = useForm<RegistrationFormData>({
+  const { register, handleSubmit, setValue, control, watch, formState: { errors } } = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
       acceptTerms: false
     }
   });
+
+  const selectedRole = watch('role');
+
+  // Fetch colleges when component mounts
+  useEffect(() => {
+    const fetchColleges = async () => {
+      try {
+        setLoadingColleges(true);
+        const response = await fetch('https://triaright.com/api/colleges/collegedata');
+        const data = await response.json();
+        setColleges(data.colleges || []);
+      } catch (error) {
+        console.error('Error fetching colleges:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load colleges list",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingColleges(false);
+      }
+    };
+
+    fetchColleges();
+  }, [toast]);
 
   const handleRegister = async (formData: RegistrationFormData) => {
     try {
@@ -67,7 +113,8 @@ const Register = () => {
         whatsappNumber: formData.whatsappNumber,
         address: formData.address,
         role: formData.role === 'trainer' ? 'admin' : formData.role,
-        password: formData.password
+        password: formData.password,
+        ...(formData.role === 'student' && formData.collegeName && { collegeName: formData.collegeName })
       };
       const response = await authApi.register(registerPayload);
       toast({ title: "Success", description: "Registration successful! Please login." });
@@ -405,79 +452,126 @@ const Register = () => {
                         </div>
                         {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
                       </div>
-                      <div>
-                        <Label htmlFor="state" className="text-black-700 font-medium">State *</Label>
-                        <Select onValueChange={(value) => setValue('state', value)}>
-                          <SelectTrigger className="h-11 border-gray-200 focus:border-blue-500 transition-colors">
-                            <SelectValue placeholder="Select your state" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {indianStates.map((state) => (
-                              <SelectItem key={state} value={state}>{state}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>}
-                      </div>
+
                       <div className="md:col-span-2">
                         <Label htmlFor="address" className="text-black-700 font-medium">Address *</Label>
                         <div className="relative mt-1">
-                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
+                          <MapPin className="absolute left-3 top-3 h-4 w-4 text-black-400" />
                           <Input 
                             id="address" 
                             {...register('address')} 
-                            placeholder="Enter your address" 
+                            placeholder="Enter your complete address" 
                             className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                           />
                         </div>
                         {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
                       </div>
 
-                      <div className="md:col-span-2">
-                        <Label htmlFor="role" className="text-black-700 font-medium">Role*</Label>
-                        <Select onValueChange={(value) => setValue('role', value as any)}>
-                          <SelectTrigger className="h-11 border-gray-200 focus:border-blue-500 transition-colors">
-                            <SelectValue placeholder="Select your user type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="student">Student</SelectItem>
-                            <SelectItem value="jobseeker">Job Seeker</SelectItem>
-                            <SelectItem value="trainer">Trainer</SelectItem>
-                            <SelectItem value="employer">Employer</SelectItem>
-                            <SelectItem value="college">College</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <div>
+                        <Label htmlFor="state" className="text-black-700 font-medium">State *</Label>
+                        <Controller
+                          name="state"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
+                                <SelectValue placeholder="Select your state" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                                {indianStates.map((state) => (
+                                  <SelectItem key={state} value={state} className="hover:bg-gray-100">
+                                    {state}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="role" className="text-black-700 font-medium">I am a *</Label>
+                        <Controller
+                          name="role"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
+                                <SelectValue placeholder="Select your role" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                                <SelectItem value="student" className="hover:bg-gray-100">Student</SelectItem>
+                                <SelectItem value="jobseeker" className="hover:bg-gray-100">Job Seeker</SelectItem>
+                                <SelectItem value="employer" className="hover:bg-gray-100">Employer</SelectItem>
+                                <SelectItem value="trainer" className="hover:bg-gray-100">Trainer</SelectItem>
+                                <SelectItem value="college" className="hover:bg-gray-100">College</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
                         {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role.message}</p>}
                       </div>
+
+                      {/* College Dropdown - Only show when student role is selected */}
+                      {selectedRole === 'student' && (
+                        <div className="md:col-span-2">
+                          <Label htmlFor="collegeName" className="text-black-700 font-medium">Select College *</Label>
+                          <Controller
+                            name="collegeName"
+                            control={control}
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={loadingColleges}>
+                                <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
+                                  <div className="flex items-center">
+                                    <GraduationCap className="h-4 w-4 mr-2 text-black-400" />
+                                    <SelectValue placeholder={loadingColleges ? "Loading colleges..." : "Select your college"} />
+                                  </div>
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                                  {colleges.map((college) => (
+                                    <SelectItem key={college._id} value={college.collegeName} className="hover:bg-gray-100">
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{college.collegeName}</span>
+                                        <span className="text-sm text-gray-500">{college.university} - {college.city}, {college.state}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                          {errors.collegeName && <p className="text-red-500 text-sm mt-1">{errors.collegeName.message}</p>}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-2">
                       <Controller
                         name="acceptTerms"
                         control={control}
                         render={({ field }) => (
-                          <Checkbox 
-                            id="terms" 
-                            checked={field.value} 
+                          <Checkbox
+                            id="acceptTerms"
+                            checked={field.value}
                             onCheckedChange={field.onChange}
-                            className="mt-1"
                           />
                         )}
                       />
-                      <Label htmlFor="terms" className="text-sm text-black-700 leading-relaxed">
-                        I accept the{' '}
-                        <button 
+                      <Label htmlFor="acceptTerms" className="text-sm text-black-600">
+                        I agree to the{' '}
+                        <button
                           type="button"
                           onClick={() => setCurrentView('terms')}
-                          className="text-blue-600 underline cursor-pointer hover:text-blue-700"
+                          className="text-blue-600 hover:underline font-medium"
                         >
                           Terms and Conditions
                         </button>
                         {' '}and{' '}
-                        <button 
+                        <button
                           type="button"
                           onClick={() => setCurrentView('privacy')}
-                          className="text-blue-600 underline cursor-pointer hover:text-blue-700"
+                          className="text-blue-600 hover:underline font-medium"
                         >
                           Privacy Policy
                         </button>
@@ -485,25 +579,27 @@ const Register = () => {
                     </div>
                     {errors.acceptTerms && <p className="text-red-500 text-sm">{errors.acceptTerms.message}</p>}
 
-                    <Button
-                      type="submit"
-                      className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-black font-medium transition-all duration-200 transform hover:scale-[1.02]"
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105"
                     >
-                      <div className="flex items-center space-x-2">
-                        <span>Create Account</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </div>
+                      Create Account
+                      <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
-                  </form>
 
-                  <div className="mt-8 text-center">
-                    <p className="text-black-400">
-                      Already have an account?{' '}
-                      <a href="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
-                        Sign in
-                      </a>
-                    </p>
-                  </div>
+                    <div className="text-center">
+                      <p className="text-sm text-black-600">
+                        Already have an account?{' '}
+                        <button
+                          type="button"
+                          onClick={() => navigate('/login')}
+                          className="text-blue-600 hover:underline font-medium"
+                        >
+                          Sign in here
+                        </button>
+                      </p>
+                    </div>
+                  </form>
                 </CardContent>
               </Card>
             </div>
