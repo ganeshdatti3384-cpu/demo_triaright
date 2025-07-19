@@ -92,7 +92,8 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
       if (statsResult.status === 'fulfilled' && statsResult.value.success) {
         setDashboardStats(statsResult.value.stats || statsResult.value);
       } else {
-        console.error('Failed to fetch stats:', statsResult.reason || statsResult);
+        const errorReason = statsResult.status === 'rejected' ? statsResult.reason : 'Failed to fetch stats';
+        console.error('Failed to fetch stats:', errorReason);
         toast({
           title: 'Error',
           description: 'Failed to load dashboard stats',
@@ -102,9 +103,10 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
 
       // Handle requests response
       if (requestsResult.status === 'fulfilled' && requestsResult.value.success) {
-        setRequests(requestsResult.value.requests);
+        setRequests(requestsResult.value.data || requestsResult.value.requests || []);
       } else {
-        console.error('Failed to fetch requests:', requestsResult.reason || requestsResult);
+        const errorReason = requestsResult.status === 'rejected' ? requestsResult.reason : 'Failed to fetch requests';
+        console.error('Failed to fetch requests:', errorReason);
         toast({
           title: 'Error',
           description: 'Failed to load college requests',
