@@ -651,7 +651,9 @@ export const collegeApi = {
   // Get college stats
   getCollegeStats: async (
     token: string
-  ): Promise<{ success: boolean; data: any }> => {
+  ): Promise<{
+    [x: string]: { success: boolean; data: any; }; success: boolean; data: any 
+}> => {
     const res = await axios.get(`${API_BASE_URL}/colleges/collegedata`, {
       headers: { Authorization: `Bearer ${token}` },
     });
