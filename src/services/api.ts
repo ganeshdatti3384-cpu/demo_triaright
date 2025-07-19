@@ -363,12 +363,11 @@ export const pack365Api = {
   // Create Razorpay order (enhanced) - using your new backend endpoint
   createOrder: async (
     token: string,
-    courseId: string,
-    enrollmentType: 'payment' | 'code' = 'payment'
+    data: { stream: string }
   ): Promise<{ orderId: string; key: string }> => {
     const res = await axios.post(
       `${API_BASE_URL}/pack365/create-order-enhanced`,
-      { courseId, enrollmentType },
+      data,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -724,6 +723,3 @@ export type {
   EnrollmentCode,
   Exam
 };
-
-// Export the API modules
-export { authApi, profileApi, pack365Api, collegeApi };

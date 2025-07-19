@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { profileApi, pack365Api, collegeApi } from '@/services/api';
+import { collegeApi } from '@/services/api';
 import { Building2, Users, Calendar, TrendingUp, Plus, FileText, Clock, CheckCircle2, XCircle } from 'lucide-react';
 
 interface CollegeDashboardProps {
@@ -65,15 +64,15 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ user, onLogout }) =
       ]);
 
       if (statsResult.status === 'fulfilled') {
-        setStats(statsResult.value.stats || statsResult.value.data);
+        setStats(statsResult.value.stats || statsResult.value);
       } else {
-        console.error('Failed to fetch stats:', (statsResult as PromiseRejectedResult).reason);
+        console.error('Failed to fetch stats:', statsResult.reason);
       }
 
       if (requestsResult.status === 'fulfilled') {
         setRequests(requestsResult.value.data || []);
       } else {
-        console.error('Failed to fetch requests:', (requestsResult as PromiseRejectedResult).reason);
+        console.error('Failed to fetch requests:', requestsResult.reason);
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
