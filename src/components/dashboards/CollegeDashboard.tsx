@@ -86,12 +86,12 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
 
     try {
       const statsPromise = collegeApi.getDashboardStats(token);
-      const requestsPromise = collegeApi.getMyServiceRequests(token);
+      const requestsPromise = collegeApi.getCollegeRequests(token);
 
       const [statsResult, requestsResult] = await Promise.allSettled([statsPromise, requestsPromise]);
 
       // Handle stats response
-      if (statsResult.status === 'fulfilled' && statsResult.value.success) {
+      if (statsResult.status === 'fulfilled' || statsResult.value.success) {
         setDashboardStats(statsResult.value.stats || statsResult.value);
       } else {
         console.error('Failed to fetch stats:', statsResult.status === 'rejected' ? statsResult.reason : 'Unknown error');
@@ -103,7 +103,7 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
       }
 
       // Handle requests response
-      if (requestsResult.status === 'fulfilled' && requestsResult.value.success) {
+      if (requestsResult.status === 'fulfilled' || requestsResult.value.success) {
         setRequests(requestsResult.value.data || []);
       } else {
         console.error('Failed to fetch requests:', requestsResult.status === 'rejected' ? requestsResult.reason : 'Unknown error');
