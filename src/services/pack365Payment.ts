@@ -121,7 +121,7 @@ export class Pack365PaymentService {
 
       // Configure Razorpay options
       const razorpayOptions = {
-        key:"rzp_live_muJa8GZA0HcuE1", // Replace with your Razorpay key ID
+        key: "rzp_live_muJa8GZA0HcuE1",
         amount: 36500, // ₹365 in paise
         currency: 'INR',
         name: 'Pack365',

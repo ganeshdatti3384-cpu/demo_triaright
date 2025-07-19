@@ -66,9 +66,7 @@ const RazorpayPayment = () => {
       await Pack365PaymentService.processPayment(
         {
           streamName: streamName || '',
-          courseName: `${streamName} Bundle`,
           fromStream: fromStream || false,
-          fromCourse: false,
         },
         // Success callback
         (response) => {
