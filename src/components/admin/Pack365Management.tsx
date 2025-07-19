@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
@@ -12,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Eye, Edit, Trash, Upload } from 'lucide-react';
+import { Plus, Eye, Edit, Trash, Upload, FileText, Download } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
 
 const Pack365Management = () => {
@@ -23,6 +22,9 @@ const Pack365Management = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [viewingCourse, setViewingCourse] = useState<Pack365Course | null>(null);
+  const [showExamDialog, setShowExamDialog] = useState(false);
+  const [examCourse, setExamCourse] = useState<Pack365Course | null>(null);
+  const [examFile, setExamFile] = useState<File | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -140,6 +142,68 @@ const Pack365Management = () => {
     }
   };
 
+  const handleExamUpload = async () => {
+    if (!examFile || !examCourse) {
+      toast({
+        title: 'Missing information',
+        description: 'Please select an Excel file to upload',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!examFile.name.endsWith('.xlsx') && !examFile.name.endsWith('.xls')) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload an Excel file (.xlsx or .xls)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // For now, we'll simulate the upload and store the file reference
+      // In a real implementation, this would upload to a backend service
+      const updatedCourses = courses.map(course => 
+        course._id === examCourse._id 
+          ? { ...course, examFile: { name: examFile.name, uploadDate: new Date().toISOString() } }
+          : course
+      );
+      setCourses(updatedCourses);
+
+      toast({
+        title: 'Exam uploaded successfully!',
+        description: `Exam file "${examFile.name}" has been uploaded for ${examCourse.courseName}`,
+      });
+
+      setShowExamDialog(false);
+      setExamFile(null);
+      setExamCourse(null);
+    } catch (error) {
+      toast({
+        title: 'Upload failed',
+        description: 'Failed to upload exam file',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleExamDownload = (course: Pack365Course) => {
+    if (course.examFile) {
+      // In a real implementation, this would download from the backend
+      toast({
+        title: 'Download started',
+        description: `Downloading exam file: ${course.examFile.name}`,
+      });
+    }
+  };
+
+  const openExamDialog = (course: Pack365Course) => {
+    setExamCourse(course);
+    setExamFile(null);
+    setShowExamDialog(true);
+  };
+
   const resetForm = () => {
     setFormData({
       courseName: '',
@@ -226,6 +290,7 @@ const Pack365Management = () => {
                 <TableHead>Stream</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Topics</TableHead>
+                <TableHead>Exam</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -240,6 +305,33 @@ const Pack365Management = () => {
                   </TableCell>
                   <TableCell className="max-w-xs truncate">{course.description}</TableCell>
                   <TableCell>{course.topics?.length || 0} topics</TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      {course.examFile ? (
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4 text-green-600" />
+                          <span className="text-sm text-green-600">Uploaded</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleExamDownload(course)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-500">No exam</span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openExamDialog(course)}
+                      >
+                        <Upload className="h-4 w-4 mr-1" />
+                        Exam
+                      </Button>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button
@@ -447,6 +539,80 @@ const Pack365Management = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Exam Upload Dialog */}
+      <Dialog open={showExamDialog} onOpenChange={setShowExamDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manage Course Exam</DialogTitle>
+          </DialogHeader>
+          {examCourse && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold">{examCourse.courseName}</h3>
+                <Badge variant="outline" className="capitalize mt-1">
+                  {examCourse.stream}
+                </Badge>
+              </div>
+
+              {examCourse.examFile && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-800">Current Exam File</p>
+                      <p className="text-sm text-green-600">{examCourse.examFile.name}</p>
+                      <p className="text-xs text-green-500">
+                        Uploaded: {new Date(examCourse.examFile.uploadDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => handleExamDownload(examCourse)}
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </Button>
+                </div>
+              )}
+
+              <div>
+                <Label htmlFor="examFile">Upload New Exam (Excel file)</Label>
+                <Input
+                  id="examFile"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setExamFile(e.target.files?.[0] || null)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Supported formats: .xlsx, .xls
+                </p>
+              </div>
+
+              <div className="flex space-x-2 pt-4">
+                <Button
+                  onClick={handleExamUpload}
+                  disabled={!examFile}
+                  className="flex-1"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Exam
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowExamDialog(false)}
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
           )}
