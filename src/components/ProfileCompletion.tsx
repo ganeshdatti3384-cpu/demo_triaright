@@ -2,7 +2,6 @@
 import React from 'react';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import CollegeProfileForm from '@/components/profile/CollegeProfileForm';
-import EnhancedProfile from '@/components/EnhancedProfile';
 import { Loader2 } from 'lucide-react';
 
 interface ProfileCompletionProps {
@@ -15,25 +14,23 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ children, userRol
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Checking profile completion...</p>
+          <div className="bg-white/10 backdrop-blur-md p-8 rounded-2xl shadow-2xl">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-400" />
+            <p className="text-white text-lg">Checking profile completion...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  // If profile is incomplete, show the appropriate profile form
-  if (isProfileComplete === false) {
-    if (userRole === 'college') {
-      return <CollegeProfileForm onProfileComplete={refetchProfile} />;
-    } else if (userRole === 'student' || userRole === 'jobseeker') {
-      return <EnhancedProfile />;
-    }
+  // Only show profile completion form for college users who haven't completed their profile
+  if (isProfileComplete === false && userRole === 'college') {
+    return <CollegeProfileForm onProfileComplete={refetchProfile} />;
   }
 
-  // If profile is complete, render children (dashboard)
+  // For all other cases (non-college users or completed profiles), render children (dashboard)
   return <>{children}</>;
 };
 

@@ -19,34 +19,30 @@ export const useProfileCompletion = () => {
     const user = JSON.parse(currentUser);
     
     try {
-      let profile;
-      switch (user.role) {
-        case 'college':
-          profile = await profileApi.getCollegeProfile(token);
-          // Check if essential college fields are filled
-          const isComplete = !!(
-            profile?.collegeName &&
-            profile?.university &&
-            profile?.principalName &&
-            profile?.coordinatorName &&
-            profile?.address
-          );
-          setIsProfileComplete(isComplete);
-          break;
-        case 'student':
-          profile = await profileApi.getStudentProfile(token);
-          setIsProfileComplete(!!(profile?.fullName && profile?.email));
-          break;
-        case 'jobseeker':
-          profile = await profileApi.getJobSeekerProfile(token);
-          setIsProfileComplete(!!(profile?.fullName && profile?.email));
-          break;
-        default:
-          setIsProfileComplete(true);
+      // Only check profile completion for college users
+      if (user.role === 'college') {
+        const profile = await profileApi.getCollegeProfile(token);
+        // Check if essential college fields are filled
+        const isComplete = !!(
+          profile?.collegeName &&
+          profile?.university &&
+          profile?.principalName &&
+          profile?.coordinatorName &&
+          profile?.address
+        );
+        setIsProfileComplete(isComplete);
+      } else {
+        // For non-college users, assume profile is complete
+        setIsProfileComplete(true);
       }
     } catch (error) {
       console.error('Error checking profile completion:', error);
-      setIsProfileComplete(false);
+      // If profile doesn't exist and user is college, show profile form
+      if (user.role === 'college') {
+        setIsProfileComplete(false);
+      } else {
+        setIsProfileComplete(true);
+      }
     } finally {
       setLoading(false);
     }

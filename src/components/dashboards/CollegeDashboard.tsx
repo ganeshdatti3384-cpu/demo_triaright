@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, Users, BookOpen, LogOut, Send, User, Building, MapPin, Phone, Mail, Globe, Calendar, Monitor, Pill, TrendingUp, UserCheck, Banknote } from 'lucide-react';
+import { GraduationCap, Users, BookOpen, LogOut, Send, User, Building, MapPin, Phone, Mail, Globe, Calendar, Monitor, Pill, TrendingUp, UserCheck, Banknote, Edit, Save, X, Sparkles } from 'lucide-react';
 import { collegeApi, profileApi, pack365Api } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { College, Pack365Course } from '@/types/api';
@@ -34,6 +34,8 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
   const [requests, setRequests] = useState<any[]>([]);
   const [collegeProfile, setCollegeProfile] = useState<College | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<College>>({});
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [selectedStream, setSelectedStream] = useState<string | null>(null);
   const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
@@ -92,8 +94,7 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
       if (statsResult.status === 'fulfilled' && statsResult.value.success) {
         setDashboardStats(statsResult.value.stats || statsResult.value);
       } else {
-        const errorReason = statsResult.status === 'rejected' ? statsResult.reason : 'Failed to fetch stats';
-        console.error('Failed to fetch stats:', errorReason);
+        console.error('Failed to fetch stats:', statsResult.status === 'rejected' ? statsResult.reason : 'Unknown error');
         toast({
           title: 'Error',
           description: 'Failed to load dashboard stats',
@@ -103,10 +104,9 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
 
       // Handle requests response
       if (requestsResult.status === 'fulfilled' && requestsResult.value.success) {
-        setRequests(requestsResult.value.data || requestsResult.value.requests || []);
+        setRequests(requestsResult.value.data || []);
       } else {
-        const errorReason = requestsResult.status === 'rejected' ? requestsResult.reason : 'Failed to fetch requests';
-        console.error('Failed to fetch requests:', errorReason);
+        console.error('Failed to fetch requests:', requestsResult.status === 'rejected' ? requestsResult.reason : 'Unknown error');
         toast({
           title: 'Error',
           description: 'Failed to load college requests',
@@ -133,6 +133,7 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
       setProfileLoading(true);
       const profile = await profileApi.getCollegeProfile(token);
       setCollegeProfile(profile);
+      setEditFormData(profile);
     } catch (error) {
       console.error('Error fetching college profile:', error);
       toast({
@@ -153,17 +154,35 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
     }));
   };
 
-  const handleProfileUpdate = async (updatedProfile: Partial<College>) => {
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleEditProfile = () => {
+    setEditingProfile(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProfile(false);
+    setEditFormData(collegeProfile || {});
+  };
+
+  const handleSaveProfile = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
       setProfileLoading(true);
-      await profileApi.updateCollegeProfile(token, updatedProfile);
+      await profileApi.updateCollegeProfile(token, editFormData);
       toast({
         title: 'Success',
         description: 'Profile updated successfully',
       });
+      setEditingProfile(false);
       fetchCollegeProfile();
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -239,10 +258,10 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm shadow-lg">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="courses">Pack 365</TabsTrigger>
               <TabsTrigger value="requests">My Requests</TabsTrigger>
@@ -586,152 +605,375 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
 
             <TabsContent value="profile" className="space-y-6">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">College Profile</h2>
-                <Badge variant="outline">Institution Details</Badge>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  College Profile
+                </h2>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="bg-gradient-to-r from-blue-100 to-purple-100">
+                    Institution Details
+                  </Badge>
+                  {!editingProfile ? (
+                    <Button 
+                      onClick={handleEditProfile}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg transform hover:scale-105 transition-all duration-300"
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Profile
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleSaveProfile}
+                        disabled={profileLoading}
+                        className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white shadow-lg transform hover:scale-105 transition-all duration-300"
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        {profileLoading ? 'Saving...' : 'Save'}
+                      </Button>
+                      <Button 
+                        onClick={handleCancelEdit}
+                        variant="outline"
+                        className="shadow-lg hover:shadow-xl transition-all duration-300"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {profileLoading ? (
-                <Card>
+                <Card className="bg-gradient-to-r from-blue-50 to-purple-50 shadow-2xl">
                   <CardContent className="pt-6">
-                    <p className="text-center text-gray-500">Loading profile...</p>
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <p className="ml-3 text-blue-600">Loading profile...</p>
+                    </div>
                   </CardContent>
                 </Card>
               ) : collegeProfile ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Building className="h-5 w-5" />
+                  <Card className="bg-gradient-to-br from-blue-50/50 to-white shadow-2xl transform hover:scale-[1.02] transition-all duration-300 border-0">
+                    <CardHeader className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 backdrop-blur-sm">
+                      <CardTitle className="flex items-center gap-3 text-blue-800">
+                        <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg shadow-lg">
+                          <Building className="h-5 w-5 text-white" />
+                        </div>
                         Basic Information
+                        <Sparkles className="h-4 w-4 text-yellow-500 animate-pulse" />
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 p-6">
                       <div>
                         <Label className="text-sm font-medium text-gray-600">College Name</Label>
-                        <p className="text-lg font-semibold">{collegeProfile.collegeName || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="collegeName"
+                            value={editFormData.collegeName || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-lg font-semibold text-blue-800">{collegeProfile.collegeName || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600">University</Label>
-                        <p className="text-base">{collegeProfile.university || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="university"
+                            value={editFormData.university || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.university || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600">College Code</Label>
-                        <p className="text-base font-mono">{collegeProfile.collegeCode || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="collegeCode"
+                            value={editFormData.collegeCode || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base font-mono bg-gray-100 px-2 py-1 rounded">{collegeProfile.collegeCode || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-600">Established Year</Label>
-                        <p className="text-base">{collegeProfile.establishedYear || 'Not specified'}</p>
+                        <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Established Year
+                        </Label>
+                        {editingProfile ? (
+                          <Input
+                            name="establishedYear"
+                            type="number"
+                            value={editFormData.establishedYear || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.establishedYear || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600">Accreditation</Label>
-                        <p className="text-base">{collegeProfile.accreditation || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="accreditation"
+                            value={editFormData.accreditation || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.accreditation || 'Not specified'}</p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5" />
+                  <Card className="bg-gradient-to-br from-green-50/50 to-white shadow-2xl transform hover:scale-[1.02] transition-all duration-300 border-0">
+                    <CardHeader className="bg-gradient-to-r from-green-600/10 to-blue-600/10 backdrop-blur-sm">
+                      <CardTitle className="flex items-center gap-3 text-green-800">
+                        <div className="bg-gradient-to-r from-green-500 to-blue-600 p-2 rounded-lg shadow-lg">
+                          <User className="h-5 w-5 text-white" />
+                        </div>
                         Principal Details
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 p-6">
                       <div>
                         <Label className="text-sm font-medium text-gray-600">Principal Name</Label>
-                        <p className="text-base">{collegeProfile.principalName || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="principalName"
+                            value={editFormData.principalName || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.principalName || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600 flex items-center gap-1">
                           <Mail className="h-4 w-4" />
                           Principal Email
                         </Label>
-                        <p className="text-base">{collegeProfile.principalEmail || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="principalEmail"
+                            type="email"
+                            value={editFormData.principalEmail || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.principalEmail || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600 flex items-center gap-1">
                           <Phone className="h-4 w-4" />
                           Principal Phone
                         </Label>
-                        <p className="text-base">{collegeProfile.principalPhone || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="principalPhone"
+                            value={editFormData.principalPhone || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.principalPhone || 'Not specified'}</p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5" />
+                  <Card className="bg-gradient-to-br from-purple-50/50 to-white shadow-2xl transform hover:scale-[1.02] transition-all duration-300 border-0">
+                    <CardHeader className="bg-gradient-to-r from-purple-600/10 to-pink-600/10 backdrop-blur-sm">
+                      <CardTitle className="flex items-center gap-3 text-purple-800">
+                        <div className="bg-gradient-to-r from-purple-500 to-pink-600 p-2 rounded-lg shadow-lg">
+                          <Users className="h-5 w-5 text-white" />
+                        </div>
                         Coordinator Details
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 p-6">
                       <div>
                         <Label className="text-sm font-medium text-gray-600">Coordinator Name</Label>
-                        <p className="text-base">{collegeProfile.coordinatorName || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="coordinatorName"
+                            value={editFormData.coordinatorName || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.coordinatorName || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600 flex items-center gap-1">
                           <Mail className="h-4 w-4" />
                           Coordinator Email
                         </Label>
-                        <p className="text-base">{collegeProfile.coordinatorEmail || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="coordinatorEmail"
+                            type="email"
+                            value={editFormData.coordinatorEmail || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.coordinatorEmail || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600 flex items-center gap-1">
                           <Phone className="h-4 w-4" />
                           Coordinator Phone
                         </Label>
-                        <p className="text-base">{collegeProfile.coordinatorPhone || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="coordinatorPhone"
+                            value={editFormData.coordinatorPhone || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.coordinatorPhone || 'Not specified'}</p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5" />
+                  <Card className="bg-gradient-to-br from-orange-50/50 to-white shadow-2xl transform hover:scale-[1.02] transition-all duration-300 border-0">
+                    <CardHeader className="bg-gradient-to-r from-orange-600/10 to-red-600/10 backdrop-blur-sm">
+                      <CardTitle className="flex items-center gap-3 text-orange-800">
+                        <div className="bg-gradient-to-r from-orange-500 to-red-600 p-2 rounded-lg shadow-lg">
+                          <MapPin className="h-5 w-5 text-white" />
+                        </div>
                         Contact Information
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 p-6">
                       <div>
                         <Label className="text-sm font-medium text-gray-600 flex items-center gap-1">
                           <Mail className="h-4 w-4" />
                           Email
                         </Label>
-                        <p className="text-base">{collegeProfile.email || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="email"
+                            type="email"
+                            value={editFormData.email || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.email || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600 flex items-center gap-1">
                           <Phone className="h-4 w-4" />
                           Phone
                         </Label>
-                        <p className="text-base">{collegeProfile.phone || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="phone"
+                            value={editFormData.phone || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.phone || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600 flex items-center gap-1">
                           <Globe className="h-4 w-4" />
                           Website
                         </Label>
-                        <p className="text-base">{collegeProfile.website || 'Not specified'}</p>
+                        {editingProfile ? (
+                          <Input
+                            name="website"
+                            value={editFormData.website || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="text-base">{collegeProfile.website || 'Not specified'}</p>
+                        )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600">Address</Label>
-                        <p className="text-base">{collegeProfile.address || 'Not specified'}</p>
-                        {collegeProfile.city && (
-                          <p className="text-sm text-gray-500">
-                            {collegeProfile.city}, {collegeProfile.state} - {collegeProfile.pincode}
-                          </p>
+                        {editingProfile ? (
+                          <Textarea
+                            name="address"
+                            value={editFormData.address || ''}
+                            onChange={handleEditFormChange}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <div>
+                            <p className="text-base">{collegeProfile.address || 'Not specified'}</p>
+                            {collegeProfile.city && (
+                              <p className="text-sm text-gray-500 mt-1">
+                                {collegeProfile.city}, {collegeProfile.state} - {collegeProfile.pincode}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
+                      {editingProfile && (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-sm font-medium text-gray-600">City</Label>
+                              <Input
+                                name="city"
+                                value={editFormData.city || ''}
+                                onChange={handleEditFormChange}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium text-gray-600">State</Label>
+                              <Input
+                                name="state"
+                                value={editFormData.state || ''}
+                                onChange={handleEditFormChange}
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium text-gray-600">Pincode</Label>
+                            <Input
+                              name="pincode"
+                              value={editFormData.pincode || ''}
+                              onChange={handleEditFormChange}
+                              className="mt-1"
+                            />
+                          </div>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
               ) : (
-                <Card>
+                <Card className="bg-gradient-to-r from-gray-50 to-blue-50 shadow-2xl">
                   <CardContent className="pt-6">
-                    <p className="text-center text-gray-500">No profile data available</p>
+                    <p className="text-center text-gray-500 py-8">No profile data available</p>
                   </CardContent>
                 </Card>
               )}
