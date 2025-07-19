@@ -1,7 +1,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { pack365Api } from './api';
+import axios from 'axios';
 
 declare global {
   interface Window {
@@ -23,6 +23,13 @@ interface RazorpayResponse {
   razorpay_signature: string;
 }
 
+interface OrderResponse {
+  orderId: string;
+  key: string;
+}
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
+
 export class Pack365PaymentService {
   private static loadRazorpayScript(): Promise<boolean> {
     return new Promise((resolve) => {
@@ -41,39 +48,59 @@ export class Pack365PaymentService {
         console.error('Failed to load Razorpay script');
         resolve(false);
       };
-      document.body.appendChild(script);
+      document.head.appendChild(script);
     });
   }
 
-  static async createOrder(options: PaymentOptions): Promise<{ orderId: string; key: string; amount: number }> {
+  static async createOrder(options: PaymentOptions): Promise<OrderResponse> {
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Authentication required');
     }
 
-    if (!options.courseId) {
-      throw new Error('Course ID is required');
-    }
-
-    console.log('Creating order with courseId:', options.courseId);
+    console.log('Creating order with options:', options);
 
     try {
-      const response = await pack365Api.createOrder(token, options.courseId, 'payment');
+      const requestData = {
+        stream: options.streamName || 'it',
+        courseId: options.courseId,
+        fromStream: options.fromStream,
+        fromCourse: options.fromCourse
+      };
 
-      console.log('Order response:', response);
+      console.log('Sending request to backend:', requestData);
 
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to create order');
+      const response = await axios.post(
+        `${API_BASE_URL}/pack365/create-order-enhanced`,
+        requestData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Order response:', response.data);
+
+      if (!response.data.orderId || !response.data.key) {
+        throw new Error('Invalid order response from server');
       }
 
       return {
-        orderId: response.order.id,
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_PGrSvKSsu8PlqK',
-        amount: response.order.amount
+        orderId: response.data.orderId,
+        key: response.data.key
       };
     } catch (error: any) {
       console.error('Error creating order:', error);
-      throw new Error(error.message || 'Failed to create payment order');
+      
+      if (error.response) {
+        throw new Error(error.response.data?.error || error.response.data?.message || 'Failed to create payment order');
+      } else if (error.request) {
+        throw new Error('Network error. Please check your connection and try again.');
+      } else {
+        throw new Error(error.message || 'Failed to create payment order');
+      }
     }
   }
 
@@ -92,8 +119,8 @@ export class Pack365PaymentService {
       }
 
       // Create order
-      const { orderId, key, amount } = await this.createOrder(options);
-      console.log('Order created:', { orderId, key, amount });
+      const { orderId, key } = await this.createOrder(options);
+      console.log('Order created:', { orderId, key });
 
       // Get user info
       const currentUser = localStorage.getItem('currentUser');
@@ -102,7 +129,7 @@ export class Pack365PaymentService {
       // Configure Razorpay options
       const razorpayOptions = {
         key: key,
-        amount: amount, // Amount from backend
+        amount: 36500, // ₹365 in paise
         currency: 'INR',
         name: 'Pack365',
         description: options.fromStream 
@@ -165,20 +192,38 @@ export class Pack365PaymentService {
     }
 
     try {
-      const verificationResponse = await pack365Api.verifyPayment(token, {
-        razorpay_order_id: response.razorpay_order_id,
-        razorpay_payment_id: response.razorpay_payment_id,
-        razorpay_signature: response.razorpay_signature
-      });
+      const verificationResponse = await axios.post(
+        `${API_BASE_URL}/pack365/verify-payment`,
+        {
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-      if (!verificationResponse.success) {
-        throw new Error(verificationResponse.message || 'Payment verification failed');
+      console.log('Payment verification response:', verificationResponse.data);
+
+      if (!verificationResponse.data.success) {
+        throw new Error(verificationResponse.data.message || 'Payment verification failed');
       }
 
-      return verificationResponse;
+      return verificationResponse.data;
     } catch (error: any) {
       console.error('Error verifying payment:', error);
-      throw new Error(error.message || 'Payment verification failed');
+      
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Payment verification failed');
+      } else if (error.request) {
+        throw new Error('Network error during payment verification');
+      } else {
+        throw new Error(error.message || 'Payment verification failed');
+      }
     }
   }
 
@@ -187,7 +232,16 @@ export class Pack365PaymentService {
     if (!token) return;
 
     try {
-      await pack365Api.handlePaymentFailure(token, { razorpay_order_id: orderId });
+      await axios.post(
+        `${API_BASE_URL}/pack365/payment-failure`,
+        { razorpay_order_id: orderId },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
     } catch (error) {
       console.error('Error handling payment failure:', error);
     }
@@ -200,8 +254,15 @@ export class Pack365PaymentService {
     }
 
     try {
-      const response = await pack365Api.checkEnrollmentStatus(token, courseId);
-      return response;
+      const response = await axios.get(
+        `${API_BASE_URL}/pack365/check-enrollment/${courseId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      return response.data;
     } catch (error: any) {
       console.error('Error checking enrollment status:', error);
       throw new Error(error.message || 'Failed to check enrollment status');

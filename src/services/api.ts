@@ -69,7 +69,7 @@ export const authApi = {
     return res.data;
   },
 
-  changePasswordWithEmail : async (payload: {
+  changePasswordWithEmail: async (payload: {
     email: string;
     newPassword: string;
   }): Promise<{ message: string }> => {
@@ -91,6 +91,40 @@ export const authApi = {
       }
     });
     return res.data;
+  },
+
+  getStatistics: async (token: string): Promise<{
+    totalUsers: number;
+    students: number;
+    jobseekers: number;
+    employers: number;
+    colleges: number;
+  }> => {
+    const [totalUsers, students, jobseekers, employers, colleges] = await Promise.all([
+      axios.get(`${API_BASE_URL}/users/statistics/count/total`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      axios.get(`${API_BASE_URL}/users/statistics/count/students`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      axios.get(`${API_BASE_URL}/users/statistics/count/jobseekers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      axios.get(`${API_BASE_URL}/users/statistics/count/employers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      axios.get(`${API_BASE_URL}/users/statistics/count/colleges`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    ]);
+
+    return {
+      totalUsers: totalUsers.data.count || 0,
+      students: students.data.count || 0,
+      jobseekers: jobseekers.data.count || 0,
+      employers: employers.data.count || 0,
+      colleges: colleges.data.count || 0
+    };
   },
 };
 
@@ -326,23 +360,26 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Create Razorpay order (enhanced)
+  // Create Razorpay order (enhanced) - using your new backend endpoint
   createOrder: async (
     token: string,
     courseId: string,
     enrollmentType: 'payment' | 'code' = 'payment'
-  ): Promise<RazorpayOrderResponse> => {
+  ): Promise<{ orderId: string; key: string }> => {
     const res = await axios.post(
-      `${API_BASE_URL}/pack365/packenroll365/create-order`,
+      `${API_BASE_URL}/pack365/create-order-enhanced`,
       { courseId, enrollmentType },
       {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-    return res.data;
+    return {
+      orderId: res.data.orderId,
+      key: res.data.key
+    };
   },
 
-  // Verify payment
+  // Verify payment - using your backend endpoint
   verifyPayment: async (
     token: string,
     data: {
@@ -687,3 +724,6 @@ export type {
   EnrollmentCode,
   Exam
 };
+
+// Export the API modules
+export { authApi, profileApi, pack365Api, collegeApi };
