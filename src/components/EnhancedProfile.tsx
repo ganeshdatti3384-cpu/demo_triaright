@@ -1,4 +1,3 @@
-
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
@@ -157,8 +156,11 @@ const EnhancedProfile: React.FC = () => {
       }
 
       if (profileData) {
+        // Combine firstName and lastName to create fullName
+        const fullName = profileData.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+        
         const formData = {
-          fullName: profileData.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`,
+          fullName,
           dob: profileData.dateOfBirth || profileData.dob || '',
           gender: profileData.gender || '',
           email: profileData.email || user?.email || '',
