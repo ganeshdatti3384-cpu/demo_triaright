@@ -29,6 +29,7 @@ export interface RegisterPayload {
   address: string;
   role: 'student' | 'jobseeker' | 'employer' | 'college' | 'admin' | 'superadmin';
   password: string;
+  collegeName?: string;
 }
 
 export interface UpdatePasswordPayload {
@@ -42,6 +43,7 @@ export interface LoginResponse {
   token: string;
   user: User;
 }
+
 // ---------- College ----------
 export interface College {
   _id?: string;
@@ -183,6 +185,11 @@ export interface Pack365Course {
   price: number;
   totalDuration: number;
   topics: CourseTopic[];
+  examFile?: {
+    filename: string;
+    uploadDate: string;
+    originalName: string;
+  };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -291,5 +298,15 @@ export interface RazorpayOrderResponse {
     amount: number;
     currency: string;
     receipt: string;
+  };
+}
+
+export interface PaymentOptions {
+  amount: number;
+  currency: string;
+  receipt: string;
+  notes?: {
+    courseId?: string;
+    userId?: string;
   };
 }
