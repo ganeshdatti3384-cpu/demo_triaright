@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -36,6 +37,7 @@ import CollegeDashboard from '@/components/dashboards/CollegeDashboard';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 import SuperAdminDashboard from '@/components/dashboards/SuperAdminDashboard';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import ProfileCompletion from '@/components/ProfileCompletion';
 import EnhancedProfile from '@/components/EnhancedProfile';
 import CourseLearning from '@/pages/CourseLearning';
 import ExamList from '@/pages/ExamList';
@@ -118,12 +120,14 @@ const App = () => {
             }
           />
           
-          {/* Protected Routes */}
+          {/* Protected Routes with Profile Completion */}
           <Route
             path="/student"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <StudentDashboard />
+                <ProfileCompletion userRole="student">
+                  <StudentDashboard />
+                </ProfileCompletion>
               </ProtectedRoute>
             }
           />
@@ -131,7 +135,9 @@ const App = () => {
             path="/job-seeker"
             element={
               <ProtectedRoute allowedRoles={['jobseeker']}>
-                <JobSeekerDashboard />
+                <ProfileCompletion userRole="jobseeker">
+                  <JobSeekerDashboard />
+                </ProfileCompletion>
               </ProtectedRoute>
             }
           />
