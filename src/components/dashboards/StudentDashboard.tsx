@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search, Calculator, MapPin, DollarSign, Target, TrendingUp, AlertCircle } from 'lucide-react';
+import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search, Calculator, MapPin, Target, TrendingUp, AlertCircle, IndianRupee } from 'lucide-react';
 import Navbar from '../Navbar';
 import Pack365Card from '../Pack365Card';
 import CodeCompiler from '../CodeCompiler';
@@ -752,7 +752,7 @@ const StudentDashboard = () => {
                           </div>
                           {internship.stipend && (
                             <div className="flex items-center text-green-600 font-medium text-sm">
-                              <DollarSign className="h-3 w-3 mr-1" />
+                              <IndianRupee className="h-3 w-3 mr-1" />
                               {internship.stipend}
                             </div>
                           )}
@@ -801,7 +801,7 @@ const StudentDashboard = () => {
                           </div>
                           {internship.stipend && (
                             <div className="flex items-center text-green-600 font-medium text-sm">
-                              <DollarSign className="h-3 w-3 mr-1" />
+                              <IndianRupee className="h-3 w-3 mr-1" />
                               {internship.stipend}
                             </div>
                           )}

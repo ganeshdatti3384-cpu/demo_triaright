@@ -344,7 +344,7 @@ const Pack365Payment = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Full year access</span>
-                    <span className="text-2xl font-bold">₹365</span>
+                    <span className="text-2xl font-bold">365</span>
                   </div>
                 </div>
 
@@ -366,7 +366,7 @@ const Pack365Payment = () => {
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-medium">Total Amount</span>
-                    <span className="text-2xl font-bold text-blue-600">₹365</span>
+                    <span className="text-2xl font-bold text-blue-600">365</span>
                   </div>
 
                   <div className="space-y-3">
@@ -383,7 +383,7 @@ const Pack365Payment = () => {
                       ) : (
                         <>
                           <IndianRupee className="h-5 w-5 mr-2" />
-                          Pay ₹365 Securely
+                          Pay 365 Securely
                         </>
                       )}
                     </Button>

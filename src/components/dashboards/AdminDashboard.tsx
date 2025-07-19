@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3, Package, DollarSign, Building2 } from 'lucide-react';
+import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3, Package, Building2 } from 'lucide-react';
 import CourseManagement from '../admin/CourseManagement';
 import UserManagement from '../admin/UserManagement';
 import JobManagement from '../admin/JobManagement';

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import { useNavigate } from 'react-router-dom';
-import { Search, Clock, MapPin, DollarSign, Building } from 'lucide-react';
+import { Search, Clock, MapPin, Building, IndianRupee } from 'lucide-react';
 
 const OfflineInternships = () => {
   const navigate = useNavigate();
@@ -247,7 +247,7 @@ const OfflineInternships = () => {
 
                 {internship.stipend && (
                   <div className="flex items-center text-green-600 font-medium">
-                    <DollarSign className="h-4 w-4 mr-1" />
+                    <IndianRupee className="h-4 w-4 mr-1" />
                     {internship.stipend}
                   </div>
                 )}

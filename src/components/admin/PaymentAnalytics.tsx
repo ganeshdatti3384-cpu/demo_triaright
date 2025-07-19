@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { DollarSign, Users, TrendingUp, CreditCard, Calendar, Filter } from 'lucide-react';
+import {  Users, TrendingUp, CreditCard, Calendar, Filter, IndianRupee } from 'lucide-react';
 
 interface PaymentData {
   id: string;
@@ -127,7 +127,7 @@ const PaymentAnalytics = () => {
                 <p className="text-sm font-medium text-gray-600">Total Revenue</p>
                 <p className="text-2xl font-bold">${totalRevenue}</p>
               </div>
-              <DollarSign className="h-8 w-8 text-green-600" />
+              <IndianRupee className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
