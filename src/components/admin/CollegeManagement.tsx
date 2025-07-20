@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,7 @@ interface College {
 }
 
 interface Student {
+  [x: string]: ReactNode;
   _id: string;
   name: string;
   email: string;
@@ -82,23 +83,36 @@ const CollegeManagement = () => {
     }
   };
 
-  const fetchCollegeStudents = async (collegeName: string) => {
-    try {
-      setStudentsLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/colleges/admin/by-institution/${encodeURIComponent(collegeName)}`);
-      setStudents(response.data || []);
-    } catch (error) {
-      console.error('Error fetching college students:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load college students',
-        variant: 'destructive'
-      });
-      setStudents([]);
-    } finally {
-      setStudentsLoading(false);
-    }
-  };
+ const fetchCollegeStudents = async (collegeName: string) => {
+  try {
+    setStudentsLoading(true);
+
+    const token = localStorage.getItem('token'); // Get token from localStorage
+    if (!token) throw new Error('No auth token found');
+
+    const response = await axios.get(
+      `${API_BASE_URL}/colleges/admin/students/count/${encodeURIComponent(collegeName)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    setStudents(response.data.students || []);
+  } catch (error) {
+    console.error('Error fetching college students:', error);
+    toast({
+      title: 'Error',
+      description: 'Failed to load college students',
+      variant: 'destructive',
+    });
+    setStudents([]);
+  } finally {
+    setStudentsLoading(false);
+  }
+};
+
 
   const handleViewStudents = async (college: College) => {
     setSelectedCollege(college);
@@ -277,7 +291,18 @@ const CollegeManagement = () => {
               View all students registered under this college
             </DialogDescription>
           </DialogHeader>
-
+          <Card className="bg-blue-50 border-blue-200 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-center">
+                <div className="text-blue-700 font-semibold text-lg">
+                  Total Students: {students.length}
+                </div>
+                <div className="text-sm text-blue-600">
+                  College: {selectedCollege?.collegeName}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           <div className="space-y-4">
             {studentsLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -285,40 +310,33 @@ const CollegeManagement = () => {
                 <span className="ml-2">Loading students...</span>
               </div>
             ) : students.length > 0 ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="px-3 py-1">
+              <>
+                <div className="flex justify-between items-center">
+                  <Badge variant="outline" className="px-1 py-1">
                     {students.length} Students Found
                   </Badge>
                 </div>
-                
+
+                {/* Compact Student Summary Table */}
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>S.NO</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Year</TableHead>
-                      <TableHead>Roll Number</TableHead>
-                      <TableHead>Registration Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {students.map((student) => (
+                    {students.map((student, index) => (
                       <TableRow key={student._id}>
-                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{student.fullName}</TableCell>
                         <TableCell>{student.email}</TableCell>
-                        <TableCell>{student.phone}</TableCell>
-                        <TableCell>{student.department || 'N/A'}</TableCell>
-                        <TableCell>{student.year || 'N/A'}</TableCell>
-                        <TableCell>{student.rollNumber || 'N/A'}</TableCell>
-                        <TableCell>{new Date(student.registrationDate).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </>
             ) : (
               <div className="text-center py-8">
                 <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
