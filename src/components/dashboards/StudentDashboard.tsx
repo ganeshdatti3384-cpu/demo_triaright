@@ -18,7 +18,7 @@ import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
 import { pack365Api, Pack365Course, EnhancedPack365Enrollment } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import Pack365Courses from '../Pack365Courses';
+import Pack365CoursesStudent from '../Pack365Courses2';
 import Pack365Dashboard from '../Pack365Dashboard';
 
 const StudentDashboard = () => {
@@ -497,7 +497,7 @@ const StudentDashboard = () => {
                     </TabsList>
 
                     <TabsContent value="browse">
-                      <Pack365Courses />
+                      <Pack365CoursesStudent />
                     </TabsContent>
 
                     <TabsContent value="enrollments">

@@ -25,7 +25,7 @@ interface StreamData {
   courses: Pack365Course[];
 }
 
-const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365CoursesProps) => {
+const Pack365CoursesStudent = ({ showLoginRequired = false, onLoginRequired }: Pack365CoursesProps) => {
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,8 +111,17 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   };
 
   const handleStreamClick = (streamName: string) => {
-    // Always redirect to bundle detail page for better user experience
-    navigate(`/pack365/bundle/${streamName.toLowerCase()}`);
+    const token = localStorage.getItem('token');
+    if (showLoginRequired || !token) {
+      if (onLoginRequired) onLoginRequired();
+      else {
+        toast({ title: 'Login Required', description: 'Please login to access courses.', variant: 'destructive' });
+        navigate('/login');
+      }
+      return;
+    }
+    setSelectedStream(streamName);
+    setShowEnrollment(true);
   };
 
   const handleEnrollNow = () => {
@@ -475,17 +484,20 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                         e.stopPropagation();
                         handleStreamClick(stream.name);
                       }}
-                      className={`w-full font-semibold transition-all duration-300 transform hover:scale-105 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+                      className={`w-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+                        showLoginRequired 
+                          ? 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800' 
+                          : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
                       }`}
                     >
                       {showLoginRequired ? (
                         <>
                           <Lock className="h-4 w-4 mr-2" />
-                          Click to Explore
+                          Login to Explore
                         </>
                       ) : (
                         <>
-                          View Details
+                          Explore More
                           <ArrowRight className="h-4 w-4 ml-2" />
                         </>
                       )}
@@ -501,4 +513,4 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   );
 };
 
-export default Pack365Courses;
+export default Pack365CoursesStudent;
