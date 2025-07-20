@@ -224,6 +224,21 @@ export const profileApi = {
     });
     return res.data;
   },
+
+  updatePassword: async (
+    token: string,
+    payload: { currentPassword: string; newPassword: string }
+  ): Promise<{ message: string }> => {
+    const res = await axios.put(`${API_BASE_URL}/users/update-password`, {
+      oldPassword: payload.currentPassword,
+      newPassword: payload.newPassword
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return res.data;
+  },
 };
 
 export const pack365Api = {
