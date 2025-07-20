@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -46,6 +45,9 @@ import NotFound from '@/pages/NotFound';
 import CouponCode from './pages/CouponCode';
 import PaymentSelection from './pages/PaymentSelection';
 import RazorpayPayment from './pages/RazorpayPayment';
+import StudentProfilePage from '@/components/profile/StudentProfilePage';
+import JobSeekerProfilePage from '@/components/profile/JobSeekerProfilePage';
+import EmployerProfilePage from '@/components/profile/EmployerProfilePage';
 
 const queryClient = new QueryClient();
 
@@ -181,11 +183,28 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          {/* Profile Routes */}
           <Route
             path="/student/profile"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <EnhancedProfile />
+                <StudentProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/job-seeker/profile"
+            element={
+              <ProtectedRoute allowedRoles={['jobseeker']}>
+                <JobSeekerProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/employer/profile"
+            element={
+              <ProtectedRoute allowedRoles={['employer']}>
+                <EmployerProfilePage />
               </ProtectedRoute>
             }
           />
@@ -201,14 +220,6 @@ const App = () => {
             path="/employee/profile"
             element={
               <ProtectedRoute allowedRoles={['employee']}>
-                <EnhancedProfile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/employer/profile"
-            element={
-              <ProtectedRoute allowedRoles={['employer']}>
                 <EnhancedProfile />
               </ProtectedRoute>
             }

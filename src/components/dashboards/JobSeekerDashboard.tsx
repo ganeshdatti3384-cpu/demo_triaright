@@ -101,7 +101,7 @@ const JobSeekerDashboard = () => {
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
-    navigate('/');
+    navigate('/job-seeker');
   };
 
   const handleCourseClick = (courseId: string) => {
@@ -164,9 +164,17 @@ const JobSeekerDashboard = () => {
       
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome, {userName}!
-          </h1>
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Welcome, {userName}!
+            </h1>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/job-seeker/profile')}
+            >
+              Edit Profile
+            </Button>
+          </div>
         </div>
       </header>
 
