@@ -64,7 +64,7 @@ const ExamList: React.FC = () => {
       setLoading(false);
     }
   };
-
+  console.log(user)
   const handleStartExam = (examId: string) => {
     navigate(`/exam/${examId}`);
   };
@@ -183,9 +183,17 @@ const ExamList: React.FC = () => {
               <p className="text-gray-600 mb-4">
                 Complete at least 80% of your enrolled courses to unlock exams.
               </p>
-              <Button onClick={() => navigate('/dashboard')} variant="outline">
-                Go to Dashboard
-              </Button>
+              <Button
+              onClick={() => {
+                console.log('User:', user);
+                console.log('User role:', user.role);
+                navigate(`/${user.role}`);
+              }}
+              variant="outline"
+            >
+              Go to Dashboard
+            </Button>
+
             </CardContent>
           </Card>
         ) : (
