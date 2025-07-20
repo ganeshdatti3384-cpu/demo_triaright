@@ -111,17 +111,8 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   };
 
   const handleStreamClick = (streamName: string) => {
-    const token = localStorage.getItem('token');
-    if (showLoginRequired || !token) {
-      if (onLoginRequired) onLoginRequired();
-      else {
-        toast({ title: 'Login Required', description: 'Please login to access courses.', variant: 'destructive' });
-        navigate('/login');
-      }
-      return;
-    }
-    setSelectedStream(streamName);
-    setShowEnrollment(true);
+    // Always redirect to bundle detail page for better user experience
+    navigate(`/pack365/bundle/${streamName.toLowerCase()}`);
   };
 
   const handleEnrollNow = () => {
@@ -497,7 +488,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                         </>
                       ) : (
                         <>
-                          Explore More
+                          View Details
                           <ArrowRight className="h-4 w-4 ml-2" />
                         </>
                       )}

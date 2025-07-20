@@ -13,6 +13,7 @@ import ChangePassword from '@/pages/ChangePassword';
 import LiveCourses from '@/pages/LiveCourses';
 import RecordedCourses from '@/pages/RecordedCourses';
 import Pack365 from '@/pages/Pack365';
+import Pack365BundleDetail from '@/pages/Pack365BundleDetail';
 import JobAssurance from '@/pages/JobAssurance';
 import JobAssistance from '@/pages/JobAssistance';
 import OnlineInternships from '@/pages/OnlineInternships';
@@ -80,6 +81,7 @@ const App = () => {
           <Route path="/live-courses" element={<LiveCourses />} />
           <Route path="/recorded-courses" element={<RecordedCourses />} />
           <Route path="/pack365" element={<Pack365 />} />
+          <Route path="/pack365/bundle/:streamName" element={<Pack365BundleDetail />} />
           <Route path="/jobs/assurance" element={<JobAssurance />} />
           <Route path="/jobs/assistance" element={<JobAssistance />} />
           <Route path="/internships/online" element={<OnlineInternships />} />
