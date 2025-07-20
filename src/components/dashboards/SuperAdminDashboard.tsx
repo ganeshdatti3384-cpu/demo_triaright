@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,11 +13,6 @@ import {
   TrendingUp,
   Users,
   DollarSign,
-  ForwardRefExoticComponent,
-  Omit,
-  LucideProps,
-  RefAttributes,
-  SVGSVGElement,
   Plus,
   Edit,
   Check,
@@ -28,7 +24,6 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { pack365Api } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
-import { DatePicker } from '@/components/ui/date-picker';
 import { format } from 'date-fns';
 import {
   Table,
@@ -57,6 +52,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
 
 const SuperAdminDashboard = () => {
   const { toast } = useToast();
@@ -76,6 +74,7 @@ const SuperAdminDashboard = () => {
   const [selectedExam, setSelectedExam] = useState<any | null>(null);
   const [newMaxAttempts, setNewMaxAttempts] = useState<number | undefined>(undefined);
   const [isUpdatingAttempts, setIsUpdatingAttempts] = useState(false);
+  const [date, setDate] = useState<Date>();
 
   const streams = [
     { name: 'IT', icon: Monitor, color: 'blue', description: 'Information Technology' },
@@ -100,7 +99,7 @@ const SuperAdminDashboard = () => {
       } else {
         toast({
           title: 'Error',
-          description: response.message || 'Failed to fetch coupons',
+          description: 'Failed to fetch coupons',
           variant: 'destructive'
         });
       }
@@ -318,20 +317,36 @@ const SuperAdminDashboard = () => {
             </div>
             <div>
               <Label htmlFor="expiryDate">Expiry Date</Label>
-              <DatePicker
-                id="expiryDate"
-                onSelect={(date) =>
-                  setNewCoupon({
-                    ...newCoupon,
-                    expiryDate: date ? format(date, 'yyyy-MM-dd') : '',
-                  })
-                }
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={`w-full justify-start text-left font-normal ${!date && "text-muted-foreground"}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(selectedDate) => {
+                      setDate(selectedDate);
+                      setNewCoupon({
+                        ...newCoupon,
+                        expiryDate: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '',
+                      });
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <Label htmlFor="stream">Stream</Label>
               <Select onValueChange={(value) => setSelectedStream(value)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a stream" />
                 </SelectTrigger>
                 <SelectContent>
@@ -517,7 +532,6 @@ const SuperAdminDashboard = () => {
   );
 };
 
-export default SuperAdminDashboard;
 const CardDescription = ({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => {
   return (
     <p
@@ -533,3 +547,5 @@ const CardDescription = ({ className, ...props }: React.HTMLAttributes<HTMLParag
 function cn(...inputs: (string | undefined | null)[]): string {
   return inputs.filter(Boolean).join(' ');
 }
+
+export default SuperAdminDashboard;

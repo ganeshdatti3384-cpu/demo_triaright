@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { profileApi } from '@/services/api';
 
 const AccountTab = () => {
   const { token } = useAuth();
@@ -30,8 +32,18 @@ const AccountTab = () => {
       return;
     }
 
+    if (!token) {
+      toast({
+        title: "Error",
+        description: "Please login to update password",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
-      await authApi.updatePassword(token!, {
+      await profileApi.updatePassword(token, {
         currentPassword: passwords.currentPassword,
         newPassword: passwords.newPassword
       });
@@ -48,6 +60,8 @@ const AccountTab = () => {
         description: error.response?.data?.message || "Failed to update password",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,41 +69,41 @@ const AccountTab = () => {
     <Card>
       <CardHeader>
         <CardTitle>Change Password</CardTitle>
-        <CardContent>
-          <div className="grid gap-4">
-            <div>
-              <Label htmlFor="currentPassword">Current Password</Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                value={passwords.currentPassword}
-                onChange={(e) => handleInputChange('currentPassword', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={passwords.newPassword}
-                onChange={(e) => handleInputChange('newPassword', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={passwords.confirmPassword}
-                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-              />
-            </div>
-            <Button onClick={handlePasswordChange} disabled={loading}>
-              {loading ? 'Updating...' : 'Update Password'}
-            </Button>
-          </div>
-        </CardContent>
       </CardHeader>
+      <CardContent>
+        <div className="grid gap-4">
+          <div>
+            <Label htmlFor="currentPassword">Current Password</Label>
+            <Input
+              id="currentPassword"
+              type="password"
+              value={passwords.currentPassword}
+              onChange={(e) => handleInputChange('currentPassword', e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="newPassword">New Password</Label>
+            <Input
+              id="newPassword"
+              type="password"
+              value={passwords.newPassword}
+              onChange={(e) => handleInputChange('newPassword', e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={passwords.confirmPassword}
+              onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+            />
+          </div>
+          <Button onClick={handlePasswordChange} disabled={loading}>
+            {loading ? 'Updating...' : 'Update Password'}
+          </Button>
+        </div>
+      </CardContent>
     </Card>
   );
 };

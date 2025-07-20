@@ -108,8 +108,7 @@ const Pack365Payment = () => {
       await Pack365PaymentService.processPayment(
         {
           streamName: course.stream,
-          fromStream: false,
-          fromCourse: true
+          fromStream: false
         },
         // Success callback
         (response) => {

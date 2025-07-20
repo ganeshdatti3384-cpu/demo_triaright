@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -147,7 +148,7 @@ const App = () => {
             path="/employee"
             element={
               <ProtectedRoute allowedRoles={['employee']}>
-                <EmployeeDashboard user={getCurrentUser() || { name: 'Employee', role: 'employee' }} onLogout={handleLogout} />
+                <EmployeeDashboard />
               </ProtectedRoute>
             }
           />
@@ -155,7 +156,7 @@ const App = () => {
             path="/employer"
             element={
               <ProtectedRoute allowedRoles={['employer']}>
-                <EmployerDashboard user={getCurrentUser() || { name: 'Employer', role: 'employer' }} onLogout={handleLogout} />
+                <EmployerDashboard />
               </ProtectedRoute>
             }
           />
@@ -163,7 +164,7 @@ const App = () => {
             path="/college"
             element={
               <ProtectedRoute allowedRoles={['college']}>
-                <CollegeDashboard user={getCurrentUser() || { name: 'College', role: 'college' }} onLogout={handleLogout} />
+                <CollegeDashboard />
               </ProtectedRoute>
             }
           />
@@ -171,7 +172,7 @@ const App = () => {
             path="/admin"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboard user={getCurrentUser() || { name: 'Admin', role: 'admin' }} onLogout={handleLogout} />
+                <AdminDashboard />
               </ProtectedRoute>
             }
           />
@@ -179,7 +180,7 @@ const App = () => {
             path="/super-admin"
             element={
               <ProtectedRoute allowedRoles={['superadmin']}>
-                <SuperAdminDashboard user={getCurrentUser() || { name: 'Super Admin', role: 'superadmin' }} onLogout={handleLogout} />
+                <SuperAdminDashboard />
               </ProtectedRoute>
             }
           />

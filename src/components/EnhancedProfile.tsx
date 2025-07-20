@@ -367,7 +367,7 @@ const EnhancedProfile: React.FC = () => {
                   </TabsContent>
 
                   <TabsContent value="account" className="space-y-6">
-                    <AccountTab form={form} />
+                    <AccountTab />
                   </TabsContent>
 
                   {isEmployeeOrEmployer && (
