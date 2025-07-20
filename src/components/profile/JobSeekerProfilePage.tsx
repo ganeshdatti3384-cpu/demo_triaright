@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,12 +72,18 @@ const JobSeekerProfilePage = () => {
   };
 
   const handleArrayChange = (arrayName: string, index: number, field: string, value: string) => {
-    setProfile(prev => ({
-      ...prev,
-      [arrayName]: prev[arrayName as keyof JobSeekerProfile]?.map((item: any, i: number) =>
-        i === index ? (typeof item === 'string' ? value : { ...item, [field]: value }) : item
-      )
-    }));
+    setProfile(prev => {
+      const currentArray = prev[arrayName as keyof JobSeekerProfile];
+      if (Array.isArray(currentArray)) {
+        return {
+          ...prev,
+          [arrayName]: currentArray.map((item: any, i: number) =>
+            i === index ? (typeof item === 'string' ? value : { ...item, [field]: value }) : item
+          )
+        };
+      }
+      return prev;
+    });
   };
 
   const addArrayItem = (arrayName: string) => {
@@ -92,17 +97,29 @@ const JobSeekerProfilePage = () => {
       ? { companyName: '', role: '', responsibilities: '' }
       : '';
 
-    setProfile(prev => ({
-      ...prev,
-      [arrayName]: [...(prev[arrayName as keyof JobSeekerProfile] as any[]), newItem]
-    }));
+    setProfile(prev => {
+      const currentArray = prev[arrayName as keyof JobSeekerProfile];
+      if (Array.isArray(currentArray)) {
+        return {
+          ...prev,
+          [arrayName]: [...currentArray, newItem]
+        };
+      }
+      return prev;
+    });
   };
 
   const removeArrayItem = (arrayName: string, index: number) => {
-    setProfile(prev => ({
-      ...prev,
-      [arrayName]: (prev[arrayName as keyof JobSeekerProfile] as any[]).filter((_, i) => i !== index)
-    }));
+    setProfile(prev => {
+      const currentArray = prev[arrayName as keyof JobSeekerProfile];
+      if (Array.isArray(currentArray)) {
+        return {
+          ...prev,
+          [arrayName]: currentArray.filter((_, i) => i !== index)
+        };
+      }
+      return prev;
+    });
   };
 
   const handleSave = async () => {

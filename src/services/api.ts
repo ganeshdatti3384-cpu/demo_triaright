@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { College, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload } from '@/types/api';
@@ -651,9 +650,7 @@ export const collegeApi = {
   // Get college stats
   getCollegeStats: async (
     token: string
-  ): Promise<{
-    [x: string]: { success: boolean; data: any; }; success: boolean; data: any 
-}> => {
+  ): Promise<{ success: boolean; data: any }> => {
     const res = await axios.get(`${API_BASE_URL}/colleges/collegedata`, {
       headers: { Authorization: `Bearer ${token}` },
     });

@@ -1,118 +1,95 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
-import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
-} from '@/components/ui/card';
-import {
-  FormControl, FormField, FormItem, FormLabel,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { authApi } from '@/services/api';
 
-interface AccountTabProps {
-  form: any;
-}
-
-const AccountTab: React.FC<AccountTabProps> = ({ form }) => {
+const AccountTab = () => {
+  const { token } = useAuth();
   const { toast } = useToast();
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwords, setPasswords] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
-  const handleUpdatePassword = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast({
-        title: 'Error',
-        description: 'You are not logged in.',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const handleInputChange = (field: string, value: string) => {
+    setPasswords(prev => ({ ...prev, [field]: value }));
+  };
 
-    if (!oldPassword || !newPassword) {
+  const handlePasswordChange = async () => {
+    if (passwords.newPassword !== passwords.confirmPassword) {
       toast({
-        title: 'Missing Fields',
-        description: 'Please enter both old and new passwords.',
-        variant: 'destructive',
+        title: "Error",
+        description: "New passwords don't match",
+        variant: "destructive"
       });
       return;
     }
 
     try {
-      setLoading(true);
-      const response = await authApi.updatePassword(token, oldPassword, newPassword);
-      toast({
-        title: 'Success',
-        description: response.message || 'Password updated successfully.',
+      await authApi.updatePassword(token!, {
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword
       });
-      setOldPassword('');
-      setNewPassword('');
+      
+      toast({
+        title: "Success",
+        description: "Password updated successfully"
+      });
+      
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error?.response?.data?.message || 'Failed to update password.',
-        variant: 'destructive',
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update password",
+        variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-      <CardHeader className="bg-gradient-to-r from-gray-600 to-gray-800 text-white rounded-t-lg">
-        <CardTitle>Account Settings</CardTitle>
-        <CardDescription className="text-white/90">
-          Update your password here
-        </CardDescription>
+    <Card>
+      <CardHeader>
+        <CardTitle>Change Password</CardTitle>
+        <CardContent>
+          <div className="grid gap-4">
+            <div>
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={passwords.currentPassword}
+                onChange={(e) => handleInputChange('currentPassword', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={passwords.newPassword}
+                onChange={(e) => handleInputChange('newPassword', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={passwords.confirmPassword}
+                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+              />
+            </div>
+            <Button onClick={handlePasswordChange} disabled={loading}>
+              {loading ? 'Updating...' : 'Update Password'}
+            </Button>
+          </div>
+        </CardContent>
       </CardHeader>
-      <CardContent className="p-6 space-y-4">
-        <FormField name="username" control={form.control} render={({ field }) => (
-          <FormItem>
-            <FormLabel>Email / Username</FormLabel>
-            <FormControl>
-              <Input {...field} className="border-2" disabled />
-            </FormControl>
-          </FormItem>
-        )} />
-
-        <div className="space-y-4">
-          <FormItem>
-            <FormLabel>Old Password</FormLabel>
-            <FormControl>
-              <Input
-                type="password"
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
-                className="border-2"
-              />
-            </FormControl>
-          </FormItem>
-
-          <FormItem>
-            <FormLabel>New Password</FormLabel>
-            <FormControl>
-              <Input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="border-2"
-              />
-            </FormControl>
-          </FormItem>
-
-          <Button
-            onClick={handleUpdatePassword}
-            disabled={loading}
-            className="mt-2 bg-blue-600 text-white hover:bg-blue-800"
-          >
-            {loading ? 'Updating...' : 'Update Password'}
-          </Button>
-        </div>
-      </CardContent>
     </Card>
   );
 };
