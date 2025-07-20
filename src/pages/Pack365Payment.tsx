@@ -2,12 +2,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, CreditCard, Shield, Clock, IndianRupee, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CreditCard, Shield, Clock, IndianRupee, AlertCircle, Gift, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { pack365Api } from '@/services/api';
@@ -18,12 +20,25 @@ import { Pack365PaymentService } from '@/services/pack365Payment';
 const Pack365Payment = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [course, setCourse] = useState<Pack365Course | null>(null);
   const [loading, setLoading] = useState(false);
   const [enrollment, setEnrollment] = useState<EnhancedPack365Enrollment | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [finalAmount, setFinalAmount] = useState(365);
   const { user } = useAuth();
+
+  // Check if coming from coupon page with discount
+  useEffect(() => {
+    if (location.state?.appliedCoupon) {
+      setAppliedCoupon(location.state.appliedCoupon);
+      setFinalAmount(location.state.discountedAmount || 365);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -79,6 +94,87 @@ const Pack365Payment = () => {
     }
   };
 
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a coupon code',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsValidatingCoupon(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const response = await pack365Api.validateEnrollmentCode(token, {
+        code: couponCode,
+        courseId: courseId
+      });
+
+      if (response?.success) {
+        // Check if it's a discount coupon or enrollment code
+        if (response.couponDetails?.discount) {
+          const discountAmount = response.couponDetails.discount;
+          const discountedAmount = Math.max(0, 365 - discountAmount);
+          
+          setAppliedCoupon({
+            code: couponCode,
+            discount: discountAmount,
+            description: response.couponDetails.description || `₹${discountAmount} discount applied`
+          });
+          setFinalAmount(discountedAmount);
+          
+          toast({
+            title: 'Coupon Applied!',
+            description: `₹${discountAmount} discount applied. New amount: ₹${discountedAmount}`,
+          });
+        } else {
+          // It's an enrollment code, redirect to enrollment
+          toast({
+            title: 'Valid Enrollment Code',
+            description: 'This code provides free access to the course.',
+          });
+          
+          navigate('/coupon-code', {
+            state: {
+              courseId: courseId,
+              courseName: course?.courseName,
+              streamName: course?.stream,
+              fromCourse: true
+            }
+          });
+          return;
+        }
+      } else {
+        throw new Error(response?.message || 'Invalid coupon code');
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Invalid Coupon',
+        description: error.message || 'The coupon code you entered is not valid or has expired.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setFinalAmount(365);
+    toast({
+      title: 'Coupon Removed',
+      description: 'Coupon has been removed. Amount reset to original price.',
+    });
+  };
+
   const handleProceedToPayment = async () => {
     if (!courseId || !course) {
       toast({
@@ -103,12 +199,14 @@ const Pack365Payment = () => {
     setIsProcessingPayment(true);
 
     try {
-      console.log('Initiating payment for course:', course.courseName);
+      console.log('Initiating payment for course:', course.courseName, 'Amount:', finalAmount);
 
       await Pack365PaymentService.processPayment(
         {
           streamName: course.stream,
-          fromStream: false
+          fromStream: false,
+          amount: finalAmount,
+          couponCode: appliedCoupon?.code
         },
         // Success callback
         (response) => {
@@ -119,7 +217,7 @@ const Pack365Payment = () => {
           });
           
           // Navigate to success page
-          navigate(`/payment-success?courseId=${courseId}&type=pack365&paymentId=${response.razorpay_payment_id}`);
+          navigate(`/payment-success?courseId=${courseId}&type=pack365&paymentId=${response.razorpay_payment_id}&amount=${finalAmount}`);
         },
         // Error callback
         (error) => {
@@ -332,6 +430,57 @@ const Pack365Payment = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Coupon Section */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-3 flex items-center">
+                    <Gift className="h-4 w-4 mr-2" />
+                    Apply Coupon Code
+                  </h4>
+                  
+                  {appliedCoupon ? (
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-green-800">Coupon Applied: {appliedCoupon.code}</p>
+                          <p className="text-sm text-green-600">{appliedCoupon.description}</p>
+                          <p className="text-sm text-green-600">Discount: ₹{appliedCoupon.discount}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeCoupon}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex space-x-2">
+                        <div className="flex-1">
+                          <Label htmlFor="coupon">Enter coupon code</Label>
+                          <Input
+                            id="coupon"
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value)}
+                            placeholder="Enter coupon code"
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button
+                            onClick={validateCoupon}
+                            disabled={isValidatingCoupon}
+                            className="px-6"
+                          >
+                            {isValidatingCoupon ? 'Validating...' : 'Apply'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-lg font-medium">Pack365 Course</span>
@@ -341,7 +490,12 @@ const Pack365Payment = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Full year access</span>
-                    <span className="text-2xl font-bold">365</span>
+                    <div className="text-right">
+                      {appliedCoupon && (
+                        <span className="text-sm text-gray-500 line-through">₹365</span>
+                      )}
+                      <span className="text-2xl font-bold ml-2">₹{finalAmount}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -363,7 +517,7 @@ const Pack365Payment = () => {
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-medium">Total Amount</span>
-                    <span className="text-2xl font-bold text-blue-600">365</span>
+                    <span className="text-2xl font-bold text-blue-600">₹{finalAmount}</span>
                   </div>
 
                   <div className="space-y-3">
@@ -380,7 +534,7 @@ const Pack365Payment = () => {
                       ) : (
                         <>
                           <IndianRupee className="h-5 w-5 mr-2" />
-                          Pay 365 Securely
+                          Pay ₹{finalAmount} Securely
                         </>
                       )}
                     </Button>
@@ -391,7 +545,7 @@ const Pack365Payment = () => {
                       className="w-full border-purple-300 text-purple-600 hover:bg-purple-50"
                       disabled={isProcessingPayment}
                     >
-                      Continue with Coupon Code
+                      Continue with Enrollment Code
                     </Button>
                   </div>
                 </div>
