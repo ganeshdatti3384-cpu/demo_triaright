@@ -224,7 +224,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                 <div className="text-center">
                   <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">Special Price</h3>
-                    <div className="text-4xl font-bold text-blue-600 mb-4">$365</div>
+                    <div className="text-4xl font-bold text-blue-600 mb-4">365</div>
                     <p className="text-gray-600 mb-6">One-time payment for full access</p>
                     
                     <Button 
