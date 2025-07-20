@@ -1,1130 +1,885 @@
-/* eslint-disable react-hooks/rules-of-hooks */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote } from 'lucide-react';
-import { pack365Api, collegeApi } from '@/services/api';
-import { toast } from 'sonner';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import type { Pack365Course } from '@/types/api';
-import Navbar from '../Navbar';
-import Footer from '../Footer';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
-import { isToday } from 'date-fns';
+import {
+  Users,
+  GraduationCap,
+  Building2,
+  Briefcase,
+  TrendingUp,
+  Eye,
+  Plus,
+  Edit,
+  Trash,
+  Download,
+  Upload,
+  Calendar,
+  DollarSign,
+  BookOpen,
+  Award,
+  UserCheck,
+  AlertCircle,
+  CheckCircle2
+} from 'lucide-react';
+import { authApi, pack365Api, collegeApi } from '@/services/api';
+import { Pack365Course } from '@/types/api';
 
 interface SuperAdminDashboardProps {
-  user: { role: string; name: string };
+  user: any;
   onLogout: () => void;
 }
 
 const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
-  const [pack365Tab, setPack365Tab] = useState('overview');
-  const [createCouponOpen, setCreateCouponOpen] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState('');
-  const [couponCode, setCouponCode] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [discount, setDiscount] = useState('');
-  const { toast: useToastHook } = useToast();
-  const [selectedStream, setSelectedStream] = useState<string | null>(null);
-  const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
-  const [enrollmentCode, setEnrollmentCode] = useState('');
-  const [usageLimit, setUsageLimit] = useState('');
-  const [expiresAt, setExpiresAt] = useState('');
-  const [description, setDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    students: 0,
+    jobseekers: 0,
+    employers: 0,
+    colleges: 0
+  });
 
-  // State for API data
+  // Pack365 Management State
   const [courses, setCourses] = useState<Pack365Course[]>([]);
+  const [enrollmentCodes, setEnrollmentCodes] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
-  const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
-  
-  const streamData = [
-    { name: 'IT', icon: Monitor, color: 'bg-blue-500', description: 'Information Technology Courses' },
-    { name: 'PHARMA', icon: Pill, color: 'bg-green-500', description: 'Pharmaceutical Courses' },
-    { name: 'MARKETING', icon: TrendingUp, color: 'bg-purple-500', description: 'Marketing & Sales Courses' },
-    { name: 'HR', icon: UserCheck, color: 'bg-orange-500', description: 'Human Resources Courses' },
-    { name: 'FINANCE', icon: Banknote, color: 'bg-emerald-500', description: 'Finance & Accounting Courses' }
-  ];
+  const [showCreateCodeDialog, setShowCreateCodeDialog] = useState(false);
+  const [showCreateCouponDialog, setShowCreateCouponDialog] = useState(false);
+  const [newCodeForm, setNewCodeForm] = useState({
+    code: '',
+    courseId: '',
+    usageLimit: 100,
+    expiresAt: '',
+    description: ''
+  });
+  const [newCouponForm, setNewCouponForm] = useState({
+    code: '',
+    courseId: '',
+    discount: 0,
+    expiryDate: '',
+    description: ''
+  });
 
-  // Fetch courses on component mount
+  // College Service Requests State
+  const [serviceRequests, setServiceRequests] = useState<any[]>([]);
+  const [showServiceRequestDialog, setShowServiceRequestDialog] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+
+  // Add missing stream state
+  const [stream, setStream] = useState<'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance'>('it');
+
   useEffect(() => {
-    fetchCourses();
-    fetchCoupons();
-    fetchCollegeRequests();
+    fetchDashboardData();
   }, []);
 
-  useEffect(() => {
-    if (selectedStream && courses.length > 0) {
-      const filtered = courses.filter(course => 
-        course.stream.toUpperCase() === selectedStream.toUpperCase()
-      );
-      setFilteredCourses(filtered);
-    }
-  }, [selectedStream, courses]);
-
-  const fetchCourses = async () => {
-    try {
-      const response = await pack365Api.getAllCourses();
-      if (response.success) {
-        setCourses(response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-    }
-  };
-
-  const handleStreamSelect = (streamName: string) => {
-    setSelectedStream(streamName);
-  };
-
-  const handleBackToStreams = () => {
-    setSelectedStream(null);
-    setFilteredCourses([]);
-  };
-
-  const fetchCoupons = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      
-      const response = await pack365Api.getAllCoupons(token);
-      if (response.success) {
-        setCoupons(Array.isArray(response.codes) ? response.codes : []);
-      } else {
-        setCoupons([]);
-      }
-    } catch (error) {
-      console.error('Error fetching coupons:', error);
-      toast.error('Failed to fetch coupons');
-    }
-  };
-
-  const fetchCollegeRequests = async () => {
+  const fetchDashboardData = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      setIsLoading(true);
-      const response = await collegeApi.getCollegeRequests(token);
-      if (response.success) {
-        setCollegeRequests(response.requests);
+      setLoading(true);
+      
+      // Fetch user statistics
+      const userStats = await authApi.getStatistics(token);
+      setStats(userStats);
+
+      // Fetch Pack365 courses
+      const coursesResponse = await pack365Api.getAllCourses();
+      if (coursesResponse.success) {
+        setCourses(coursesResponse.data);
       }
-    } catch (error) {
-      console.error('Error fetching college requests:', error);
-      useToastHook({
+
+      // Fetch enrollment codes and coupons
+      const codesResponse = await pack365Api.getAllEnrollmentCodes(token);
+      if (codesResponse.success) {
+        setEnrollmentCodes(codesResponse.codes || []);
+        setCoupons(codesResponse.coupons || []);
+      }
+
+      // Fetch service requests
+      const requestsResponse = await collegeApi.getAllServiceRequests(token);
+      if (requestsResponse.success) {
+        setServiceRequests(requestsResponse.requests);
+      }
+
+    } catch (error: any) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
         title: 'Error',
-        description: 'Failed to load college requests',
+        description: 'Failed to load dashboard data',
         variant: 'destructive'
       });
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAcceptRequest = async (requestId: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await collegeApi.acceptServiceRequest(token, requestId);
-      if (response.success) {
-        useToastHook({
-          title: 'Success',
-          description: 'Request accepted successfully',
-        });
-        fetchCollegeRequests();
-      }
-    } catch (error) {
-      console.error('Error accepting request:', error);
-      useToastHook({
-        title: 'Error',
-        description: 'Failed to accept request',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleRejectRequest = async (requestId: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await collegeApi.rejectServiceRequest(token, requestId);
-      if (response.success) {
-        useToastHook({
-          title: 'Success',
-          description: 'Request rejected successfully',
-        });
-        fetchCollegeRequests();
-      }
-    } catch (error) {
-      console.error('Error rejecting request:', error);
-      useToastHook({
-        title: 'Error',
-        description: 'Failed to reject request',
-        variant: 'destructive'
-      });
+      setLoading(false);
     }
   };
 
   const handleCreateEnrollmentCode = async () => {
-  if (!enrollmentCode || !stream || !usageLimit || !expiresAt) {
-    toast.error('Please fill in all fields');
-    return;
-  }
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-    setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('No authentication token found');
-        return;
+      const response = await pack365Api.createEnrollmentCode(token, {
+        ...newCodeForm,
+        courseId: newCodeForm.courseId || undefined
+      });
+
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: 'Enrollment code created successfully!'
+        });
+        setShowCreateCodeDialog(false);
+        setNewCodeForm({
+          code: '',
+          courseId: '',
+          usageLimit: 100,
+          expiresAt: '',
+          description: ''
+        });
+        fetchDashboardData();
       }
-
-    await pack365Api.createEnrollmentCode(token, {
-      code: enrollmentCode,
-      stream: stream,
-      usageLimit: parseInt(usageLimit),
-      expiresAt: expiresAt,
-      description: description || `Enrollment code for ${stream}`
-    });
-
-      toast.success('Enrollment code created successfully!');
-      setCreateEnrollmentOpen(false);
-
-    // Clear fields
-    setEnrollmentCode('');
-    setStream('');
-    setUsageLimit('');
-    setExpiresAt('');
-    setDescription('');
-
-      fetchCoupons();
-    } catch (error) {
-      console.error('Error creating enrollment code:', error);
-      toast.error('Failed to create enrollment code');
-    } finally {
-      setIsLoading(false);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create enrollment code',
+        variant: 'destructive'
+      });
     }
   };
 
   const handleCreateCoupon = async () => {
-    if (!couponCode || !selectedCourse || !discount || !expiryDate) {
-      toast.error('Please fill in all fields');
-      return;
-    }
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-    setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('No authentication token found');
-        return;
-      }
+      const response = await pack365Api.createCoupon(token, newCouponForm);
 
-      await pack365Api.createCoupon(token, {
-        code: couponCode,
-        courseId: selectedCourse,
-        discount: parseInt(discount),
-        expiryDate: expiryDate,
-        description: `Coupon for course`
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: 'Coupon created successfully!'
+        });
+        setShowCreateCouponDialog(false);
+        setNewCouponForm({
+          code: '',
+          courseId: '',
+          discount: 0,
+          expiryDate: '',
+          description: ''
+        });
+        fetchDashboardData();
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create coupon',
+        variant: 'destructive'
       });
-
-      toast.success('Coupon created successfully!');
-      setCreateCouponOpen(false);
-
-      // Clear fields
-      setCouponCode('');
-      setSelectedCourse('');
-      setDiscount('');
-      setExpiryDate('');
-
-      fetchCoupons();
-    } catch (error) {
-      console.error('Error creating coupon:', error);
-      toast.error('Failed to create coupon');
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleToggleCouponStatus = async (couponId: string, currentStatus: boolean) => {
+  const handleDeactivateCode = async (codeId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('No authentication token found');
-        return;
+      const response = await pack365Api.deactivateEnrollmentCode(token, codeId);
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: 'Code deactivated successfully!'
+        });
+        fetchDashboardData();
       }
-
-      await pack365Api.updateCouponStatus(token, couponId, !currentStatus);
-      toast.success(`Coupon ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
-      
-      // Refresh coupons list
-      fetchCoupons();
-    } catch (error) {
-      console.error('Error updating coupon status:', error);
-      toast.error('Failed to update coupon status');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Failed to deactivate code',
+        variant: 'destructive'
+      });
     }
   };
 
-  const systemStats = {
-    totalRevenue: '₹12,34,567',
-    activeSubscriptions: 456,
-    serverUptime: '99.9%',
-    dataStorage: '2.4 TB',
-    apiCalls: '1.2M'
+  const handleServiceRequestAction = async (requestId: string, action: 'accept' | 'reject') => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = action === 'accept' 
+        ? await collegeApi.acceptServiceRequest(token, requestId)
+        : await collegeApi.rejectServiceRequest(token, requestId);
+
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: `Service request ${action}ed successfully!`
+        });
+        setShowServiceRequestDialog(false);
+        fetchDashboardData();
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: `Failed to ${action} service request`,
+        variant: 'destructive'
+      });
+    }
   };
 
-  const adminUsers = [
-    { id: 1, name: 'John Admin', role: 'Admin', lastLogin: '2024-01-15', status: 'active' },
-    { id: 2, name: 'Sarah Manager', role: 'Content Admin', lastLogin: '2024-01-14', status: 'active' },
-    { id: 3, name: 'Mike Support', role: 'Support Admin', lastLogin: '2024-01-13', status: 'inactive' },
-  ];
-
-  const systemLogs = [
-    { id: 1, action: 'User login spike detected', severity: 'info', time: '2024-01-15 14:30' },
-    { id: 2, action: 'Database backup completed', severity: 'success', time: '2024-01-15 02:00' },
-    { id: 3, action: 'Failed payment attempt', severity: 'warning', time: '2024-01-14 23:45' },
-  ];
-
-  const pendingRequests = collegeRequests.filter(request => request.status === 'Pending');
-
-  return (
-    <><Navbar />
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-8">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="users">User Control</TabsTrigger>
-            <TabsTrigger value="system">System</TabsTrigger>
-            <TabsTrigger value="pack365">Pack365</TabsTrigger>
-            <TabsTrigger value="college-approvals">College Approvals</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="logs">System Logs</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            {/* System Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{systemStats.totalRevenue}</div>
-                  <p className="text-xs text-muted-foreground">This month</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Subscriptions</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{systemStats.activeSubscriptions}</div>
-                  <p className="text-xs text-muted-foreground">Active plans</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Server Uptime</CardTitle>
-                  <Database className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{systemStats.serverUptime}</div>
-                  <p className="text-xs text-muted-foreground">Last 30 days</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Data Storage</CardTitle>
-                  <Database className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{systemStats.dataStorage}</div>
-                  <p className="text-xs text-muted-foreground">Used storage</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">API Calls</CardTitle>
-                  <Settings className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{systemStats.apiCalls}</div>
-                  <p className="text-xs text-muted-foreground">This month</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Pending College Approvals */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending College Approvals</CardTitle>
-                <CardDescription>College service requests requiring super admin approval</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {pendingRequests.slice(0, 3).map((request) => (
-                    <div key={request._id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{request.institutionName}</p>
-                        <p className="text-sm text-gray-500">College Service Request - {request.serviceCategory?.join(', ') || 'General'}</p>
-                        <p className="text-xs text-gray-400">Requested on {new Date(request.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline">Pending</Badge>
-                        <Button variant="outline" size="sm" onClick={() => setActiveTab('college-approvals')}>Review</Button>
-                      </div>
-                    </div>
-                  ))}
-                  {pendingRequests.length === 0 && (
-                    <p className="text-center text-gray-500 py-4">No pending approvals</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Critical Alerts */}
-            <Card className="border-red-200">
-              <CardHeader>
-                <CardTitle className="text-red-600">System Alerts</CardTitle>
-                <CardDescription>Critical system notifications</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <span className="text-sm">High API usage detected - consider scaling</span>
-                    <span className="text-xs text-gray-500 ml-auto">2 hours ago</span>
-                  </div>
-                  <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm">All systems operational</span>
-                    <span className="text-xs text-gray-500 ml-auto">5 minutes ago</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent System Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent System Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {systemLogs.slice(0, 5).map((log) => (
-                    <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-2 h-2 rounded-full ${log.severity === 'success' ? 'bg-green-500' :
-                            log.severity === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
-                        <span className="text-sm">{log.action}</span>
-                      </div>
-                      <span className="text-xs text-gray-500">{log.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">User Management</h2>
-              <div className="flex space-x-2">
-                <Button variant="outline">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View All Users
-                </Button>
-                <Button>Create Admin</Button>
+  const renderOverview = () => (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Users</p>
+                <p className="text-3xl font-bold">{stats.totalUsers}</p>
               </div>
+              <Users className="h-8 w-8 text-blue-600" />
             </div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Admin Users</CardTitle>
-                <CardDescription>Manage admin accounts and permissions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {adminUsers.map((admin) => (
-                    <div key={admin.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{admin.name}</p>
-                        <p className="text-sm text-gray-500">{admin.role} • Last login: {admin.lastLogin}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant={admin.status === 'active' ? 'default' : 'secondary'}>
-                          {admin.status}
-                        </Badge>
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-1" />
-                          Impersonate
-                        </Button>
-                        <Button variant="outline" size="sm">Edit</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Platform Users</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">15,234</div>
-                  <Button variant="outline" className="w-full mt-4">Manage All Users</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Banned Users</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-red-600">23</div>
-                  <Button variant="outline" className="w-full mt-4">Review Bans</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Suspicious Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-yellow-600">5</div>
-                  <Button variant="outline" className="w-full mt-4">Investigate</Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="system" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">System Configuration</h2>
-              <Button variant="destructive">Emergency Shutdown</Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Database Management</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full">Run Database Backup</Button>
-                  <Button variant="outline" className="w-full">View Performance Metrics</Button>
-                  <Button variant="outline" className="w-full">Optimize Database</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Server Management</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full">Server Health Check</Button>
-                  <Button variant="outline" className="w-full">View Server Logs</Button>
-                  <Button variant="outline" className="w-full">Restart Services</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>API Configuration</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full">Manage API Keys</Button>
-                  <Button variant="outline" className="w-full">Rate Limit Settings</Button>
-                  <Button variant="outline" className="w-full">API Documentation</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Platform Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full">Global Configuration</Button>
-                  <Button variant="outline" className="w-full">Feature Flags</Button>
-                  <Button variant="outline" className="w-full">Maintenance Mode</Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="pack365" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Pack365 Management</h2>
-              <div className="flex space-x-2">
-                <Dialog open={createEnrollmentOpen} onOpenChange={setCreateEnrollmentOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Enrollment Code
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Create Enrollment Code</DialogTitle>
-                      <DialogDescription>
-                        Create a new enrollment code for a specific course.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="course" className="text-right">Course</Label>
-                        <div className="col-span-3">
-                          <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a course" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {courses.map((course) => (
-                                <SelectItem key={course._id} value={course._id || ''}>
-                                  {course.courseName} ({course.stream})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="enrollmentCode" className="text-right">Code</Label>
-                        <Input
-                          id="enrollmentCode"
-                          value={enrollmentCode}
-                          onChange={(e) => setEnrollmentCode(e.target.value)}
-                          placeholder="e.g., ENROLL2024"
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="usageLimit" className="text-right">Usage Limit</Label>
-                        <Input
-                          id="usageLimit"
-                          type="number"
-                          value={usageLimit}
-                          onChange={(e) => setUsageLimit(e.target.value)}
-                          placeholder="e.g., 100"
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="expiresAt" className="text-right">Expires At</Label>
-                        <Input
-                          id="expiresAt"
-                          type="date"
-                          value={expiresAt}
-                          onChange={(e) => setExpiresAt(e.target.value)}
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="description" className="text-right">Description</Label>
-                        <Input
-                          id="description"
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          placeholder="Optional description"
-                          className="col-span-3"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setCreateEnrollmentOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="button" onClick={handleCreateEnrollmentCode} disabled={isLoading}>
-                        {isLoading ? 'Creating...' : 'Create Code'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                <Dialog open={createCouponOpen} onOpenChange={setCreateCouponOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Coupon
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Create New Coupon</DialogTitle>
-                      <DialogDescription>
-                        Create a new coupon code for courses. Fill in all the details below.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="course" className="text-right">Course</Label>
-                        <div className="col-span-3">
-                          <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a course" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {courses.map((course) => (
-                                <SelectItem key={course._id} value={course._id || ''}>
-                                  {course.courseName} ({course.stream})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="couponCode" className="text-right">Coupon Code</Label>
-                        <Input
-                          id="couponCode"
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value)}
-                          placeholder="e.g., SAVE20"
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="discount" className="text-right">Discount (%)</Label>
-                        <Input
-                          id="discount"
-                          type="number"
-                          value={discount}
-                          onChange={(e) => setDiscount(e.target.value)}
-                          placeholder="e.g., 20"
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="expiryDate" className="text-right">Expiry Date</Label>
-                        <Input
-                          id="expiryDate"
-                          type="date"
-                          value={expiryDate}
-                          onChange={(e) => setExpiryDate(e.target.value)}
-                          className="col-span-3"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setCreateCouponOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="button" onClick={handleCreateCoupon} disabled={isLoading}>
-                        {isLoading ? 'Creating...' : 'Create Coupon'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Students</p>
+                <p className="text-3xl font-bold">{stats.students}</p>
               </div>
+              <GraduationCap className="h-8 w-8 text-green-600" />
             </div>
+          </CardContent>
+        </Card>
 
-            <Tabs value={pack365Tab} onValueChange={setPack365Tab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="coupons">Coupons</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="overview" className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center">
-                        <Package className="h-5 w-5 mr-2 text-blue-600" />
-                        Total Courses
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold text-blue-600">{courses.length}</div>
-                      <p className="text-sm text-gray-500">Available courses</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center">
-                        <Ticket className="h-5 w-5 mr-2 text-green-600" />
-                        Active Coupons
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold text-green-600">{coupons.filter(c => c.isActive).length}</div>
-                      <p className="text-sm text-gray-500">Currently available</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center">
-                        <CreditCard className="h-5 w-5 mr-2 text-purple-600" />
-                        Monthly Revenue
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold text-purple-600">₹5,67,890</div>
-                      <p className="text-sm text-gray-500">From Pack365</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Pack365 Courses</CardTitle>
-                    <CardDescription>All available Pack365 courses</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {!selectedStream ? (
-                      <div>
-                        <div className="flex justify-between items-center mb-6">
-                          <h2 className="text-2xl font-bold">Course Bundels</h2>
-                          <p className="text-sm text-gray-600">Select a Bundel to view courses</p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {streamData.map((stream) => {
-                            const IconComponent = stream.icon;
-                            const streamCourseCount = courses.filter(course => course.stream.toUpperCase() === stream.name.toUpperCase()
-                            ).length;
-
-                            return (
-                              <Card
-                                key={stream.name}
-                                className="hover:shadow-lg transition-shadow cursor-pointer transform hover:scale-105"
-                                onClick={() => handleStreamSelect(stream.name)}
-                              >
-                                <CardContent className="p-6">
-                                  <div className="flex items-center space-x-4">
-                                    <div className={`${stream.color} p-3 rounded-lg text-white`}>
-                                      <IconComponent className="h-6 w-6" />
-                                    </div>
-                                    <div>
-                                      <h3 className="text-lg font-semibold">{stream.name}</h3>
-                                      <p className="text-sm text-gray-600">{stream.description}</p>
-                                      <p className="text-xs text-gray-500 mt-2">
-                                        {streamCourseCount} course{streamCourseCount !== 1 ? 's' : ''} available
-                                      </p>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="flex items-center space-x-4">
-                            <Button variant="outline" onClick={handleBackToStreams}>
-                              ← Back to Streams
-                            </Button>
-                            <h2 className="text-2xl font-bold">{selectedStream} Courses</h2>
-                          </div>
-                          <Badge variant="outline">
-                            {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
-                          </Badge>
-                        </div>
-
-                        <div className="space-y-4">
-                          {filteredCourses.map((course) => (
-                            <Card key={course._id} className="hover:shadow-md transition-shadow">
-                              <CardContent className="p-6">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <h3 className="text-lg font-semibold mb-2">{course.courseName}</h3>
-                                    <p className="text-gray-600 mb-3">{course.description}</p>
-                                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                      <span>Duration: {course.totalDuration} hours</span>
-                                      <span>Topics: {course.topics?.length || 0}</span>
-                                      <Badge variant="secondary">{course.stream.toUpperCase()}</Badge>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-2xl font-bold text-green-600">₹{course.price}</p>
-                                    <Button className="mt-2">
-                                      Request Access
-                                    </Button>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                          {filteredCourses.length === 0 && (
-                            <Card>
-                              <CardContent className="p-8 text-center">
-                                <p className="text-gray-500">No courses available for {selectedStream} stream</p>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="coupons" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>All Coupons</CardTitle>
-                    <CardDescription>Manage all coupon codes and their status</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {coupons.map((coupon) => (
-                        <div key={coupon._id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <Ticket className="h-5 w-5 text-blue-600" />
-                            <div>
-                              <p className="font-medium">{coupon.code}</p>
-                              <p className="text-sm text-gray-500">{coupon.stream}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                              <p className="font-medium">
-                                {coupon.discount ? `${coupon.discount}% off` : 'FREE'}
-                              </p>
-                              <p className="text-sm text-gray-500 flex items-center">
-                                <Calendar className="h-3 w-3 mr-1" />Expiry At :
-                                {" "+new Date(coupon.expiresAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <Badge variant={new Date(coupon.expiresAt) > new Date() ? 'default' : 'secondary'}>
-                              {new Date(coupon.expiryAt) < new Date() ? 'Active' : 'Active'}
-                            </Badge>
-                            {/* <div className="flex space-x-2">
-                              <Button variant="outline" size="sm">Edit</Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleToggleCouponStatus(coupon._id, coupon.isActive)}
-                              >
-                                {coupon.isActive ? 'Deactivate' : 'Activate'}
-                              </Button>
-                            </div> */}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          <TabsContent value="college-approvals" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">College Service Approvals</h2>
-              <div className="flex items-center space-x-2">
-                <Badge variant="outline">{pendingRequests.length} Pending Approvals</Badge>
-                <Button onClick={fetchCollegeRequests} disabled={isLoading}>
-                  {isLoading ? 'Loading...' : 'Refresh'}
-                </Button>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Job Seekers</p>
+                <p className="text-3xl font-bold">{stats.jobseekers}</p>
               </div>
+              <UserCheck className="h-8 w-8 text-purple-600" />
             </div>
+          </CardContent>
+        </Card>
 
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Employers</p>
+                <p className="text-3xl font-bold">{stats.employers}</p>
+              </div>
+              <Briefcase className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Colleges</p>
+                <p className="text-3xl font-bold">{stats.colleges}</p>
+              </div>
+              <Building2 className="h-8 w-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <TrendingUp className="h-5 w-5 mr-2" />
+              Platform Growth
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
-              {collegeRequests.map((request) => (
-                <Card key={request._id}>
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Building2 className="h-5 w-5 text-blue-600" />
-                          <h3 className="font-semibold text-lg">{request.institutionName}</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                          <div>
-                            <p><span className="font-medium">Contact:</span> {request.contactPerson}</p>
-                            <p><span className="font-medium">Email:</span> {request.email}</p>
-                            <p><span className="font-medium">Phone:</span> {request.phoneNumber}</p>
-                          </div>
-                          <div>
-                            <p><span className="font-medium">Expected Students:</span> {request.expectedStudents}</p>
-                            <p><span className="font-medium">Preferred Date:</span> {request.preferredDate}</p>
-                            <p><span className="font-medium">Type:</span> {request.serviceCategory?.join(', ') || 'College Service Request'}</p>
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <p className="text-sm"><span className="font-medium">Description:</span> {request.serviceDescription}</p>
-                          {request.additionalRequirements && (
-                            <p className="text-sm"><span className="font-medium">Additional Requirements:</span> {request.additionalRequirements}</p>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-2">
-                          Requested on: {new Date(request.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end space-y-2">
-                        <Badge
-                          variant={request.status === 'Accepted' ? 'default' :
-                            request.status === 'Rejected' ? 'destructive' : 'outline'}
-                        >
-                          {request.status}
-                        </Badge>
-                        {request.status === 'Pending' && (
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleRejectRequest(request._id)}
-                            >
-                              Reject
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleAcceptRequest(request._id)}
-                            >
-                              Accept
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {collegeRequests.length === 0 && !isLoading && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-center text-gray-500">No college service requests found</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="billing" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Billing & Revenue</h2>
-              <Button>Generate Report</Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monthly Revenue</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-600">₹12,34,567</div>
-                  <p className="text-sm text-gray-500">+15% from last month</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Failed Payments</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-red-600">23</div>
-                  <Button variant="outline" className="w-full mt-2">Review Failed Payments</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Refund Requests</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-yellow-600">7</div>
-                  <Button variant="outline" className="w-full mt-2">Process Refunds</Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="security" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Security Center</h2>
-              <div className="flex items-center space-x-2">
-                <Lock className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-green-600">All systems secure</span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">User Registration Rate</span>
+                <span className="text-sm font-medium text-green-600">+12%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Course Completions</span>
+                <span className="text-sm font-medium text-blue-600">+8%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Active Users</span>
+                <span className="text-sm font-medium text-purple-600">+15%</span>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Security Monitoring</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full">View Security Logs</Button>
-                  <Button variant="outline" className="w-full">Failed Login Attempts</Button>
-                  <Button variant="outline" className="w-full">IP Blacklist</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Access Control</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full">Manage Permissions</Button>
-                  <Button variant="outline" className="w-full">2FA Settings</Button>
-                  <Button variant="outline" className="w-full">Session Management</Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="logs" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">System Logs</h2>
-              <div className="flex space-x-2">
-                <Button variant="outline">Export Logs</Button>
-                <Button variant="outline">Clear Old Logs</Button>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              Pending Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Service Requests</span>
+                <Badge variant="outline">{serviceRequests.filter(req => req.status === 'pending').length}</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Course Reviews</span>
+                <Badge variant="outline">3</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Payment Issues</span>
+                <Badge variant="destructive">1</Badge>
               </div>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent System Events</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {systemLogs.map((log) => (
-                    <div key={log.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-3 h-3 rounded-full ${log.severity === 'success' ? 'bg-green-500' :
-                            log.severity === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
-                        <span className="text-sm">{log.action}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline">{log.severity}</Badge>
-                        <span className="text-xs text-gray-500">{log.time}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </div>
-    <Footer />
-    </>
+  );
+
+  const renderPack365Management = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Pack365 Course Management</h3>
+        <div className="flex space-x-2">
+          <Button onClick={() => setShowCreateCodeDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Enrollment Code
+          </Button>
+          <Button onClick={() => setShowCreateCouponDialog(true)} variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Coupon
+          </Button>
+        </div>
+      </div>
+
+      {/* Courses Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Available Courses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((course) => (
+              <Card key={course._id} className="border">
+                <CardContent className="p-4">
+                  <h4 className="font-semibold mb-2">{course.courseName}</h4>
+                  <Badge variant="outline" className="capitalize mb-2">
+                    {course.stream}
+                  </Badge>
+                  <p className="text-sm text-gray-600 mb-2">{course.description}</p>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>{course.totalDuration || 0} hours</span>
+                    <span>{course.topics?.length || 0} topics</span>
+                  </div>
+                  <div className="mt-2 flex justify-between items-center">
+                    <span className="font-bold text-green-600">₹{course.price || 'Free'}</span>
+                    <Button size="sm" variant="outline">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Enrollment Codes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Enrollment Codes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Course</TableHead>
+                <TableHead>Usage</TableHead>
+                <TableHead>Expires</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {enrollmentCodes.map((code) => (
+                <TableRow key={code._id}>
+                  <TableCell className="font-mono">{code.code}</TableCell>
+                  <TableCell>{code.courseName || 'All Courses'}</TableCell>
+                  <TableCell>{code.usedCount}/{code.usageLimit}</TableCell>
+                  <TableCell>{new Date(code.expiresAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Badge variant={code.isActive ? 'default' : 'secondary'}>
+                      {code.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDeactivateCode(code._id)}
+                      disabled={!code.isActive}
+                    >
+                      Deactivate
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Coupons */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Discount Coupons</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Course</TableHead>
+                <TableHead>Discount</TableHead>
+                <TableHead>Expires</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {coupons.map((coupon) => (
+                <TableRow key={coupon._id}>
+                  <TableCell className="font-mono">{coupon.code}</TableCell>
+                  <TableCell>{coupon.courseName || 'All Courses'}</TableCell>
+                  <TableCell>{coupon.discount}%</TableCell>
+                  <TableCell>{new Date(coupon.expiryDate).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Badge variant={coupon.isActive ? 'default' : 'secondary'}>
+                      {coupon.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="outline">
+                      Edit
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderServiceRequests = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">College Service Requests</h3>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Institution</TableHead>
+                <TableHead>Contact Person</TableHead>
+                <TableHead>Service Category</TableHead>
+                <TableHead>Expected Students</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {serviceRequests.map((request) => (
+                <TableRow key={request._id}>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{request.institutionName}</p>
+                      <p className="text-sm text-gray-500">{request.email}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>{request.contactPerson}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {request.serviceCategory.map((category: string, index: number) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {category}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>{request.expectedStudents}</TableCell>
+                  <TableCell>{new Date(request.preferredDate).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={
+                        request.status === 'pending' ? 'secondary' : 
+                        request.status === 'accepted' ? 'default' : 'destructive'
+                      }
+                    >
+                      {request.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setShowServiceRequestDialog(true);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {request.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => handleServiceRequestAction(request._id, 'accept')}
+                          >
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleServiceRequestAction(request._id, 'reject')}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Super Admin Dashboard</h1>
+              <p className="text-gray-600">Welcome back, {user?.name || 'Admin'}</p>
+            </div>
+            <Button variant="outline" onClick={onLogout}>
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-8">
+            {[
+              { id: 'overview', name: 'Overview', icon: TrendingUp },
+              { id: 'pack365', name: 'Pack365 Management', icon: BookOpen },
+              { id: 'service-requests', name: 'Service Requests', icon: Building2 }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <tab.icon className="h-5 w-5 mr-2" />
+                {tab.name}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === 'overview' && renderOverview()}
+        {activeTab === 'pack365' && renderPack365Management()}
+        {activeTab === 'service-requests' && renderServiceRequests()}
+      </div>
+
+      {/* Create Enrollment Code Dialog */}
+      <Dialog open={showCreateCodeDialog} onOpenChange={setShowCreateCodeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Enrollment Code</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="code">Code</Label>
+              <Input
+                id="code"
+                value={newCodeForm.code}
+                onChange={(e) => setNewCodeForm(prev => ({ ...prev, code: e.target.value }))}
+                placeholder="Enter unique code"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="courseId">Course (Optional)</Label>
+              <Select
+                value={newCodeForm.courseId}
+                onValueChange={(value) => setNewCodeForm(prev => ({ ...prev, courseId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select course or leave blank for all" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Courses</SelectItem>
+                  {courses.map((course) => (
+                    <SelectItem key={course._id} value={course._id}>
+                      {course.courseName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="usageLimit">Usage Limit</Label>
+              <Input
+                id="usageLimit"
+                type="number"
+                value={newCodeForm.usageLimit}
+                onChange={(e) => setNewCodeForm(prev => ({ ...prev, usageLimit: parseInt(e.target.value) }))}
+                min="1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="expiresAt">Expiry Date</Label>
+              <Input
+                id="expiresAt"
+                type="date"
+                value={newCodeForm.expiresAt}
+                onChange={(e) => setNewCodeForm(prev => ({ ...prev, expiresAt: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={newCodeForm.description}
+                onChange={(e) => setNewCodeForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Optional description"
+              />
+            </div>
+
+            <div className="flex space-x-2">
+              <Button onClick={handleCreateEnrollmentCode} className="flex-1">
+                Create Code
+              </Button>
+              <Button variant="outline" onClick={() => setShowCreateCodeDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Coupon Dialog */}
+      <Dialog open={showCreateCouponDialog} onOpenChange={setShowCreateCouponDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Discount Coupon</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="couponCode">Coupon Code</Label>
+              <Input
+                id="couponCode"
+                value={newCouponForm.code}
+                onChange={(e) => setNewCouponForm(prev => ({ ...prev, code: e.target.value }))}
+                placeholder="Enter unique coupon code"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="couponCourseId">Course</Label>
+              <Select
+                value={newCouponForm.courseId}
+                onValueChange={(value) => setNewCouponForm(prev => ({ ...prev, courseId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select course" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map((course) => (
+                    <SelectItem key={course._id} value={course._id}>
+                      {course.courseName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="discount">Discount Percentage</Label>
+              <Input
+                id="discount"
+                type="number"
+                value={newCouponForm.discount}
+                onChange={(e) => setNewCouponForm(prev => ({ ...prev, discount: parseInt(e.target.value) }))}
+                min="1"
+                max="100"
+                placeholder="e.g., 20"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="couponExpiryDate">Expiry Date</Label>
+              <Input
+                id="couponExpiryDate"
+                type="date"
+                value={newCouponForm.expiryDate}
+                onChange={(e) => setNewCouponForm(prev => ({ ...prev, expiryDate: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="couponDescription">Description</Label>
+              <Textarea
+                id="couponDescription"
+                value={newCouponForm.description}
+                onChange={(e) => setNewCouponForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Optional description"
+              />
+            </div>
+
+            <div className="flex space-x-2">
+              <Button onClick={handleCreateCoupon} className="flex-1">
+                Create Coupon
+              </Button>
+              <Button variant="outline" onClick={() => setShowCreateCouponDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Service Request Details Dialog */}
+      <Dialog open={showServiceRequestDialog} onOpenChange={setShowServiceRequestDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Service Request Details</DialogTitle>
+          </DialogHeader>
+          {selectedRequest && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Institution Name</Label>
+                  <p className="text-sm">{selectedRequest.institutionName}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Contact Person</Label>
+                  <p className="text-sm">{selectedRequest.contactPerson}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Email</Label>
+                  <p className="text-sm">{selectedRequest.email}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Phone</Label>
+                  <p className="text-sm">{selectedRequest.phoneNumber}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Expected Students</Label>
+                  <p className="text-sm">{selectedRequest.expectedStudents}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Preferred Date</Label>
+                  <p className="text-sm">{new Date(selectedRequest.preferredDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Service Categories</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {selectedRequest.serviceCategory.map((category: string, index: number) => (
+                    <Badge key={index} variant="outline">
+                      {category}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Service Description</Label>
+                <p className="text-sm mt-1">{selectedRequest.serviceDescription}</p>
+              </div>
+
+              {selectedRequest.additionalRequirements && (
+                <div>
+                  <Label className="text-sm font-medium">Additional Requirements</Label>
+                  <p className="text-sm mt-1">{selectedRequest.additionalRequirements}</p>
+                </div>
+              )}
+
+              {selectedRequest.status === 'pending' && (
+                <div className="flex space-x-2 pt-4">
+                  <Button
+                    onClick={() => handleServiceRequestAction(selectedRequest._id, 'accept')}
+                    className="flex-1"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Accept Request
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleServiceRequestAction(selectedRequest._id, 'reject')}
+                    className="flex-1"
+                  >
+                    Reject Request
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 
