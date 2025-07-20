@@ -181,6 +181,7 @@ const StudentDashboard = () => {
     }
   ];
 
+  console.log(loadingEnrollments, pack365Enrollments);
   return (
     <>
       <Navbar />
@@ -551,11 +552,15 @@ const StudentDashboard = () => {
                                     )}
 
                                     <Button 
-                                      className="w-full bg-blue-600 hover:bg-blue-700"
+                                      className={`w-full ${
+                                        enrollment.paymentStatus === 'completed' 
+                                          ? 'bg-green-600 hover:bg-green-700' 
+                                          : 'bg-blue-600 hover:bg-blue-700'
+                                      }`}
                                       onClick={() => handleContinueLearning(enrollment)}
                                     >
                                       <Play className="h-4 w-4 mr-2" />
-                                      {enrollment.status === 'enrolled' ? 'Continue Learning' : 'Review Course'}
+                                      {enrollment.paymentStatus === 'completed' ? 'Continue Learning' : 'Review Course'}
                                     </Button>
                                   </div>
                                 </CardContent>

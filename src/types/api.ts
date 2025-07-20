@@ -281,6 +281,7 @@ export interface Exam {
 }
 
 export interface EnhancedPack365Enrollment extends Pack365Enrollment {
+  [x: string]: string;
   _id: string;
   status?: string;
   totalWatchedPercentage?: number;

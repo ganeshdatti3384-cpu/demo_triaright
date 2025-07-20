@@ -33,12 +33,17 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const { toast: useToastHook } = useToast();
     const [selectedStream, setSelectedStream] = useState<string | null>(null);
     const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
-  
+  const [enrollmentCode, setEnrollmentCode] = useState('');
+const [stream, setStream] = useState('');
+const [usageLimit, setUsageLimit] = useState('');
+const [expiresAt, setExpiresAt] = useState('');
+const [description, setDescription] = useState('');
+const [isLoading, setIsLoading] = useState(false);
+const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
   // State for API data
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const streamData = [
   { name: 'IT', icon: Monitor, color: 'bg-blue-500', description: 'Information Technology Courses' },
   { name: 'PHARMA', icon: Pill, color: 'bg-green-500', description: 'Pharmaceutical Courses' },
@@ -166,50 +171,46 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     }
   };
 
-  const handleCreateCoupon = async () => {
-    if (!selectedCourse || !couponCode || !expiryDate || !discount) {
-      toast.error('Please fill in all fields');
+  const handleCreateEnrollmentCode = async () => {
+  if (!enrollmentCode || !stream || !usageLimit || !expiresAt) {
+    toast.error('Please fill in all fields');
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('No authentication token found');
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('No authentication token found');
-        return;
-      }
+    await pack365Api.createEnrollmentCode(token, {
+      code: enrollmentCode,
+      stream: stream,
+      usageLimit: parseInt(usageLimit),
+      expiresAt: expiresAt,
+      description: description || `Enrollment code for ${stream}`
+    });
 
-      const selectedCourseData = courses.find(c => c._id === selectedCourse);
+    toast.success('Enrollment code created successfully!');
+    setCreateEnrollmentOpen(false);
 
-      if (!selectedCourseData?.courseId) {
-        toast.error('Invalid course selection');
-        return;
-      }
+    // Clear fields
+    setEnrollmentCode('');
+    setStream('');
+    setUsageLimit('');
+    setExpiresAt('');
+    setDescription('');
 
-      await pack365Api.createCoupon(token, {
-        code: couponCode,
-        courseId: selectedCourseData.courseId,
-        discount: parseInt(discount),
-        expiryDate: expiryDate,
-        description: `Coupon for ${selectedCourseData.courseName || 'course'}`
-      });
-
-      toast.success('Coupon created successfully!');
-      setCreateCouponOpen(false);
-      setSelectedCourse('');
-      setCouponCode('');
-      setExpiryDate('');
-      setDiscount('');
-      
-      fetchCoupons();
-    } catch (error) {
-      console.error('Error creating coupon:', error);
-      toast.error('Failed to create coupon');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    fetchCoupons(); // Optional: reload latest list
+  } catch (error) {
+    console.error('Error creating enrollment code:', error);
+    toast.error('Failed to create enrollment code');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleToggleCouponStatus = async (couponId: string, currentStatus: boolean) => {
     try {
@@ -767,7 +768,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                           <div className="flex items-center space-x-4">
                             <Ticket className="h-5 w-5 text-blue-600" />
                             <div>
-                              <p className="font-medium">{coupon.code}</p>
+                              <p className="font-medium">{coupon.stream}</p>
                               <p className="text-sm text-gray-500">{coupon.description}</p>
                             </div>
                           </div>
