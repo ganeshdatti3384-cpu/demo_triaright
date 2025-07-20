@@ -161,7 +161,6 @@ const EnhancedProfile: React.FC = () => {
         
         const formData = {
           fullName,
-          dob: profileData.dateOfBirth || profileData.dob || '',
           gender: profileData.gender || '',
           email: profileData.email || user?.email || '',
           phone: profileData.phone || user?.phoneNumber || '',

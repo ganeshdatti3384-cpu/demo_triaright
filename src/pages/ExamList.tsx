@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, Users, Award, AlertCircle, CheckCircle, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 interface ExamInfo {
   _id: string;
@@ -100,6 +104,7 @@ const ExamList: React.FC = () => {
   }
 
   return (
+    <><Navbar />
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -123,7 +128,7 @@ const ExamList: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center space-x-2">
@@ -159,7 +164,7 @@ const ExamList: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Avg. Score</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {exams.length > 0 
+                    {exams.length > 0
                       ? Math.round(exams.reduce((sum, exam) => sum + exam.attemptInfo.bestScore, 0) / exams.length)
                       : 0}%
                   </p>
@@ -194,7 +199,7 @@ const ExamList: React.FC = () => {
                   </div>
                   <CardDescription>Exam ID: {exam.examId}</CardDescription>
                 </CardHeader>
-                
+
                 <CardContent className="space-y-4">
                   {/* Exam Details */}
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -241,8 +246,8 @@ const ExamList: React.FC = () => {
                   )}
 
                   {/* Action Button */}
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     onClick={() => handleStartExam(exam.examId)}
                     disabled={!canTakeExam(exam.attemptInfo)}
                     variant={canTakeExam(exam.attemptInfo) ? "default" : "outline"}
@@ -256,6 +261,8 @@ const ExamList: React.FC = () => {
         )}
       </div>
     </div>
+    <Footer />
+    </>
   );
 };
 

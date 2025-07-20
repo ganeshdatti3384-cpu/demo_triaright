@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 // ---------- User ----------
 export interface User {
@@ -176,7 +177,6 @@ export interface CourseTopic {
 }
 
 export interface Pack365Course {
-  [x: string]: any;
   [x: string]: any;
   _id?: string;
   courseId: string;

@@ -52,6 +52,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   }, []);
 
   
+  
    useEffect(() => {
       if (selectedStream && courses.length > 0) {
         const filtered = courses.filter(course => 
@@ -165,49 +166,49 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   };
 
   const handleCreateCoupon = async () => {
-    if (!selectedCourse || !couponCode || !expiryDate || !discount) {
-      toast.error('Please fill in all fields');
+  if (!selectedStream || !couponCode || !expiryDate || !discount) {
+    toast.error('Please fill in all fields');
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('No authentication token found');
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('No authentication token found');
-        return;
-      }
+    const selectedStreamData = streamData.find(s => s._id === selectedStream);
 
-      const selectedCourseData = courses.find(c => c._id === selectedCourse);
-
-      if (!selectedCourseData?.courseId) {
-        toast.error('Invalid course selection');
-        return;
-      }
-
-      await pack365Api.createCoupon(token, {
-        code: couponCode,
-        courseId: selectedCourseData.courseId,
-        discount: parseInt(discount),
-        expiryDate: expiryDate,
-        description: `Coupon for ${selectedCourseData.courseName || 'course'}`
-      });
-
-      toast.success('Coupon created successfully!');
-      setCreateCouponOpen(false);
-      setSelectedCourse('');
-      setCouponCode('');
-      setExpiryDate('');
-      setDiscount('');
-      
-      fetchCoupons();
-    } catch (error) {
-      console.error('Error creating coupon:', error);
-      toast.error('Failed to create coupon');
-    } finally {
-      setIsLoading(false);
+    if (!selectedStreamData) {
+      toast.error('Invalid stream selection');
+      return;
     }
-  };
+
+    await pack365Api.createCoupon(token, {
+      code: couponCode,
+      streamId: selectedStreamData._id,
+      discount: parseInt(discount),
+      expiryDate,
+      description: `Coupon for ${selectedStreamData.name || 'stream'}`
+    });
+
+    toast.success('Coupon created successfully!');
+    setCreateCouponOpen(false);
+    setSelectedStream('');
+    setCouponCode('');
+    setExpiryDate('');
+    setDiscount('');
+    
+    fetchCoupons();
+  } catch (error) {
+    console.error('Error creating coupon:', error);
+    toast.error('Failed to create coupon');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleToggleCouponStatus = async (couponId: string, currentStatus: boolean) => {
     try {
@@ -560,7 +561,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                   <DialogHeader>
                     <DialogTitle>Create New Coupon</DialogTitle>
                     <DialogDescription>
-                      Create a new coupon code for courses. Fill in all the details below.
+                      Create a new coupon code for Stream. Fill in all the details below.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
@@ -569,18 +570,18 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                         Course
                       </Label>
                       <div className="col-span-3">
-                        <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a course" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {courses.map((course) => (
-                              <SelectItem key={course._id} value={course._id || ''}>
-                                {course.courseName} ({course.stream})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Select value={selectedStream} onValueChange={setSelectedStream}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a stream" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {streamData.map((stream) => (
+                            <SelectItem key={stream._id} value={stream._id}>
+                              {stream.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
