@@ -16,6 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { Pack365Course } from '@/types/api';
 import Navbar from '../Navbar';
 import Footer from '../Footer';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import { isToday } from 'date-fns';
 
 interface SuperAdminDashboardProps {
@@ -32,26 +34,28 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const [expiryDate, setExpiryDate] = useState('');
   const [discount, setDiscount] = useState('');
   const { toast: useToastHook } = useToast();
-    const [selectedStream, setSelectedStream] = useState<string | null>(null);
-    const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
+  const [selectedStream, setSelectedStream] = useState<string | null>(null);
+  const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
   const [enrollmentCode, setEnrollmentCode] = useState('');
-const [stream, setStream] = useState('');
-const [usageLimit, setUsageLimit] = useState('');
-const [expiresAt, setExpiresAt] = useState('');
-const [description, setDescription] = useState('');
-const [isLoading, setIsLoading] = useState(false);
-const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
+  const [usageLimit, setUsageLimit] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [description, setDescription] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
+
   // State for API data
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
+  
   const streamData = [
-  { name: 'IT', icon: Monitor, color: 'bg-blue-500', description: 'Information Technology Courses' },
-  { name: 'PHARMA', icon: Pill, color: 'bg-green-500', description: 'Pharmaceutical Courses' },
-  { name: 'MARKETING', icon: TrendingUp, color: 'bg-purple-500', description: 'Marketing & Sales Courses' },
-  { name: 'HR', icon: UserCheck, color: 'bg-orange-500', description: 'Human Resources Courses' },
-  { name: 'FINANCE', icon: Banknote, color: 'bg-emerald-500', description: 'Finance & Accounting Courses' }
-];
+    { name: 'IT', icon: Monitor, color: 'bg-blue-500', description: 'Information Technology Courses' },
+    { name: 'PHARMA', icon: Pill, color: 'bg-green-500', description: 'Pharmaceutical Courses' },
+    { name: 'MARKETING', icon: TrendingUp, color: 'bg-purple-500', description: 'Marketing & Sales Courses' },
+    { name: 'HR', icon: UserCheck, color: 'bg-orange-500', description: 'Human Resources Courses' },
+    { name: 'FINANCE', icon: Banknote, color: 'bg-emerald-500', description: 'Finance & Accounting Courses' }
+  ];
+
   // Fetch courses on component mount
   useEffect(() => {
     fetchCourses();
@@ -59,30 +63,31 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
     fetchCollegeRequests();
   }, []);
 
-  
-   useEffect(() => {
-      if (selectedStream && courses.length > 0) {
-        const filtered = courses.filter(course => 
-          course.stream.toUpperCase() === selectedStream.toUpperCase()
-        );
-        setFilteredCourses(filtered);
+  useEffect(() => {
+    if (selectedStream && courses.length > 0) {
+      const filtered = courses.filter(course => 
+        course.stream.toUpperCase() === selectedStream.toUpperCase()
+      );
+      setFilteredCourses(filtered);
+    }
+  }, [selectedStream, courses]);
+
+  const fetchCourses = async () => {
+    try {
+      const response = await pack365Api.getAllCourses();
+      if (response.success) {
+        setCourses(response.data);
       }
-    }, [selectedStream, courses]);
-  
-    const fetchCourses = async () => {
-      try {
-        const response = await pack365Api.getAllCourses();
-        if (response.success) {
-          setCourses(response.data);
-        }
-      } catch (error) {
-        console.error('Error fetching courses:', error);
-      }
-    };
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
+
   const handleStreamSelect = (streamName: string) => {
     setSelectedStream(streamName);
   };
- const handleBackToStreams = () => {
+
+  const handleBackToStreams = () => {
     setSelectedStream(null);
     setFilteredCourses([]);
   };
@@ -172,45 +177,86 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
     }
   };
 
-
-  const handleCreateCoupon= async () => {
+  const handleCreateEnrollmentCode = async () => {
   if (!enrollmentCode || !stream || !usageLimit || !expiresAt) {
     toast.error('Please fill in all fields');
     return;
   }
 
-  setIsLoading(true);
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast.error('No authentication token found');
-      return;
-    }
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('No authentication token found');
+        return;
+      }
 
     await pack365Api.createEnrollmentCode(token, {
       code: enrollmentCode,
-      stream: selectedStream,
+      stream: stream,
       usageLimit: parseInt(usageLimit),
       expiresAt: expiresAt,
+      description: description || `Enrollment code for ${stream}`
     });
 
-    toast.success('Enrollment code created successfully!');
-    setCreateEnrollmentOpen(false);
+      toast.success('Enrollment code created successfully!');
+      setCreateEnrollmentOpen(false);
 
     // Clear fields
     setEnrollmentCode('');
     setStream('');
     setUsageLimit('');
     setExpiresAt('');
+    setDescription('');
 
-    fetchCoupons(); // Optional: reload latest list
-  } catch (error) {
-    console.error('Error creating enrollment code:', error);
-    toast.error('Failed to create enrollment code');
-  } finally {
-    setIsLoading(false);
-  }
-};
+      fetchCoupons();
+    } catch (error) {
+      console.error('Error creating enrollment code:', error);
+      toast.error('Failed to create enrollment code');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateCoupon = async () => {
+    if (!couponCode || !selectedCourse || !discount || !expiryDate) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('No authentication token found');
+        return;
+      }
+
+      await pack365Api.createCoupon(token, {
+        code: couponCode,
+        courseId: selectedCourse,
+        discount: parseInt(discount),
+        expiryDate: expiryDate,
+        description: `Coupon for course`
+      });
+
+      toast.success('Coupon created successfully!');
+      setCreateCouponOpen(false);
+
+      // Clear fields
+      setCouponCode('');
+      setSelectedCourse('');
+      setDiscount('');
+      setExpiryDate('');
+
+      fetchCoupons();
+    } catch (error) {
+      console.error('Error creating coupon:', error);
+      toast.error('Failed to create coupon');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleToggleCouponStatus = async (couponId: string, currentStatus: boolean) => {
     try {
@@ -530,43 +576,124 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
           <TabsContent value="pack365" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Pack365 Management</h2>
-             <Dialog open={createCouponOpen} onOpenChange={setCreateCouponOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Coupon
-                </Button>
-              </DialogTrigger>
-
+              <div className="flex space-x-2">
+                <Dialog open={createEnrollmentOpen} onOpenChange={setCreateEnrollmentOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Enrollment Code
+                    </Button>
+                  </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                      <DialogTitle>Create New Coupon</DialogTitle>
+                      <DialogTitle>Create Enrollment Code</DialogTitle>
                       <DialogDescription>
-                        Create a new coupon code for course streams. Fill in all the details below.
+                        Create a new enrollment code for a specific course.
                       </DialogDescription>
                     </DialogHeader>
-
                     <div className="grid gap-4 py-4">
-                      {/* Stream Selector */}
                       <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stream" className="text-right">Stream</Label>
+                        <Label htmlFor="course" className="text-right">Course</Label>
                         <div className="col-span-3">
-                          <Select value={selectedStream} onValueChange={setSelectedStream}>
+                          <Select value={selectedCourse} onValueChange={setSelectedCourse}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a stream" />
+                              <SelectValue placeholder="Select a course" />
                             </SelectTrigger>
                             <SelectContent>
-                              {['IT', 'PHARMA', 'MARKETING', 'HR', 'FINANCE'].map((stream) => (
-                                <SelectItem key={stream} value={stream}>
-                                  {stream}
+                              {courses.map((course) => (
+                                <SelectItem key={course._id} value={course._id || ''}>
+                                  {course.courseName} ({course.stream})
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="enrollmentCode" className="text-right">Code</Label>
+                        <Input
+                          id="enrollmentCode"
+                          value={enrollmentCode}
+                          onChange={(e) => setEnrollmentCode(e.target.value)}
+                          placeholder="e.g., ENROLL2024"
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="usageLimit" className="text-right">Usage Limit</Label>
+                        <Input
+                          id="usageLimit"
+                          type="number"
+                          value={usageLimit}
+                          onChange={(e) => setUsageLimit(e.target.value)}
+                          placeholder="e.g., 100"
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="expiresAt" className="text-right">Expires At</Label>
+                        <Input
+                          id="expiresAt"
+                          type="date"
+                          value={expiresAt}
+                          onChange={(e) => setExpiresAt(e.target.value)}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="description" className="text-right">Description</Label>
+                        <Input
+                          id="description"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="Optional description"
+                          className="col-span-3"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setCreateEnrollmentOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="button" onClick={handleCreateEnrollmentCode} disabled={isLoading}>
+                        {isLoading ? 'Creating...' : 'Create Code'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
 
-                      {/* Coupon Code */}
+                <Dialog open={createCouponOpen} onOpenChange={setCreateCouponOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Coupon
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Create New Coupon</DialogTitle>
+                      <DialogDescription>
+                        Create a new coupon code for courses. Fill in all the details below.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="course" className="text-right">Course</Label>
+                        <div className="col-span-3">
+                          <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a course" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {courses.map((course) => (
+                                <SelectItem key={course._id} value={course._id || ''}>
+                                  {course.courseName} ({course.stream})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="couponCode" className="text-right">Coupon Code</Label>
                         <Input
@@ -577,10 +704,8 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
                           className="col-span-3"
                         />
                       </div>
-
-                      {/* Users Count */}
                       <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="discount" className="text-right">Users count</Label>
+                        <Label htmlFor="discount" className="text-right">Discount (%)</Label>
                         <Input
                           id="discount"
                           type="number"
@@ -590,8 +715,6 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
                           className="col-span-3"
                         />
                       </div>
-
-                      {/* Expiry Date */}
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="expiryDate" className="text-right">Expiry Date</Label>
                         <Input
@@ -603,7 +726,6 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
                         />
                       </div>
                     </div>
-
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setCreateCouponOpen(false)}>
                         Cancel
@@ -615,6 +737,7 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
                   </DialogContent>
                 </Dialog>
               </div>
+            </div>
 
             <Tabs value={pack365Tab} onValueChange={setPack365Tab}>
               <TabsList className="grid w-full grid-cols-2">

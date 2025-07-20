@@ -128,7 +128,6 @@ export const authApi = {
 };
 
 export const profileApi = {
-  // ✅ College
   updateCollegeProfile: async (
     token: string,
     data: Partial<College>
@@ -149,7 +148,6 @@ export const profileApi = {
     return res.data;
   },
 
-  // ✅ Employer
   updateEmployerProfile: async (
     token: string,
     data: Partial<Employer>
@@ -170,7 +168,6 @@ export const profileApi = {
     return res.data;
   },
 
-  // ✅ Job Seeker
   updateJobSeekerProfile: async (
     token: string,
     data: Partial<JobSeekerProfile>
@@ -191,7 +188,6 @@ export const profileApi = {
     return res.data;
   },
 
-  // ✅ Student
   updateStudentProfile: async (
     token: string,
     data: Partial<StudentProfile>
@@ -212,9 +208,7 @@ export const profileApi = {
     return res.data;
   },
 
-  // Generic methods for compatibility
   getProfile: async (token: string): Promise<any> => {
-    // This is a generic method that components might expect
     const res = await axios.get(`${API_BASE_URL}/users/profile`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -222,7 +216,6 @@ export const profileApi = {
   },
 
   updateProfile: async (token: string, profileData: any): Promise<any> => {
-    // This is a generic method that components might expect
     const res = await axios.put(`${API_BASE_URL}/users/profile`, toFormData(profileData), {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -231,16 +224,29 @@ export const profileApi = {
     });
     return res.data;
   },
+
+  updatePassword: async (
+    token: string,
+    payload: { currentPassword: string; newPassword: string }
+  ): Promise<{ message: string }> => {
+    const res = await axios.put(`${API_BASE_URL}/users/update-password`, {
+      oldPassword: payload.currentPassword,
+      newPassword: payload.newPassword
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return res.data;
+  },
 };
 
 export const pack365Api = {
-  // Get all Pack365 courses
   getAllCourses: async (): Promise<{ success: boolean; data: Pack365Course[] }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/getcourses`);
     return res.data;
   },
 
-  // Get course by ID
   getCourseById: async (
     id: string, 
     token: string
@@ -251,7 +257,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Create course (admin only)
   createCourse: async (
     token: string,
     data: Partial<Pack365Course> & { courseDocument?: File }
@@ -266,7 +271,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Update course (admin only)
   updateCourse: async (
     token: string,
     id: string,
@@ -282,7 +286,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Delete course (admin only)
   deleteCourse: async (
     token: string,
     id: string
@@ -293,7 +296,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Create enrollment code (admin only)
   createEnrollmentCode: async (
     token: string,
     data: CreateEnrollmentCodeInput
@@ -313,7 +315,6 @@ export const pack365Api = {
     }
   },
 
-  // Get all enrollment codes (admin only)
   getAllEnrollmentCodes: async (
     token: string
   ): Promise<{ success: boolean; codes: EnrollmentCode[] }> => {
@@ -323,7 +324,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Deactivate enrollment code (admin only)
   deactivateEnrollmentCode: async (
     token: string,
     codeId: string
@@ -334,21 +334,29 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Validate enrollment code
+  // Updated validateEnrollmentCode to handle both enrollment codes and discount coupons
   validateEnrollmentCode: async (
     token: string,
     data: {
       code: string;
       courseId?: string;
     }
-  ): Promise<{ success: boolean; message: string; courseDetails?: any }> => {
+  ): Promise<{ 
+    success: boolean; 
+    message: string; 
+    courseDetails?: any;
+    couponDetails?: {
+      discount: number;
+      description: string;
+      code: string;
+    };
+  }> => {
     const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/validate-code`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
   },
 
-  // Enroll with code
   enrollWithCode: async (
     token: string,
     data: {
@@ -362,7 +370,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Create Razorpay order (enhanced) - using your new backend endpoint
   createOrder: async (
     token: string,
     data: { stream: string }
@@ -380,7 +387,6 @@ export const pack365Api = {
     };
   },
 
-  // Verify payment - using your backend endpoint
   verifyPayment: async (
     token: string,
     data: {
@@ -395,7 +401,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Handle payment failure
   handlePaymentFailure: async (
     token: string,
     data: {
@@ -408,7 +413,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Get user's enrollments
   getMyEnrollments: async (
     token: string
   ): Promise<{ success: boolean; enrollments: EnhancedPack365Enrollment[] }> => {
@@ -418,7 +422,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Check enrollment status
   checkEnrollmentStatus: async (
     token: string,
     courseId: string
@@ -429,7 +432,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Update topic progress
   updateTopicProgress: async (
     token: string,
     data: {
@@ -459,7 +461,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Coupon Management APIs
   createCoupon: async (
     token: string,
     data: {
@@ -501,7 +502,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Exam Management APIs
   uploadExamFromExcel: async (
     token: string,
     formData: FormData
@@ -619,7 +619,6 @@ export const pack365Api = {
 };
 
 export const collegeApi = {
-  // Create service request
   createServiceRequest: async (
     token: string,
     data: {
@@ -640,7 +639,6 @@ export const collegeApi = {
     return res.data;
   },
 
-  // Get college's service requests
   getMyServiceRequests: async (
     token: string
   ): Promise<{ success: boolean; data: any[] }> => {
@@ -650,7 +648,6 @@ export const collegeApi = {
     return res.data;
   },
 
-  // Get college stats
   getCollegeStats: async (
     token: string
   ): Promise<{ success: boolean; data: any }> => {
@@ -660,7 +657,6 @@ export const collegeApi = {
     return res.data;
   },
 
-  // Get dashboard stats
   getDashboardStats: async (
     token: string
   ): Promise<{ success: boolean; stats: any }> => {
@@ -670,7 +666,6 @@ export const collegeApi = {
     return res.data;
   },
 
-  // Get all service requests (admin only)
   getAllServiceRequests: async (
     token: string
   ): Promise<{ success: boolean; requests: any[] }> => {
@@ -680,7 +675,6 @@ export const collegeApi = {
     return res.data;
   },
 
-  // Get college requests (alias for getAllServiceRequests)
   getCollegeRequests: async (
     token: string
   ): Promise<{ success: boolean; requests: any[] }> => {
@@ -690,7 +684,6 @@ export const collegeApi = {
     return res.data;
   },
 
-  // Accept service request (admin only)
   acceptServiceRequest: async (
     token: string,
     id: string
@@ -701,7 +694,6 @@ export const collegeApi = {
     return res.data;
   },
 
-  // Reject service request (admin only)
   rejectServiceRequest: async (
     token: string,
     id: string
@@ -713,7 +705,6 @@ export const collegeApi = {
   },
 };
 
-// Export all types that are used by components
 export type { 
   Pack365Course, 
   RegisterPayload, 

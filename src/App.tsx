@@ -148,7 +148,7 @@ const App = () => {
             path="/employee"
             element={
               <ProtectedRoute allowedRoles={['employee']}>
-                <EmployeeDashboard />
+                <EmployeeDashboard user={getCurrentUser()} onLogout={handleLogout} />
               </ProtectedRoute>
             }
           />
@@ -156,7 +156,7 @@ const App = () => {
             path="/employer"
             element={
               <ProtectedRoute allowedRoles={['employer']}>
-                <EmployerDashboard />
+                <EmployerDashboard user={getCurrentUser()} onLogout={handleLogout} />
               </ProtectedRoute>
             }
           />
@@ -172,7 +172,7 @@ const App = () => {
             path="/admin"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboard />
+                <AdminDashboard user={getCurrentUser()} onLogout={handleLogout} />
               </ProtectedRoute>
             }
           />
@@ -180,7 +180,7 @@ const App = () => {
             path="/super-admin"
             element={
               <ProtectedRoute allowedRoles={['superadmin']}>
-                <SuperAdminDashboard />
+                <SuperAdminDashboard user={getCurrentUser()} onLogout={handleLogout} />
               </ProtectedRoute>
             }
           />

@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import axios from 'axios';
@@ -12,6 +11,8 @@ declare global {
 interface PaymentOptions {
   streamName: string;
   fromStream: boolean;
+  amount?: number;
+  couponCode?: string;
 }
 
 interface RazorpayResponse {
@@ -59,6 +60,8 @@ export class Pack365PaymentService {
       const requestData = {
         stream: options.streamName || 'it',
         fromStream: options.fromStream,
+        amount: options.amount || 365,
+        couponCode: options.couponCode
       };
 
       console.log('Sending request to backend:', requestData);
@@ -118,13 +121,20 @@ export class Pack365PaymentService {
       const currentUser = localStorage.getItem('currentUser');
       const user = currentUser ? JSON.parse(currentUser) : null;
 
+      // Use the final amount from options, defaulting to 365
+      const finalAmount = (options.amount || 365) * 100; // Convert to paise
+
       // Configure Razorpay options
       const razorpayOptions = {
         key: "rzp_live_muJa8GZA0HcuE1",
+<<<<<<< HEAD
         amount: 100, // ₹365 in paise
+=======
+        amount: finalAmount,
+>>>>>>> 731c552bec35f1a1f729c0f730e0d70f9b2a930d
         currency: 'INR',
         name: 'Pack365',
-        description: options.streamName ,
+        description: options.streamName,
         order_id: orderId,
         prefill: {
           name: user ? `${user.firstName} ${user.lastName}` : '',
