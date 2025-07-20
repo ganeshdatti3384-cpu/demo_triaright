@@ -17,7 +17,6 @@ interface PaymentOptions {
 interface RazorpayResponse {
   razorpay_payment_id: string;
   razorpay_order_id: string;
-  razorpay_signature: string;
 }
 
 interface OrderResponse {
@@ -122,7 +121,7 @@ export class Pack365PaymentService {
       // Configure Razorpay options
       const razorpayOptions = {
         key: "rzp_live_muJa8GZA0HcuE1",
-        amount: 36500, // ₹365 in paise
+        amount: 100, // ₹365 in paise
         currency: 'INR',
         name: 'Pack365',
         description: options.streamName ,
@@ -188,7 +187,6 @@ export class Pack365PaymentService {
         {
           razorpay_order_id: response.razorpay_order_id,
           razorpay_payment_id: response.razorpay_payment_id,
-          razorpay_signature: response.razorpay_signature
         },
         {
           headers: {

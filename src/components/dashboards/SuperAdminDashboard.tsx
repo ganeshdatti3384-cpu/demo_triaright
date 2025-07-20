@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Pack365Course } from '@/types/api';
 import Navbar from '../Navbar';
 import Footer from '../Footer';
+import { isToday } from 'date-fns';
 
 interface SuperAdminDashboardProps {
   user: { role: string; name: string };
@@ -171,7 +172,8 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
     }
   };
 
-  const handleCreateEnrollmentCode = async () => {
+
+  const handleCreateCoupon= async () => {
   if (!enrollmentCode || !stream || !usageLimit || !expiresAt) {
     toast.error('Please fill in all fields');
     return;
@@ -187,10 +189,9 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
 
     await pack365Api.createEnrollmentCode(token, {
       code: enrollmentCode,
-      stream: stream,
+      stream: selectedStream,
       usageLimit: parseInt(usageLimit),
       expiresAt: expiresAt,
-      description: description || `Enrollment code for ${stream}`
     });
 
     toast.success('Enrollment code created successfully!');
@@ -201,7 +202,6 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
     setStream('');
     setUsageLimit('');
     setExpiresAt('');
-    setDescription('');
 
     fetchCoupons(); // Optional: reload latest list
   } catch (error) {
@@ -530,86 +530,91 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
           <TabsContent value="pack365" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Pack365 Management</h2>
-              <Dialog open={createCouponOpen} onOpenChange={setCreateCouponOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Coupon
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Create New Coupon</DialogTitle>
-                    <DialogDescription>
-                      Create a new coupon code for courses. Fill in all the details below.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="course" className="text-right">
-                        Course
-                      </Label>
-                      <div className="col-span-3">
-                        <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a course" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {courses.map((course) => (
-                              <SelectItem key={course._id} value={course._id || ''}>
-                                {course.courseName} ({course.stream})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+             <Dialog open={createCouponOpen} onOpenChange={setCreateCouponOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Coupon
+                </Button>
+              </DialogTrigger>
+
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Create New Coupon</DialogTitle>
+                      <DialogDescription>
+                        Create a new coupon code for course streams. Fill in all the details below.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-4 py-4">
+                      {/* Stream Selector */}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="stream" className="text-right">Stream</Label>
+                        <div className="col-span-3">
+                          <Select value={selectedStream} onValueChange={setSelectedStream}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a stream" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {['IT', 'PHARMA', 'MARKETING', 'HR', 'FINANCE'].map((stream) => (
+                                <SelectItem key={stream} value={stream}>
+                                  {stream}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Coupon Code */}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="couponCode" className="text-right">Coupon Code</Label>
+                        <Input
+                          id="couponCode"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          placeholder="e.g., SAVE20"
+                          className="col-span-3"
+                        />
+                      </div>
+
+                      {/* Users Count */}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="discount" className="text-right">Users count</Label>
+                        <Input
+                          id="discount"
+                          type="number"
+                          value={discount}
+                          onChange={(e) => setDiscount(e.target.value)}
+                          placeholder="e.g., 20"
+                          className="col-span-3"
+                        />
+                      </div>
+
+                      {/* Expiry Date */}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="expiryDate" className="text-right">Expiry Date</Label>
+                        <Input
+                          id="expiryDate"
+                          type="date"
+                          value={expiryDate}
+                          onChange={(e) => setExpiryDate(e.target.value)}
+                          className="col-span-3"
+                        />
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="couponCode" className="text-right">
-                        Coupon Code
-                      </Label>
-                      <Input
-                        id="couponCode"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                        placeholder="e.g., SAVE20"
-                        className="col-span-3" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="discount" className="text-right">
-                        Users count
-                      </Label>
-                      <Input
-                        id="discount"
-                        type="number"
-                        value={discount}
-                        onChange={(e) => setDiscount(e.target.value)}
-                        placeholder="e.g., 20"
-                        className="col-span-3" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="expiryDate" className="text-right">
-                        Expiry Date
-                      </Label>
-                      <Input
-                        id="expiryDate"
-                        type="date"
-                        value={expiryDate}
-                        onChange={(e) => setExpiryDate(e.target.value)}
-                        className="col-span-3" />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setCreateCouponOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="button" onClick={handleCreateCoupon} disabled={isLoading}>
-                      {isLoading ? 'Creating...' : 'Create Coupon'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
+
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setCreateCouponOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="button" onClick={handleCreateCoupon} disabled={isLoading}>
+                        {isLoading ? 'Creating...' : 'Create Coupon'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
 
             <Tabs value={pack365Tab} onValueChange={setPack365Tab}>
               <TabsList className="grid w-full grid-cols-2">
@@ -768,22 +773,24 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
                           <div className="flex items-center space-x-4">
                             <Ticket className="h-5 w-5 text-blue-600" />
                             <div>
-                              <p className="font-medium">{coupon.stream}</p>
-                              <p className="text-sm text-gray-500">{coupon.description}</p>
+                              <p className="font-medium">{coupon.code}</p>
+                              <p className="text-sm text-gray-500">{coupon.stream}</p>
                             </div>
                           </div>
                           <div className="flex items-center space-x-4">
                             <div className="text-right">
-                              <p className="font-medium">{coupon.discount}% off</p>
+                              <p className="font-medium">
+                                {coupon.discount ? `${coupon.discount}% off` : 'FREE'}
+                              </p>
                               <p className="text-sm text-gray-500 flex items-center">
-                                <Calendar className="h-3 w-3 mr-1" />
-                                {new Date(coupon.expiryDate).toLocaleDateString()}
+                                <Calendar className="h-3 w-3 mr-1" />Expiry At :
+                                {" "+new Date(coupon.expiresAt).toLocaleDateString()}
                               </p>
                             </div>
-                            <Badge variant={coupon.isActive ? 'default' : 'secondary'}>
-                              {coupon.isActive ? 'Active' : 'Inactive'}
+                            <Badge variant={new Date(coupon.expiresAt) > new Date() ? 'default' : 'secondary'}>
+                              {new Date(coupon.expiryAt) < new Date() ? 'Active' : 'Active'}
                             </Badge>
-                            <div className="flex space-x-2">
+                            {/* <div className="flex space-x-2">
                               <Button variant="outline" size="sm">Edit</Button>
                               <Button
                                 variant="outline"
@@ -792,7 +799,7 @@ const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
                               >
                                 {coupon.isActive ? 'Deactivate' : 'Activate'}
                               </Button>
-                            </div>
+                            </div> */}
                           </div>
                         </div>
                       ))}

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
-import { College, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload } from '@/types/api';
+import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 
@@ -296,18 +296,21 @@ export const pack365Api = {
   // Create enrollment code (admin only)
   createEnrollmentCode: async (
     token: string,
-    data: {
-      code: string;
-      courseId: string;
-      usageLimit?: number;
-      expiresAt?: string;
-      description?: string;
+    data: CreateEnrollmentCodeInput
+  ): Promise<CreateEnrollmentCodeResponse> => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/pack365/admin/create-code`, data, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return res.data;
+    } catch (error: any) {
+      console.error('Failed to create enrollment code:', error?.response?.data || error.message);
+      throw new Error(error?.response?.data?.message || 'Failed to create enrollment code');
     }
-  ): Promise<{ success: boolean; message: string; code: EnrollmentCode }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/admin/create-code`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
   },
 
   // Get all enrollment codes (admin only)

@@ -281,7 +281,6 @@ export interface Exam {
 }
 
 export interface EnhancedPack365Enrollment extends Pack365Enrollment {
-  [x: string]: string;
   _id: string;
   status?: string;
   totalWatchedPercentage?: number;
@@ -292,7 +291,18 @@ export interface EnhancedPack365Enrollment extends Pack365Enrollment {
   isExamCompleted?: boolean;
   examScore?: number;
 }
+export interface CreateEnrollmentCodeInput {
+  code: string;
+  stream: string;
+  usageLimit?: number;
+  expiresAt?: string; // ISO string (e.g. "2025-12-31T00:00:00.000Z")
+}
 
+export interface CreateEnrollmentCodeResponse {
+  success: boolean;
+  message: string;
+  code: EnrollmentCode;
+}
 export interface Pack365Enrollment {
   _id?: string;
   userId: string;
