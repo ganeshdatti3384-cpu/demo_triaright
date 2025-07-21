@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Pack365PaymentService } from '@/services/pack365Payment';
+import { pack365Api } from '@/services/api';
 
 interface Pack365PaymentInterfaceProps {
   streamName: string;
@@ -54,53 +56,60 @@ const Pack365PaymentInterface = ({
     setPaymentCalculation(calculation);
   }, []);
 
-  const validateCoupon = async () => {
-    if (!couponCode.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a coupon code',
-        variant: 'destructive',
-      });
-      return;
+const validateCoupon = async () => {
+  if (!couponCode.trim()) {
+    toast({
+      title: 'Error',
+      description: 'Please enter a coupon code',
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  setIsValidatingCoupon(true);
+
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Authentication required');
+
+    // ✅ Call API to validate coupon
+    const result = await pack365Api.validateEnrollmentCode(token, couponCode.trim(), streamName);
+
+    if (!result.success) {
+      throw new Error(result.message || "Invalid coupon");
     }
 
-    setIsValidatingCoupon(true);
+    const discount = result.couponDetails?.discount || 0;
+    const finalAmount = result.courseDetails?.finalAmount || 0;
 
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication required');
-      }
+    // Update UI/payment state
+    setPaymentCalculation({
+      originalPrice: result.courseDetails?.originalPrice || 999,
+      discount,
+      finalAmount,
+    });
 
-      // For now, we'll simulate coupon validation
-      // In a real scenario, this would call an API endpoint
-      if (couponCode.toLowerCase() === 'discount200') {
-        const calculation = Pack365PaymentService.calculatePaymentAmount(999, 200);
-        setPaymentCalculation(calculation);
-        
-        setAppliedCoupon({
-          code: couponCode,
-          discount: 200,
-          description: '₹200 discount applied'
-        });
-        
-        toast({
-          title: 'Coupon Applied!',
-          description: `₹200 discount applied. New amount: ₹${calculation.finalAmount}`,
-        });
-      } else {
-        throw new Error('Invalid coupon code');
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Invalid Coupon',
-        description: error.message || 'The coupon code you entered is not valid or has expired.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsValidatingCoupon(false);
-    }
-  };
+    setAppliedCoupon({
+      code: result.couponDetails?.code || couponCode,
+      discount,
+      description: result.couponDetails?.description || 'Discount applied',
+    });
+
+    toast({
+      title: 'Coupon Applied!',
+      description: `${discount} discount applied. New amount: ₹${finalAmount}`,
+    });
+
+  } catch (error: any) {
+    toast({
+      title: 'Invalid Coupon',
+      description: error?.response?.data?.message || error.message || 'The coupon code is invalid or expired.',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsValidatingCoupon(false);
+  }
+};
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
@@ -114,36 +123,53 @@ const Pack365PaymentInterface = ({
   };
 
   const handlePayment = async () => {
-    setIsProcessingPayment(true);
+  setIsProcessingPayment(true);
 
-    try {
-      await Pack365PaymentService.processPayment(
-        {
-          streamName: streamName,
-          fromStream: true,
-          amount: paymentCalculation.finalAmount,
-          couponCode: appliedCoupon?.code
-        },
-        (response) => {
-          console.log('Payment successful:', response);
-          onPaymentSuccess(response);
-        },
-        (error) => {
-          console.error('Payment failed:', error);
-          onPaymentError(error);
-        }
-      );
-    } catch (error: any) {
-      console.error('Error initiating payment:', error);
+  try {
+    // Make sure token exists
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('User not authenticated');
+
+    // Optional: Ensure coupon was validated if entered
+    if (couponCode && !appliedCoupon) {
       toast({
-        title: 'Payment Error',
-        description: error.message || 'Failed to initiate payment. Please try again.',
-        variant: 'destructive'
+        title: 'Coupon Not Applied',
+        description: 'Please validate the coupon before making payment.',
+        variant: 'destructive',
       });
-    } finally {
       setIsProcessingPayment(false);
+      return;
     }
-  };
+
+    // Proceed with payment using finalAmount and couponCode
+    await Pack365PaymentService.processPayment(
+      {
+        streamName,
+        fromStream: true,
+        amount: paymentCalculation.finalAmount,
+        couponCode: appliedCoupon?.code || undefined,
+      },
+      (response) => {
+        console.log('Payment successful:', response);
+        onPaymentSuccess(response);
+      },
+      (error) => {
+        console.error('Payment failed:', error);
+        onPaymentError(error);
+      }
+    );
+  } catch (error: any) {
+    console.error('Error initiating payment:', error);
+    toast({
+      title: 'Payment Error',
+      description: error.message || 'Failed to initiate payment. Please try again.',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsProcessingPayment(false);
+  }
+};
+
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -363,3 +389,31 @@ const Pack365PaymentInterface = ({
 };
 
 export default Pack365PaymentInterface;
+function setAppliedCoupon(arg0: null) {
+  throw new Error('Function not implemented.');
+}
+
+function setCouponCode(arg0: string) {
+  throw new Error('Function not implemented.');
+}
+
+function setPaymentCalculation(calculation: { baseAmount: number; discount: number; billableAmount: number; gst: number; finalAmount: number; }) {
+  throw new Error('Function not implemented.');
+}
+
+function toast(arg0: { title: string; description: string; }) {
+  throw new Error('Function not implemented.');
+}
+
+function setIsProcessingPayment(arg0: boolean) {
+  throw new Error('Function not implemented.');
+}
+
+function onPaymentSuccess(response: RazorpayResponse) {
+  throw new Error('Function not implemented.');
+}
+
+function onPaymentError(error: any) {
+  throw new Error('Function not implemented.');
+}
+

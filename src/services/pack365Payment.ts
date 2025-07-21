@@ -113,7 +113,7 @@ export class Pack365PaymentService {
       console.log('Sending request to backend:', requestData);
 
       const response = await axios.post(
-        `${API_BASE_URL}/pack365/packenroll365/create-order`,
+        `${API_BASE_URL}/pack365/create-order`,
         requestData,
         {
           headers: {
@@ -236,6 +236,7 @@ export class Pack365PaymentService {
     couponCode?: string
   ): Promise<PaymentVerificationResponse> {
     const token = localStorage.getItem('token');
+    console.log(token)
     if (!token) {
       throw new Error('Authentication required');
     }
@@ -254,8 +255,10 @@ export class Pack365PaymentService {
 
       // Add coupon code if provided
       if (couponCode) {
-        requestData.code = couponCode;
+        requestData.code = couponCode;  
       }
+      
+      console.log("Verifying payment with:", requestData, token);
 
       const verificationResponse = await axios.post(
         `${API_BASE_URL}/pack365/payment/verify`,

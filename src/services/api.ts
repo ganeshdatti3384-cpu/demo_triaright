@@ -243,7 +243,11 @@ export const profileApi = {
 
 export const pack365Api = {
   getAllCourses: async (): Promise<{ success: boolean; data: Pack365Course[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/getcourses`);
+    const res = await axios.get(`${API_BASE_URL}/pack365/courses`);
+    return res.data;
+  },
+  getAllStreams: async (): Promise<{ success: boolean }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/getstreams`);
     return res.data;
   },
 
@@ -318,7 +322,7 @@ export const pack365Api = {
   getAllEnrollmentCodes: async (
     token: string
   ): Promise<{ success: boolean; codes: EnrollmentCode[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/admin/codes`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/enrollment-codes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -336,26 +340,35 @@ export const pack365Api = {
 
   // Updated validateEnrollmentCode to handle both enrollment codes and discount coupons
   validateEnrollmentCode: async (
-    token: string,
-    data: {
-      code: string;
-      courseId?: string;
-    }
-  ): Promise<{ 
-    success: boolean; 
-    message: string; 
-    courseDetails?: any;
-    couponDetails?: {
-      discount: number;
-      description: string;
-      code: string;
-    };
-  }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/validate-code`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
+  token: string,
+  code: string,
+  stream: string
+): Promise<{ 
+  success: boolean; 
+  message: string; 
+  courseDetails?: {
+    stream: string;
+    originalPrice: number;
+    finalAmount: number;
+  };
+  couponDetails?: {
+    discount: number;
+    description: string;
+    code: string;
+  };
+}> => {
+  const data = { code, stream };
+
+  const res = await axios.post(`${API_BASE_URL}/pack365/verify/enrollment-codes`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  return res.data;
+},
+
 
   enrollWithCode: async (
     token: string,
@@ -375,7 +388,7 @@ export const pack365Api = {
     data: { stream: string }
   ): Promise<{ orderId: string; key: string }> => {
     const res = await axios.post(
-      `${API_BASE_URL}/pack365/create-order-enhanced`,
+      `${API_BASE_URL}/pack365/create-order`,
       data,
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -388,18 +401,27 @@ export const pack365Api = {
   },
 
   verifyPayment: async (
-    token: string,
-    data: {
-      razorpay_order_id: string;
-      razorpay_payment_id: string;
-      razorpay_signature: string;
+  token: string,
+  data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }
+): Promise<{ success: boolean; message: string; enrollment: EnhancedPack365Enrollment }> => {
+  console.log("Verifying payment with:", data, token);
+  const res = await axios.post(
+    `${API_BASE_URL}/pack365/verify-payment`,
+    data,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     }
-  ): Promise<{ success: boolean; message: string; enrollment: EnhancedPack365Enrollment }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/verify-payment`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
+  );
+  return res.data;
+},
+
 
   handlePaymentFailure: async (
     token: string,
@@ -482,7 +504,7 @@ export const pack365Api = {
   ): Promise<{
     success: boolean; codes: any[]; coupons: any[] 
 }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/admin/codes`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/enrollment-codes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
