@@ -352,27 +352,34 @@ export const pack365Api = {
   },
 
   validateEnrollmentCode: async (
-    token: string,
-    data: {
-      code: string;
-      courseId?: string;
-    }
-  ): Promise<{ 
-    success: boolean; 
-    message: string; 
-    courseDetails?: any;
-    couponDetails?: {
-      discount: number;
-      description: string;
-      code: string;
-    };
-  }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/validate-code`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
+  token: string,
+  code: string,
+  stream: string
+): Promise<{ 
+  success: boolean; 
+  message: string; 
+  courseDetails?: {
+    stream: string;
+    originalPrice: number;
+    finalAmount: number;
+  };
+  couponDetails?: {
+    discount: number;
+    description: string;
+    code: string;
+  };
+}> => {
+  const data = { code, stream };
 
+  const res = await axios.post(`${API_BASE_URL}/pack365/verify/enrollment-codes`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  return res.data;
+},
   enrollWithCode: async (
     token: string,
     data: {
