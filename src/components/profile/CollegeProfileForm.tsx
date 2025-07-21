@@ -1,409 +1,277 @@
-
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { profileApi } from '@/services/api';
-import { Building, User, Mail, Phone, MapPin, Sparkles, GraduationCap, Calendar } from 'lucide-react';
+import { College } from '@/types/api';
 
 interface CollegeProfileFormProps {
-  onProfileComplete: () => void;
+  token: string | null;
 }
 
-const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ onProfileComplete }) => {
-  const [formData, setFormData] = useState({
-    collegeName: '',
-    university: '',
-    collegeCode: '',
-    establishedYear: '',
-    accreditation: '',
-    principalName: '',
-    principalEmail: '',
-    principalPhone: '',
-    coordinatorName: '',
-    coordinatorEmail: '',
-    coordinatorPhone: '',
+const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ token }) => {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<Partial<College>>({
+    name: '',
     email: '',
     phone: '',
-    website: '',
     address: '',
-    city: '',
-    state: '',
-    pincode: ''
+    website: '',
+    establishedYear: '',
+    type: '',
+    affiliation: '',
+    logo: null,
+    description: '',
+    contactPerson: '',
+    registrationNumber: '',
+    collegeName: '',
+    university: '',
+    principalName: '',
+    coordinatorName: '',
   });
-  
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (token) {
+        setIsLoading(true);
+        try {
+          const profile = await profileApi.getCollegeProfile(token);
+          setFormData(profile);
+        } catch (error: any) {
+          toast({
+            title: 'Error fetching profile',
+            description: error.response?.data?.message || 'Failed to load profile',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchProfile();
+  }, [token, toast]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, files } = e.target;
+    setFormData(prev => ({ ...prev, [name]: files?.[0] }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-      toast({
-        title: 'Error',
-        description: 'Please login to continue',
-        variant: 'destructive'
-      });
-      return;
-    }
+    setIsLoading(true);
 
-    // Validate required fields
-    if (!formData.collegeName || !formData.university || !formData.principalName || 
-        !formData.coordinatorName || !formData.address) {
-      toast({
-        title: 'Required Fields Missing',
-        description: 'Please fill in all required fields marked with *',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setLoading(true);
-    
     try {
-      await profileApi.updateCollegeProfile(token, formData);
-      toast({
-        title: 'Success',
-        description: 'Profile completed successfully! Redirecting to dashboard...',
-      });
+      const formDataToSubmit = {
+        ...formData,
+        establishedYear: parseInt(formData.establishedYear) || undefined
+      };
       
-      setTimeout(() => {
-        onProfileComplete();
-      }, 1500);
-    } catch (error) {
-      console.error('Error updating profile:', error);
+      await profileApi.updateCollegeProfile(token!, formDataToSubmit);
       toast({
-        title: 'Error',
-        description: 'Failed to update profile. Please try again.',
-        variant: 'destructive'
+        title: 'Profile updated successfully!',
+        description: 'Your college information has been saved.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error updating profile',
+        description: error.response?.data?.message || 'Failed to update profile',
+        variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 py-8 px-4 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse animation-delay-4000"></div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="collegeName">College Name</Label>
+        <Input
+          type="text"
+          id="collegeName"
+          name="collegeName"
+          value={formData.collegeName || ''}
+          onChange={handleChange}
+          placeholder="Enter college name"
+        />
       </div>
-
-      <div className="max-w-4xl mx-auto relative z-10">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-full shadow-2xl transform hover:scale-110 transition-transform duration-300">
-              <GraduationCap className="h-12 w-12 text-white" />
-            </div>
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Complete Your College Profile
-          </h1>
-          <p className="text-blue-200">Please provide your college information to access the dashboard</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Basic College Information */}
-          <Card className="bg-white/10 backdrop-blur-md border-0 shadow-2xl transform hover:scale-[1.02] transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-sm">
-              <CardTitle className="flex items-center gap-3 text-white">
-                <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg shadow-lg">
-                  <Building className="h-5 w-5 text-white" />
-                </div>
-                College Information
-                <Sparkles className="h-5 w-5 text-yellow-400 animate-pulse" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-              <div>
-                <Label htmlFor="collegeName" className="text-blue-100 font-medium">College Name *</Label>
-                <Input
-                  id="collegeName"
-                  name="collegeName"
-                  value={formData.collegeName}
-                  onChange={handleInputChange}
-                  required
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="university" className="text-blue-100 font-medium">University *</Label>
-                <Input
-                  id="university"
-                  name="university"
-                  value={formData.university}
-                  onChange={handleInputChange}
-                  required
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="collegeCode" className="text-blue-100 font-medium">College Code</Label>
-                <Input
-                  id="collegeCode"
-                  name="collegeCode"
-                  value={formData.collegeCode}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="establishedYear" className="text-blue-100 font-medium flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Established Year
-                </Label>
-                <Input
-                  id="establishedYear"
-                  name="establishedYear"
-                  type="number"
-                  value={formData.establishedYear}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="accreditation" className="text-blue-100 font-medium">Accreditation</Label>
-                <Input
-                  id="accreditation"
-                  name="accreditation"
-                  value={formData.accreditation}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Principal Details */}
-          <Card className="bg-white/10 backdrop-blur-md border-0 shadow-2xl transform hover:scale-[1.02] transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-green-600/20 to-blue-600/20 backdrop-blur-sm">
-              <CardTitle className="flex items-center gap-3 text-white">
-                <div className="bg-gradient-to-r from-green-500 to-blue-600 p-2 rounded-lg shadow-lg">
-                  <User className="h-5 w-5 text-white" />
-                </div>
-                Principal Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-              <div>
-                <Label htmlFor="principalName" className="text-blue-100 font-medium">Principal Name *</Label>
-                <Input
-                  id="principalName"
-                  name="principalName"
-                  value={formData.principalName}
-                  onChange={handleInputChange}
-                  required
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="principalEmail" className="text-blue-100 font-medium flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Principal Email
-                </Label>
-                <Input
-                  id="principalEmail"
-                  name="principalEmail"
-                  type="email"
-                  value={formData.principalEmail}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="principalPhone" className="text-blue-100 font-medium flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Principal Phone
-                </Label>
-                <Input
-                  id="principalPhone"
-                  name="principalPhone"
-                  value={formData.principalPhone}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Coordinator Details */}
-          <Card className="bg-white/10 backdrop-blur-md border-0 shadow-2xl transform hover:scale-[1.02] transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 backdrop-blur-sm">
-              <CardTitle className="flex items-center gap-3 text-white">
-                <div className="bg-gradient-to-r from-purple-500 to-pink-600 p-2 rounded-lg shadow-lg">
-                  <User className="h-5 w-5 text-white" />
-                </div>
-                Coordinator Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-              <div>
-                <Label htmlFor="coordinatorName" className="text-blue-100 font-medium">Coordinator Name *</Label>
-                <Input
-                  id="coordinatorName"
-                  name="coordinatorName"
-                  value={formData.coordinatorName}
-                  onChange={handleInputChange}
-                  required
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="coordinatorEmail" className="text-blue-100 font-medium flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Coordinator Email
-                </Label>
-                <Input
-                  id="coordinatorEmail"
-                  name="coordinatorEmail"
-                  type="email"
-                  value={formData.coordinatorEmail}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="coordinatorPhone" className="text-blue-100 font-medium flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Coordinator Phone
-                </Label>
-                <Input
-                  id="coordinatorPhone"
-                  name="coordinatorPhone"
-                  value={formData.coordinatorPhone}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact Information */}
-          <Card className="bg-white/10 backdrop-blur-md border-0 shadow-2xl transform hover:scale-[1.02] transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-orange-600/20 to-red-600/20 backdrop-blur-sm">
-              <CardTitle className="flex items-center gap-3 text-white">
-                <div className="bg-gradient-to-r from-orange-500 to-red-600 p-2 rounded-lg shadow-lg">
-                  <MapPin className="h-5 w-5 text-white" />
-                </div>
-                Contact Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-              <div>
-                <Label htmlFor="email" className="text-blue-100 font-medium flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  College Email
-                </Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone" className="text-blue-100 font-medium flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  College Phone
-                </Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="website" className="text-blue-100 font-medium">Website</Label>
-                <Input
-                  id="website"
-                  name="website"
-                  value={formData.website}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="address" className="text-blue-100 font-medium">Address *</Label>
-                <Textarea
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  required
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="city" className="text-blue-100 font-medium">City</Label>
-                <Input
-                  id="city"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="state" className="text-blue-100 font-medium">State</Label>
-                <Input
-                  id="state"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-              <div>
-                <Label htmlFor="pincode" className="text-blue-100 font-medium">Pincode</Label>
-                <Input
-                  id="pincode"
-                  name="pincode"
-                  value={formData.pincode}
-                  onChange={handleInputChange}
-                  className="bg-white/20 border-blue-300/30 text-white placeholder:text-blue-200 focus:bg-white/30 transition-all shadow-lg"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-center">
-            <Button 
-              type="submit" 
-              size="lg" 
-              disabled={loading}
-              className="px-12 py-4 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-2xl transform hover:scale-105 transition-all duration-300 border-0"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Saving Profile...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  Complete Profile & Continue
-                </div>
-              )}
-            </Button>
-          </div>
-        </form>
+      <div>
+        <Label htmlFor="name">Contact Person Name</Label>
+        <Input
+          type="text"
+          id="name"
+          name="name"
+          value={formData.name || ''}
+          onChange={handleChange}
+          placeholder="Enter contact person name"
+        />
       </div>
-    </div>
+      <div>
+        <Label htmlFor="email">Email</Label>
+        <Input
+          type="email"
+          id="email"
+          name="email"
+          value={formData.email || ''}
+          onChange={handleChange}
+          placeholder="Enter email"
+        />
+      </div>
+      <div>
+        <Label htmlFor="phone">Phone</Label>
+        <Input
+          type="tel"
+          id="phone"
+          name="phone"
+          value={formData.phone || ''}
+          onChange={handleChange}
+          placeholder="Enter phone number"
+        />
+      </div>
+      <div>
+        <Label htmlFor="address">Address</Label>
+        <Input
+          type="text"
+          id="address"
+          name="address"
+          value={formData.address || ''}
+          onChange={handleChange}
+          placeholder="Enter address"
+        />
+      </div>
+      <div>
+        <Label htmlFor="website">Website</Label>
+        <Input
+          type="url"
+          id="website"
+          name="website"
+          value={formData.website || ''}
+          onChange={handleChange}
+          placeholder="Enter website URL"
+        />
+      </div>
+      <div>
+        <Label htmlFor="establishedYear">Established Year</Label>
+        <Input
+          type="number"
+          id="establishedYear"
+          name="establishedYear"
+          value={formData.establishedYear || ''}
+          onChange={handleChange}
+          placeholder="Enter established year"
+        />
+      </div>
+      <div>
+        <Label htmlFor="type">Type</Label>
+        <Input
+          type="text"
+          id="type"
+          name="type"
+          value={formData.type || ''}
+          onChange={handleChange}
+          placeholder="Enter type"
+        />
+      </div>
+      <div>
+        <Label htmlFor="affiliation">Affiliation</Label>
+        <Input
+          type="text"
+          id="affiliation"
+          name="affiliation"
+          value={formData.affiliation || ''}
+          onChange={handleChange}
+          placeholder="Enter affiliation"
+        />
+      </div>
+      <div>
+        <Label htmlFor="logo">Logo</Label>
+        <Input
+          type="file"
+          id="logo"
+          name="logo"
+          onChange={handleFileChange}
+          accept="image/*"
+        />
+      </div>
+      <div>
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          name="description"
+          value={formData.description || ''}
+          onChange={handleChange}
+          placeholder="Enter description"
+          rows={4}
+        />
+      </div>
+      <div>
+        <Label htmlFor="contactPerson">Contact Person</Label>
+        <Input
+          type="text"
+          id="contactPerson"
+          name="contactPerson"
+          value={formData.contactPerson || ''}
+          onChange={handleChange}
+          placeholder="Enter contact person"
+        />
+      </div>
+      <div>
+        <Label htmlFor="registrationNumber">Registration Number</Label>
+        <Input
+          type="text"
+          id="registrationNumber"
+          name="registrationNumber"
+          value={formData.registrationNumber || ''}
+          onChange={handleChange}
+          placeholder="Enter registration number"
+        />
+      </div>
+      <div>
+        <Label htmlFor="university">University</Label>
+        <Input
+          type="text"
+          id="university"
+          name="university"
+          value={formData.university || ''}
+          onChange={handleChange}
+          placeholder="Enter university"
+        />
+      </div>
+      <div>
+        <Label htmlFor="principalName">Principal Name</Label>
+        <Input
+          type="text"
+          id="principalName"
+          name="principalName"
+          value={formData.principalName || ''}
+          onChange={handleChange}
+          placeholder="Enter principal name"
+        />
+      </div>
+      <div>
+        <Label htmlFor="coordinatorName">Coordinator Name</Label>
+        <Input
+          type="text"
+          id="coordinatorName"
+          name="coordinatorName"
+          value={formData.coordinatorName || ''}
+          onChange={handleChange}
+          placeholder="Enter coordinator name"
+        />
+      </div>
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? 'Updating...' : 'Update Profile'}
+      </Button>
+    </form>
   );
 };
 
