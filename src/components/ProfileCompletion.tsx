@@ -27,7 +27,19 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ children, userRol
 
   // Only show profile completion form for college users who haven't completed their profile
   if (isProfileComplete === false && userRole === 'college') {
-    return <CollegeProfileForm onProfileComplete={refetchProfile} />;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Complete Your College Profile</h2>
+            <CollegeProfileForm 
+              token={localStorage.getItem('token')} 
+              onSuccess={refetchProfile} 
+            />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // For all other cases (non-college users or completed profiles), render children (dashboard)

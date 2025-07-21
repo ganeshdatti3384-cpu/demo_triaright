@@ -9,9 +9,10 @@ import { College } from '@/types/api';
 
 interface CollegeProfileFormProps {
   token: string | null;
+  onSuccess?: () => void;
 }
 
-const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ token }) => {
+const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ token, onSuccess }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<College>>({
@@ -20,10 +21,10 @@ const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ token }) => {
     phone: '',
     address: '',
     website: '',
-    establishedYear: '',
+    establishedYear: undefined,
     type: '',
     affiliation: '',
-    logo: null,
+    logo: '',
     description: '',
     contactPerson: '',
     registrationNumber: '',
@@ -57,7 +58,10 @@ const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ token }) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: name === 'establishedYear' ? (value ? parseInt(value) : undefined) : value 
+    }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,16 +74,12 @@ const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ token }) => {
     setIsLoading(true);
 
     try {
-      const formDataToSubmit = {
-        ...formData,
-        establishedYear: parseInt(formData.establishedYear) || undefined
-      };
-      
-      await profileApi.updateCollegeProfile(token!, formDataToSubmit);
+      await profileApi.updateCollegeProfile(token!, formData);
       toast({
         title: 'Profile updated successfully!',
         description: 'Your college information has been saved.',
       });
+      onSuccess?.();
     } catch (error: any) {
       toast({
         title: 'Error updating profile',
@@ -165,7 +165,7 @@ const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ token }) => {
           type="number"
           id="establishedYear"
           name="establishedYear"
-          value={formData.establishedYear || ''}
+          value={formData.establishedYear?.toString() || ''}
           onChange={handleChange}
           placeholder="Enter established year"
         />

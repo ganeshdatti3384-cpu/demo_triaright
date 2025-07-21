@@ -72,7 +72,7 @@ const validateCoupon = async () => {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Authentication required');
 
-    // ✅ Call API to validate coupon
+    // ✅ Call API to validate coupon with correct parameters
     const result = await pack365Api.validateEnrollmentCode(token, couponCode.trim(), streamName);
 
     if (!result.success) {
@@ -82,10 +82,12 @@ const validateCoupon = async () => {
     const discount = result.couponDetails?.discount || 0;
     const finalAmount = result.courseDetails?.finalAmount || 0;
 
-    // Update UI/payment state
+    // Update UI/payment state with correct property names
     setPaymentCalculation({
-      originalPrice: result.courseDetails?.originalPrice || 999,
+      baseAmount: result.courseDetails?.originalPrice || 999,
       discount,
+      billableAmount: finalAmount - Math.round(finalAmount * 0.18),
+      gst: Math.round(finalAmount * 0.18),
       finalAmount,
     });
 
@@ -97,7 +99,7 @@ const validateCoupon = async () => {
 
     toast({
       title: 'Coupon Applied!',
-      description: `${discount} discount applied. New amount: ₹${finalAmount}`,
+      description: `₹${discount} discount applied. New amount: ₹${finalAmount}`,
     });
 
   } catch (error: any) {
@@ -169,7 +171,6 @@ const validateCoupon = async () => {
     setIsProcessingPayment(false);
   }
 };
-
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -389,31 +390,3 @@ const validateCoupon = async () => {
 };
 
 export default Pack365PaymentInterface;
-function setAppliedCoupon(arg0: null) {
-  throw new Error('Function not implemented.');
-}
-
-function setCouponCode(arg0: string) {
-  throw new Error('Function not implemented.');
-}
-
-function setPaymentCalculation(calculation: { baseAmount: number; discount: number; billableAmount: number; gst: number; finalAmount: number; }) {
-  throw new Error('Function not implemented.');
-}
-
-function toast(arg0: { title: string; description: string; }) {
-  throw new Error('Function not implemented.');
-}
-
-function setIsProcessingPayment(arg0: boolean) {
-  throw new Error('Function not implemented.');
-}
-
-function onPaymentSuccess(response: RazorpayResponse) {
-  throw new Error('Function not implemented.');
-}
-
-function onPaymentError(error: any) {
-  throw new Error('Function not implemented.');
-}
-
