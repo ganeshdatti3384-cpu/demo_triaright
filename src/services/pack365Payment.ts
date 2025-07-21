@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import axios from 'axios';
@@ -18,10 +19,32 @@ interface PaymentOptions {
 interface RazorpayResponse {
   razorpay_payment_id: string;
   razorpay_order_id: string;
+  razorpay_signature?: string;
 }
 
 interface OrderResponse {
   orderId: string;
+  amount: number;
+  baseAmount: number;
+  discount: number;
+  gst: number;
+  coursesCount: number;
+  stream: string;
+}
+
+interface PaymentVerificationResponse {
+  success: boolean;
+  message: string;
+  enrollment?: any;
+  paymentDetails?: {
+    orderId: string;
+    amount: number;
+    baseAmount: number;
+    discount: number;
+    gst: number;
+    coursesCount: number;
+    stream: string;
+  };
 }
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
@@ -48,6 +71,26 @@ export class Pack365PaymentService {
     });
   }
 
+  static calculatePaymentAmount(baseAmount: number = 999, discount: number = 0): {
+    baseAmount: number;
+    discount: number;
+    billableAmount: number;
+    gst: number;
+    finalAmount: number;
+  } {
+    const billableAmount = baseAmount - discount;
+    const gst = Math.round(billableAmount * 0.18); // 18% GST
+    const finalAmount = billableAmount + gst;
+
+    return {
+      baseAmount,
+      discount,
+      billableAmount,
+      gst,
+      finalAmount
+    };
+  }
+
   static async createOrder(options: PaymentOptions): Promise<OrderResponse> {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -57,12 +100,15 @@ export class Pack365PaymentService {
     console.log('Creating order with options:', options);
 
     try {
-      const requestData = {
+      const requestData: any = {
         stream: options.streamName || 'it',
-        fromStream: options.fromStream,
-        amount: options.amount || 365,
-        couponCode: options.couponCode
+        fromStream: options.fromStream
       };
+
+      // Add coupon code if provided
+      if (options.couponCode) {
+        requestData.code = options.couponCode;
+      }
 
       console.log('Sending request to backend:', requestData);
 
@@ -85,6 +131,12 @@ export class Pack365PaymentService {
 
       return {
         orderId: response.data.orderId,
+        amount: response.data.amount,
+        baseAmount: response.data.baseAmount,
+        discount: response.data.discount || 0,
+        gst: response.data.gst,
+        coursesCount: response.data.coursesCount,
+        stream: response.data.stream
       };
     } catch (error: any) {
       console.error('Error creating order:', error);
@@ -114,24 +166,21 @@ export class Pack365PaymentService {
       }
 
       // Create order
-      const { orderId } = await this.createOrder(options);
-      console.log('Order created:', { orderId});
+      const orderDetails = await this.createOrder(options);
+      console.log('Order created:', orderDetails);
 
       // Get user info
       const currentUser = localStorage.getItem('currentUser');
       const user = currentUser ? JSON.parse(currentUser) : null;
 
-      // Use the final amount from options, defaulting to 365
-      const finalAmount = (options.amount || 365) * 100; // Convert to paise
-
       // Configure Razorpay options
       const razorpayOptions = {
         key: "rzp_live_muJa8GZA0HcuE1",
-        amount: finalAmount,
+        amount: orderDetails.amount * 100, // Convert to paise
         currency: 'INR',
         name: 'Pack365',
-        description: options.streamName,
-        order_id: orderId,
+        description: `${orderDetails.stream} Bundle - ${orderDetails.coursesCount} courses`,
+        order_id: orderDetails.orderId,
         prefill: {
           name: user ? `${user.firstName} ${user.lastName}` : '',
           email: user?.email || '',
@@ -143,7 +192,7 @@ export class Pack365PaymentService {
         handler: async (response: RazorpayResponse) => {
           console.log('Payment successful:', response);
           try {
-            await this.verifyPayment(response);
+            await this.verifyPayment(response, orderDetails.stream, options.couponCode);
             onSuccess(response);
           } catch (error) {
             console.error('Payment verification failed:', error);
@@ -181,19 +230,36 @@ export class Pack365PaymentService {
     }
   }
 
-  static async verifyPayment(response: RazorpayResponse): Promise<any> {
+  static async verifyPayment(
+    response: RazorpayResponse,
+    stream: string,
+    couponCode?: string
+  ): Promise<PaymentVerificationResponse> {
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('Authentication required');
     }
 
     try {
+      const requestData: any = {
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        stream: stream
+      };
+
+      // Add signature if provided (optional)
+      if (response.razorpay_signature) {
+        requestData.razorpay_signature = response.razorpay_signature;
+      }
+
+      // Add coupon code if provided
+      if (couponCode) {
+        requestData.code = couponCode;
+      }
+
       const verificationResponse = await axios.post(
-        `${API_BASE_URL}/pack365/verify-payment`,
-        {
-          razorpay_order_id: response.razorpay_order_id,
-          razorpay_payment_id: response.razorpay_payment_id,
-        },
+        `${API_BASE_URL}/pack365/payment/verify`,
+        requestData,
         {
           headers: {
             'Authorization': `Bearer ${token}`,

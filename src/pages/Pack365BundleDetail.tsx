@@ -1,79 +1,80 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, BookOpen, PlayCircle, Star, Users, CheckCircle, Lock } from 'lucide-react';
-import { pack365Api, Pack365Course } from '@/services/api';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { ArrowLeft, CreditCard, Shield, Clock, IndianRupee, AlertCircle, Gift, X, CheckCircle2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { pack365Api } from '@/services/api';
+import { Pack365Course, EnhancedPack365Enrollment } from '@/types/api';
+import { useAuth } from '@/hooks/useAuth';
+
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  instructor: string;
+  duration: string;
+  price: string;
+  skills: string[];
+  image: string;
+}
 
 const Pack365BundleDetail = () => {
-  const { streamName } = useParams<{ streamName: string }>();
+  const { streamName } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [courses, setCourses] = useState<Pack365Course[]>([]);
+  const [bundleData, setBundleData] = useState<{ courses: Pack365Course[] }>({ courses: [] });
   const [loading, setLoading] = useState(true);
-
-  const streamConfig: { [key: string]: { displayName: string; image: string; description: string; features: string[]; } } = {
-    'IT': { 
-      displayName: 'IT Bundle', 
-      image: '/lovable-uploads/IT Pack365.png',
-      description: 'Master the world of Information Technology with comprehensive courses covering programming, web development, databases, and more.',
-      features: ['Full Stack Development', 'Database Management', 'Cloud Computing', 'DevOps & Deployment', 'Mobile App Development']
-    },
-    'PHARMA': { 
-      displayName: 'Pharma Bundle', 
-      image: '/lovable-uploads/Pharma Pack 365.png',
-      description: 'Comprehensive pharmaceutical education covering drug development, regulations, quality control, and industry best practices.',
-      features: ['Drug Development Process', 'Regulatory Affairs', 'Quality Control & Assurance', 'Clinical Research', 'Pharmaceutical Marketing']
-    },
-    'MARKETING': { 
-      displayName: 'Marketing Bundle', 
-      image: '/lovable-uploads/Marketing Pack 365.png',
-      description: 'Complete digital marketing mastery including SEO, social media, content marketing, and analytics.',
-      features: ['Digital Marketing Strategy', 'SEO & SEM', 'Social Media Marketing', 'Content Marketing', 'Analytics & Reporting']
-    },
-    'HR': { 
-      displayName: 'HR Bundle', 
-      image: '/lovable-uploads/HR Pack 365.png',
-      description: 'Human Resources excellence covering recruitment, employee management, compliance, and organizational development.',
-      features: ['Talent Acquisition', 'Employee Relations', 'Performance Management', 'HR Analytics', 'Compliance & Legal']
-    },
-    'FINANCE': { 
-      displayName: 'Finance Bundle', 
-      image: '/lovable-uploads/Finance Pack 365.png',
-      description: 'Financial expertise development including accounting, investment analysis, risk management, and financial planning.',
-      features: ['Financial Analysis', 'Investment Management', 'Risk Assessment', 'Corporate Finance', 'Financial Planning']
-    }
-  };
+  const { user } = useAuth();
 
   useEffect(() => {
-    loadCourses();
-  }, [streamName]);
-
-  const loadCourses = async () => {
-    try {
+    const fetchBundleDetails = async () => {
       setLoading(true);
-      const response = await pack365Api.getAllCourses();
-      if (response.success && streamName) {
-        const filteredCourses = response.data.filter(
-          course => course.stream.toLowerCase() === streamName.toLowerCase()
-        );
-        setCourses(filteredCourses);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          toast({
+            title: 'Authentication Required',
+            description: 'Please login to view bundle details',
+            variant: 'destructive'
+          });
+          navigate('/login');
+          return;
+        }
+
+        const response = await pack365Api.getAllCourses();
+        if (response.success && response.data) {
+          const filteredCourses = response.data.filter(course => course.stream === streamName);
+          setBundleData({ courses: filteredCourses });
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Failed to load bundle details',
+            variant: 'destructive'
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching bundle details:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load bundle details',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load courses',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchBundleDetails();
+  }, [streamName, navigate, toast]);
 
   const handleEnrollNow = () => {
     const token = localStorage.getItem('token');
@@ -86,205 +87,179 @@ const Pack365BundleDetail = () => {
       navigate('/login');
       return;
     }
-    navigate('/payment-selection', { state: { streamName, fromStream: true } });
+
+    // Navigate to payment with bundle details
+    navigate('/razorpay-payment', {
+      state: {
+        streamName: streamName,
+        fromStream: true,
+        coursesCount: bundleData.courses.length
+      }
+    });
   };
-
-  if (!streamName || !streamConfig[streamName.toUpperCase()]) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Bundle Not Found</h1>
-            <Button onClick={() => navigate('/pack365')}>Back to Pack365</Button>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  const streamData = streamConfig[streamName.toUpperCase()];
-  const totalVideos = courses.reduce((acc, course) => acc + (course.videoCount || 0), 0);
-  const totalHours = courses.reduce((acc, course) => acc + (course.totalHours || 0), 0);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <>
         <Navbar />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold text-gray-900">Loading bundle details...</h2>
+          </div>
         </div>
         <Footer />
-      </div>
+      </>
+    );
+  }
+
+  if (!bundleData || bundleData.courses.length === 0) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Bundle not found</h2>
+            <p className="text-gray-600 mb-6">The requested bundle could not be found.</p>
+            <Button onClick={() => navigate(`/${user?.role || 'student'}`)}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+        <Footer />
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <>
       <Navbar />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header Section */}
-        <div className="mb-8">
-          <Button 
-            onClick={() => navigate('/pack365')}
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <Button
             variant="outline"
+            onClick={() => navigate(`/${user?.role || 'student'}`)}
             className="mb-6"
           >
-            ← Back to All Bundles
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
           </Button>
-          
-          <div className="grid lg:grid-cols-2 gap-8 items-center">
-            <div>
-              <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white mb-4">
-                Pack 365
-              </Badge>
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                {streamData.displayName}
-              </h1>
-              <p className="text-lg text-gray-600 mb-6">
-                {streamData.description}
-              </p>
-              
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="text-center p-4 bg-white/50 rounded-lg">
-                  <BookOpen className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-gray-900">{courses.length}</div>
-                  <div className="text-sm text-gray-600">Courses</div>
-                </div>
-                <div className="text-center p-4 bg-white/50 rounded-lg">
-                  <PlayCircle className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-gray-900">{totalVideos}</div>
-                  <div className="text-sm text-gray-600">Videos</div>
-                </div>
-                <div className="text-center p-4 bg-white/50 rounded-lg">
-                  <Clock className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-gray-900">{totalHours}h</div>
-                  <div className="text-sm text-gray-600">Total Hours</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="relative">
-              <img 
-                src={streamData.image} 
-                alt={streamData.displayName}
-                className="w-full h-64 object-cover rounded-lg shadow-lg"
-              />
-            </div>
-          </div>
-        </div>
 
-        {/* Features Section */}
-        <Card className="mb-8 bg-white/70 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Star className="h-5 w-5 text-yellow-500 mr-2" />
-              What You'll Master
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {streamData.features.map((feature, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                  <span className="text-gray-700">{feature}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Courses Section */}
-        <Card className="mb-8 bg-white/70 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BookOpen className="h-5 w-5 text-blue-600 mr-2" />
-              Included Courses ({courses.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {courses.length > 0 ? (
-              <div className="space-y-4">
-                {courses.map((course, index) => (
-                  <div key={index} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 mb-2">{course.courseName}</h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <div className="flex items-center space-x-1">
-                            <PlayCircle className="h-4 w-4" />
-                            <span>{course.videoCount || 0} videos</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{course.totalHours || 0} hours</span>
-                          </div>
-                          <Badge variant="outline">{course.stream}</Badge>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">All Levels</span>
-                      </div>
-                    </div>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-2xl">
+                {streamName} Bundle - {bundleData.courses.length} Courses
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {bundleData.courses.map((course) => (
+                  <div key={course.id} className="border rounded-lg p-4">
+                    <img
+                      src={course.documentLink}
+                      alt={course.courseName}
+                      className="w-full h-32 object-cover rounded-md mb-3"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder.svg';
+                      }}
+                    />
+                    <h3 className="text-lg font-semibold">{course.courseName}</h3>
+                    <p className="text-gray-600 text-sm">{course.description}</p>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Courses are being uploaded for this bundle...</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Pricing Section */}
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200">
-          <CardContent className="p-8">
-            <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Get Full Access
-              </h2>
-              <div className="text-5xl font-bold text-blue-600 mb-2">₹365</div>
-              <p className="text-gray-600 mb-6">One-time payment • 365 days access</p>
-              
-              <div className="flex items-center justify-center space-x-6 mb-8 text-sm text-gray-600">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span>Lifetime Updates</span>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center">
+                <CreditCard className="h-6 w-6 mr-2" />
+                Payment Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-lg font-medium">Pack365 Bundle</span>
+                  <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                    Premium
+                  </Badge>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span>Certificate of Completion</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span>24/7 Support</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Full year access</span>
+                  <span className="text-2xl font-bold">₹365</span>
                 </div>
               </div>
-              
-              <Button 
-                onClick={handleEnrollNow}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 text-lg"
-                size="lg"
-              >
-                <Lock className="h-5 w-5 mr-2" />
-                Login to Enroll Now
-              </Button>
-              
-              <p className="text-sm text-gray-500 mt-4">
-                Secure payment • 30-day money-back guarantee
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2 text-sm text-green-600">
+                  <Shield className="h-4 w-4" />
+                  <span>Secure Payment Gateway</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-green-600">
+                  <Clock className="h-4 w-4" />
+                  <span>365 days unlimited access</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-green-600">
+                  <Shield className="h-4 w-4" />
+                  <span>Certificate upon completion</span>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-lg font-medium">Total Amount</span>
+                  <span className="text-2xl font-bold text-blue-600">₹365</span>
+                </div>
+
+                <Button
+                  onClick={handleEnrollNow}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
+                >
+                  <IndianRupee className="h-5 w-5 mr-2" />
+                  Enroll Now for ₹365
+                </Button>
+              </div>
+
+              <div className="text-xs text-gray-500 text-center">
+                By proceeding, you agree to our{' '}
+                <a 
+                  href="/terms-conditions" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline hover:text-blue-700"
+                >
+                  Terms of Service
+                </a>
+                {', '}
+                <a 
+                  href="/privacy-policy" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline hover:text-blue-700"
+                >
+                  Privacy Policy
+                </a>
+                {', and '}
+                <a 
+                  href="/refund-policy" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline hover:text-blue-700"
+                >
+                  Refund Policy
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-      
       <Footer />
-    </div>
+    </>
   );
 };
 
