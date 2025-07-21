@@ -33,13 +33,13 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const [couponCode, setCouponCode] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [discount, setDiscount] = useState('');
+  const [selectedStream, setSelectedStream] = useState('');
+  const [description, setDescription] = useState('');
+  const [usageLimit, setUsageLimit] = useState('');
   const { toast: useToastHook } = useToast();
-  const [selectedStream, setSelectedStream] = useState<string | null>(null);
   const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
   const [enrollmentCode, setEnrollmentCode] = useState('');
-  const [usageLimit, setUsageLimit] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
-  const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
 
@@ -88,7 +88,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   };
 
   const handleBackToStreams = () => {
-    setSelectedStream(null);
+    setSelectedStream('');
     setFilteredCourses([]);
   };
 
@@ -97,7 +97,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       const token = localStorage.getItem('token');
       if (!token) return;
       
-      const response = await pack365Api.getAllCoupons(token);
+      const response = await pack365Api.getAllEnrollmentCodes(token);
       if (response.success) {
         setCoupons(Array.isArray(response.codes) ? response.codes : []);
       } else {
@@ -182,24 +182,31 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      if (!enrollmentCode || !selectedStream || !usageLimit) {
+        toast.error('Please fill all required fields');
+        return;
+      }
+
       const response = await pack365Api.createEnrollmentCode(token, {
-        ...codeForm,
-        stream
+        code: enrollmentCode,
+        stream: selectedStream,
+        usageLimit: parseInt(usageLimit),
+        expiresAt: expiresAt || undefined,
+        description: description
       });
 
       if (response.success) {
-        toast({ title: 'Enrollment code created successfully!' });
-        fetchEnrollmentCodes();
-        setCodeForm({ code: '', courseId: '', usageLimit: 1, expiresAt: '', description: '' });
-        setStream('');
-        setShowCodeDialog(false);
+        toast.success('Enrollment code created successfully!');
+        fetchCoupons();
+        setEnrollmentCode('');
+        setSelectedStream('');
+        setUsageLimit('');
+        setExpiresAt('');
+        setDescription('');
+        setCreateEnrollmentOpen(false);
       }
     } catch (error: any) {
-      toast({
-        title: 'Error creating code',
-        description: error.message || 'Failed to create enrollment code',
-        variant: 'destructive'
-      });
+      toast.error(error.message || 'Failed to create enrollment code');
     }
   };
 
@@ -208,20 +215,33 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await pack365Api.createCoupon(token, couponForm);
+      if (!couponCode || !selectedStream || !discount || !usageLimit) {
+        toast.error('Please fill all required fields');
+        return;
+      }
+
+      const response = await pack365Api.createEnrollmentCode(token, {
+        code: couponCode,
+        stream: selectedStream,
+        discountAmount: parseInt(discount),
+        usageLimit: parseInt(usageLimit),
+        expiresAt: expiryDate || undefined,
+        description: description
+      });
 
       if (response.success) {
-        toast({ title: 'Coupon created successfully!' });
+        toast.success('Coupon created successfully!');
         fetchCoupons();
-        setCouponForm({ code: '', courseId: '', discount: 0, expiryDate: '', description: '' });
-        setShowCouponDialog(false);
+        setCouponCode('');
+        setSelectedStream('');
+        setDiscount('');
+        setUsageLimit('');
+        setExpiryDate('');
+        setDescription('');
+        setCreateCouponOpen(false);
       }
     } catch (error: any) {
-      toast({
-        title: 'Error creating coupon',
-        description: error.message || 'Failed to create coupon',
-        variant: 'destructive'
-      });
+      toast.error(error.message || 'Failed to create coupon');
     }
   };
 
@@ -233,7 +253,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
         return;
       }
 
-      await pack365Api.updateCouponStatus(token, couponId, !currentStatus);
+      await pack365Api.deactivateEnrollmentCode(token, couponId);
       toast.success(`Coupon ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
       
       // Refresh coupons list
@@ -555,21 +575,21 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                     <DialogHeader>
                       <DialogTitle>Create Enrollment Code</DialogTitle>
                       <DialogDescription>
-                        Create a new enrollment code for a specific course.
+                        Create a new enrollment code for a specific stream.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="course" className="text-right">Course</Label>
+                        <Label htmlFor="stream" className="text-right">Stream</Label>
                         <div className="col-span-3">
-                          <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                          <Select value={selectedStream} onValueChange={setSelectedStream}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a course" />
+                              <SelectValue placeholder="Select a stream" />
                             </SelectTrigger>
                             <SelectContent>
-                              {courses.map((course) => (
-                                <SelectItem key={course._id} value={course._id || ''}>
-                                  {course.courseName} ({course.stream})
+                              {streamData.map((stream) => (
+                                <SelectItem key={stream.name} value={stream.name}>
+                                  {stream.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -640,21 +660,21 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                     <DialogHeader>
                       <DialogTitle>Create New Coupon</DialogTitle>
                       <DialogDescription>
-                        Create a new coupon code for courses. Fill in all the details below.
+                        Create a new coupon code for streams. Fill in all the details below.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="course" className="text-right">Course</Label>
+                        <Label htmlFor="stream" className="text-right">Stream</Label>
                         <div className="col-span-3">
-                          <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                          <Select value={selectedStream} onValueChange={setSelectedStream}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a course" />
+                              <SelectValue placeholder="Select a stream" />
                             </SelectTrigger>
                             <SelectContent>
-                              {courses.map((course) => (
-                                <SelectItem key={course._id} value={course._id || ''}>
-                                  {course.courseName} ({course.stream})
+                              {streamData.map((stream) => (
+                                <SelectItem key={stream.name} value={stream.name}>
+                                  {stream.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -672,13 +692,24 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                         />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="discount" className="text-right">Discount (%)</Label>
+                        <Label htmlFor="discount" className="text-right">Discount Amount (₹)</Label>
                         <Input
                           id="discount"
                           type="number"
                           value={discount}
                           onChange={(e) => setDiscount(e.target.value)}
-                          placeholder="e.g., 20"
+                          placeholder="e.g., 200"
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="usageLimit" className="text-right">Usage Limit</Label>
+                        <Input
+                          id="usageLimit"
+                          type="number"
+                          value={usageLimit}
+                          onChange={(e) => setUsageLimit(e.target.value)}
+                          placeholder="e.g., 50"
                           className="col-span-3"
                         />
                       </div>
@@ -689,6 +720,16 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                           type="date"
                           value={expiryDate}
                           onChange={(e) => setExpiryDate(e.target.value)}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="description" className="text-right">Description</Label>
+                        <Input
+                          id="description"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="Optional description"
                           className="col-span-3"
                         />
                       </div>
@@ -870,17 +911,17 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                           <div className="flex items-center space-x-4">
                             <div className="text-right">
                               <p className="font-medium">
-                                {coupon.discount ? `${coupon.discount}% off` : 'FREE'}
+                                {coupon.discountAmount ? `₹${coupon.discountAmount} off` : 'FREE'}
                               </p>
                               <p className="text-sm text-gray-500 flex items-center">
-                                <Calendar className="h-3 w-3 mr-1" />Expiry At :
-                                {" "+new Date(coupon.expiresAt).toLocaleDateString()}
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString() : 'No expiry'}
                               </p>
                             </div>
-                            <Badge variant={new Date(coupon.expiresAt) > new Date() ? 'default' : 'secondary'}>
-                              {new Date(coupon.expiryAt) < new Date() ? 'Active' : 'Active'}
+                            <Badge variant={coupon.isActive ? 'default' : 'secondary'}>
+                              {coupon.isActive ? 'Active' : 'Inactive'}
                             </Badge>
-                            {/* <div className="flex space-x-2">
+                            <div className="flex space-x-2">
                               <Button variant="outline" size="sm">Edit</Button>
                               <Button
                                 variant="outline"
@@ -889,7 +930,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                               >
                                 {coupon.isActive ? 'Deactivate' : 'Activate'}
                               </Button>
-                            </div> */}
+                            </div>
                           </div>
                         </div>
                       ))}
