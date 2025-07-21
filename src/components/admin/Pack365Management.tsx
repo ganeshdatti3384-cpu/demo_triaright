@@ -99,7 +99,7 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
 
-      const response = await pack365Api.updateCourse(token, editingCourse.courseId, courseData);
+      const response = await pack365Api.updateCourse(token, editingCourse.courseId || editingCourse._id, courseData);
       if (response.success) {
         toast({ title: 'Course updated successfully!' });
         fetchCourses();
@@ -225,8 +225,8 @@ const Pack365Management = () => {
     setEditingCourse(course);
     setFormData({
       courseName: course.courseName,
-      description: course.description,
-      stream: course.stream,
+      description: course.description || '',
+      stream: course.stream as 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance',
       topics: course.topics?.length ? course.topics : [{ name: '', link: '', duration: 0 }],
       courseDocument: null
     });
@@ -310,7 +310,7 @@ const Pack365Management = () => {
                       {course.stream}
                     </Badge>
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">{course.description}</TableCell>
+                  <TableCell className="max-w-xs truncate">{course.description || 'No description'}</TableCell>
                   <TableCell>{course.topics?.length || 0} topics</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
@@ -511,7 +511,7 @@ const Pack365Management = () => {
               
               <div>
                 <Label className="text-sm font-medium">Description</Label>
-                <p className="text-sm text-gray-600 mt-1">{viewingCourse.description}</p>
+                <p className="text-sm text-gray-600 mt-1">{viewingCourse.description || 'No description available'}</p>
               </div>
 
               {viewingCourse.documentLink && (

@@ -24,6 +24,7 @@ export interface RegisterPayload {
   password: string;
   role: string;
   name?: string;
+  firstName?: string;
 }
 
 export interface LoginResponse {
@@ -57,14 +58,15 @@ export interface Course {
 
 export interface Pack365Course {
   _id: string;
+  id?: string;
   courseName: string;
-  description: string;
+  description?: string;
   stream: string;
   videoCount?: number;
   totalHours?: number;
   totalDuration?: number;
   price?: number;
-  topics: {
+  topics?: {
     name: string;
     link: string;
     duration: number;
@@ -99,6 +101,9 @@ export interface EnhancedPack365Enrollment {
   examScore: number;
   certificateGenerated?: boolean;
   certificateUrl?: string;
+  status?: string;
+  progress?: number;
+  paymentStatus?: string;
 }
 
 export interface RazorpayOrderResponse {
@@ -126,6 +131,7 @@ export interface CreateEnrollmentCodeInput {
   usageLimit?: number;
   expiresAt?: string;
   description?: string;
+  stream?: string;
 }
 
 export interface CreateEnrollmentCodeResponse {
@@ -160,6 +166,10 @@ export interface College {
   description?: string;
   contactPerson?: string;
   registrationNumber?: string;
+  collegeName?: string;
+  university?: string;
+  principalName?: string;
+  coordinatorName?: string;
 }
 
 export interface Employer {
@@ -191,6 +201,11 @@ export interface StudentProfile {
   address?: string;
   dateOfBirth?: string;
   gender?: string;
+  fullName?: string;
+  fatherName?: string;
+  maritalStatus?: string;
+  nationality?: string;
+  hobbies?: string[];
 }
 
 export interface JobSeekerProfile {
