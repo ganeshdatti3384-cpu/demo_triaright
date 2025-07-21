@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 
@@ -6,26 +7,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, CreditCard, Shield, Clock, IndianRupee, AlertCircle, Gift, X, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, Shield, Clock, IndianRupee, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { pack365Api } from '@/services/api';
-import { Pack365Course, EnhancedPack365Enrollment } from '@/types/api';
+import { Pack365Course } from '@/types/api';
 import { useAuth } from '@/hooks/useAuth';
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  instructor: string;
-  duration: string;
-  price: string;
-  skills: string[];
-  image: string;
-}
 
 const Pack365BundleDetail = () => {
   const { streamName } = useParams();
@@ -51,8 +39,8 @@ const Pack365BundleDetail = () => {
         }
 
         const response = await pack365Api.getAllStreams();
-        if (response.success && response.data) {
-          const filteredCourses = response.data.filter(course => course.stream === streamName);
+        if (response.success && response.courses) {
+          const filteredCourses = response.courses.filter(course => course.stream === streamName);
           setBundleData({ courses: filteredCourses });
         } else {
           toast({
@@ -156,7 +144,7 @@ const Pack365BundleDetail = () => {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {bundleData.courses.map((course) => (
-                  <div key={course.id} className="border rounded-lg p-4">
+                  <div key={course._id} className="border rounded-lg p-4">
                     <img
                       src={course.documentLink}
                       alt={course.courseName}
