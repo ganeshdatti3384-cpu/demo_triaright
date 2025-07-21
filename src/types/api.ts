@@ -1,4 +1,3 @@
-
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;
@@ -25,6 +24,7 @@ export interface RegisterPayload {
   role: string;
   name?: string;
   firstName?: string;
+  lastName?: string;
 }
 
 export interface LoginResponse {
@@ -116,22 +116,33 @@ export interface RazorpayOrderResponse {
 export interface EnrollmentCode {
   _id: string;
   code: string;
-  courseId: string;
+  stream: string;
+  discountAmount?: number;
+  isActive: boolean;
   usageLimit: number;
   usedCount: number;
-  isActive: boolean;
-  expiresAt: string;
-  createdAt: string;
+  expiresAt: string | null;
   description?: string;
+  createdAt: string;
 }
 
 export interface CreateEnrollmentCodeInput {
   code: string;
-  courseId: string;
+  stream: string;
+  discountAmount?: number;
   usageLimit?: number;
   expiresAt?: string;
   description?: string;
+}
+
+export interface UpdateEnrollmentCodeInput {
+  code?: string;
   stream?: string;
+  discountAmount?: number;
+  usageLimit?: number;
+  expiresAt?: string | null;
+  description?: string;
+  isActive?: boolean;
 }
 
 export interface CreateEnrollmentCodeResponse {

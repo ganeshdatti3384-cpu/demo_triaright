@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
-import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload } from '@/types/api';
+import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload, UpdateEnrollmentCodeInput } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 
@@ -301,13 +301,12 @@ export const pack365Api = {
     data: CreateEnrollmentCodeInput
   ): Promise<CreateEnrollmentCodeResponse> => {
     try {
-      const res = await axios.post(`${API_BASE_URL}/pack365/admin/create-code`, data, {
+      const res = await axios.post(`${API_BASE_URL}/pack365/enrollment-codes`, data, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-
       return res.data;
     } catch (error: any) {
       console.error('Failed to create enrollment code:', error?.response?.data || error.message);
@@ -317,8 +316,19 @@ export const pack365Api = {
 
   getAllEnrollmentCodes: async (
     token: string
-  ): Promise<{ success: boolean; codes: EnrollmentCode[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/admin/codes`, {
+  ): Promise<{ success: boolean; total: number; codes: EnrollmentCode[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/enrollment-codes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  updateEnrollmentCode: async (
+    token: string,
+    codeId: string,
+    data: UpdateEnrollmentCodeInput
+  ): Promise<{ success: boolean; message: string; code: EnrollmentCode }> => {
+    const res = await axios.put(`${API_BASE_URL}/pack365/enrollment-codes/${codeId}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -328,30 +338,32 @@ export const pack365Api = {
     token: string,
     codeId: string
   ): Promise<{ success: boolean; message: string; code: EnrollmentCode }> => {
-    const res = await axios.put(`${API_BASE_URL}/pack365/admin/deactivate-code/${codeId}`, {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await axios.put(`${API_BASE_URL}/pack365/enrollment-codes/${codeId}`, 
+      { isActive: false }, 
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
     return res.data;
   },
 
-  // Updated validateEnrollmentCode to handle both enrollment codes and discount coupons
   validateEnrollmentCode: async (
     token: string,
     data: {
       code: string;
-      courseId?: string;
+      stream: string;
     }
   ): Promise<{ 
     success: boolean; 
     message: string; 
     courseDetails?: any;
     couponDetails?: {
+      code: string;
       discount: number;
       description: string;
-      code: string;
     };
   }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/validate-code`, data, {
+    const res = await axios.post(`${API_BASE_URL}/pack365/verify/enrollment-codes`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
