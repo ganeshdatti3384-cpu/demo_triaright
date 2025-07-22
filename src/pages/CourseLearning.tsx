@@ -69,7 +69,7 @@ const CourseLearning = () => {
     );
   }
 
-  if (!course || !enrollment) {
+  if (!course) {
     return (
       <>
         <Navbar />
