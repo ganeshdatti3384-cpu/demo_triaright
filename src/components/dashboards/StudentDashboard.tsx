@@ -20,6 +20,7 @@ import { pack365Api, Pack365Course, EnhancedPack365Enrollment } from '@/services
 import { useToast } from '@/hooks/use-toast';
 import Pack365Courses from '../Pack365Courses';
 import Pack365Dashboard from '../Pack365Dashboard';
+import Pack365CoursesStudent from '../Pack365Courses2';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -495,7 +496,7 @@ const StudentDashboard = () => {
                 </TabsContent>
               </Tabs>
             </TabsContent>
-            
+
             <TabsContent value="pack365" className="space-y-6">
               <Card>
                 <CardHeader>
@@ -512,7 +513,7 @@ const StudentDashboard = () => {
 
                     {/* ---------------- Browse Tab ---------------- */}
                     <TabsContent value="browse">
-                      <Pack365Courses />
+                      <Pack365CoursesStudent />
                     </TabsContent>
 
                     {/* ---------------- Enrollments Tab ---------------- */}
