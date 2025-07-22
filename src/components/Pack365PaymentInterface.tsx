@@ -124,7 +124,8 @@ const validateCoupon = async () => {
     });
   };
 
-  const handlePayment = async () => {
+  // Updated Pack365PaymentInterface - handlePayment function only
+const handlePayment = async () => {
   setIsProcessingPayment(true);
 
   try {
@@ -151,12 +152,15 @@ const validateCoupon = async () => {
         amount: paymentCalculation.finalAmount,
         couponCode: appliedCoupon?.code || undefined,
       },
+      // Payment Success Callback - Forward to parent's verification handler
       (response) => {
-        console.log('Payment successful:', response);
+        console.log('Payment successful in Pack365PaymentInterface:', response);
+        // Forward the payment response to parent component for verification
         onPaymentSuccess(response);
       },
+      // Payment Error Callback
       (error) => {
-        console.error('Payment failed:', error);
+        console.error('Payment failed in Pack365PaymentInterface:', error);
         onPaymentError(error);
       }
     );

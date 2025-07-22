@@ -1,9 +1,9 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import axios from 'axios';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 declare global {
   interface Window {
@@ -53,10 +53,8 @@ interface PaymentVerificationResponse {
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 
-
 export class Pack365PaymentService {
 
-  
   private static loadRazorpayScript(): Promise<boolean> {
     return new Promise((resolve) => {
       if (window.Razorpay) {
@@ -147,7 +145,6 @@ export class Pack365PaymentService {
       };
     } catch (error: any) {
       console.error('Error creating order:', error);
-      
       if (error.response) {
         throw new Error(error.response.data?.error || error.response.data?.message || 'Failed to create payment order');
       } else if (error.request) {
@@ -160,30 +157,26 @@ export class Pack365PaymentService {
 
   static async processPayment(
     options: PaymentOptions,
-    onSuccess: (response: RazorpayResponse) => void,
-    onError: (error: any) => void
+    navigate: ReturnType<typeof useNavigate>,
+    onSuccess?: (response: RazorpayResponse) => void,
+    onError?: (error: any) => void
   ): Promise<void> {
     try {
       console.log('Starting payment process...');
-      
-      // Load Razorpay script
       const isScriptLoaded = await this.loadRazorpayScript();
       if (!isScriptLoaded) {
         throw new Error('Failed to load Razorpay payment gateway. Please check your internet connection and try again.');
       }
 
-      // Create order
       const orderDetails = await this.createOrder(options);
       console.log('Order created:', orderDetails);
 
-      // Get user info
       const currentUser = localStorage.getItem('currentUser');
       const user = currentUser ? JSON.parse(currentUser) : null;
 
-      // Configure Razorpay options
       const razorpayOptions = {
         key: "rzp_live_muJa8GZA0HcuE1",
-        amount: orderDetails.amount * 100, // Convert to paise
+        amount: orderDetails.amount * 100,
         currency: 'INR',
         name: 'Pack365',
         description: `${orderDetails.stream} Bundle - ${orderDetails.coursesCount} courses`,
@@ -199,56 +192,66 @@ export class Pack365PaymentService {
         handler: async (response: RazorpayResponse) => {
           console.log('Payment successful:', response);
           try {
-            await this.verifyPayment(response, orderDetails.stream, options.couponCode);
-            onSuccess(response);
+            const verificationResult = await this.verifyPayment(response, orderDetails.stream, options.couponCode, navigate);
+            if (onSuccess) {
+              onSuccess(response);
+            }
           } catch (error) {
             console.error('Payment verification failed:', error);
-            onError(error);
+            if (onError) {
+              onError(error);
+            }
           }
         },
         modal: {
           ondismiss: () => {
             console.log('Payment cancelled by user');
-            onError(new Error('Payment was cancelled by user'));
+            const error = new Error('Payment was cancelled by user');
+            if (onError) {
+              onError(error);
+            }
           }
         }
       };
 
       console.log('Opening Razorpay checkout with options:', razorpayOptions);
 
-      // Check if Razorpay is available
       if (!window.Razorpay) {
         throw new Error('Razorpay is not loaded. Please refresh the page and try again.');
       }
 
-      // Open Razorpay checkout
       const razorpay = new window.Razorpay(razorpayOptions);
-      
       razorpay.on('payment.failed', (response: any) => {
         console.error('Payment failed:', response.error);
-        onError(new Error(response.error.description || 'Payment failed'));
+        const error = new Error(response.error.description || 'Payment failed');
+        navigate('/payment-failure');
+        if (onError) {
+          onError(error);
+        }
       });
 
       razorpay.open();
 
     } catch (error: any) {
       console.error('Error processing payment:', error);
-      onError(error);
+      navigate('/payment-failure');
+      if (onError) {
+        onError(error);
+      }
     }
   }
 
   static async verifyPayment(
     response: RazorpayResponse,
     stream: string,
-    couponCode?: string
+    couponCode?: string,
+    navigate?: ReturnType<typeof useNavigate>
   ): Promise<PaymentVerificationResponse> {
-   
     try {
       const requestData: any = {
         razorpay_order_id: response.razorpay_order_id,
         razorpay_payment_id: response.razorpay_payment_id,
         razorpay_signature: response.razorpay_signature,
-        userID: user?.id || "687a31ca106507a3da6b1837",
       };
 
       console.log(requestData);
@@ -260,14 +263,26 @@ export class Pack365PaymentService {
 
       console.log('Payment verification response:', verificationResponse.data);
 
-      if (!verificationResponse.data.success) {
+      if (verificationResponse.data.success) {
+        console.log('Payment verification successful');
+        if (navigate) {
+          navigate('/payment-success');
+        }
+      } else {
+        console.log('Payment verification failed');
+        if (navigate) {
+          navigate('/payment-failure');
+        }
         throw new Error(verificationResponse.data.message || 'Payment verification failed');
       }
 
       return verificationResponse.data;
     } catch (error: any) {
       console.error('Error verifying payment:', error);
-      
+      if (navigate) {
+        navigate('/payment-failure');
+      }
+
       if (error.response) {
         throw new Error(error.response.data?.message || 'Payment verification failed');
       } else if (error.request) {
