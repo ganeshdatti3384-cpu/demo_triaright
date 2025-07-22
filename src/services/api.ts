@@ -246,7 +246,7 @@ export const pack365Api = {
     const res = await axios.get(`${API_BASE_URL}/pack365/courses`);
     return res.data;
   },
-  getAllStreams: async (): Promise<{ success: boolean }> => {
+  getAllStreams: async (): Promise<{ success: boolean; courses?: Pack365Course[] }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/getstreams`);
     return res.data;
   },
@@ -254,7 +254,7 @@ export const pack365Api = {
   getCourseById: async (
     id: string, 
     token: string
-  ): Promise<{ success: boolean; data: Pack365Course }> => {
+  ): Promise<{ success: boolean; data: Pack365Course; message?: string }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -457,7 +457,7 @@ export const pack365Api = {
   checkEnrollmentStatus: async (
     token: string,
     courseId: string
-  ): Promise<{ success: boolean; isEnrolled: boolean; enrollment: EnhancedPack365Enrollment | null }> => {
+  ): Promise<{ success: boolean; isEnrolled: boolean; enrollment: EnhancedPack365Enrollment | null; message?: string }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/packenroll365/check-enrollment/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });

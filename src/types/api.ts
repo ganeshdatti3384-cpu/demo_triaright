@@ -23,9 +23,12 @@ export interface RegisterPayload {
   password: string;
   role: string;
   name?: string;
+  fullName?: string;
   firstName?: string;
   lastName?: string;
   phoneNumber?: string;
+  whatsappNumber?: string;
+  address?: string;
 }
 
 export interface LoginResponse {
