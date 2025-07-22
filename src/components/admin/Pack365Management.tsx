@@ -69,7 +69,7 @@ const Pack365Management = () => {
         ...formData,
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
-
+      console.log(courseData)
       const response = await pack365Api.createCourse(token, courseData);
       if (response.success) {
         toast({ title: 'Course created successfully!' });
