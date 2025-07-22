@@ -495,149 +495,179 @@ const StudentDashboard = () => {
                 </TabsContent>
               </Tabs>
             </TabsContent>
-
-           <TabsContent value="pack365">
-            <div className="space-y-6">
-              {/* Pack365 Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center">
-                      <Award className="h-8 w-8 text-purple-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Total Streams</p>
-                        <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalStreams}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center">
-                      <BookOpen className="h-8 w-8 text-blue-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Total Courses</p>
-                        <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalCourses}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center">
-                      <Target className="h-8 w-8 text-green-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Average Progress</p>
-                        <p className="text-2xl font-bold text-gray-900">{pack365Stats.averageProgress}%</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center">
-                      <Trophy className="h-8 w-8 text-yellow-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Completed Exams</p>
-                        <p className="text-2xl font-bold text-gray-900">{pack365Stats.completedExams}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Pack365 Enrollments */}
+            
+            <TabsContent value="pack365" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <GraduationCap className="h-6 w-6 mr-2" />
-                    My Pack365 Enrollments
-                  </CardTitle>
+                  <CardTitle>Pack365 Courses</CardTitle>
+                  <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
                 </CardHeader>
+
                 <CardContent>
-                  {loading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <p>Loading your enrollments...</p>
-                    </div>
-                  ) : pack365Enrollments.length === 0 ? (
-                    <div className="text-center py-8">
-                      <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-600 mb-2">No Pack365 Enrollments</h3>
-                      <p className="text-gray-500 mb-6">You haven't enrolled in any Pack365 streams yet.</p>
-                      <Button onClick={() => navigate('/pack365')}>
-                        Browse Pack365 Streams
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {enrolledCourses.map((enrollment, index) => (
-                        <Card key={index} className="border-2 hover:border-blue-200 transition-colors">
-                          <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <CardTitle className="text-lg capitalize">{enrollment.stream} Stream</CardTitle>
-                              <Badge 
-                                variant={enrollment.paymentStatus === 'completed' ? 'default' : 'secondary'}
-                                className={enrollment.paymentStatus === 'completed' ? 'bg-green-500' : ''}
-                              >
-                                {enrollment.paymentStatus}
-                              </Badge>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <div className="flex items-center text-gray-500 mb-1">
-                                  <BookOpen className="h-3 w-3 mr-1" />
-                                  <span>Courses</span>
-                                </div>
-                                <p className="font-semibold">{enrollment.coursesCount}</p>
-                              </div>
-                              <div>
-                                <div className="flex items-center text-gray-500 mb-1">
-                                  <Target className="h-3 w-3 mr-1" />
-                                  <span>Topics</span>
-                                </div>
-                                <p className="font-semibold">{enrollment.totalTopics}</p>
-                              </div>
-                            </div>
+                  <Tabs defaultValue="browse" className="w-full">
+                    <TabsList className="mb-4">
+                      <TabsTrigger value="browse" onClick={loadPack365Courses}>Browse Courses</TabsTrigger>
+                      <TabsTrigger value="enrollments" onClick={loadPack365Enrollments}>My Enrollments</TabsTrigger>
+                    </TabsList>
 
-                            <div>
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm font-medium">Progress</span>
-                                <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage)}%</span>
-                              </div>
-                              <Progress value={enrollment.totalWatchedPercentage} className="h-2" />
-                            </div>
+                    {/* ---------------- Browse Tab ---------------- */}
+                    <TabsContent value="browse">
+                      <Pack365Courses />
+                    </TabsContent>
 
-                            <div className="flex items-center justify-between text-xs text-gray-500">
+                    {/* ---------------- Enrollments Tab ---------------- */}
+                    <TabsContent value="enrollments">
+                      <div className="space-y-6">
+                        {/* Pack365 Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                          {/* Total Streams */}
+                          <Card>
+                            <CardContent className="p-6">
                               <div className="flex items-center">
-                                <Calendar className="h-3 w-3 mr-1" />
-                                <span>Enrolled: {formatDate(enrollment.enrollmentDate)}</span>
+                                <Award className="h-8 w-8 text-purple-600" />
+                                <div className="ml-4">
+                                  <p className="text-sm font-medium text-gray-600">Total Streams</p>
+                                  <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalStreams}</p>
+                                </div>
                               </div>
-                            </div>
+                            </CardContent>
+                          </Card>
 
-                            <Button 
-                              onClick={() => handleStreamLearning(enrollment.stream)}
-                              className="w-full"
-                              size="sm"
-                            >
-                              <PlayCircle className="h-4 w-4 mr-2" />
-                              Continue Learning
-                            </Button>
+                          {/* Total Courses */}
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex items-center">
+                                <BookOpen className="h-8 w-8 text-blue-600" />
+                                <div className="ml-4">
+                                  <p className="text-sm font-medium text-gray-600">Total Courses</p>
+                                  <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalCourses}</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Average Progress */}
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex items-center">
+                                <Target className="h-8 w-8 text-green-600" />
+                                <div className="ml-4">
+                                  <p className="text-sm font-medium text-gray-600">Average Progress</p>
+                                  <p className="text-2xl font-bold text-gray-900">{pack365Stats.averageProgress}%</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Completed Exams */}
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex items-center">
+                                <Trophy className="h-8 w-8 text-yellow-600" />
+                                <div className="ml-4">
+                                  <p className="text-sm font-medium text-gray-600">Completed Exams</p>
+                                  <p className="text-2xl font-bold text-gray-900">{pack365Stats.completedExams}</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* My Enrollments */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center">
+                              <GraduationCap className="h-6 w-6 mr-2" />
+                              My Pack365 Enrollments
+                            </CardTitle>
+                          </CardHeader>
+
+                          <CardContent>
+                            {loading ? (
+                              <div className="text-center py-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                <p>Loading your enrollments...</p>
+                              </div>
+                            ) : pack365Enrollments.length === 0 ? (
+                              <div className="text-center py-8">
+                                <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold text-gray-600 mb-2">No Pack365 Enrollments</h3>
+                                <p className="text-gray-500 mb-6">You haven't enrolled in any Pack365 streams yet.</p>
+                                <Button onClick={() => navigate('/pack365')}>
+                                  Browse Pack365 Streams
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {enrolledCourses.map((enrollment, index) => (
+                                  <Card key={index} className="border-2 hover:border-blue-200 transition-colors">
+                                    <CardHeader>
+                                      <div className="flex items-center justify-between">
+                                        <CardTitle className="text-lg capitalize">{enrollment.stream} Stream</CardTitle>
+                                        <Badge 
+                                          variant={enrollment.paymentStatus === 'completed' ? 'default' : 'secondary'}
+                                          className={enrollment.paymentStatus === 'completed' ? 'bg-green-500' : ''}
+                                        >
+                                          {enrollment.paymentStatus}
+                                        </Badge>
+                                      </div>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                          <div className="flex items-center text-gray-500 mb-1">
+                                            <BookOpen className="h-3 w-3 mr-1" />
+                                            <span>Courses</span>
+                                          </div>
+                                          <p className="font-semibold">{enrollment.coursesCount}</p>
+                                        </div>
+                                        <div>
+                                          <div className="flex items-center text-gray-500 mb-1">
+                                            <Target className="h-3 w-3 mr-1" />
+                                            <span>Topics</span>
+                                          </div>
+                                          <p className="font-semibold">{enrollment.totalTopics}</p>
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                          <span className="text-sm font-medium">Progress</span>
+                                          <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage)}%</span>
+                                        </div>
+                                        <Progress value={enrollment.totalWatchedPercentage} className="h-2" />
+                                      </div>
+
+                                      <div className="flex items-center justify-between text-xs text-gray-500">
+                                        <div className="flex items-center">
+                                          <Calendar className="h-3 w-3 mr-1" />
+                                          <span>Enrolled: {formatDate(enrollment.enrollmentDate)}</span>
+                                        </div>
+                                      </div>
+
+                                      <Button 
+                                        onClick={() => handleStreamLearning(enrollment.stream)}
+                                        className="w-full"
+                                        size="sm"
+                                      >
+                                        <PlayCircle className="h-4 w-4 mr-2" />
+                                        Continue Learning
+                                      </Button>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
+              
             <TabsContent value="jobs" className="space-y-6">
               <Tabs defaultValue="job-assurance" className="space-y-4">
                 <TabsList className="bg-white">
