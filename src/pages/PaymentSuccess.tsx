@@ -59,11 +59,11 @@ const PaymentSuccess = () => {
 
             <div className="space-y-2 pt-4">
               <Button
-                onClick={() => navigate('/student')}
+                onClick={() => navigate(type === 'pack365' ? '/pack365-dashboard' : '/student')}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
                 <BookOpen className="h-4 w-4 mr-2" />
-                Go to My Courses
+                {type === 'pack365' ? 'Go to Pack365 Dashboard' : 'Go to My Courses'}
               </Button>
 
               <Button

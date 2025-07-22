@@ -484,9 +484,18 @@ const StudentDashboard = () => {
 
             <TabsContent value="pack365" className="space-y-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Pack365 Courses</CardTitle>
-                  <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Pack365 Courses</CardTitle>
+                    <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
+                  </div>
+                  <Button 
+                    onClick={() => navigate('/pack365-dashboard')}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    <GraduationCap className="h-4 w-4 mr-2" />
+                    My Learning Dashboard
+                  </Button>
                 </CardHeader>
 
                 <CardContent>

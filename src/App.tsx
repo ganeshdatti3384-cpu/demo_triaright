@@ -50,6 +50,8 @@ import RazorpayPayment from './pages/RazorpayPayment';
 import StudentProfilePage from '@/components/profile/StudentProfilePage';
 import JobSeekerProfilePage from '@/components/profile/JobSeekerProfilePage';
 import EmployerProfilePage from '@/components/profile/EmployerProfilePage';
+import Pack365Dashboard from '@/components/Pack365Dashboard';
+import Pack365StreamLearning from '@/pages/Pack365StreamLearning';
 
 const queryClient = new QueryClient();
 
@@ -224,6 +226,22 @@ const App = () => {
             element={
               <ProtectedRoute allowedRoles={['employee']}>
                 <EnhancedProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pack365-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <Pack365Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pack365-learning/:stream"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <Pack365StreamLearning />
               </ProtectedRoute>
             }
           />

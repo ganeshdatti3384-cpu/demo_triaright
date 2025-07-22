@@ -20,14 +20,36 @@ import {
 import { pack365Api } from '@/services/api';
 import { EnhancedPack365Enrollment } from '@/types/api';
 
+interface StreamEnrollment {
+  stream: string;
+  amountPaid: number;
+  enrollmentDate: string;
+  expiresAt: string;
+  paymentStatus: string;
+  enrollmentType: string;
+  totalWatchedPercentage: number;
+  isExamCompleted: boolean;
+  examScore: number | null;
+  coursesCount: number;
+  totalTopics: number;
+  watchedTopics: number;
+  courses: {
+    courseId: string;
+    courseName: string;
+    description: string;
+    totalDuration: number;
+    topicsCount: number;
+  }[];
+}
+
 const Pack365Dashboard = () => {
-  const [enrollments, setEnrollments] = useState<EnhancedPack365Enrollment[]>([]);
+  const [enrollments, setEnrollments] = useState<StreamEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
+    totalStreams: 0,
     totalCourses: 0,
-    completedCourses: 0,
-    totalHours: 0,
-    certificatesEarned: 0
+    completedStreams: 0,
+    totalHours: 0
   });
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -53,22 +75,27 @@ const Pack365Dashboard = () => {
       const response = await pack365Api.getMyEnrollments(token);
       
       if (response.success && response.enrollments) {
-        setEnrollments(response.enrollments);
+        // Cast the response to the new StreamEnrollment format
+        const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
+        setEnrollments(streamEnrollments);
         
         // Calculate stats
-        const totalCourses = response.enrollments.length;
-        const completedCourses = response.enrollments.filter(
-          (enrollment: EnhancedPack365Enrollment) => enrollment.videoProgress >= 100
+        const totalStreams = streamEnrollments.length;
+        const totalCourses = streamEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => 
+          sum + enrollment.coursesCount, 0
+        );
+        const completedStreams = streamEnrollments.filter(
+          (enrollment: StreamEnrollment) => enrollment.totalWatchedPercentage >= 100
         ).length;
-        const certificatesEarned = response.enrollments.filter(
-          (enrollment: EnhancedPack365Enrollment) => enrollment.isExamCompleted && enrollment.examScore && enrollment.examScore >= 70
-        ).length;
+        const totalHours = streamEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => {
+          return sum + enrollment.courses.reduce((courseSum, course) => courseSum + course.totalDuration, 0);
+        }, 0);
         
         setStats({
+          totalStreams,
           totalCourses,
-          completedCourses,
-          totalHours: totalCourses * 20, // Estimate
-          certificatesEarned
+          completedStreams,
+          totalHours: Math.round(totalHours / 60) // Convert minutes to hours
         });
       }
     } catch (error: any) {
@@ -83,8 +110,8 @@ const Pack365Dashboard = () => {
     }
   };
 
-  const handleResumeCourse = (courseId: string) => {
-    navigate(`/course-learning/${courseId}`);
+  const handleStreamLearning = (stream: string) => {
+    navigate(`/pack365-learning/${stream.toLowerCase()}`);
   };
 
   const handleTakeExam = (courseId: string) => {
@@ -125,10 +152,10 @@ const Pack365Dashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100">Total Courses</p>
-                  <p className="text-3xl font-bold">{stats.totalCourses}</p>
+                  <p className="text-blue-100">Total Streams</p>
+                  <p className="text-3xl font-bold">{stats.totalStreams}</p>
                 </div>
-                <BookOpen className="h-12 w-12 text-blue-100" />
+                <TrendingUp className="h-12 w-12 text-blue-100" />
               </div>
             </CardContent>
           </Card>
@@ -137,10 +164,10 @@ const Pack365Dashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100">Completed</p>
-                  <p className="text-3xl font-bold">{stats.completedCourses}</p>
+                  <p className="text-green-100">Total Courses</p>
+                  <p className="text-3xl font-bold">{stats.totalCourses}</p>
                 </div>
-                <CheckCircle2 className="h-12 w-12 text-green-100" />
+                <BookOpen className="h-12 w-12 text-green-100" />
               </div>
             </CardContent>
           </Card>
@@ -161,21 +188,21 @@ const Pack365Dashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-yellow-100">Certificates</p>
-                  <p className="text-3xl font-bold">{stats.certificatesEarned}</p>
+                  <p className="text-yellow-100">Completed Streams</p>
+                  <p className="text-3xl font-bold">{stats.completedStreams}</p>
                 </div>
-                <Award className="h-12 w-12 text-yellow-100" />
+                <CheckCircle2 className="h-12 w-12 text-yellow-100" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Enrolled Courses */}
+        {/* Enrolled Streams */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <GraduationCap className="h-6 w-6 mr-2" />
-              My Enrolled Courses
+              My Enrolled Streams
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -183,31 +210,35 @@ const Pack365Dashboard = () => {
               <div className="text-center py-12">
                 <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-600 mb-2">No Enrollments Yet</h3>
-                <p className="text-gray-500 mb-6">Start your learning journey by enrolling in a course.</p>
+                <p className="text-gray-500 mb-6">Start your learning journey by enrolling in a stream.</p>
                 <Button onClick={() => navigate('/pack365')}>
-                  Browse Courses
+                  Browse Streams
                 </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {enrollments.map((enrollment) => (
-                  <Card key={enrollment._id} className="border-2 hover:border-blue-200 transition-colors">
+                {enrollments.map((enrollment, index) => (
+                  <Card key={index} className="border-2 hover:border-blue-200 transition-colors">
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="text-lg mb-2">{enrollment.courseName}</CardTitle>
+                          <CardTitle className="text-lg mb-2 capitalize">{enrollment.stream} Stream</CardTitle>
                           <div className="flex items-center space-x-4 text-sm text-gray-500">
                             <div className="flex items-center">
                               <Calendar className="h-4 w-4 mr-1" />
                               {formatDate(enrollment.enrollmentDate)}
                             </div>
+                            <div className="flex items-center">
+                              <BookOpen className="h-4 w-4 mr-1" />
+                              {enrollment.coursesCount} Courses
+                            </div>
                           </div>
                         </div>
                         <Badge 
-                          variant={enrollment.videoProgress >= 100 ? "default" : "secondary"}
+                          variant={enrollment.totalWatchedPercentage >= 100 ? "default" : "secondary"}
                           className="ml-2"
                         >
-                          {enrollment.videoProgress >= 100 ? 'Completed' : 'In Progress'}
+                          {enrollment.totalWatchedPercentage >= 100 ? 'Completed' : 'In Progress'}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -216,47 +247,55 @@ const Pack365Dashboard = () => {
                         {/* Progress Section */}
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">Course Progress</span>
-                            <span className="text-sm text-gray-600">{Math.round(enrollment.videoProgress)}%</span>
+                            <span className="text-sm font-medium">Stream Progress</span>
+                            <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage)}%</span>
                           </div>
-                          <Progress value={enrollment.videoProgress} className="h-2" />
+                          <Progress value={enrollment.totalWatchedPercentage} className="h-2" />
                         </div>
 
                         {/* Topics Progress */}
-                        {enrollment.topicProgress && enrollment.topicProgress.length > 0 && (
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium">Topics Completed</span>
-                              <span className="text-sm text-gray-600">
-                                {enrollment.topicProgress.filter(t => t.watched).length} / {enrollment.topicProgress.length}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {enrollment.topicProgress.slice(0, 6).map((topic, index) => (
-                                <div
-                                  key={index}
-                                  className={`w-3 h-3 rounded-full ${
-                                    topic.watched ? 'bg-green-500' : 'bg-gray-200'
-                                  }`}
-                                  title={topic.topicName}
-                                />
-                              ))}
-                              {enrollment.topicProgress.length > 6 && (
-                                <span className="text-xs text-gray-500 ml-1">
-                                  +{enrollment.topicProgress.length - 6} more
-                                </span>
-                              )}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">Topics Completed</span>
+                            <span className="text-sm text-gray-600">
+                              {enrollment.watchedTopics} / {enrollment.totalTopics}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${(enrollment.watchedTopics / enrollment.totalTopics) * 100}%` }}
+                              />
                             </div>
                           </div>
-                        )}
+                        </div>
+
+                        {/* Courses List */}
+                        <div>
+                          <span className="text-sm font-medium mb-2 block">Included Courses:</span>
+                          <div className="space-y-2">
+                            {enrollment.courses.slice(0, 3).map((course, courseIndex) => (
+                              <div key={courseIndex} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg p-2">
+                                <span className="font-medium">{course.courseName}</span>
+                                <span className="text-gray-500">{course.totalDuration}min</span>
+                              </div>
+                            ))}
+                            {enrollment.courses.length > 3 && (
+                              <div className="text-xs text-gray-500 text-center">
+                                +{enrollment.courses.length - 3} more courses
+                              </div>
+                            )}
+                          </div>
+                        </div>
 
                         {/* Exam Status */}
-                        {enrollment.videoProgress >= 80 && (
+                        {enrollment.totalWatchedPercentage >= 80 && (
                           <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                             <div className="flex items-center">
                               <Award className="h-5 w-5 text-blue-600 mr-2" />
                               <div>
-                                <p className="text-sm font-medium">Final Exam</p>
+                                <p className="text-sm font-medium">Stream Exam</p>
                                 <p className="text-xs text-gray-600">
                                   {enrollment.isExamCompleted 
                                     ? `Score: ${enrollment.examScore}%` 
@@ -268,7 +307,7 @@ const Pack365Dashboard = () => {
                             {!enrollment.isExamCompleted && (
                               <Button 
                                 size="sm" 
-                                onClick={() => handleTakeExam(enrollment.courseId)}
+                                onClick={() => handleTakeExam(enrollment.stream)}
                               >
                                 Take Exam
                               </Button>
@@ -279,19 +318,12 @@ const Pack365Dashboard = () => {
                         {/* Action Buttons */}
                         <div className="flex space-x-2 pt-2">
                           <Button 
-                            onClick={() => handleResumeCourse(enrollment.courseId)}
+                            onClick={() => handleStreamLearning(enrollment.stream)}
                             className="flex-1"
                           >
                             <Play className="h-4 w-4 mr-2" />
-                            {enrollment.videoProgress === 0 ? 'Start Course' : 'Resume Course'}
+                            {enrollment.totalWatchedPercentage === 0 ? 'Start Learning' : 'Continue Learning'}
                           </Button>
-                          
-                          {enrollment.isExamCompleted && enrollment.examScore && enrollment.examScore >= 70 && (
-                            <Button variant="outline" size="sm">
-                              <Award className="h-4 w-4 mr-1" />
-                              Certificate
-                            </Button>
-                          )}
                         </div>
                       </div>
                     </CardContent>

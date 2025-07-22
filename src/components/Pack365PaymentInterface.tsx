@@ -33,7 +33,6 @@ const Pack365PaymentInterface = ({
   streamName,
   coursesCount,
   onPaymentSuccess,
-  onPaymentError,
   onBack
 }: Pack365PaymentInterfaceProps) => {
   const [couponCode, setCouponCode] = useState('');
@@ -160,7 +159,11 @@ const handlePayment = async () => {
       // Payment Error Callback
       (error) => {
         console.error('Payment failed in Pack365PaymentInterface:', error);
-        onPaymentError(error);
+        toast({
+          title: 'Payment Failed',
+          description: (error as any).message || 'Payment could not be processed. Please try again.',
+          variant: 'destructive'
+        });
       }
     );
   } catch (error: any) {
