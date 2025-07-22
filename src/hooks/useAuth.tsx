@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = (userData: any, authToken: string) => {
     // Transform the API user data to match our User interface
     const transformedUser: User = {
-      id: userData.userId || userData._id || userData.id,
+      id: userData._id,
       userId: userData.userId,
       firstName: userData.firstName,
       lastName: userData.lastName,

@@ -1,7 +1,9 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import axios from 'axios';
+import { useEffect, useState } from 'react';
 
 declare global {
   interface Window {
@@ -20,6 +22,7 @@ interface RazorpayResponse {
   razorpay_payment_id: string;
   razorpay_order_id: string;
   razorpay_signature?: string;
+  userID?: string;
 }
 
 interface OrderResponse {
@@ -36,6 +39,7 @@ interface PaymentVerificationResponse {
   success: boolean;
   message: string;
   enrollment?: any;
+  userID?: string;
   paymentDetails?: {
     orderId: string;
     amount: number;
@@ -49,6 +53,22 @@ interface PaymentVerificationResponse {
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 
+const [user, setUser] = useState<any>(null);
+
+ useEffect(() => {
+  const savedUser = localStorage.getItem('currentUser');
+  if (savedUser) {
+    try {
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      console.log(parsedUser.id || "No user ID found");
+    } catch (err) {
+      console.error("Failed to parse user:", err);
+    }
+  } else {
+    console.log("No user data found in localStorage");
+  }
+}, []);
 export class Pack365PaymentService {
   private static loadRazorpayScript(): Promise<boolean> {
     return new Promise((resolve) => {
@@ -240,19 +260,12 @@ export class Pack365PaymentService {
       const requestData: any = {
         razorpay_order_id: response.razorpay_order_id,
         razorpay_payment_id: response.razorpay_payment_id,
-        stream: stream
+        razorpay_signature: response.razorpay_signature,
+        userID: user?.id || "687a31ca106507a3da6b1837",
       };
 
-      // Add signature if provided (optional)
-      if (response.razorpay_signature) {
-        requestData.razorpay_signature = response.razorpay_signature;
-      }
+      console.log(requestData);
 
-      // Add coupon code if provided
-      if (couponCode) {
-        requestData.code = couponCode;  
-      }
-      
       const verificationResponse = await axios.post(
         `${API_BASE_URL}/pack365/payment/verify`,
         requestData,
