@@ -53,23 +53,10 @@ interface PaymentVerificationResponse {
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 
-const [user, setUser] = useState<any>(null);
 
- useEffect(() => {
-  const savedUser = localStorage.getItem('currentUser');
-  if (savedUser) {
-    try {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      console.log(parsedUser.id || "No user ID found");
-    } catch (err) {
-      console.error("Failed to parse user:", err);
-    }
-  } else {
-    console.log("No user data found in localStorage");
-  }
-}, []);
 export class Pack365PaymentService {
+
+  
   private static loadRazorpayScript(): Promise<boolean> {
     return new Promise((resolve) => {
       if (window.Razorpay) {
