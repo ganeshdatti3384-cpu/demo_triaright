@@ -481,7 +481,7 @@ export const pack365Api = {
     topicProgress: TopicProgress[];
   }> => {
     const res = await axios.post(
-      `${API_BASE_URL}/pack365/packenroll365/update-topic-progress`,
+      `${API_BASE_URL}/pack365/topic/progress`,
       data,
       {
         headers: {
