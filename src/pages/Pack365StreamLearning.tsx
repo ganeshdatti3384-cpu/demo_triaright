@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import {
   BookOpen,
@@ -13,7 +15,9 @@ import {
   ArrowLeft,
   User,
   Calendar,
-  GraduationCap
+  GraduationCap,
+  Target,
+  Award
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 
@@ -157,115 +161,234 @@ const Pack365StreamLearning = () => {
           </div>
         </div>
 
-        {/* Stream Overview */}
-        <Card className="mb-8">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-            <CardTitle className="flex items-center">
-              <GraduationCap className="h-6 w-6 mr-2" />
-              Stream Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <div className="flex items-center mb-2">
-                  <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-sm text-gray-600">Enrolled Date</span>
-                </div>
-                <p className="font-semibold">{formatDate(enrollment.enrollmentDate)}</p>
-              </div>
-              <div>
-                <div className="flex items-center mb-2">
-                  <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-sm text-gray-600">Total Courses</span>
-                </div>
-                <p className="font-semibold">{enrollment.coursesCount}</p>
-              </div>
-              <div>
-                <div className="flex items-center mb-2">
-                  <CheckCircle2 className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-sm text-gray-600">Progress</span>
-                </div>
-                <p className="font-semibold">{Math.round(enrollment.totalWatchedPercentage)}%</p>
-              </div>
-            </div>
-            
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Overall Progress</span>
-                <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage)}%</span>
-              </div>
-              <Progress value={enrollment.totalWatchedPercentage} className="h-3" />
-            </div>
+        {/* Tabs Interface */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="courses" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Courses
+            </TabsTrigger>
+            <TabsTrigger value="progress" className="flex items-center gap-2">
+              <Award className="h-4 w-4" />
+              Progress
+            </TabsTrigger>
+          </TabsList>
 
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Topics Completed</span>
-                <span className="text-sm text-gray-600">
-                  {enrollment.watchedTopics} / {enrollment.totalTopics}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(enrollment.watchedTopics / enrollment.totalTopics) * 100}%` }}
-                  />
+          {/* Overview Tab */}
+          <TabsContent value="overview">
+            <Card>
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                <CardTitle className="flex items-center">
+                  <GraduationCap className="h-6 w-6 mr-2" />
+                  Stream Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                      <span className="text-sm text-gray-600">Enrolled Date</span>
+                    </div>
+                    <p className="font-semibold">{formatDate(enrollment.enrollmentDate)}</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
+                      <span className="text-sm text-gray-600">Total Courses</span>
+                    </div>
+                    <p className="font-semibold">{enrollment.coursesCount}</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <CheckCircle2 className="h-4 w-4 mr-2 text-gray-500" />
+                      <span className="text-sm text-gray-600">Progress</span>
+                    </div>
+                    <p className="font-semibold">{Math.round(enrollment.totalWatchedPercentage)}%</p>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Overall Progress</span>
+                    <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage)}%</span>
+                  </div>
+                  <Progress value={enrollment.totalWatchedPercentage} className="h-3" />
+                </div>
 
-        {/* Courses List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BookOpen className="h-6 w-6 mr-2" />
-              Available Courses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {enrollment.courses.map((course, index) => (
-                <Card key={course.courseId} className="border-2 hover:border-blue-200 transition-colors">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">{course.courseName}</CardTitle>
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                          {course.description}
-                        </p>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <div className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1" />
-                            {course.totalDuration} minutes
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Topics Completed</span>
+                    <span className="text-sm text-gray-600">
+                      {enrollment.watchedTopics} / {enrollment.totalTopics}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${(enrollment.watchedTopics / enrollment.totalTopics) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Courses Tab */}
+          <TabsContent value="courses">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BookOpen className="h-6 w-6 mr-2" />
+                  Available Courses ({enrollment.coursesCount})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {enrollment.courses.map((course, index) => (
+                    <Card key={course.courseId} className="border-2 hover:border-blue-200 transition-colors">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg mb-2">{course.courseName}</CardTitle>
+                            <p className="text-sm text-gray-600 mb-3 line-clamp-3">
+                              {course.description}
+                            </p>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              <div className="flex items-center">
+                                <Clock className="h-4 w-4 mr-1" />
+                                {course.totalDuration} minutes
+                              </div>
+                              <div className="flex items-center">
+                                <BookOpen className="h-4 w-4 mr-1" />
+                                {course.topicsCount} topics
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center">
-                            <BookOpen className="h-4 w-4 mr-1" />
+                          <Badge variant="secondary" className="ml-2">
+                            Course {index + 1}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <Button 
+                          onClick={() => handleCourseStart(course.courseId)}
+                          className="w-full"
+                          size="lg"
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Start Learning
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Progress Tab */}
+          <TabsContent value="progress">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Progress Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Award className="h-6 w-6 mr-2" />
+                    Learning Progress
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-blue-600 mb-2">
+                      {Math.round(enrollment.totalWatchedPercentage)}%
+                    </div>
+                    <p className="text-gray-600">Stream Completion</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Courses Completed</span>
+                        <span className="text-sm text-gray-600">
+                          {enrollment.courses.filter(c => enrollment.totalWatchedPercentage > 0).length} / {enrollment.coursesCount}
+                        </span>
+                      </div>
+                      <Progress value={(enrollment.courses.filter(c => enrollment.totalWatchedPercentage > 0).length / enrollment.coursesCount) * 100} />
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Topics Watched</span>
+                        <span className="text-sm text-gray-600">
+                          {enrollment.watchedTopics} / {enrollment.totalTopics}
+                        </span>
+                      </div>
+                      <Progress value={(enrollment.watchedTopics / enrollment.totalTopics) * 100} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Course Progress Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {enrollment.courses.map((course, index) => (
+                      <div key={course.courseId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm">{course.courseName}</h4>
+                          <div className="flex items-center text-xs text-gray-500 mt-1">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {course.totalDuration}min
+                            <span className="mx-2">•</span>
+                            <BookOpen className="h-3 w-3 mr-1" />
                             {course.topicsCount} topics
                           </div>
                         </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleCourseStart(course.courseId)}
+                        >
+                          <Play className="h-3 w-3 mr-1" />
+                          Learn
+                        </Button>
                       </div>
-                      <Badge variant="secondary" className="ml-2">
-                        Course {index + 1}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Button 
-                      onClick={() => handleCourseStart(course.courseId)}
-                      className="w-full"
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      Start Learning
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Quick Actions */}
+        <div className="mt-8 flex flex-col sm:flex-row gap-4">
+          <Button 
+            onClick={() => navigate('/pack365-dashboard')}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+          
+          {enrollment.totalWatchedPercentage >= 80 && (
+            <Button variant="outline" onClick={() => navigate(`/exam/${enrollment.stream}`)}>
+              <Award className="h-4 w-4 mr-2" />
+              Take Stream Exam
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
