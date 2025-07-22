@@ -235,12 +235,7 @@ export class Pack365PaymentService {
     stream: string,
     couponCode?: string
   ): Promise<PaymentVerificationResponse> {
-    const token = localStorage.getItem('token');
-    console.log(token)
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
+   
     try {
       const requestData: any = {
         razorpay_order_id: response.razorpay_order_id,
@@ -258,17 +253,9 @@ export class Pack365PaymentService {
         requestData.code = couponCode;  
       }
       
-      console.log("Verifying payment with:", requestData, token);
-
       const verificationResponse = await axios.post(
         `${API_BASE_URL}/pack365/payment/verify`,
         requestData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
       );
 
       console.log('Payment verification response:', verificationResponse.data);
