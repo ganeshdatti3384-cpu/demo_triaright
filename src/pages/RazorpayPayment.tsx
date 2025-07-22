@@ -110,8 +110,6 @@ const handlePaymentSuccess = async (response: any) => {
     // Since payment response contains valid signature, consider it successful
     console.log('Payment verification successful, navigating to success page');
     
-    if (response.razorpay_payment_id && response.razorpay_order_id) {
-      console.log('Payment verification successful, navigating to success page');
       toast({
         title: 'Payment Successful!',
         description: 'You have been enrolled successfully.',
@@ -125,12 +123,7 @@ const handlePaymentSuccess = async (response: any) => {
           fromStream,
           type: 'pack365',
           enrollmentDetails: response // Pass the payment response as enrollment details
-        },
-      });
-    } else {
-      console.log('Payment verification failed: Missing payment IDs');
-      throw new Error('Payment verification failed - missing payment identifiers');
-    }
+        },})
   } catch (err: any) {
     console.error('Payment verification error:', err);
     console.error('Error details:', {
@@ -156,25 +149,6 @@ const handlePaymentSuccess = async (response: any) => {
     });
   }
 };
-  const handlePaymentError = (error: any) => {
-    console.error('Payment failed:', error);
-    const errorMessage = error.message || 'Payment could not be processed. Please try again.';
-    
-    toast({
-      title: 'Payment Failed',
-      description: errorMessage,
-      variant: 'destructive'
-    });
-    
-    // Navigate to failure page
-    navigate('/payment-failed', {
-      state: {
-        error: errorMessage,
-        streamName,
-        type: 'pack365'
-      }
-    });
-  };
 
   const handleBack = () => {
     navigate(-1);
@@ -233,7 +207,6 @@ const handlePaymentSuccess = async (response: any) => {
             streamName={streamName}
             coursesCount={coursesCount || 3}
             onPaymentSuccess={handlePaymentSuccess}
-            onPaymentError={handlePaymentError}
             onBack={handleBack}
           />
         </div>

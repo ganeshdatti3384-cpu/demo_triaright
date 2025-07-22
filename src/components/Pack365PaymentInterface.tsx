@@ -26,7 +26,6 @@ interface Pack365PaymentInterfaceProps {
   streamName: string;
   coursesCount: number;
   onPaymentSuccess: (response: any) => void;
-  onPaymentError: (error: any) => void;
   onBack: () => void;
 }
 
