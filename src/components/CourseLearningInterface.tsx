@@ -134,14 +134,22 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
       });
 
       if (response.success) {
-        setTopicProgress(response.topicProgress);
-        
-        // Use the calculated percentage or fallback to response
-        const updatedPercentage = newTotalWatchedPercentage || response.videoProgress || 0;
+        // Update progress based on response
+        const updatedPercentage = response.totalWatchedPercentage || newTotalWatchedPercentage;
         setVideoProgress(updatedPercentage);
 
-        const updatedTopic = response.topicProgress.find(tp => tp.topicName === topicName);
-        if (updatedTopic?.watched) {
+        // Update local topic progress to mark as watched
+        const updatedTopicProgress = topicProgress.map(tp => 
+          tp.topicName === topicName 
+            ? { ...tp, watched: true, watchedDuration: Math.floor(duration) }
+            : tp
+        );
+        setTopicProgress(updatedTopicProgress);
+
+        // Show completion toast if topic duration is fully watched
+        const currentTopicData = course.topics.find(t => t.name === topicName);
+        const topicDurationSeconds = currentTopicData ? currentTopicData.duration * 60 : 0;
+        if (Math.floor(duration) >= topicDurationSeconds * 0.9) { // 90% completion threshold
           toast({
             title: 'Topic Completed!',
             description: `You've successfully completed: ${topicName}`,
