@@ -83,6 +83,13 @@ const Pack365BundleDetail = () => {
       }
     });
   };
+const streamImages: { [key: string]: string } = {
+  IT: '/lovable-uploads/IT Pack365.png',
+  Pharma: '/lovable-uploads/IT Pack365.png',
+  HR: '/lovable-uploads/HR Pack365.png',
+  Finance: '/lovable-uploads/Finance Pack365.png',
+  Marketing: '/lovable-uploads/Marketing Pack365.png',
+};
 
   if (loading) {
     return (
@@ -144,14 +151,14 @@ const Pack365BundleDetail = () => {
                 {bundleData.courses.map((course) => (
                   <div key={course._id} className="border rounded-xl p-4 shadow-sm hover:shadow-md transition">
                     <img
-                      src={course.documentLink}
-                      alt={course.courseName}
-                      className="w-full h-32 object-cover rounded-md mb-3"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/placeholder.svg';
-                      }}
-                    />
+                        src={course.documentLink || streamImages[course.stream] || '/placeholder.svg'}
+                        alt={course.courseName}
+                        className="w-full h-32 object-cover rounded-md mb-3"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = streamImages[course.stream] || '/placeholder.svg';
+                        }}
+                      />  
                     <h3 className="text-lg font-semibold mb-2 text-center">{course.courseName}</h3>
                     <Button
                       className="w-full"
