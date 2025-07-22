@@ -255,7 +255,7 @@ export const pack365Api = {
     id: string, 
     token: string
   ): Promise<{ success: boolean; data: Pack365Course; message?: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/${id}`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/courses/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

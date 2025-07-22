@@ -6,9 +6,11 @@ import { Home, Construction, ArrowLeft, Search } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const NotFound = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,7 +21,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   const handleHomeClick = () => {
-    navigate("/");
+    navigate("/student");
   };
 
   const handleBackClick = () => {
@@ -27,7 +29,7 @@ const NotFound = () => {
   };
 
   const handleExploreClick = () => {
-    navigate("/courses/recorded");
+    navigate(`/${user.role}`);
   };
 
   return (

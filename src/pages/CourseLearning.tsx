@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
@@ -34,25 +35,13 @@ const CourseLearning = () => {
       setLoading(true);
       
       // Fetch course details
-      const courseResponse = await pack365Api.getCourseById(id, token);
+      const courseResponse = await pack365Api.getCourseById(courseId, token);
       if (!courseResponse.success) {
         throw new Error('Course not found');
       }
+      console.log( 'Course data:', courseResponse.data);
       setCourse(courseResponse.data);
-
-      // Check enrollment status
-      const enrollmentResponse = await pack365Api.checkEnrollmentStatus(token, id);
-      if (!enrollmentResponse.success || !enrollmentResponse.isEnrolled) {
-        toast({
-          title: 'Access Denied',
-          description: 'You are not enrolled in this course.',
-          variant: 'destructive'
-        });
-        navigate(`/pack365-payment/${id}`);
-        return;
-      }
-      setEnrollment(enrollmentResponse.enrollment);
-
+      
     } catch (error: any) {
       console.error('Error fetching course data:', error);
       toast({
@@ -60,7 +49,6 @@ const CourseLearning = () => {
         description: error.message || 'Failed to load course data',
         variant: 'destructive'
       });
-      navigate('/pack365');
     } finally {
       setLoading(false);
     }

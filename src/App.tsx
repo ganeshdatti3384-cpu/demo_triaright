@@ -100,6 +100,7 @@ const App = () => {
           <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/pack365-stream/:streamName" element={<Pack365BundleDetail />} />
           
           {/* Protected Payment Routes */}
           <Route
