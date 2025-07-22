@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,8 @@ const StudentDashboard = () => {
       const response = await pack365Api.getMyEnrollments(token);
       
       if (response.success && response.enrollments) {
-        setPack365Enrollments(response.enrollments as StreamEnrollment[]);
+        // The API returns the correct structure, so we can use it directly
+        setPack365Enrollments(response.enrollments as any);
       }
     } catch (error) {
       console.error('Error fetching Pack365 enrollments:', error);
