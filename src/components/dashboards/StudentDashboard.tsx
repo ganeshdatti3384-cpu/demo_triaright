@@ -18,7 +18,7 @@ import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
 import { pack365Api, Pack365Course, EnhancedPack365Enrollment } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import Pack365CoursesStudent from '../Pack365Courses2';
+import Pack365Courses from '../Pack365Courses';
 import Pack365Dashboard from '../Pack365Dashboard';
 
 const StudentDashboard = () => {
@@ -42,10 +42,10 @@ const StudentDashboard = () => {
 
       try {
         const response = await pack365Api.getMyEnrollments(token);
-        if (response.success && response.enrollments) {
+        if (response.success || response.enrollments) {
           console.log('Pack365 Enrollments fetched:', response.enrollments);
           setPack365Enrollments(response.enrollments);
-          setEnrolledCourses(response.enrollments.filter((e: any) => e.status === 'enrolled'));
+          setEnrolledCourses(response.enrollments.filter((e: any) => e.paymentStatus === 'completed' || e.paymentStatus === 'enrolled'));
           setCompletedCourses(response.enrollments.filter((e: any) => e.status === 'completed'));
         }
       } catch (error) {
@@ -120,25 +120,21 @@ const StudentDashboard = () => {
       setLoadingEnrollments(false);
     }
   };
-
-  const handlePack365EnrollClick = (course: Pack365Course) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast({
-        title: "Login Required",
-        description: "Please login to enroll in courses.",
-        variant: "destructive",
-      });
-      navigate('/login');
-      return;
-    }
-    navigate(`/pack365/payment/${course.courseId}`);
-  };
-
   const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
-    console.log('Navigating to course learning:', enrollment);
-    navigate(`/course-learning/${enrollment.courseId}`);
-  };
+  const courseId = pack365Enrollments?.course?.courseId || enrollment?.course?._id;
+
+  if (courseId) {
+    console.log('Navigating to course learning:', courseId);
+    navigate(`/course-learning/${courseId}`);
+  } else {
+    toast({
+      title: "Error",
+      description: "Course ID not found for this enrollment.",
+      variant: "destructive",
+    });
+  }
+};
+
 
   // Filter courses based on stream and search term
   const filteredCourses = pack365Courses.filter(course => {
@@ -484,18 +480,9 @@ const StudentDashboard = () => {
 
             <TabsContent value="pack365" className="space-y-6">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Pack365 Courses</CardTitle>
-                    <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
-                  </div>
-                  <Button 
-                    onClick={() => navigate('/pack365-dashboard')}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    <GraduationCap className="h-4 w-4 mr-2" />
-                    My Learning Dashboard
-                  </Button>
+                <CardHeader>
+                  <CardTitle>Pack365 Courses</CardTitle>
+                  <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
                 </CardHeader>
 
                 <CardContent>
@@ -506,7 +493,7 @@ const StudentDashboard = () => {
                     </TabsList>
 
                     <TabsContent value="browse">
-                      <Pack365CoursesStudent />
+                      <Pack365Courses />
                     </TabsContent>
 
                     <TabsContent value="enrollments">
@@ -515,13 +502,13 @@ const StudentDashboard = () => {
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                           <span className="ml-2">Loading your enrollments...</span>
                         </div>
-                      ) : pack365Enrollments && pack365Enrollments.length > 0 ? (
+                      ) : enrolledCourses && enrolledCourses.length > 0 ? (
                         <div className="space-y-4">
                           <div className="text-sm text-gray-600 mb-4">
-                            Found {pack365Enrollments.length} enrollment(s)
+                            Found {enrolledCourses.length} enrollment(s)
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {pack365Enrollments.map((enrollment) => (
+                            {enrolledCourses.map((enrollment) => (
                               <Card key={enrollment._id} className="hover:shadow-md transition-shadow border-blue-200">
                                 <CardContent className="p-6">
                                   <div className="space-y-4">
@@ -535,8 +522,8 @@ const StudentDashboard = () => {
                                     </div>
                                     
                                     <div>
-                                      <h3 className="font-semibold text-lg mb-2">{enrollment.courseName || 'Pack365 Course'}</h3>
-                                      <p className="text-sm text-gray-600 mb-3">Course ID: {enrollment.courseId}</p>
+                                      <h3 className="font-semibold text-lg mb-2">{enrollment.stream || 'Pack365 Course'}</h3>
+                                      <p className="text-sm text-gray-600">Courses Count : {enrollment.coursesCount}</p>
                                     </div>
 
                                     <div className="space-y-2">
