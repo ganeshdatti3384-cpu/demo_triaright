@@ -80,9 +80,6 @@ const StudentDashboard = () => {
       setLoadingPack365(false);
     }
   };
-  const handleStreamLearning = (stream: string) => {
-    navigate(`/pack365-learning/${stream.toLowerCase()}`);
-  };
   const loadPack365Enrollments = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
