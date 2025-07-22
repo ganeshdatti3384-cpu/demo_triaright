@@ -30,7 +30,7 @@ const Pack365Management = () => {
   const [formData, setFormData] = useState({
     courseName: '',
     description: '',
-    stream: 'it' as 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance',
+    stream: 'IT' as 'IT'  | 'PHARMA' | 'MARKETING' | 'HR' | 'FINANCE',
     topics: [{ name: '', link: '', duration: 0 }],
     courseDocument: null as File | null
   });
@@ -42,7 +42,7 @@ const Pack365Management = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const response = await pack365Api.getAllCourses();
+      const response = await pack365Api.getAllStreams();
       if (response.success) {
         setCourses(response.data);
       }
@@ -215,7 +215,7 @@ const Pack365Management = () => {
     setFormData({
       courseName: '',
       description: '',
-      stream: 'it',
+      stream: 'IT',
       topics: [{ name: '', link: '', duration: 0 }],
       courseDocument: null
     });
@@ -226,7 +226,7 @@ const Pack365Management = () => {
     setFormData({
       courseName: course.courseName,
       description: course.description || '',
-      stream: course.stream as 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance',
+      stream: course.stream as 'IT' |'PHARMA' | 'MARKETING' | 'HR' | 'FINANCE',
       topics: course.topics?.length ? course.topics : [{ name: '', link: '', duration: 0 }],
       courseDocument: null
     });
@@ -405,18 +405,17 @@ const Pack365Management = () => {
               <Label htmlFor="stream">Stream</Label>
               <Select
                 value={formData.stream}
-                onValueChange={(value: 'it' | 'nonit' | 'pharma' | 'marketing' | 'hr' | 'finance') => setFormData(prev => ({ ...prev, stream: value }))}
+                onValueChange={(value: 'IT' | 'PHARMA' | 'MARKETING' | 'HR' | 'FINANCE') => setFormData(prev => ({ ...prev, stream: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select stream" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="it">IT</SelectItem>
-                  <SelectItem value="nonit">Non-IT</SelectItem>
-                  <SelectItem value="pharma">Pharma</SelectItem>
-                  <SelectItem value="marketing">Marketing</SelectItem>
-                  <SelectItem value="hr">HR</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="IT">IT</SelectItem>
+                  <SelectItem value="PHARMA">Pharma</SelectItem>
+                  <SelectItem value="MARKETING">Marketing</SelectItem>
+                  <SelectItem value="HR">HR</SelectItem>
+                  <SelectItem value="FINANCE">Finance</SelectItem>
                 </SelectContent>
               </Select>
             </div>
