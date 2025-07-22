@@ -123,7 +123,7 @@ const StudentDashboard = () => {
     }
   };
   const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
-  const courseId = pack365Enrollments?.course?.courseId || enrollment?.course?._id;
+    const courseId = enrollment.courseId;
 
   if (courseId) {
     console.log('Navigating to course learning:', courseId);
@@ -135,7 +135,19 @@ const StudentDashboard = () => {
       variant: "destructive",
     });
   }
-};
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const handleStreamLearning = (stream: string) => {
+    navigate(`/pack365-stream/${stream}`);
+  };
 
 
   // Filter courses based on stream and search term
@@ -149,7 +161,7 @@ const StudentDashboard = () => {
   const streams = ['all', ...Array.from(new Set(pack365Courses.map(course => course.stream)))];
   const pack365Stats = {
     totalStreams: pack365Enrollments.length,
-    totalCourses: pack365Enrollments.reduce((sum, enrollment) => sum + enrollment.coursesCount, 0),
+    totalCourses: pack365Enrollments.length, // Each enrollment represents one course/stream
     averageProgress: pack365Enrollments.length > 0 
       ? Math.round(pack365Enrollments.reduce((sum, enrollment) => sum + enrollment.totalWatchedPercentage, 0) / pack365Enrollments.length)
       : 0,
@@ -992,7 +1004,8 @@ const StudentDashboard = () => {
                             <div key={enrollment.courseId} className="flex items-center justify-between p-4 border rounded-lg">
                               <div className="flex-1">
                                 <h4 className="font-medium">{enrollment.courseName}</h4>
-                                <div className="flex items-center space-x-2 mt-1">
+                                <p className="text-sm text-gray-500">Stream: {enrollment.stream}</p>
+                                <div className="flex items-center space-x-2 mt-2">
                                   <div className="flex-1 bg-gray-200 rounded-full h-2">
                                     <div 
                                       className="bg-blue-600 h-2 rounded-full" 
@@ -1002,7 +1015,15 @@ const StudentDashboard = () => {
                                   <span className="text-sm text-gray-600">{enrollment.totalWatchedPercentage}%</span>
                                 </div>
                               </div>
-                              <div className="ml-4">
+                              <div className="ml-4 flex flex-col space-y-2">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => navigate(`/pack365-stream/${enrollment.stream}`)}
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                  <BookOpen className="h-3 w-3 mr-1" />
+                                  Browse Courses
+                                </Button>
                                 {enrollment.totalWatchedPercentage >= 80 ? (
                                   enrollment.isExamCompleted ? (
                                     <Badge variant="default" className="bg-green-500">
@@ -1010,14 +1031,14 @@ const StudentDashboard = () => {
                                       Completed
                                     </Badge>
                                   ) : (
-                                    <Button size="sm" onClick={() => navigate('/exams')}>
+                                    <Button size="sm" variant="outline" onClick={() => navigate('/exams')}>
                                       Take Exam
                                     </Button>
                                   )
                                 ) : (
                                   <Badge variant="secondary">
                                     <Clock className="h-3 w-3 mr-1" />
-                                    {80 - enrollment.totalWatchedPercentage}% to unlock
+                                    {Math.max(0, 80 - enrollment.totalWatchedPercentage)}% to unlock
                                   </Badge>
                                 )}
                               </div>
