@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote } from 'lucide-react';
 import { pack365Api, collegeApi } from '@/services/api';
+import Pack365Management from '../admin/Pack365Management';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
 import type { Pack365Course } from '@/types/api';
@@ -748,8 +749,9 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
             </div>
 
             <Tabs value={pack365Tab} onValueChange={setPack365Tab}>
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="management">Course Management</TabsTrigger>
                 <TabsTrigger value="coupons">Coupons</TabsTrigger>
               </TabsList>
 
@@ -889,6 +891,10 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="management" className="space-y-6">
+                <Pack365Management />
               </TabsContent>
 
               <TabsContent value="coupons" className="space-y-6">
