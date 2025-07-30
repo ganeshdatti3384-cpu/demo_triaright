@@ -681,10 +681,8 @@ export const collegeApi = {
   },
 
   getCollegeStats: async (
-    token: string
-  ): Promise<{ success: boolean; data: any }> => {
+  ): Promise<{ success: boolean; colleges: any }> => {
     const res = await axios.get(`${API_BASE_URL}/colleges/collegedata`, {
-      headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
   },

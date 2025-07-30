@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useState, useEffect, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Building2, Users, MapPin, Globe, Phone, Mail, User, Calendar, GraduationCap, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
+import { collegeApi } from '@/services/api';
 
 interface College {
   _id: string;
@@ -60,28 +62,36 @@ const CollegeManagement = () => {
 
   const API_BASE_URL = 'https://triaright.com/api';
 
-  useEffect(() => {
-    fetchColleges();
-  }, []);
+useEffect(() => {
+  fetchColleges();
+}, []);
 
-  const fetchColleges = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/colleges/collegedata`);
-      if (response.data.colleges) {
-        setColleges(response.data.colleges);
-      }
-    } catch (error) {
-      console.error('Error fetching colleges:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load colleges data',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
+const fetchColleges = async () => {
+  try {
+    setLoading(true);
+
+    // Ensure the API call is actually invoked
+    const response = await collegeApi.getCollegeStats(); // ← add ()
+
+    if (response?.colleges) {
+      setColleges(response.colleges);
+      console.log("Colleges:", response.colleges);
+    } else {
+      console.warn("No colleges found in response");
     }
-  };
+
+  } catch (error) {
+    console.error("Error fetching colleges:", error);
+    toast({
+      title: "Error",
+      description: "Failed to load colleges data",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
  const fetchCollegeStudents = async (collegeName: string) => {
   try {
@@ -121,10 +131,10 @@ const CollegeManagement = () => {
   };
 
   const filteredColleges = colleges.filter(college =>
-    college.collegeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    college.university.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    college.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    college.state.toLowerCase().includes(searchTerm.toLowerCase())
+    college.address.toLowerCase().includes(searchTerm.toLowerCase()) 
+    // college.university.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    // college.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    // college.state.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
