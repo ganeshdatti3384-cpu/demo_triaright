@@ -43,7 +43,7 @@ const registrationSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],
 }).refine((data) => {
-  if (data.role === 'student' && !data.collegeName) {
+  if (data.role === 'student' && data.collegeName) {
     return false;
   }
   return true;
@@ -56,7 +56,7 @@ type RegistrationFormData = z.infer<typeof registrationSchema>;
 
 interface College {
   _id: string;
-  collegeName: string;
+  collegeName?: string;
   userId: string;
   university: string;
   city: string;

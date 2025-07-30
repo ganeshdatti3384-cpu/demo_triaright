@@ -42,7 +42,7 @@ const Pack365Management = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const response = await pack365Api.getAllStreams();
+      const response = await pack365Api.getAllCourses();
       if (response.success) {
         setCourses(response.data);
       }
