@@ -56,6 +56,13 @@ export const authApi = {
     return res.data;
   },
 
+  getUserDetails: async (token: string): Promise<LoginResponse> => {
+    const res = await axios.get(`${API_BASE_URL}/users/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return { success: true, user: res.data };
+  },
+
   updatePassword: async (
     token: string,
     payload: UpdatePasswordPayload
