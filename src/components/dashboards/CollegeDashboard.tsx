@@ -13,9 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { College, Pack365Course } from '@/types/api';
 import Navbar from '../Navbar';
 import ProfileCompletion from '../ProfileCompletion';
-import { useAuth } from '@/hooks/useAuth';
 
 interface CollegeDashboardProps {
+  user: { role: string; name: string };
   onLogout: () => void;
 }
 
@@ -27,7 +27,7 @@ const streamData = [
   { name: 'FINANCE', icon: Banknote, color: 'bg-emerald-500', description: 'Finance & Accounting Courses' }
 ];
 
-const CollegeDashboardContent = ({ onLogout }: CollegeDashboardProps) => {
+const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
@@ -85,17 +85,16 @@ const CollegeDashboardContent = ({ onLogout }: CollegeDashboardProps) => {
     setLoading(true);
 
     try {
-      const statsPromise = collegeApi.getCollegeStats(token);
+      const statsPromise = collegeApi.getDashboardStats(token);
       const requestsPromise = collegeApi.getMyServiceRequests(token);
 
       const [statsResult, requestsResult] = await Promise.allSettled([statsPromise, requestsPromise]);
 
       // Handle stats response
       if (statsResult.status === 'fulfilled' && statsResult.value.success) {
-        setDashboardStats(statsResult.value.data || statsResult.value);
+        setDashboardStats(statsResult.value.stats || statsResult.value);
       } else {
-        const errorReason = statsResult.status === 'rejected' ? statsResult.reason : 'Failed to fetch stats';
-        console.error('Failed to fetch stats:', errorReason);
+        console.error('Failed to fetch stats:', statsResult.status === 'rejected' ? statsResult.reason : 'Unknown error');
         toast({
           title: 'Error',
           description: 'Failed to load dashboard stats',
@@ -105,10 +104,9 @@ const CollegeDashboardContent = ({ onLogout }: CollegeDashboardProps) => {
 
       // Handle requests response
       if (requestsResult.status === 'fulfilled' && requestsResult.value.success) {
-        setRequests(requestsResult.value.data || requestsResult.value.requests || []);
+        setRequests(requestsResult.value.data || []);
       } else {
-        const errorReason = requestsResult.status === 'rejected' ? requestsResult.reason : 'Failed to fetch requests';
-        console.error('Failed to fetch requests:', errorReason);
+        console.error('Failed to fetch requests:', requestsResult.status === 'rejected' ? requestsResult.reason : 'Unknown error');
         toast({
           title: 'Error',
           description: 'Failed to load college requests',
@@ -133,9 +131,9 @@ const CollegeDashboardContent = ({ onLogout }: CollegeDashboardProps) => {
 
     try {
       setProfileLoading(true);
-      const response = await profileApi.getCollegeProfile(token);
-      setCollegeProfile(response);
-      setEditFormData(response);
+      const profile = await profileApi.getCollegeProfile(token);
+      setCollegeProfile(profile);
+      setEditFormData(profile);
     } catch (error) {
       console.error('Error fetching college profile:', error);
       toast({
@@ -987,12 +985,10 @@ const CollegeDashboardContent = ({ onLogout }: CollegeDashboardProps) => {
   );
 };
 
-const CollegeDashboard = ({ onLogout }: CollegeDashboardProps) => {
-  const { user } = useAuth();
-
+const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
   return (
-    <ProfileCompletion userRole={user?.role || 'college'}>
-      <CollegeDashboardContent onLogout={onLogout} />
+    <ProfileCompletion userRole={user?.role}>
+      <CollegeDashboardContent user={user} onLogout={onLogout} />
     </ProfileCompletion>
   );
 };
