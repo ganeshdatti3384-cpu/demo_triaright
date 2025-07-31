@@ -66,6 +66,88 @@ const Pack365Management = () => {
     }
   };
 
+  const [streamData, setStreamData] = useState({
+  name: '',
+  price: '',
+  imageFile: null as File | null,
+});
+
+ const handleAddStream = async () => {
+    try {
+      setLoading(true);
+
+      // Validate before calling API
+      if (!streamData.name || !streamData.price) {
+        toast({
+          title: 'Missing data',
+          description: 'Please enter both name and price.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const response = await pack365Api.createStream(token, {
+        name: streamData.name,
+        price: Number(streamData.price),
+        imageFile: streamData.imageFile, // optional if image upload is supported
+      });
+
+      if (response.success) {
+        setStreams(prev => [...prev, response.stream]);
+
+        toast({
+          title: 'Stream added successfully',
+          description: 'Stream added to Pack365',
+        });
+
+        // Reset form data
+        setStreamData({
+          name: '',
+          price: '',
+          imageFile: null,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error adding stream',
+        description: 'Failed to add stream to Pack365',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteStream = async (streamId: string) => {
+    try {
+      setLoading(true);
+
+      const response = await pack365Api.deleteStream(streamId, "Inactive");
+
+      if (response.success) {
+        setStreams(prev =>
+          prev.map(stream =>
+            stream._id === streamId ? { ...stream, status: "Inactive" } : stream
+          )
+        );
+
+        toast({
+          title: 'Stream marked as Inactive',
+          description: 'Stream status updated successfully.',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error updating stream status',
+        description: 'Could not mark stream as inactive.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+                            
   const handleStreamClick = (stream: StreamData) => {
     setSelectedStream(stream);
     setCourses(stream.courses || []);

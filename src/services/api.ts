@@ -267,7 +267,57 @@ export const pack365Api = {
     });
     return res.data;
   },
+  createStream: async (
+    token: string,
+    data: { name: string; price: number; imageFile?: File }
+  ): Promise<{ success: boolean; message: string; stream: any }> => {
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("price", String(data.price));
+    if (data.imageFile) {
+      formData.append("file", data.imageFile);
+    }
 
+    const res = await axios.post(`${API_BASE_URL}/pack365/streams`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return res.data;
+  },
+  deleteStream: async (
+    token: string,
+    streamId: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const res = await axios.delete(`${API_BASE_URL}/pack365/streams/${streamId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return res.data;
+  },
+  updateStream: async (
+    token: string,
+    streamId: string,
+    data: { name?: string; price?: number | string; imageFile?: File }
+  ): Promise<{ success: boolean; message: string; stream: any }> => {
+    const formData = new FormData();
+    if (data.name) formData.append("name", data.name);
+    if (data.price !== undefined) formData.append("price", data.price.toString());
+    if (data.imageFile) formData.append("file", data.imageFile); // assuming backend expects req.file
+
+    const res = await axios.put(`${API_BASE_URL}/pack365/streams/${streamId}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return res.data;
+  },
   createCourse: async (
     token: string,
     data: Partial<Pack365Course> & { courseDocument?: File }
