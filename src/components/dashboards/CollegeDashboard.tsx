@@ -92,7 +92,7 @@ const CollegeDashboardContent = ({ onLogout }: CollegeDashboardProps) => {
 
       // Handle stats response
       if (statsResult.status === 'fulfilled' && statsResult.value.success) {
-        setDashboardStats(statsResult.value.stats || statsResult.value);
+        setDashboardStats(statsResult.value.data || statsResult.value);
       } else {
         const errorReason = statsResult.status === 'rejected' ? statsResult.reason : 'Failed to fetch stats';
         console.error('Failed to fetch stats:', errorReason);
@@ -133,9 +133,9 @@ const CollegeDashboardContent = ({ onLogout }: CollegeDashboardProps) => {
 
     try {
       setProfileLoading(true);
-      const profile = await profileApi.getCollegeProfile(token);
-      setCollegeProfile(profile);
-      setEditFormData(profile);
+      const response = await profileApi.getCollegeProfile(token);
+      setCollegeProfile(response);
+      setEditFormData(response);
     } catch (error) {
       console.error('Error fetching college profile:', error);
       toast({
@@ -988,14 +988,13 @@ const CollegeDashboardContent = ({ onLogout }: CollegeDashboardProps) => {
 };
 
 const CollegeDashboard = ({ onLogout }: CollegeDashboardProps) => {
-    const {user}= useAuth();
+  const { user } = useAuth();
 
   return (
-    
-    <ProfileCompletion userRole={user.role}>
-      <CollegeDashboardContent user={user} onLogout={onLogout} />
+    <ProfileCompletion userRole={user?.role || 'college'}>
+      <CollegeDashboardContent onLogout={onLogout} />
     </ProfileCompletion>
   );
 };
 
-export default CollegeDashboard;  
+export default CollegeDashboard;

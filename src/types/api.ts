@@ -1,3 +1,4 @@
+
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;
@@ -184,7 +185,16 @@ export interface College {
   collegeName?: string;
   university?: string;
   principalName?: string;
+  principalEmail?: string;
+  principalPhone?: string;
   coordinatorName?: string;
+  coordinatorEmail?: string;
+  coordinatorPhone?: string;
+  collegeCode?: string;
+  accreditation?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
 }
 
 export interface Employer {
