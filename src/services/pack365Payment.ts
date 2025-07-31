@@ -1,8 +1,8 @@
+
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import axios from 'axios';
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 declare global {
@@ -83,7 +83,7 @@ export class Pack365PaymentService {
     gst: number;
     finalAmount: number;
   } {
-    const billableAmount = baseAmount - discount;
+    const billableAmount = Math.max(0, baseAmount - discount);
     const gst = Math.round(billableAmount * 0.18); // 18% GST
     const finalAmount = billableAmount + gst;
 
@@ -113,6 +113,11 @@ export class Pack365PaymentService {
       // Add coupon code if provided
       if (options.couponCode) {
         requestData.code = options.couponCode;
+      }
+
+      // Add custom amount if provided
+      if (options.amount) {
+        requestData.customAmount = options.amount;
       }
 
       console.log('Sending request to backend:', requestData);
@@ -157,7 +162,6 @@ export class Pack365PaymentService {
 
   static async processPayment(
     options: PaymentOptions,
-    navigate: ReturnType<typeof useNavigate>,
     onSuccess?: (response: RazorpayResponse) => void,
     onError?: (error: any) => void
   ): Promise<void> {
@@ -192,7 +196,7 @@ export class Pack365PaymentService {
         handler: async (response: RazorpayResponse) => {
           console.log('Payment successful:', response);
           try {
-            const verificationResult = await this.verifyPayment(response, orderDetails.stream, options.couponCode, navigate);
+            const verificationResult = await this.verifyPayment(response, orderDetails.stream, options.couponCode);
             if (onSuccess) {
               onSuccess(response);
             }
@@ -224,7 +228,6 @@ export class Pack365PaymentService {
       razorpay.on('payment.failed', (response: any) => {
         console.error('Payment failed:', response.error);
         const error = new Error(response.error.description || 'Payment failed');
-        navigate('/payment-failure');
         if (onError) {
           onError(error);
         }
@@ -234,7 +237,6 @@ export class Pack365PaymentService {
 
     } catch (error: any) {
       console.error('Error processing payment:', error);
-      navigate('/payment-failure');
       if (onError) {
         onError(error);
       }

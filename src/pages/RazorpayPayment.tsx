@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 
@@ -9,17 +10,15 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import Pack365PaymentInterface from '@/components/Pack365PaymentInterface';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
 
 const RazorpayPayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { streamName, fromStream, coursesCount } = location.state || {};
+  const { streamName, fromStream, coursesCount, streamPrice } = location.state || {};
   const [user, setUser] = useState<any>(null);
   const [isUserLoaded, setIsUserLoaded] = useState(false);
   const { toast } = useToast();
 
-  // Load user data on component mount
   useEffect(() => {
     const loadUserData = () => {
       const savedUser = localStorage.getItem('currentUser');
@@ -54,7 +53,6 @@ const RazorpayPayment = () => {
             description: 'User data is corrupted. Please login again.',
             variant: 'destructive'
           });
-          // Clear corrupted data and redirect
           localStorage.removeItem('currentUser');
           navigate('/login');
         }
@@ -72,10 +70,8 @@ const RazorpayPayment = () => {
     loadUserData();
   }, [navigate, toast]);
 
-  // Validate required payment data
   useEffect(() => {
     if (isUserLoaded) {
-      // Validate required data
       if (!streamName) {
         toast({
           title: 'Error',
@@ -86,30 +82,26 @@ const RazorpayPayment = () => {
         return;
       }
       
-      // Log payment data for debugging
-      console.log('Payment data:', { streamName, fromStream, coursesCount });
+      console.log('Payment data:', { streamName, fromStream, coursesCount, streamPrice });
       console.log('User loaded:', user);
     }
-  }, [isUserLoaded, streamName, toast, fromStream, coursesCount, user, navigate]);
+  }, [isUserLoaded, streamName, toast, fromStream, coursesCount, streamPrice, user, navigate]);
 
-  // Updated handlePaymentSuccess function in RazorpayPayment component
-const handlePaymentSuccess = async (response: any) => {
-  console.log('Payment success handler called in RazorpayPayment');
-  console.log('Payment response received:', response);
-  
-  // Prepare verification request data
-  const requestData = {
-    razorpay_order_id: response.razorpay_order_id,
-    razorpay_payment_id: response.razorpay_payment_id,
-    razorpay_signature: response.razorpay_signature,
-  };
-
-  console.log("Sending verification request with data:", requestData);
-
-  try {
-    // Since payment response contains valid signature, consider it successful
-    console.log('Payment verification successful, navigating to success page');
+  const handlePaymentSuccess = async (response: any) => {
+    console.log('Payment success handler called in RazorpayPayment');
+    console.log('Payment response received:', response);
     
+    const requestData = {
+      razorpay_order_id: response.razorpay_order_id,
+      razorpay_payment_id: response.razorpay_payment_id,
+      razorpay_signature: response.razorpay_signature,
+    };
+
+    console.log("Sending verification request with data:", requestData);
+
+    try {
+      console.log('Payment verification successful, navigating to success page');
+      
       toast({
         title: 'Payment Successful!',
         description: 'You have been enrolled successfully.',
@@ -122,39 +114,39 @@ const handlePaymentSuccess = async (response: any) => {
           streamName,
           fromStream,
           type: 'pack365',
-          enrollmentDetails: response // Pass the payment response as enrollment details
-        },})
-  } catch (err: any) {
-    console.error('Payment verification error:', err);
-    console.error('Error details:', {
-      message: err.message,
-      stack: err.stack,
-      response: err.response
-    });
-    
-    toast({
-      title: 'Payment Verification Failed',
-      description: err.message || 'Could not verify payment. Please contact support.',
-      variant: 'destructive',
-    });
-    
-    navigate('/payment-failed', {
-      state: {
-        error: err.message || 'Verification failed',
-        streamName,
-        type: 'pack365',
-        paymentId: response.razorpay_payment_id,
-        orderId: response.razorpay_order_id
-      },
-    });
-  }
-};
+          enrollmentDetails: response
+        },
+      });
+    } catch (err: any) {
+      console.error('Payment verification error:', err);
+      console.error('Error details:', {
+        message: err.message,
+        stack: err.stack,
+        response: err.response
+      });
+      
+      toast({
+        title: 'Payment Verification Failed',
+        description: err.message || 'Could not verify payment. Please contact support.',
+        variant: 'destructive',
+      });
+      
+      navigate('/payment-failed', {
+        state: {
+          error: err.message || 'Verification failed',
+          streamName,
+          type: 'pack365',
+          paymentId: response.razorpay_payment_id,
+          orderId: response.razorpay_order_id
+        },
+      });
+    }
+  };
 
   const handleBack = () => {
     navigate(-1);
   };
 
-  // Show loading while user data is being loaded
   if (!isUserLoaded) {
     return (
       <>
@@ -173,7 +165,6 @@ const handlePaymentSuccess = async (response: any) => {
     );
   }
 
-  // Show error if required data is missing
   if (!streamName) {
     return (
       <>
@@ -208,6 +199,7 @@ const handlePaymentSuccess = async (response: any) => {
             coursesCount={coursesCount || 3}
             onPaymentSuccess={handlePaymentSuccess}
             onBack={handleBack}
+            streamPrice={streamPrice}
           />
         </div>
       </div>
