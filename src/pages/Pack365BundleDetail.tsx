@@ -122,7 +122,7 @@ const Pack365BundleDetail = () => {
 
   const handleStartLearning = () => {
     if (streamData) {
-      navigate(`/pack365/stream/${streamData.name.toLowerCase()}`);
+      navigate(`/pack365-learning/${streamData.name.toLowerCase()}`);
     }
   };
 
