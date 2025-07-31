@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
@@ -11,11 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Eye, Edit, Trash, Upload, FileText, Download } from 'lucide-react';
+import { Plus, Eye, Edit, Trash, Upload, FileText, Download, ArrowLeft, BookOpen } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
+import { StreamData } from '@/types/api';
 
 const Pack365Management = () => {
   const { toast } = useToast();
+  const [streams, setStreams] = useState<StreamData[]>([]);
+  const [selectedStream, setSelectedStream] = useState<StreamData | null>(null);
   const [courses, setCourses] = useState<Pack365Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCourse, setEditingCourse] = useState<Pack365Course | null>(null);
@@ -25,36 +29,53 @@ const Pack365Management = () => {
   const [showExamDialog, setShowExamDialog] = useState(false);
   const [examCourse, setExamCourse] = useState<Pack365Course | null>(null);
   const [examFile, setExamFile] = useState<File | null>(null);
+  const [viewType, setViewType] = useState<'streams' | 'courses'>('streams');
 
   // Form state
   const [formData, setFormData] = useState({
     courseName: '',
     description: '',
-    stream: 'IT' as 'IT'  | 'PHARMA' | 'MARKETING' | 'HR' | 'FINANCE',
+    stream: 'IT' as 'IT' | 'PHARMA' | 'MARKETING' | 'HR' | 'FINANCE',
     topics: [{ name: '', link: '', duration: 0 }],
     courseDocument: null as File | null
   });
 
   useEffect(() => {
-    fetchCourses();
-  }, []);
+    if (viewType === 'streams') {
+      fetchStreams();
+    } else if (selectedStream) {
+      setCourses(selectedStream.courses || []);
+    }
+  }, [viewType, selectedStream]);
 
-  const fetchCourses = async () => {
+  const fetchStreams = async () => {
     try {
       setLoading(true);
-      const response = await pack365Api.getAllCourses();
-      if (response.success) {
-        setCourses(response.data);
+      const response = await pack365Api.getAllStreams();
+      if (response.success && response.streams) {
+        setStreams(response.streams);
       }
     } catch (error) {
       toast({
-        title: 'Error fetching courses',
-        description: 'Failed to load Pack365 courses',
+        title: 'Error fetching streams',
+        description: 'Failed to load Pack365 streams',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStreamClick = (stream: StreamData) => {
+    setSelectedStream(stream);
+    setCourses(stream.courses || []);
+    setViewType('courses');
+  };
+
+  const handleBackToStreams = () => {
+    setSelectedStream(null);
+    setCourses([]);
+    setViewType('streams');
   };
 
   const handleCreateCourse = async () => {
@@ -64,16 +85,28 @@ const Pack365Management = () => {
       return;
     }
 
+    if (!selectedStream) {
+      toast({ title: 'Please select a stream first', variant: 'destructive' });
+      return;
+    }
+
     try {
       const courseData = {
         ...formData,
+        stream: selectedStream.name,
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
-      console.log(courseData)
+      
       const response = await pack365Api.createCourse(token, courseData);
       if (response.success) {
         toast({ title: 'Course created successfully!' });
-        fetchCourses();
+        // Refresh streams to get updated course list
+        await fetchStreams();
+        const updatedStream = streams.find(s => s._id === selectedStream._id);
+        if (updatedStream) {
+          setSelectedStream(updatedStream);
+          setCourses(updatedStream.courses || []);
+        }
         resetForm();
         setShowDialog(false);
       }
@@ -102,11 +135,16 @@ const Pack365Management = () => {
       const response = await pack365Api.updateCourse(token, editingCourse.courseId || editingCourse._id, courseData);
       if (response.success) {
         toast({ title: 'Course updated successfully!' });
-        fetchCourses();
+        // Refresh streams to get updated course list
+        await fetchStreams();
+        const updatedStream = streams.find(s => s._id === selectedStream?._id);
+        if (updatedStream) {
+          setSelectedStream(updatedStream);
+          setCourses(updatedStream.courses || []);
+        }
         resetForm();
         setShowDialog(false);
         setEditingCourse(null);
-        console.log(editingCourse)
       }
     } catch (error: any) {
       toast({
@@ -132,7 +170,13 @@ const Pack365Management = () => {
       const response = await pack365Api.deleteCourse(token, courseId);
       if (response.success) {
         toast({ title: 'Course deleted successfully!' });
-        fetchCourses();
+        // Refresh streams to get updated course list
+        await fetchStreams();
+        const updatedStream = streams.find(s => s._id === selectedStream?._id);
+        if (updatedStream) {
+          setSelectedStream(updatedStream);
+          setCourses(updatedStream.courses || []);
+        }
       }
     } catch (error: any) {
       toast({
@@ -142,7 +186,7 @@ const Pack365Management = () => {
       });
     }
   };
-  
+
   const handleExamUpload = async () => {
     if (!examFile || !examCourse) {
       toast({
@@ -163,8 +207,6 @@ const Pack365Management = () => {
     }
 
     try {
-      // For now, we'll simulate the upload and store the file reference
-      // In a real implementation, this would upload to a backend service
       const updatedCourses = courses.map(course => 
         course._id === examCourse._id 
           ? { 
@@ -198,7 +240,6 @@ const Pack365Management = () => {
 
   const handleExamDownload = (course: Pack365Course) => {
     if (course.examFile) {
-      // In a real implementation, this would download from the backend
       toast({
         title: 'Download started',
         description: `Downloading exam file: ${course.examFile.originalName}`,
@@ -216,7 +257,7 @@ const Pack365Management = () => {
     setFormData({
       courseName: '',
       description: '',
-      stream: 'IT',
+      stream: selectedStream?.name as 'IT' | 'PHARMA' | 'MARKETING' | 'HR' | 'FINANCE' || 'IT',
       topics: [{ name: '', link: '', duration: 0 }],
       courseDocument: null
     });
@@ -227,7 +268,7 @@ const Pack365Management = () => {
     setFormData({
       courseName: course.courseName,
       description: course.description || '',
-      stream: course.stream as 'IT' |'PHARMA' | 'MARKETING' | 'HR' | 'FINANCE',
+      stream: course.stream as 'IT' | 'PHARMA' | 'MARKETING' | 'HR' | 'FINANCE',
       topics: course.topics?.length ? course.topics : [{ name: '', link: '', duration: 0 }],
       courseDocument: null
     });
@@ -271,17 +312,91 @@ const Pack365Management = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p>Loading courses...</p>
+        <p>Loading...</p>
       </div>
     );
   }
 
+  // Stream Cards View
+  if (viewType === 'streams') {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold">Pack365 Stream Management</h2>
+            <p className="text-gray-600">Manage all Pack365 streams and their courses</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {streams.map((stream) => (
+            <Card 
+              key={stream._id} 
+              className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+              onClick={() => handleStreamClick(stream)}
+            >
+              <div className="relative h-48">
+                <img 
+                  src={stream.imageUrl} 
+                  alt={`${stream.name} Stream`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-4 left-4 text-white">
+                  <h3 className="text-xl font-bold">{stream.name}</h3>
+                  <Badge className="bg-blue-600 text-white mt-1">
+                    Pack 365
+                  </Badge>
+                </div>
+              </div>
+              
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <BookOpen className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-medium">
+                        {stream.courses?.length || 0} Courses
+                      </span>
+                    </div>
+                    <div className="text-lg font-bold text-blue-600">
+                      ₹{stream.price}
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStreamClick(stream);
+                    }}
+                  >
+                    Manage Courses
+                    <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Courses Management View
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Pack365 Course Management</h2>
-          <p className="text-gray-600">Manage all Pack365 courses</p>
+        <div className="flex items-center space-x-4">
+          <Button onClick={handleBackToStreams} variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Streams
+          </Button>
+          <div>
+            <h2 className="text-2xl font-bold">{selectedStream?.name} Stream Courses</h2>
+            <p className="text-gray-600">Manage courses in the {selectedStream?.name} stream</p>
+          </div>
         </div>
         <Button onClick={openCreateDialog}>
           <Plus className="h-4 w-4 mr-2" />
@@ -295,9 +410,9 @@ const Pack365Management = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Course Name</TableHead>
-                <TableHead>Stream</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Topics</TableHead>
+                <TableHead>Duration</TableHead>
                 <TableHead>Exam</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -306,13 +421,9 @@ const Pack365Management = () => {
               {courses.map((course) => (
                 <TableRow key={course._id}>
                   <TableCell className="font-medium">{course.courseName}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {course.stream}
-                    </Badge>
-                  </TableCell>
                   <TableCell className="max-w-xs truncate">{course.description || 'No description'}</TableCell>
                   <TableCell>{course.topics?.length || 0} topics</TableCell>
+                  <TableCell>{course.totalDuration || 0} min</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       {course.examFile ? (
@@ -377,7 +488,7 @@ const Pack365Management = () => {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingCourse ? 'Edit Course' : 'Create New Course'}
+              {editingCourse ? 'Edit Course' : `Create New Course in ${selectedStream?.name} Stream`}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -400,25 +511,6 @@ const Pack365Management = () => {
                 placeholder="Enter course description"
                 rows={4}
               />
-            </div>
-
-            <div>
-              <Label htmlFor="stream">Stream</Label>
-              <Select
-                value={formData.stream}
-                onValueChange={(value: 'IT' | 'PHARMA' | 'MARKETING' | 'HR' | 'FINANCE') => setFormData(prev => ({ ...prev, stream: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select stream" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="IT">IT</SelectItem>
-                  <SelectItem value="PHARMA">Pharma</SelectItem>
-                  <SelectItem value="MARKETING">Marketing</SelectItem>
-                  <SelectItem value="HR">HR</SelectItem>
-                  <SelectItem value="FINANCE">Finance</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div>
@@ -533,16 +625,19 @@ const Pack365Management = () => {
                   {viewingCourse.topics?.map((topic, index) => (
                     <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                       <span className="text-sm">{topic.name}</span>
-                      {topic.link && (
-                        <a
-                          href={topic.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 text-sm hover:underline"
-                        >
-                          View Link
-                        </a>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-500">{topic.duration} min</span>
+                        {topic.link && (
+                          <a
+                            href={topic.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 text-sm hover:underline"
+                          >
+                            View Link
+                          </a>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
