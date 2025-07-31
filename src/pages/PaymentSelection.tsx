@@ -10,19 +10,24 @@ import Footer from '@/components/Footer';
 const PaymentSelection = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { streamName, courseId, courseName, fromStream, fromCourse, streamPrice } = location.state || {};
+  const { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount } = location.state || {};
 
   const handleRazorpayPayment = () => {
     navigate('/razorpay-payment', { 
-      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice } 
+      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount } 
     });
   };
 
   const handleCouponCode = () => {
     navigate('/Coupon-code', { 
-      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice } 
+      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount } 
     });
   };
+
+  // Calculate GST for display
+  const basePrice = streamPrice || 365;
+  const gst = Math.round(basePrice * 0.18);
+  const totalPrice = basePrice + gst;
 
   return (
     <>
@@ -34,11 +39,31 @@ const PaymentSelection = () => {
               <h1 className="text-4xl font-extrabold text-gray-900 mb-3">
                 Select Your Payment Option
               </h1>
-              <p className="text-lg text-gray-700">
+              <p className="text-lg text-gray-700 mb-2">
                 {fromStream 
-                  ? `You're enrolling in the ${streamName} Bundle for ₹${streamPrice || 365}` 
+                  ? `You're enrolling in the ${streamName} Bundle` 
                   : `You're enrolling in ${courseName}`}
               </p>
+              {fromStream && (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 max-w-md mx-auto">
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Base Price:</span>
+                      <span>₹{basePrice}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>GST (18%):</span>
+                      <span>₹{gst}</span>
+                    </div>
+                    <div className="border-t border-blue-300 pt-1 mt-2">
+                      <div className="flex justify-between font-semibold text-blue-700">
+                        <span>Total Amount:</span>
+                        <span>₹{totalPrice}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-8">
@@ -54,9 +79,14 @@ const PaymentSelection = () => {
                   <CardTitle className="text-2xl font-semibold text-blue-700">Pay with Razorpay</CardTitle>
                 </CardHeader>
                 <CardContent className="text-center px-6 pb-6">
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-600 mb-4">
                     Use UPI, card, or net banking with secure Razorpay integration.
                   </p>
+                  {fromStream && (
+                    <div className="text-lg font-semibold text-blue-600 mb-4">
+                      Total: ₹{totalPrice}
+                    </div>
+                  )}
                   <Button className="w-full text-lg py-2">Proceed to Payment</Button>
                 </CardContent>
               </Card>
