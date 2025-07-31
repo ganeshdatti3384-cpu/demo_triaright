@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Eye, Edit, Trash, Upload, FileText, Download, ArrowLeft, BookOpen } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
@@ -90,15 +91,6 @@ const Pack365Management = () => {
         toast({
           title: 'Missing data',
           description: 'Please enter both name and price.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (!streamFormData.imageFile) {
-        toast({
-          title: 'Missing image',
-          description: 'Please select an image for the stream.',
           variant: 'destructive',
         });
         return;
@@ -506,8 +498,7 @@ const Pack365Management = () => {
           {streams.map((stream) => (
             <Card 
               key={stream._id} 
-              className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer"
-              onClick={() => handleStreamClick(stream)}
+              className="overflow-hidden hover:shadow-lg transition-shadow group"
             >
               <div className="relative h-48">
                 <img 
@@ -565,10 +556,7 @@ const Pack365Management = () => {
                   <Button 
                     className="w-full" 
                     variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStreamClick(stream);
-                    }}
+                    onClick={() => handleStreamClick(stream)}
                   >
                     Manage Courses
                     <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
@@ -589,55 +577,43 @@ const Pack365Management = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="streamName">Stream Name *</Label>
+                <Label htmlFor="streamName">Stream Name</Label>
                 <Input
                   id="streamName"
                   value={streamFormData.name}
                   onChange={(e) => setStreamFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter stream name (e.g., IT, PHARMA)"
-                  required
+                  placeholder="Enter stream name"
                 />
               </div>
 
               <div>
-                <Label htmlFor="streamPrice">Price (₹) *</Label>
+                <Label htmlFor="streamPrice">Price (₹)</Label>
                 <Input
                   id="streamPrice"
                   type="number"
                   value={streamFormData.price}
                   onChange={(e) => setStreamFormData(prev => ({ ...prev, price: e.target.value }))}
                   placeholder="Enter price"
-                  min="0"
-                  required
                 />
               </div>
 
               <div>
-                <Label htmlFor="streamImage">Stream Image *</Label>
+                <Label htmlFor="streamImage">Stream Image</Label>
                 <Input
                   id="streamImage"
                   type="file"
                   accept="image/*"
                   onChange={(e) => setStreamFormData(prev => ({ ...prev, imageFile: e.target.files?.[0] || null }))}
-                  required={!editingStream}
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Upload a high-quality image representing the stream (JPG, PNG)
-                </p>
-                {streamFormData.imageFile && (
-                  <p className="text-sm text-green-600 mt-1">
-                    Selected: {streamFormData.imageFile.name}
-                  </p>
-                )}
               </div>
 
               <div className="flex space-x-2 pt-4">
                 <Button
                   onClick={editingStream ? handleUpdateStream : handleAddStream}
                   className="flex-1"
-                  disabled={!streamFormData.name || !streamFormData.price || (!editingStream && !streamFormData.imageFile)}
+                  disabled={!streamFormData.name || !streamFormData.price}
                 >
-                  {editingStream ? 'Update Stream' : 'Create Stream'}
+                  {editingStream ? 'Update Stream' : 'Add Stream'}
                 </Button>
                 <Button
                   variant="outline"
