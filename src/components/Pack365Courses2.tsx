@@ -85,19 +85,12 @@ const Pack365Courses2 = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Hero Section */}
-      <div className="relative py-20">
+      <div className="relative py-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Badge className="mb-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm px-4 py-2">
             Pack365 Premium Bundles
           </Badge>
-          <h1 className="text-5xl font-extrabold text-gray-900 mb-6 leading-tight">
-            Master Your Career with
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Pack365</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Choose from our comprehensive course bundles designed to accelerate your career growth.
-            Each pack includes multiple courses, projects, and career support.
-          </p>
+    
           <div className="flex items-center justify-center space-x-6 text-gray-600">
             <div className="flex items-center space-x-2">
               <Trophy className="h-5 w-5 text-yellow-500" />
