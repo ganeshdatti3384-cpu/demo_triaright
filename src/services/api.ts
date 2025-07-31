@@ -281,7 +281,7 @@ export const pack365Api = {
     data: Partial<Pack365Course> & { courseDocument?: File }
   ): Promise<{ success: boolean; message: string; course: Pack365Course }> => {
     const formData = toFormData(data);
-    const res = await axios.put(`${API_BASE_URL}/pack365/update/${id}`, formData, {
+    const res = await axios.put(`${API_BASE_URL}/pack365/courses/${id}`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',

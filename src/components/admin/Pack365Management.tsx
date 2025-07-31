@@ -106,6 +106,7 @@ const Pack365Management = () => {
         resetForm();
         setShowDialog(false);
         setEditingCourse(null);
+        console.log(editingCourse)
       }
     } catch (error: any) {
       toast({
@@ -141,7 +142,7 @@ const Pack365Management = () => {
       });
     }
   };
-
+  
   const handleExamUpload = async () => {
     if (!examFile || !examCourse) {
       toast({
