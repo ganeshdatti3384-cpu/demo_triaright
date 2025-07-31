@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
@@ -30,6 +29,15 @@ const Pack365Management = () => {
   const [examCourse, setExamCourse] = useState<Pack365Course | null>(null);
   const [examFile, setExamFile] = useState<File | null>(null);
   const [viewType, setViewType] = useState<'streams' | 'courses'>('streams');
+  
+  // Stream management states
+  const [showStreamDialog, setShowStreamDialog] = useState(false);
+  const [editingStream, setEditingStream] = useState<StreamData | null>(null);
+  const [streamFormData, setStreamFormData] = useState({
+    name: '',
+    price: '',
+    imageFile: null as File | null
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -66,18 +74,20 @@ const Pack365Management = () => {
     }
   };
 
-  const [streamData, setStreamData] = useState({
-  name: '',
-  price: '',
-  imageFile: null as File | null,
-});
+  const handleAddStream = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: 'Authentication required',
+        variant: 'destructive',
+      });
+      return;
+    }
 
- const handleAddStream = async () => {
     try {
       setLoading(true);
 
-      // Validate before calling API
-      if (!streamData.name || !streamData.price) {
+      if (!streamFormData.name || !streamFormData.price) {
         toast({
           title: 'Missing data',
           description: 'Please enter both name and price.',
@@ -87,25 +97,24 @@ const Pack365Management = () => {
       }
 
       const response = await pack365Api.createStream(token, {
-        name: streamData.name,
-        price: Number(streamData.price),
-        imageFile: streamData.imageFile, // optional if image upload is supported
+        name: streamFormData.name,
+        price: Number(streamFormData.price),
+        imageFile: streamFormData.imageFile,
       });
 
       if (response.success) {
-        setStreams(prev => [...prev, response.stream]);
-
+        await fetchStreams();
         toast({
           title: 'Stream added successfully',
           description: 'Stream added to Pack365',
         });
 
-        // Reset form data
-        setStreamData({
+        setStreamFormData({
           name: '',
           price: '',
           imageFile: null,
         });
+        setShowStreamDialog(false);
       }
     } catch (error) {
       toast({
@@ -118,28 +127,44 @@ const Pack365Management = () => {
     }
   };
 
-  const handleDeleteStream = async (streamId: string) => {
+  const handleUpdateStream = async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !editingStream) {
+      toast({
+        title: 'Authentication or stream data required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const response = await pack365Api.deleteStream(streamId, "Inactive");
+      const response = await pack365Api.updateStream(token, editingStream._id, {
+        name: streamFormData.name || editingStream.name,
+        price: streamFormData.price ? Number(streamFormData.price) : editingStream.price,
+        imageFile: streamFormData.imageFile,
+      });
 
       if (response.success) {
-        setStreams(prev =>
-          prev.map(stream =>
-            stream._id === streamId ? { ...stream, status: "Inactive" } : stream
-          )
-        );
-
+        await fetchStreams();
         toast({
-          title: 'Stream marked as Inactive',
-          description: 'Stream status updated successfully.',
+          title: 'Stream updated successfully',
+          description: 'Stream details have been updated',
         });
+
+        setStreamFormData({
+          name: '',
+          price: '',
+          imageFile: null,
+        });
+        setEditingStream(null);
+        setShowStreamDialog(false);
       }
     } catch (error) {
       toast({
-        title: 'Error updating stream status',
-        description: 'Could not mark stream as inactive.',
+        title: 'Error updating stream',
+        description: 'Failed to update stream',
         variant: 'destructive',
       });
     } finally {
@@ -147,6 +172,61 @@ const Pack365Management = () => {
     }
   };
 
+  const handleDeleteStream = async (streamId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: 'Authentication required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this stream? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await pack365Api.deleteStream(token, streamId);
+
+      if (response.success) {
+        await fetchStreams();
+        toast({
+          title: 'Stream deleted successfully',
+          description: 'Stream has been removed from Pack365',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error deleting stream',
+        description: 'Failed to delete stream',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openStreamDialog = (stream?: StreamData) => {
+    if (stream) {
+      setEditingStream(stream);
+      setStreamFormData({
+        name: stream.name,
+        price: stream.price.toString(),
+        imageFile: null
+      });
+    } else {
+      setEditingStream(null);
+      setStreamFormData({
+        name: '',
+        price: '',
+        imageFile: null
+      });
+    }
+    setShowStreamDialog(true);
+  };
                             
   const handleStreamClick = (stream: StreamData) => {
     setSelectedStream(stream);
@@ -408,14 +488,17 @@ const Pack365Management = () => {
             <h2 className="text-2xl font-bold">Pack365 Stream Management</h2>
             <p className="text-gray-600">Manage all Pack365 streams and their courses</p>
           </div>
+          <Button onClick={() => openStreamDialog()}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Stream
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {streams.map((stream) => (
             <Card 
               key={stream._id} 
-              className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
-              onClick={() => handleStreamClick(stream)}
+              className="overflow-hidden hover:shadow-lg transition-shadow group"
             >
               <div className="relative h-48">
                 <img 
@@ -424,6 +507,30 @@ const Pack365Management = () => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute top-2 right-2 flex space-x-1">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 w-8 p-0 bg-white/80 hover:bg-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openStreamDialog(stream);
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 w-8 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteStream(stream._id);
+                    }}
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                </div>
                 <div className="absolute bottom-4 left-4 text-white">
                   <h3 className="text-xl font-bold">{stream.name}</h3>
                   <Badge className="bg-blue-600 text-white mt-1">
@@ -449,10 +556,7 @@ const Pack365Management = () => {
                   <Button 
                     className="w-full" 
                     variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStreamClick(stream);
-                    }}
+                    onClick={() => handleStreamClick(stream)}
                   >
                     Manage Courses
                     <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
@@ -462,6 +566,69 @@ const Pack365Management = () => {
             </Card>
           ))}
         </div>
+
+        {/* Stream Add/Edit Dialog */}
+        <Dialog open={showStreamDialog} onOpenChange={setShowStreamDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingStream ? 'Edit Stream' : 'Add New Stream'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="streamName">Stream Name</Label>
+                <Input
+                  id="streamName"
+                  value={streamFormData.name}
+                  onChange={(e) => setStreamFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter stream name"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="streamPrice">Price (₹)</Label>
+                <Input
+                  id="streamPrice"
+                  type="number"
+                  value={streamFormData.price}
+                  onChange={(e) => setStreamFormData(prev => ({ ...prev, price: e.target.value }))}
+                  placeholder="Enter price"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="streamImage">Stream Image</Label>
+                <Input
+                  id="streamImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setStreamFormData(prev => ({ ...prev, imageFile: e.target.files?.[0] || null }))}
+                />
+              </div>
+
+              <div className="flex space-x-2 pt-4">
+                <Button
+                  onClick={editingStream ? handleUpdateStream : handleAddStream}
+                  className="flex-1"
+                  disabled={!streamFormData.name || !streamFormData.price}
+                >
+                  {editingStream ? 'Update Stream' : 'Add Stream'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowStreamDialog(false);
+                    setEditingStream(null);
+                    setStreamFormData({ name: '', price: '', imageFile: null });
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

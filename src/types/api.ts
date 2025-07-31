@@ -1,4 +1,3 @@
-
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;
@@ -264,4 +263,17 @@ export interface Pack365Bundle {
   features: string[];
   image: string;
   isActive: boolean;
+}
+
+export interface StreamData {
+  _id: string;
+  name: string;
+  price: number;
+  imageUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+  courses?: Pack365Course[];
+  id: string;
+  status?: string;
 }
