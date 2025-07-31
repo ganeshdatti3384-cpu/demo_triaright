@@ -3,12 +3,12 @@ import React from 'react';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import CollegeProfileForm from '@/components/profile/CollegeProfileForm';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ProfileCompletionProps {
   children: React.ReactNode;
   userRole: string;
 }
-
 const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ children, userRole }) => {
   const { isProfileComplete, loading, refetchProfile } = useProfileCompletion();
 
