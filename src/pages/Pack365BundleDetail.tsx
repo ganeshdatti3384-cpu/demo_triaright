@@ -57,6 +57,7 @@ const Pack365BundleDetail = () => {
         );
         if (stream) {
           setStreamData(stream);
+          console.log(stream)
         } else {
           toast({
             title: 'Error',
