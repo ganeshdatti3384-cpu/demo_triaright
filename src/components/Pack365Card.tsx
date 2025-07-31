@@ -35,7 +35,7 @@ const Pack365Card = () => {
           <div className="flex items-center justify-center mb-4">
             <div className="text-center">
               <div className="flex items-center justify-center space-x-2">
-                <span className="text-3xl font-bold text-purple-800">₹365</span>
+                <span className="text-3xl font-bold text-purple-800">Starting at ₹365</span>
                 <span className="text-lg text-gray-500 line-through">₹999</span>
               </div>
               <div className="text-sm text-green-600 font-medium">63% OFF Limited Time</div>

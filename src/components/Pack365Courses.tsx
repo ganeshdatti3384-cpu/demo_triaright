@@ -99,9 +99,14 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     navigate('/coupon-code', { state: { courseName, fromCourse: true } });
   };
 
-
   const handleEnrollNow = () => {
-    navigate('/payment-selection', { state: { streamName: selectedStream?.name, fromStream: true } });
+    navigate('/payment-selection', { 
+      state: { 
+        streamName: selectedStream?.name, 
+        fromStream: true, 
+        streamPrice: selectedStream?.price 
+      } 
+    });
   };
 
   const handleBackToBundles = () => {
@@ -283,8 +288,6 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     ]
   };
 
-  
-
   return (
     <div className={showLoginRequired ? '' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-2'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -386,7 +389,6 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                     </Badge>
                   </div>
                   
-                  {/* Hover Overlay */}
                   <div className={`hover-overlay absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent 
                     ${hoveredStream === stream.name ? 'opacity-100' : 'opacity-0'}`}>
                     <div className="absolute bottom-4 left-4 right-4 text-white">

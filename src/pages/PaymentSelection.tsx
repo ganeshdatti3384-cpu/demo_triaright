@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,17 +10,17 @@ import Footer from '@/components/Footer';
 const PaymentSelection = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { streamName, courseId, courseName, fromStream, fromCourse } = location.state || {};
+  const { streamName, courseId, courseName, fromStream, fromCourse, streamPrice } = location.state || {};
 
   const handleRazorpayPayment = () => {
     navigate('/razorpay-payment', { 
-      state: { streamName, courseId, courseName, fromStream, fromCourse } 
+      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice } 
     });
   };
 
   const handleCouponCode = () => {
     navigate('/Coupon-code', { 
-      state: { streamName, courseId, courseName, fromStream, fromCourse } 
+      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice } 
     });
   };
 
@@ -35,7 +36,7 @@ const PaymentSelection = () => {
               </h1>
               <p className="text-lg text-gray-700">
                 {fromStream 
-                  ? `You're enrolling in the ${streamName} Bundle` 
+                  ? `You're enrolling in the ${streamName} Bundle for ₹${streamPrice || 365}` 
                   : `You're enrolling in ${courseName}`}
               </p>
             </div>
