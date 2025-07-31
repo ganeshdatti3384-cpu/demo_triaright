@@ -19,31 +19,25 @@ interface Pack365CoursesProps {
 }
 
 interface StreamData {
+  _id: string;
   name: string;
-  displayName: string;
-  image: string;
+  price: number;
+  imageUrl: string;
   courses: Pack365Course[];
+  id: string;
 }
 
 const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365CoursesProps) => {
-  const [courses, setCourses] = useState<Pack365Course[]>([]);
+  const [streams, setStreams] = useState<StreamData[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [hoveredStream, setHoveredStream] = useState<string | null>(null);
-  const [selectedStream, setSelectedStream] = useState<string | null>(null);
+  const [selectedStream, setSelectedStream] = useState<StreamData | null>(null);
   const [showEnrollment, setShowEnrollment] = useState(false);
   const [showCourses, setShowCourses] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  const streamConfig: { [key: string]: { displayName: string; image: string } } = {
-    'IT': { displayName: 'IT Bundle', image: '/lovable-uploads/IT Pack365.png' },
-    'PHARMA': { displayName: 'Pharma Bundle', image: '/lovable-uploads/Pharma Pack 365.png' },
-    'MARKETING': { displayName: 'Marketing Bundle', image: '/lovable-uploads/Marketing Pack 365.png' },
-    'HR': { displayName: 'HR Bundle', image: '/lovable-uploads/HR Pack 365.png' },
-    'FINANCE': { displayName: 'Finance Bundle', image: '/lovable-uploads/Finance Pack 365.png' }
-  };
 
   useEffect(() => {
     loadCoursesAndEnrollments();
@@ -54,9 +48,12 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     const enrolledParam = urlParams.get('enrolled');
     
     if (streamParam && enrolledParam === 'true') {
-      setSelectedStream(streamParam);
-      setShowCourses(true);
-      setShowEnrollment(false);
+      const streamObj = streams.find(s => s.name.toLowerCase() === streamParam.toLowerCase());
+      if (streamObj) {
+        setSelectedStream(streamObj);
+        setShowCourses(true);
+        setShowEnrollment(false);
+      }
       
       // Clear URL params
       window.history.replaceState({}, '', window.location.pathname);
@@ -66,11 +63,11 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   const loadCoursesAndEnrollments = async () => {
     try {
       setLoading(true);
-      const coursesResponse = await pack365Api.getAllCourses();
-      if (coursesResponse.success) {
-        setCourses(coursesResponse.data);
+      const streamsResponse = await pack365Api.getAllStreams();
+      if (streamsResponse.success && streamsResponse.streams) {
+        setStreams(streamsResponse.streams);
       } else {
-        setError('Failed to load courses');
+        setError('Failed to load streams');
         return;
       }
 
@@ -86,37 +83,25 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
         }
       }
     } catch (err: any) {
-      console.error('Error loading courses:', err);
-      setError(err.message || 'Failed to load courses');
-      toast({ title: 'Error', description: 'Failed to load courses. Please try again.', variant: 'destructive' });
+      console.error('Error loading streams:', err);
+      setError(err.message || 'Failed to load streams');
+      toast({ title: 'Error', description: 'Failed to load streams. Please try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  const getStreamData = (): StreamData[] => {
-    return Object.keys(streamConfig).map(streamKey => {
-      const streamCourses = courses.filter(course => course.stream.toLowerCase() === streamKey.toLowerCase());
-      return {
-        name: streamKey,
-        displayName: streamConfig[streamKey].displayName,
-        image: streamConfig[streamKey].image,
-        courses: streamCourses
-      };
-    });
+  const handleStreamClick = (stream: StreamData) => {
+    navigate(`/pack365/bundle/${stream.name.toLowerCase()}`);
   };
 
   const handleCourseClick = (courseName: string) => {
     navigate('/coupon-code', { state: { courseName, fromCourse: true } });
   };
 
-  const handleStreamClick = (streamName: string) => {
-    // Always redirect to bundle detail page for better user experience
-    navigate(`/pack365/bundle/${streamName.toLowerCase()}`);
-  };
 
   const handleEnrollNow = () => {
-    navigate('/payment-selection', { state: { streamName: selectedStream, fromStream: true } });
+    navigate('/payment-selection', { state: { streamName: selectedStream?.name, fromStream: true } });
   };
 
   const handleBackToBundles = () => {
@@ -128,11 +113,6 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   const handleBackFromCourses = () => {
     setShowCourses(false);
     setShowEnrollment(true);
-  };
-
-  const getFilteredCourses = () => {
-    if (!selectedStream) return [];
-    return courses.filter(course => course.stream.toLowerCase() === selectedStream.toLowerCase());
   };
 
   if (loading) {
@@ -161,7 +141,6 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
 
   // Show enrollment view after clicking explore more
   if (showEnrollment && selectedStream) {
-    const streamData = streamConfig[selectedStream];
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -177,13 +156,13 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
           <Card className="overflow-hidden shadow-2xl bg-white/80 backdrop-blur-sm">
             <div className="relative h-64">
               <img 
-                src={streamData.image} 
-                alt={streamData.displayName}
+                src={selectedStream.imageUrl} 
+                alt={`${selectedStream.name} Bundle`}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-6 left-6 text-white">
-                <h1 className="text-3xl font-bold mb-2">{streamData.displayName}</h1>
+                <h1 className="text-3xl font-bold mb-2">{selectedStream.name} Bundle</h1>
                 <Badge className="bg-blue-600 text-white">Pack 365</Badge>
               </div>
             </div>
@@ -195,7 +174,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                   <ul className="space-y-3">
                     <li className="flex items-center">
                       <BookOpen className="h-5 w-5 text-blue-500 mr-3" />
-                      <span>All {selectedStream} courses</span>
+                      <span>All {selectedStream.name} courses</span>
                     </li>
                     <li className="flex items-center">
                       <Clock className="h-5 w-5 text-purple-500 mr-3" />
@@ -215,7 +194,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                 <div className="text-center">
                   <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">Special Price</h3>
-                    <div className="text-4xl font-bold text-blue-600 mb-4">365</div>
+                    <div className="text-4xl font-bold text-blue-600 mb-4">₹{selectedStream.price}</div>
                     <p className="text-gray-600 mb-6">One-time payment for full access</p>
                     
                     <Button 
@@ -237,7 +216,6 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
 
   // Show courses after coupon success (this would be triggered from a success callback)
   if (showCourses && selectedStream) {
-    const filteredCourses = getFilteredCourses();
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -252,13 +230,13 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
           
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {streamConfig[selectedStream].displayName} Courses
+              {selectedStream.name} Bundle Courses
             </h1>
             <p className="text-gray-600">Access all courses in this stream</p>
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course, index) => (
+            {selectedStream.courses.map((course, index) => (
               <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader>
                   <CardTitle className="text-lg">{course.courseName}</CardTitle>
@@ -305,7 +283,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     ]
   };
 
-  const streamData = getStreamData();
+  
 
   return (
     <div className={showLoginRequired ? '' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-2'}>
@@ -388,18 +366,18 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
         `}</style>
         
         <Slider {...sliderSettings}>
-          {streamData.map((stream) => (
-            <div key={stream.name} className="px-3">
+          {streams.map((stream) => (
+            <div key={stream._id} className="px-3">
               <Card 
                 className="stream-card overflow-hidden cursor-pointer group bg-white/70 backdrop-blur-sm border-0 shadow-lg"
                 onMouseEnter={() => setHoveredStream(stream.name)}
                 onMouseLeave={() => setHoveredStream(null)}
-                onClick={() => handleStreamClick(stream.name)}
+                onClick={() => handleStreamClick(stream)}
               >
                 <div className="relative overflow-hidden h-48">
                   <img 
-                    src={stream.image} 
-                    alt={stream.displayName}
+                    src={stream.imageUrl} 
+                    alt={`${stream.name} Bundle`}
                     className="stream-image w-full h-full object-cover"
                   />
                   <div className="absolute top-4 right-4 z-10">
@@ -414,7 +392,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                     <div className="absolute bottom-4 left-4 right-4 text-white">
                       <h4 className="font-bold text-lg mb-2">Available Courses</h4>
                       <div className="course-list bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                        {stream.courses.length > 0 ? (
+                        {stream.courses && stream.courses.length > 0 ? (
                           <ul className="space-y-1">
                             {stream.courses.slice(0, 4).map((course, index) => (
                               <li key={index}>
@@ -453,7 +431,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xl text-center bg-gradient-to-r from-blue-600 to-purple-600 
                     bg-clip-text text-transparent font-bold">
-                    {stream.displayName}
+                    {stream.name} Bundle
                   </CardTitle>
                 </CardHeader>
 
@@ -473,7 +451,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                     <Button 
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleStreamClick(stream.name);
+                        handleStreamClick(stream);
                       }}
                       className={`w-full font-semibold transition-all duration-300 transform hover:scale-105 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
                       }`}

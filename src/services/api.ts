@@ -246,7 +246,7 @@ export const pack365Api = {
     const res = await axios.get(`${API_BASE_URL}/pack365/courses`);
     return res.data;
   },
-  getAllStreams: async (): Promise<{ success: boolean; courses?: Pack365Course[] }> => {
+  getAllStreams: async (): Promise<{ success: boolean; streams?: any[] }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/getstreams`);
     return res.data;
   },

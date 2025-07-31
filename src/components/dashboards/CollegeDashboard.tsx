@@ -64,12 +64,12 @@ const CollegeDashboard = () => {
       try {
         setLoading(true);
         const [statsResponse, requestsResponse] = await Promise.all([
-          collegeApi.getCollegeStats(token),
+          collegeApi.getCollegeStats(),
           collegeApi.getMyServiceRequests(token)
         ]);
 
         if (statsResponse.success) {
-          setStats(statsResponse.data);
+          setStats(statsResponse.colleges || {});
         }
 
         if (requestsResponse.success) {
