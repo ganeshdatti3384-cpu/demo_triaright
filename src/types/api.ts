@@ -29,6 +29,8 @@ export interface RegisterPayload {
   phoneNumber?: string;
   whatsappNumber?: string;
   address?: string;
+  collegeName?: string;
+  collegeCode?: string;
 }
 
 export interface LoginResponse {

@@ -36,6 +36,7 @@ const registrationSchema = z.object({
   state: z.string().min(1, 'State is required'),
   role: z.enum(['trainer', 'jobseeker', 'student', 'employer', 'college']),
   collegeName: z.string().optional(),
+  collegeCode: z.string().optional(),
   acceptTerms: z.boolean().refine(val => val === true, {
     message: 'You must accept terms and conditions'
   })
@@ -43,13 +44,21 @@ const registrationSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],
 }).refine((data) => {
-  if (data.role === 'student' && data.collegeName) {
+  if (data.role === 'student' && !data.collegeName) {
     return false;
   }
   return true;
 }, {
   message: "College selection is required for students",
   path: ["collegeName"],
+}).refine((data) => {
+  if (data.role === 'college' && !data.collegeCode) {
+    return false;
+  }
+  return true;
+}, {
+  message: "College code is required for colleges",
+  path: ["collegeCode"],
 });
 
 type RegistrationFormData = z.infer<typeof registrationSchema>;
@@ -114,7 +123,8 @@ const Register = () => {
         address: formData.address,
         role: formData.role === 'trainer' ? 'admin' : formData.role,
         password: formData.password,
-        ...(formData.role === 'student' && formData.collegeName && { collegeName: formData.collegeName })
+        ...(formData.role === 'student' && formData.collegeName && { collegeName: formData.collegeName }),
+        ...(formData.role === 'college' && formData.collegeCode && { collegeCode: formData.collegeCode })
       };
       const response = await authApi.register(registerPayload);
       toast({ title: "Success", description: "Registration successful! Please login." });
@@ -542,6 +552,23 @@ const Register = () => {
                             )}
                           />
                           {errors.collegeName && <p className="text-red-500 text-sm mt-1">{errors.collegeName.message}</p>}
+                        </div>
+                      )}
+
+                      {/* College Code - Only show when college role is selected */}
+                      {selectedRole === 'college' && (
+                        <div className="md:col-span-2">
+                          <Label htmlFor="collegeCode" className="text-black-700 font-medium">College Code *</Label>
+                          <div className="relative mt-1">
+                            <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black-400" />
+                            <Input 
+                              id="collegeCode" 
+                              {...register('collegeCode')} 
+                              placeholder="Enter your college code" 
+                              className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                            />
+                          </div>
+                          {errors.collegeCode && <p className="text-red-500 text-sm mt-1">{errors.collegeCode.message}</p>}
                         </div>
                       )}
                     </div>
