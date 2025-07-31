@@ -1,164 +1,280 @@
+
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/hooks/useAuth';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Routes, Route } from 'react-router-dom';
+import ScrollToTop from '@/components/ScrollToTop';
 import Index from '@/pages/Index';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
-import Forgotpassword from '@/pages/Forgotpassword';
+import ForgotPassword from '@/pages/Forgotpassword';
 import ChangePassword from '@/pages/ChangePassword';
-import AboutUs from '@/pages/AboutUs';
-import ContactUs from '@/pages/ContactUs';
-import Services from '@/pages/Services';
-import EnhancedStudentDashboard from '@/components/dashboards/EnhancedStudentDashboard';
-import CollegeDashboard from '@/components/dashboards/CollegeDashboard';
-import AdminDashboard from '@/components/dashboards/AdminDashboard';
-import SuperAdminDashboard from '@/components/dashboards/SuperAdminDashboard';
-import JobSeekerDashboard from '@/components/dashboards/JobSeekerDashboard';
-import EmployerDashboard from '@/components/dashboards/EmployerDashboard';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import RecordedCourses from '@/pages/RecordedCourses';
 import LiveCourses from '@/pages/LiveCourses';
-import OfflineInternships from '@/pages/OfflineInternships';
-import OnlineInternships from '@/pages/OnlineInternships';
+import RecordedCourses from '@/pages/RecordedCourses';
+import Pack365 from '@/pages/Pack365';
+import Pack365BundleDetail from '@/pages/Pack365BundleDetail';
 import JobAssurance from '@/pages/JobAssurance';
 import JobAssistance from '@/pages/JobAssistance';
-import CourseDetail from '@/pages/CourseDetail';
-import CourseEnrollment from '@/pages/CourseEnrollment';
-import FreeCourseEnrollment from '@/pages/FreeCourseEnrollment';
-import PaidCourseEnrollment from '@/pages/PaidCourseEnrollment';
-import CoursePayment from '@/pages/CoursePayment';
-import Pack365 from '@/pages/Pack365';
-import Pack365Payment from '@/pages/Pack365Payment';
-import Pack365BundleDetail from '@/pages/Pack365BundleDetail';
-import CourseLearning from '@/pages/CourseLearning';
-import Pack365StreamLearning from '@/pages/Pack365StreamLearning';
-import PaymentSelection from '@/pages/PaymentSelection';
-import RazorpayPayment from '@/pages/RazorpayPayment';
-import PaymentSuccess from '@/pages/PaymentSuccess';
-import PaymentFailed from '@/pages/PaymentFailed';
+import OnlineInternships from '@/pages/OnlineInternships';
+import OfflineInternships from '@/pages/OfflineInternships';
 import TermsConditions from '@/pages/TermsConditions';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import RefundPolicy from '@/pages/RefundPolicy';
-import ExamInterface from '@/pages/ExamInterface';
+import CourseDetail from '@/pages/CourseDetail';
+import CourseEnrollment from '@/pages/CourseEnrollment';
+import CoursePayment from '@/pages/CoursePayment';
+import Pack365Payment from '@/pages/Pack365Payment';
+import PaymentSuccess from '@/pages/PaymentSuccess';
+import PaymentFailed from '@/pages/PaymentFailed';
+import AboutUs from '@/pages/AboutUs';
+import Services from '@/pages/Services';
+import ContactUs from '@/pages/ContactUs';
+import StudentDashboard from '@/components/dashboards/StudentDashboard';
+import JobSeekerDashboard from '@/components/dashboards/JobSeekerDashboard';
+import EmployeeDashboard from '@/components/dashboards/EmployeeDashboard';
+import EmployerDashboard from '@/components/dashboards/EmployerDashboard';
+import CollegeDashboard from '@/components/dashboards/CollegeDashboard';
+import AdminDashboard from '@/components/dashboards/AdminDashboard';
+import SuperAdminDashboard from '@/components/dashboards/SuperAdminDashboard';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import ProfileCompletion from '@/components/ProfileCompletion';
+import EnhancedProfile from '@/components/EnhancedProfile';
+import CourseLearning from '@/pages/CourseLearning';
 import ExamList from '@/pages/ExamList';
-import CouponCode from '@/pages/CouponCode';
-import ScrollToTop from '@/components/ScrollToTop';
+import ExamInterface from '@/pages/ExamInterface';
+import NotFound from '@/pages/NotFound';
+import CouponCode from './pages/CouponCode';
+import PaymentSelection from './pages/PaymentSelection';
+import RazorpayPayment from './pages/RazorpayPayment';
+import StudentProfilePage from '@/components/profile/StudentProfilePage';
+import JobSeekerProfilePage from '@/components/profile/JobSeekerProfilePage';
+import EmployerProfilePage from '@/components/profile/EmployerProfilePage';
+import Pack365Dashboard from '@/components/Pack365Dashboard';
+import Pack365StreamLearning from '@/pages/Pack365StreamLearning';
 
-interface DashboardWrapperProps {
-  component: React.ComponentType<{ user: any; onLogout: () => void }>;
-}
+const queryClient = new QueryClient();
 
-const DashboardWrapper: React.FC<DashboardWrapperProps> = ({ component: Component }) => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  
+const App = () => {
   const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('role');
-    window.location.href = '/login';
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userRole');
+    window.location.href = '/';
   };
 
-  return <Component user={user} onLogout={handleLogout} />;
-};
+  const getCurrentUser = () => {
+    const currentUser = localStorage.getItem('currentUser');
+    return currentUser ? JSON.parse(currentUser) : null;
+  };
 
-function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<Forgotpassword />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="/about" element={<AboutUs />} />
-          <Route path="/contact" element={<ContactUs />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/courses/recorded" element={<RecordedCourses />} />
-          <Route path="/courses/live" element={<LiveCourses />} />
-          <Route path="/internships/offline" element={<OfflineInternships />} />
-          <Route path="/internships/online" element={<OnlineInternships />} />
-          <Route path="/job-assurance" element={<JobAssurance />} />
-          <Route path="/job-assistance" element={<JobAssistance />} />
-          <Route path="/course/:id" element={<CourseDetail />} />
-          <Route path="/enroll/:id" element={<CourseEnrollment />} />
-          <Route path="/enroll/free/:id" element={<FreeCourseEnrollment />} />
-          <Route path="/enroll/paid/:id" element={<PaidCourseEnrollment />} />
-          <Route path="/payment/:id" element={<CoursePayment />} />
+          <Route path="/live-courses" element={<LiveCourses />} />
+          <Route path="/recorded-courses" element={<RecordedCourses />} />
           <Route path="/pack365" element={<Pack365 />} />
-          <Route path="/pack365/payment" element={<Pack365Payment />} />
-          <Route path="/pack365/bundle/:id" element={<Pack365BundleDetail />} />
-          <Route path="/learn/:id" element={<CourseLearning />} />
-          <Route path="/pack365/learn/:stream" element={<Pack365StreamLearning />} />
-          <Route path="/payment-selection" element={<PaymentSelection />} />
-          <Route path="/payment/razorpay" element={<RazorpayPayment />} />
+          <Route path="/pack365/bundle/:streamName" element={<Pack365BundleDetail />} />
+          <Route path="/jobs/assurance" element={<JobAssurance />} />
+          <Route path="/jobs/assistance" element={<JobAssistance />} />
+          <Route path="/internships/online" element={<OnlineInternships />} />
+          <Route path="/internships/offline" element={<OfflineInternships />} />
+          <Route path="/terms-conditions" element={<TermsConditions />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/contact" element={<ContactUs />} />
+          <Route path="/course/:id" element={<CourseDetail />} />
+          <Route path="/course-enrollment/:id" element={<CourseEnrollment />} />
+          <Route path="/course-payment/:id" element={<CoursePayment />} />
+          <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
-          <Route path="/terms" element={<TermsConditions />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/refund" element={<RefundPolicy />} />
-          <Route path="/exam/:examId" element={<ExamInterface />} />
-          <Route path="/exams" element={<ExamList />} />
-          <Route path="/coupon" element={<CouponCode />} />
+          <Route path="/pack365-stream/:streamName" element={<Pack365BundleDetail />} />
           
-          {/* Protected Dashboard Routes */}
+          {/* Protected Payment Routes */}
           <Route
-            path="/student/dashboard"
+            path="/payment-selection"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <PaymentSelection />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/razorpay-payment"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <RazorpayPayment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/Coupon-code"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <CouponCode />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Protected Routes with Profile Completion */}
+          <Route
+            path="/student"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <DashboardWrapper component={EnhancedStudentDashboard} />
+                <ProfileCompletion userRole="student">
+                  <StudentDashboard />
+                </ProfileCompletion>
               </ProtectedRoute>
             }
           />
           <Route
-            path="/college/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['college']}>
-                <DashboardWrapper component={CollegeDashboard} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <DashboardWrapper component={AdminDashboard} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/super-admin/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['super-admin']}>
-                <DashboardWrapper component={SuperAdminDashboard} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/jobseeker/dashboard"
+            path="/job-seeker"
             element={
               <ProtectedRoute allowedRoles={['jobseeker']}>
-                <DashboardWrapper component={JobSeekerDashboard} />
+                <ProfileCompletion userRole="jobseeker">
+                  <JobSeekerDashboard />
+                </ProfileCompletion>
               </ProtectedRoute>
             }
           />
           <Route
-            path="/employer/dashboard"
+            path="/employee"
             element={
-              <ProtectedRoute allowedRoles={['employer']}>
-                <DashboardWrapper component={EmployerDashboard} />
+              <ProtectedRoute allowedRoles={['employee']}>
+                <EmployeeDashboard user={getCurrentUser()} onLogout={handleLogout} />
               </ProtectedRoute>
             }
           />
-          
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route
+            path="/employer"
+            element={
+              <ProtectedRoute allowedRoles={['employer']}>
+                <EmployerDashboard user={getCurrentUser()} onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/college"
+            element={
+              <ProtectedRoute allowedRoles={['college']}>
+                <CollegeDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard user={getCurrentUser()} onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/super-admin"
+            element={
+              <ProtectedRoute allowedRoles={['superadmin']}>
+                <SuperAdminDashboard user={getCurrentUser()} onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
+          {/* Profile Routes */}
+          <Route
+            path="/student/profile"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/job-seeker/profile"
+            element={
+              <ProtectedRoute allowedRoles={['jobseeker']}>
+                <JobSeekerProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/employer/profile"
+            element={
+              <ProtectedRoute allowedRoles={['employer']}>
+                <EmployerProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/jobseeker/profile"
+            element={
+              <ProtectedRoute allowedRoles={['jobseeker']}>
+                <EnhancedProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/employee/profile"
+            element={
+              <ProtectedRoute allowedRoles={['employee']}>
+                <EnhancedProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pack365-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <Pack365Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pack365-learning/:stream"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <Pack365StreamLearning />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/course-learning/:courseId"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <CourseLearning />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/exams"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <ExamList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/exam/:examId"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <ExamInterface />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
         </Routes>
-        <Toaster />
-      </Router>
-    </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
-}
+};
 
 export default App;

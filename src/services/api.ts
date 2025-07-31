@@ -349,9 +349,9 @@ export const pack365Api = {
 
   deleteCourse: async (
     token: string,
-    id: string
+    courseId: string
   ): Promise<{ success: boolean; message: string }> => {
-    const res = await axios.delete(`${API_BASE_URL}/pack365/delete/${id}`, {
+    const res = await axios.delete(`${API_BASE_URL}/pack365/courses/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

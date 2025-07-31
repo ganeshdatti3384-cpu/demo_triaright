@@ -317,7 +317,7 @@ const Pack365Management = () => {
     }
   };
 
-  const handleDeleteCourse = async (courseId: string) => {
+  const handleDeleteCourse = async (courseId?: string) => {
     const token = localStorage.getItem('token');
     if (!token) {
       toast({ title: 'Authentication required', variant: 'destructive' });
@@ -329,7 +329,7 @@ const Pack365Management = () => {
     }
 
     try {
-      const response = await pack365Api.deleteCourse(token, courseId);
+      const response = await pack365Api.deleteCourse(token,courseId);
       if (response.success) {
         toast({ title: 'Course deleted successfully!' });
         // Refresh streams to get updated course list
@@ -719,7 +719,7 @@ const Pack365Management = () => {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleDeleteCourse(course._id!)}
+                        onClick={() => handleDeleteCourse(course?.courseId)}
                       >
                         <Trash className="h-4 w-4" />
                       </Button>
