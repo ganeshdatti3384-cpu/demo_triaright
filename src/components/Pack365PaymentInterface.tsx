@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
@@ -15,8 +16,7 @@ import {
   Gift, 
   X,
   Calculator,
-  CheckCircle2,
-  AlertCircle
+  CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Pack365PaymentService } from '@/services/pack365Payment';
@@ -27,94 +27,99 @@ interface Pack365PaymentInterfaceProps {
   coursesCount: number;
   onPaymentSuccess: (response: any) => void;
   onBack: () => void;
+  streamPrice?: number;
 }
 
 const Pack365PaymentInterface = ({
   streamName,
   coursesCount,
   onPaymentSuccess,
-  onBack
+  onBack,
+  streamPrice
 }: Pack365PaymentInterfaceProps) => {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentCalculation, setPaymentCalculation] = useState({
-    baseAmount: 999,
+    baseAmount: streamPrice || 999,
     discount: 0,
-    billableAmount: 999,
-    gst: 179,
-    finalAmount: 1178
+    billableAmount: streamPrice || 999,
+    gst: Math.round((streamPrice || 999) * 0.18),
+    finalAmount: Math.round((streamPrice || 999) * 1.18)
   });
   const { toast } = useToast();
 
   useEffect(() => {
-    // Calculate initial payment amount
-    const calculation = Pack365PaymentService.calculatePaymentAmount(999, 0);
+    // Calculate initial payment amount using stream price
+    const basePrice = streamPrice || 999;
+    const calculation = Pack365PaymentService.calculatePaymentAmount(basePrice, 0);
     setPaymentCalculation(calculation);
-  }, []);
+  }, [streamPrice]);
 
-const validateCoupon = async () => {
-  if (!couponCode.trim()) {
-    toast({
-      title: 'Error',
-      description: 'Please enter a coupon code',
-      variant: 'destructive',
-    });
-    return;
-  }
-
-  setIsValidatingCoupon(true);
-
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('Authentication required');
-
-    // ✅ Call API to validate coupon with correct parameters
-    const result = await pack365Api.validateEnrollmentCode(token, couponCode.trim(), streamName);
-
-    if (!result.success) {
-      throw new Error(result.message || "Invalid coupon");
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a coupon code',
+        variant: 'destructive',
+      });
+      return;
     }
 
-    const discount = result.couponDetails?.discount || 0;
-    const finalAmount = result.courseDetails?.finalAmount || 0;
+    setIsValidatingCoupon(true);
 
-    // Update UI/payment state with correct property names
-    setPaymentCalculation({
-      baseAmount: result.courseDetails?.originalPrice || 999,
-      discount,
-      billableAmount: finalAmount - Math.round(finalAmount * 0.18),
-      gst: Math.round(finalAmount * 0.18),
-      finalAmount,
-    });
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Authentication required');
 
-    setAppliedCoupon({
-      code: result.couponDetails?.code || couponCode,
-      discount,
-      description: result.couponDetails?.description || 'Discount applied',
-    });
+      const result = await pack365Api.validateEnrollmentCode(token, couponCode.trim(), streamName);
 
-    toast({
-      title: 'Coupon Applied!',
-      description: `₹${discount} discount applied. New amount: ₹${finalAmount}`,
-    });
+      if (!result.success) {
+        throw new Error(result.message || "Invalid coupon");
+      }
 
-  } catch (error: any) {
-    toast({
-      title: 'Invalid Coupon',
-      description: error?.response?.data?.message || error.message || 'The coupon code is invalid or expired.',
-      variant: 'destructive',
-    });
-  } finally {
-    setIsValidatingCoupon(false);
-  }
-};
+      const discount = result.couponDetails?.discount || 0;
+      const basePrice = streamPrice || 999;
+      const discountedPrice = Math.max(0, basePrice - discount);
+      const gst = Math.round(discountedPrice * 0.18);
+      const finalAmount = discountedPrice + gst;
+
+      setPaymentCalculation({
+        baseAmount: basePrice,
+        discount,
+        billableAmount: discountedPrice,
+        gst,
+        finalAmount,
+      });
+
+      setAppliedCoupon({
+        code: result.couponDetails?.code || couponCode,
+        discount,
+        description: result.couponDetails?.description || 'Discount applied',
+      });
+
+      toast({
+        title: 'Coupon Applied!',
+        description: `₹${discount} discount applied. New amount: ₹${finalAmount}`,
+      });
+
+    } catch (error: any) {
+      toast({
+        title: 'Invalid Coupon',
+        description: error?.response?.data?.message || error.message || 'The coupon code is invalid or expired.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setCouponCode('');
-    const calculation = Pack365PaymentService.calculatePaymentAmount(999, 0);
+    const basePrice = streamPrice || 999;
+    const calculation = Pack365PaymentService.calculatePaymentAmount(basePrice, 0);
     setPaymentCalculation(calculation);
     toast({
       title: 'Coupon Removed',
@@ -122,61 +127,56 @@ const validateCoupon = async () => {
     });
   };
 
-  // Updated Pack365PaymentInterface - handlePayment function only
-const handlePayment = async () => {
-  setIsProcessingPayment(true);
+  const handlePayment = async () => {
+    setIsProcessingPayment(true);
 
-  try {
-    // Make sure token exists
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('User not authenticated');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('User not authenticated');
 
-    // Optional: Ensure coupon was validated if entered
-    if (couponCode && !appliedCoupon) {
+      if (couponCode && !appliedCoupon) {
+        toast({
+          title: 'Coupon Not Applied',
+          description: 'Please validate the coupon before making payment.',
+          variant: 'destructive',
+        });
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      await Pack365PaymentService.processPayment(
+        {
+          streamName,
+          fromStream: true,
+          amount: paymentCalculation.finalAmount,
+          couponCode: appliedCoupon?.code || undefined,
+        },
+        // Payment Success Callback
+        (response) => {
+          console.log('Payment successful in Pack365PaymentInterface:', response);
+          onPaymentSuccess(response);
+        },
+        // Payment Error Callback
+        (error) => {
+          console.error('Payment failed in Pack365PaymentInterface:', error);
+          toast({
+            title: 'Payment Failed',
+            description: (error as any).message || 'Payment could not be processed. Please try again.',
+            variant: 'destructive'
+          });
+        }
+      );
+    } catch (error: any) {
+      console.error('Error initiating payment:', error);
       toast({
-        title: 'Coupon Not Applied',
-        description: 'Please validate the coupon before making payment.',
+        title: 'Payment Error',
+        description: error.message || 'Failed to initiate payment. Please try again.',
         variant: 'destructive',
       });
+    } finally {
       setIsProcessingPayment(false);
-      return;
     }
-
-    // Proceed with payment using finalAmount and couponCode
-    await Pack365PaymentService.processPayment(
-      {
-        streamName,
-        fromStream: true,
-        amount: paymentCalculation.finalAmount,
-        couponCode: appliedCoupon?.code || undefined,
-      },
-      // Payment Success Callback - Forward to parent's verification handler
-      (response) => {
-        console.log('Payment successful in Pack365PaymentInterface:', response);
-        // Forward the payment response to parent component for verification
-        onPaymentSuccess(response);
-      },
-      // Payment Error Callback
-      (error) => {
-        console.error('Payment failed in Pack365PaymentInterface:', error);
-        toast({
-          title: 'Payment Failed',
-          description: (error as any).message || 'Payment could not be processed. Please try again.',
-          variant: 'destructive'
-        });
-      }
-    );
-  } catch (error: any) {
-    console.error('Error initiating payment:', error);
-    toast({
-      title: 'Payment Error',
-      description: error.message || 'Failed to initiate payment. Please try again.',
-      variant: 'destructive',
-    });
-  } finally {
-    setIsProcessingPayment(false);
-  }
-};
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -263,13 +263,13 @@ const handlePayment = async () => {
               
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Base Amount:</span>
+                  <span className="text-gray-600">Stream Base Price:</span>
                   <span className="font-medium">₹{paymentCalculation.baseAmount}</span>
                 </div>
                 
                 {paymentCalculation.discount > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Discount:</span>
+                    <span className="text-gray-600">Coupon Discount:</span>
                     <span className="font-medium text-green-600">
                       -₹{paymentCalculation.discount}
                     </span>
