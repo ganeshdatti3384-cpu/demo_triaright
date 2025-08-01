@@ -790,6 +790,16 @@ export const collegeApi = {
     });
     return res.data;
   },
+
+  getStudentCountByInstitution: async (
+    token: string,
+    institutionName: string
+  ): Promise<{ success: boolean; count: number; students: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/colleges/admin/students/count/${encodeURIComponent(institutionName)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
 };
 
 export type { 
