@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,7 +47,7 @@ interface Student {
   email: string;
 }
 
-const CollegeDashboard = ({ user }: CollegeDashboardProps) => {
+const CollegeDashboard = ({ user, onLogout }: CollegeDashboardProps) => {
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [studentCount, setStudentCount] = useState(0);
@@ -59,6 +58,15 @@ const CollegeDashboard = ({ user }: CollegeDashboardProps) => {
 
   useEffect(() => {
     fetchDashboardData();
+    
+    // Check URL params for custom requests redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab === 'custom') {
+      setActiveTab('custom');
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const fetchDashboardData = async () => {
@@ -138,6 +146,14 @@ const CollegeDashboard = ({ user }: CollegeDashboardProps) => {
     }
   };
 
+  const handleRequestAccess = (streamName: string) => {
+    setActiveTab('custom');
+    toast({
+      title: 'Custom Request',
+      description: `Request submitted for ${streamName} stream. Our team will contact you soon.`,
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -185,11 +201,12 @@ const CollegeDashboard = ({ user }: CollegeDashboardProps) => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="requests">My Requests</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
             <TabsTrigger value="pack365">Pack365 Requests</TabsTrigger>
+            <TabsTrigger value="custom">Custom Requests</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -370,7 +387,7 @@ const CollegeDashboard = ({ user }: CollegeDashboardProps) => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <BookOpen className="h-6 w-6 mr-2" />
-                  Pack365 Custom Requests
+                  Pack365 Stream Requests
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -407,12 +424,7 @@ const CollegeDashboard = ({ user }: CollegeDashboardProps) => {
                               </p>
                               <Button 
                                 className="w-full" 
-                                onClick={() => {
-                                  toast({
-                                    title: 'Custom Request',
-                                    description: `Request access for ${stream.name} stream. Contact support for custom pricing.`,
-                                  });
-                                }}
+                                onClick={() => handleRequestAccess(stream.name)}
                               >
                                 Request Access
                               </Button>
@@ -423,6 +435,35 @@ const CollegeDashboard = ({ user }: CollegeDashboardProps) => {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="custom" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Mail className="h-6 w-6 mr-2" />
+                  Custom Stream Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Mail className="h-16 w-16 text-blue-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">Custom Request Submitted</h3>
+                  <p className="text-gray-500 max-w-md mx-auto">
+                    Your custom Pack365 stream request has been submitted. Our team will review your request and contact you within 24-48 hours with pricing and availability details.
+                  </p>
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <h4 className="font-semibold text-blue-900 mb-2">What happens next?</h4>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Our team will review your institution's requirements</li>
+                      <li>• We'll prepare a customized package with special pricing</li>
+                      <li>• You'll receive a detailed proposal via email</li>
+                      <li>• Schedule a demo session for your students</li>
+                    </ul>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
