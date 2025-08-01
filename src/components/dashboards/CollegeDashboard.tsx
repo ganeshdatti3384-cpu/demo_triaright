@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { GraduationCap, Users, BookOpen, LogOut, Send, User, Building, MapPin, Phone, Mail, Globe, Calendar, Monitor, Pill, TrendingUp, UserCheck, Banknote, Edit, Save, X, Sparkles } from 'lucide-react';
 import { collegeApi, profileApi, pack365Api } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import { College, Pack365Course } from '@/types/api';
+import { College, Pack365Course, StudentProfile } from '@/types/api';
 import Navbar from '../Navbar';
 import ProfileCompletion from '../ProfileCompletion';
 import { Navigate, useNavigate } from 'react-router-dom';
@@ -60,6 +60,10 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
   const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
   const [tabValue, setTabValue] = useState('overview'); // default
   const navigate = useNavigate();
+  const [count, setCount] = useState<number | null>(null);
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     institutionName: '',
     contactPerson: '',
@@ -81,6 +85,32 @@ useEffect(() => {
     fetchCollegeProfile();
     fetchCourses();
   }, []);
+
+ useEffect(() => {
+  const fetchCount = async () => {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await collegeApi.getStudentCountByInstitution(
+        token!,
+        editFormData.collegeName
+      );
+      if (res.success) {
+        setCount(res.count);
+        setStudents(res.students);
+      } else {
+        setError(res.message ?? 'Failed to fetch.');
+      }
+    } catch (err: any) {
+      setError(err.message ?? 'Error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchCount();
+}, [formData.institutionName]);
+
 
   useEffect(() => {
     if (selectedStream && courses.length > 0) {
@@ -308,7 +338,7 @@ useEffect(() => {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{requests.reduce((sum, req) => sum + req.expectedStudents, 0)}</div>
+                    <div className="text-2xl font-bold">{count || 0 } </div>
                     <p className="text-xs text-muted-foreground">From your requests</p>
                   </CardContent>
                 </Card>
