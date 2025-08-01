@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,23 @@ interface CollegeDashboardProps {
   onLogout: () => void;
 }
 
+interface ServiceRequest {
+  _id: string;
+  institutionName: string;
+  contactPerson: string;
+  email: string;
+  phoneNumber: string;
+  expectedStudents: number;
+  preferredDate: string;
+  additionalRequirements?: string;
+  serviceDescription: string;
+  serviceCategory: string[];
+  requestedBy: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const streamData = [
   { name: 'IT', icon: Monitor, color: 'bg-blue-500', description: 'Information Technology Courses' },
   { name: 'PHARMA', icon: Pill, color: 'bg-green-500', description: 'Pharmaceutical Courses' },
@@ -31,7 +49,7 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [collegeProfile, setCollegeProfile] = useState<College | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -86,7 +104,7 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
 
     try {
       const statsPromise = collegeApi.getDashboardStats(token);
-      const requestsPromise = collegeApi.getMyServiceRequests(token);
+      const requestsPromise = collegeApi.getAllServiceRequests(token);
 
       const [statsResult, requestsResult] = await Promise.allSettled([statsPromise, requestsPromise]);
 
@@ -95,21 +113,17 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
         setDashboardStats(statsResult.value.stats || statsResult.value);
       } else {
         console.error('Failed to fetch stats:', statsResult.status === 'rejected' ? statsResult.reason : 'Unknown error');
-        toast({
-          title: 'Error',
-          description: 'Failed to load dashboard stats',
-          variant: 'destructive'
-        });
       }
 
       // Handle requests response
       if (requestsResult.status === 'fulfilled' && requestsResult.value.success) {
-        setRequests(requestsResult.value.data || []);
+        console.log('Service requests response:', requestsResult.value);
+        setRequests(requestsResult.value.requests || []);
       } else {
         console.error('Failed to fetch requests:', requestsResult.status === 'rejected' ? requestsResult.reason : 'Unknown error');
         toast({
           title: 'Error',
-          description: 'Failed to load college requests',
+          description: 'Failed to load service requests',
           variant: 'destructive'
         });
       }
@@ -277,7 +291,7 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
                     <Send className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{dashboardStats?.pending || 0}</div>
+                    <div className="text-2xl font-bold">{requests.filter(r => r.status === 'Pending').length}</div>
                     <p className="text-xs text-muted-foreground">Pending approval</p>
                   </CardContent>
                 </Card>
@@ -288,8 +302,8 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{dashboardStats?.totalStudents || 0}</div>
-                    <p className="text-xs text-muted-foreground">From your institution</p>
+                    <div className="text-2xl font-bold">{requests.reduce((sum, req) => sum + req.expectedStudents, 0)}</div>
+                    <p className="text-xs text-muted-foreground">From your requests</p>
                   </CardContent>
                 </Card>
 
@@ -299,7 +313,7 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
                     <GraduationCap className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{dashboardStats?.accepted || 0}</div>
+                    <div className="text-2xl font-bold">{requests.filter(r => r.status === 'Accepted').length}</div>
                     <p className="text-xs text-muted-foreground">This academic year</p>
                   </CardContent>
                 </Card>
@@ -310,7 +324,7 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
                     <BookOpen className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{dashboardStats?.totalRequests || 0}</div>
+                    <div className="text-2xl font-bold">{requests.length}</div>
                     <p className="text-xs text-muted-foreground">All time</p>
                   </CardContent>
                 </Card>
@@ -325,9 +339,10 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
                     {requests.slice(0, 3).map((request) => (
                       <div key={request._id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                          <p className="font-medium">{request.serviceCategory}</p>
+                          <p className="font-medium">{request.serviceCategory?.join(', ') || 'Service Request'}</p>
                           <p className="text-sm text-gray-500">Requested on {new Date(request.createdAt).toLocaleDateString()}</p>
                           <p className="text-sm text-gray-500">{request.expectedStudents} students</p>
+                          <p className="text-sm text-gray-500">Institution: {request.institutionName}</p>
                         </div>
                         <Badge
                           variant={request.status === 'Accepted' ? 'default' :
@@ -438,49 +453,55 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold">My Service Requests</h2>
                 <Badge variant="outline">
-                  {collegeProfile ? requests.filter(request => request.email === collegeProfile.email).length : requests.length} Total Requests
+                  {requests.length} Total Requests
                 </Badge>
               </div>
 
               <div className="space-y-4">
-                {collegeProfile ? (
-                  requests
-                    .filter(request => request.email === collegeProfile.email)
-                    .map((request) => (
-                      <Card key={request._id}>
-                        <CardContent className="pt-6">
-                          <div className="flex justify-between items-start">
+                {requests.map((request) => (
+                  <Card key={request._id}>
+                    <CardContent className="pt-6">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg mb-2">{request.serviceCategory?.join(', ') || 'Service Request'}</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                             <div>
-                              <h3 className="font-semibold text-lg">{request.serviceCategory?.join(', ') || request.serviceDescription}</h3>
-                              <p className="text-gray-600">Requested on: {new Date(request.createdAt).toLocaleDateString()}</p>
-                              <p className="text-sm text-gray-500">Expected students: {request.expectedStudents}</p>
-                              <p className="text-sm text-gray-500">Contact: {request.contactPerson}</p>
-                              <p className="text-sm text-gray-500">Preferred Date: {request.preferredDate}</p>
-                              <p className="text-sm text-gray-500">Institution: {request.institutionName}</p>
-                              {request.additionalRequirements && (
-                                <p className="text-sm text-gray-500">Additional: {request.additionalRequirements}</p>
-                              )}
+                              <p><span className="font-medium">Institution:</span> {request.institutionName}</p>
+                              <p><span className="font-medium">Contact Person:</span> {request.contactPerson}</p>
+                              <p><span className="font-medium">Email:</span> {request.email}</p>
+                              <p><span className="font-medium">Phone:</span> {request.phoneNumber}</p>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge
-                                variant={request.status === 'Accepted' ? 'default' :
-                                  request.status === 'Rejected' ? 'destructive' : 'outline'}
-                              >
-                                {request.status}
-                              </Badge>
-                              <Button variant="outline" size="sm">
-                                View Details
-                              </Button>
+                            <div>
+                              <p><span className="font-medium">Expected Students:</span> {request.expectedStudents}</p>
+                              <p><span className="font-medium">Preferred Date:</span> {new Date(request.preferredDate).toLocaleDateString()}</p>
+                              <p><span className="font-medium">Requested On:</span> {new Date(request.createdAt).toLocaleDateString()}</p>
+                              <p><span className="font-medium">Request ID:</span> {request.requestedBy}</p>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                ) : (
-                  <p className="text-center text-gray-500 py-8">Loading profile...</p>
-                )}
-                {collegeProfile && requests.filter(request => request.email === collegeProfile.email).length === 0 && (
-                  <p className="text-center text-gray-500 py-8">No service requests found for your email</p>
+                          <div className="mt-3">
+                            <p className="text-sm"><span className="font-medium">Description:</span> {request.serviceDescription}</p>
+                            {request.additionalRequirements && (
+                              <p className="text-sm mt-2"><span className="font-medium">Additional Requirements:</span> {request.additionalRequirements}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge
+                            variant={request.status === 'Accepted' ? 'default' :
+                              request.status === 'Rejected' ? 'destructive' : 'outline'}
+                          >
+                            {request.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {requests.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500 text-lg">No service requests found</p>
+                    <p className="text-gray-400 text-sm mt-2">Submit your first request using the Custom Request tab</p>
+                  </div>
                 )}
               </div>
             </TabsContent>
