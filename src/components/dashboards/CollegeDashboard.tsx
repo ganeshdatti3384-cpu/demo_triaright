@@ -10,11 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { GraduationCap, Users, BookOpen, LogOut, Send, User, Building, MapPin, Phone, Mail, Globe, Calendar, Monitor, Pill, TrendingUp, UserCheck, Banknote, Edit, Save, X, Sparkles } from 'lucide-react';
 import { collegeApi, profileApi, pack365Api } from '@/services/api';
-import { useToast } from '@/hooks/use-toast';
 import { College, Pack365Course, StudentProfile } from '@/types/api';
 import Navbar from '../Navbar';
 import ProfileCompletion from '../ProfileCompletion';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface CollegeDashboardProps {
   user: { role: string; name: string };
@@ -75,7 +75,6 @@ const CollegeDashboardContent = ({ user, onLogout }: CollegeDashboardProps) => {
     serviceDescription: '',
     additionalRequirements: ''
   });
-  const { toast } = useToast();
 useEffect(() => {
   const tabFromUrl = 'courses' 
   if (tabFromUrl) setTabValue(tabFromUrl);
@@ -109,7 +108,7 @@ useEffect(() => {
   };
 
   fetchCount();
-}, [formData.institutionName]);
+}, []);
 
 
   useEffect(() => {
@@ -265,11 +264,8 @@ useEffect(() => {
         additionalRequirements: formData.additionalRequirements
       });
 
-      if (response.success) {
-        toast({
-          title: 'Success',
-          description: 'Service request submitted successfully',
-        });
+      if (response.status === 201 || response.success) {
+
         setFormData({
           institutionName: '',
           contactPerson: '',
@@ -292,6 +288,10 @@ useEffect(() => {
       });
     } finally {
       setLoading(false);
+          toast({
+          title: 'Success',
+          description: 'Service request submitted successfully',
+        });
     }
   };
 
@@ -648,12 +648,14 @@ useEffect(() => {
                         value={formData.additionalRequirements}
                         onChange={handleInputChange}
                         placeholder="Any specific requirements or constraints..."
-                        className="mt-1 h-24" />
+                        className="mt-1 h-24" 
+                        required />
                     </div>
 
                     <Button type="submit" className="w-full" disabled={loading}>
                       <Send className="h-4 w-4 mr-2" />
                       {loading ? 'Submitting...' : 'Submit Request'}
+
                     </Button>
                   </form>
                 </CardContent>

@@ -720,7 +720,9 @@ export const collegeApi = {
       serviceDescription: string;
       additionalRequirements?: string;
     }
-  ): Promise<{ success: boolean; request: any }> => {
+  ): Promise<{
+    status: number; success: boolean; request: any 
+}> => {
     const res = await axios.post(`${API_BASE_URL}/colleges/service-request`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
