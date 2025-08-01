@@ -275,13 +275,12 @@ export const pack365Api = {
     formData.append("name", data.name);
     formData.append("price", String(data.price));
     if (data.imageFile) {
-      formData.append("file", data.imageFile);
+      formData.append("image", data.imageFile);
     }
 
     const res = await axios.post(`${API_BASE_URL}/pack365/streams`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
       },
     });
 
@@ -307,7 +306,7 @@ export const pack365Api = {
     const formData = new FormData();
     if (data.name) formData.append("name", data.name);
     if (data.price !== undefined) formData.append("price", data.price.toString());
-    if (data.imageFile) formData.append("file", data.imageFile); // assuming backend expects req.file
+    if (data.imageFile) formData.append("image", data.imageFile); // assuming backend expects req.file
 
     const res = await axios.put(`${API_BASE_URL}/pack365/streams/${streamId}`, formData, {
       headers: {
