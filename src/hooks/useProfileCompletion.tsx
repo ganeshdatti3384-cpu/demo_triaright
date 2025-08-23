@@ -21,7 +21,9 @@ export const useProfileCompletion = () => {
     try {
       // Only check profile completion for college users
       if (user.role === 'college') {
-        const profile = await profileApi.getCollegeProfile(token);
+        const response = await profileApi.getCollegeProfile(token);
+        const profile = response.profile;
+        
         // Check if essential college fields are filled
         const isComplete = !!(
           profile?.collegeName &&

@@ -70,8 +70,18 @@ const fetchColleges = async () => {
   try {
     setLoading(true);
 
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to view college stats",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Ensure the API call is actually invoked
-    const response = await collegeApi.getCollegeStats(); // ← add ()
+    const response = await collegeApi.getCollegeStats(token);
 
     if (response?.colleges) {
       setColleges(response.colleges);

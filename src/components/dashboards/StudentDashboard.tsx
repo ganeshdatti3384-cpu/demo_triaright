@@ -60,7 +60,17 @@ const StudentDashboard = () => {
   const loadPack365Courses = async () => {
     try {
       setLoadingPack365(true);
-      const response = await pack365Api.getAllCourses();
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to load courses",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const response = await pack365Api.getAllCourses(token);
       if (response.success) {
         setPack365Courses(response.data);
       } else {

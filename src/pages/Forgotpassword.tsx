@@ -43,10 +43,7 @@ const ForgotPassword = () => {
   const handleSubmit = async (data: ResetValues) => {
     setLoading(true);
     try {
-      const result = await authApi.changePasswordWithEmail({
-        email: data.email,
-        newPassword: data.newPassword,
-      });
+      const result = await authApi.changePasswordWithEmail(data.email, data.newPassword, 'dummy-token');
 
       toast({
         title: "Success",

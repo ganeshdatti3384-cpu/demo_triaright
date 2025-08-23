@@ -114,7 +114,7 @@ const App = () => {
             {/* Dashboard Routes */}
             <Route path="/admin" element={<AdminDashboard user={{ role: 'admin', name: 'Admin' }} onLogout={handleLogout} />} />
             <Route path="/superadmin" element={<SuperAdminDashboard user={{ role: 'superadmin', name: 'Super Admin' }} onLogout={handleLogout} />} />
-            <Route path="/student" element={<StudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={handleLogout} />} />
+            <Route path="/student" element={<StudentDashboard />} />
             <Route path="/student-dashboard" element={<EnhancedStudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={handleLogout} />} />
             <Route path="/student-simple" element={<SimplifiedStudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={handleLogout} />} />
             <Route path="/jobseeker" element={<JobSeekerDashboard user={{ role: 'jobseeker', name: 'Job Seeker' }} onLogout={handleLogout} />} />

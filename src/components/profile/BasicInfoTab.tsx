@@ -19,19 +19,20 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ form }) => {
   const { toast } = useToast();
   const loadProfile = async () => {
     try {
-      const profile = await profileApi.getStudentProfile(token);
+      const response = await profileApi.getStudentProfile(token);
+      const profile = response.profile;
       form.reset({
-        firstname: profile.fullName.split(" ")[0] || '',
-        lastname: profile.fullName.split(" ")[1] || '',
-        fatherName: profile.fatherName || '',
-        gender: profile.gender || '',
-        maritalStatus: profile.maritalStatus || '',
-        nationality: profile.nationality || '',
-        hobbies: profile.hobbies || '',
-        email: profile.email || '',
-        phone: profile.phone || '',
-        whatsapp: profile.phone || '',
-        address: profile.address || '',
+        firstname: profile?.fullName?.split(" ")[0] || '',
+        lastname: profile?.fullName?.split(" ")[1] || '',
+        fatherName: profile?.fatherName || '',
+        gender: profile?.gender || '',
+        maritalStatus: profile?.maritalStatus || '',
+        nationality: profile?.nationality || '',
+        hobbies: profile?.hobbies || '',
+        email: profile?.email || '',
+        phone: profile?.phone || '',
+        whatsapp: profile?.phone || '',
+        address: profile?.address || '',
       });
     } catch (err: any) {
       toast({ title: 'Error', description: 'Failed to load profile', variant: 'destructive' });

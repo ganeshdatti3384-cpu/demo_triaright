@@ -43,10 +43,10 @@ const AccountTab = () => {
 
     setLoading(true);
     try {
-      await profileApi.updatePassword(token, {
+      await profileApi.updatePassword({
         currentPassword: passwords.currentPassword,
         newPassword: passwords.newPassword
-      });
+      }, token);
       
       toast({
         title: "Success",

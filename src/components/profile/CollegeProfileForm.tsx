@@ -39,8 +39,8 @@ const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ token, onSucces
       if (token) {
         setIsLoading(true);
         try {
-          const profile = await profileApi.getCollegeProfile(token);
-          setFormData(profile);
+          const response = await profileApi.getCollegeProfile(token);
+          setFormData(response.profile || {});
         } catch (error: any) {
           toast({
             title: 'Error fetching profile',
@@ -74,7 +74,7 @@ const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ token, onSucces
     setIsLoading(true);
 
     try {
-      await profileApi.updateCollegeProfile(token!, formData);
+      await profileApi.updateCollegeProfile(formData, token!);
       toast({
         title: 'Profile updated successfully!',
         description: 'Your college information has been saved.',

@@ -43,10 +43,10 @@ const ChangePassword = () => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("User not authenticated");
 
-      const result = await authApi.updatePassword(token, {
-        oldPassword: data.oldPassword,
+      const result = await authApi.updatePassword({
+        currentPassword: data.oldPassword,
         newPassword: data.newPassword,
-      });
+      }, token);
 
       toast({
         title: "Success",
