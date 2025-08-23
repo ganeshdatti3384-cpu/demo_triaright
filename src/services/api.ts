@@ -803,6 +803,74 @@ export const collegeApi = {
   },
 };
 
+export const courseApi = {
+  // ✅ Create Course (Admin only)
+  createCourse: async (
+    token: string,
+    data: FormData
+  ): Promise<{ success: boolean; course: any; message: string }> => {
+    const res = await axios.post(`${API_BASE_URL}/courses/postcourse`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  },
+
+  // ✅ Update Course (SuperAdmin only)
+  updateCourse: async (
+    token: string,
+    courseId: string,
+    data: FormData
+  ): Promise<{ success: boolean; course: any; message: string }> => {
+    const res = await axios.put(`${API_BASE_URL}/courses/${courseId}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  },
+
+  // ✅ Delete Course (SuperAdmin only)
+  deleteCourse: async (
+    token: string,
+    courseId: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const res = await axios.delete(`${API_BASE_URL}/courses/${courseId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // ✅ Get All Courses (Public/Student)
+  getAllCourses: async (): Promise<any[]> => {
+    const res = await axios.get(`${API_BASE_URL}/courses`);
+    return res.data;
+  },
+
+  // ✅ Get Course by ID (Public/Student)
+  getCourseById: async (
+    courseId: string
+  ): Promise<any> => {
+    const res = await axios.get(`${API_BASE_URL}/courses/${courseId}`);
+    return res.data;
+  },
+
+  // ✅ Get Free Courses (Public/Student)
+  getFreeCourses: async (): Promise<any[]> => {
+    const res = await axios.get(`${API_BASE_URL}/courses/free`);
+    return res.data;
+  },
+
+  // ✅ Get Paid Courses (Public/Student)
+  getPaidCourses: async (): Promise<any[]> => {
+    const res = await axios.get(`${API_BASE_URL}/courses/paid`);
+    return res.data;
+  },
+};
+
 export type { 
   Pack365Course, 
   RegisterPayload, 
