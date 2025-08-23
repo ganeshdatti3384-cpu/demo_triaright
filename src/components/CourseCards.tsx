@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Clock, BookOpen, Users, Star } from 'lucide-react';
-import { courseApi, Course } from '@/services/courseApi';
+import { courseApi, Course } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface CourseCardsProps {

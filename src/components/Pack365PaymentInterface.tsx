@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Pack365PaymentService } from '@/services/pack365Payment';
-import { pack365Api } from '@/services/api';
+import { pack365ApiExtended as pack365Api } from '@/services/api';
 
 interface Pack365PaymentInterfaceProps {
   streamName: string;

@@ -20,14 +20,19 @@ interface EnrolledCourse {
   completedLessons?: number;
 }
 
-const SimplifiedStudentDashboard = () => {
+interface SimplifiedStudentDashboardProps {
+  user: { role: string; name: string };
+  onLogout: () => void;
+}
+
+const SimplifiedStudentDashboard = ({ user, onLogout }: SimplifiedStudentDashboardProps) => {
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const [userLocal, setUserLocal] = useState<any>(null);
 
   useEffect(() => {
     const currentUser = localStorage.getItem('currentUser');
     if (currentUser) {
-      setUser(JSON.parse(currentUser));
+      setUserLocal(JSON.parse(currentUser));
     }
 
     const courses = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
@@ -55,7 +60,7 @@ const SimplifiedStudentDashboard = () => {
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome back, {user?.firstName || user?.name || 'Student'}!
+              Welcome back, {user?.name || userLocal?.firstName || userLocal?.name || 'Student'}!
             </h1>
             <p className="text-gray-600">Continue your learning journey</p>
           </div>

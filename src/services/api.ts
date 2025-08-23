@@ -400,5 +400,201 @@ export const courseApi = {
   }
 };
 
-// Export course API
-export { courseApi };
+// Profile API (placeholder)
+export const profileApi = {
+  updateProfile: async (data: any, token: string) => {
+    return { success: true, message: 'Profile updated' };
+  },
+  getStudentProfile: async (token: string) => {
+    return { success: true, profile: {} };
+  },
+  getJobSeekerProfile: async (token: string) => {
+    return { success: true, profile: {} };
+  },
+  getEmployerProfile: async (token: string) => {
+    return { success: true, profile: {} };
+  },
+  getCollegeProfile: async (token: string) => {
+    return { success: true, profile: {} };
+  },
+  updateStudentProfile: async (data: any, token: string) => {
+    return { success: true, message: 'Profile updated' };
+  },
+  updateJobSeekerProfile: async (data: any, token: string) => {
+    return { success: true, message: 'Profile updated' };
+  },
+  updateEmployerProfile: async (data: any, token: string) => {
+    return { success: true, message: 'Profile updated' };
+  },
+  updateCollegeProfile: async (data: any, token: string) => {
+    return { success: true, message: 'Profile updated' };
+  },
+  updatePassword: async (data: any, token: string) => {
+    return { success: true, message: 'Password updated' };
+  }
+};
+
+// Add missing API functions
+export const pack365ApiExtended = {
+  ...pack365Api,
+  updateTopicProgress: async (enrollmentId: string, topicName: string, progress: any, token: string) => {
+    try {
+      const response = await api.post(`/pack365/enrollment/${enrollmentId}/progress`, {
+        topicName,
+        ...progress
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  validateEnrollmentCode: async (code: string, streamName: string, token: string) => {
+    try {
+      const response = await api.post('/pack365/enrollment/validate-code', { code, streamName }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  getAllCourses: async (token: string) => {
+    try {
+      const response = await api.get('/pack365/courses', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  createStream: async (data: any, token: string) => {
+    try {
+      const response = await api.post('/pack365/streams', data, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  updateStream: async (id: string, data: any, token: string) => {
+    try {
+      const response = await api.put(`/pack365/streams/${id}`, data, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  deleteStream: async (id: string, token: string) => {
+    try {
+      const response = await api.delete(`/pack365/streams/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  createCourse: async (data: any, token: string) => {
+    try {
+      const response = await api.post('/pack365/courses', data, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  updateCourse: async (id: string, data: any, token: string) => {
+    try {
+      const response = await api.put(`/pack365/courses/${id}`, data, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  deleteCourse: async (id: string, token: string) => {
+    try {
+      const response = await api.delete(`/pack365/courses/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  getAllEnrollmentCodes: async (token: string) => {
+    try {
+      const response = await api.get('/pack365/enrollment-codes', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  createEnrollmentCode: async (data: any, token: string) => {
+    try {
+      const response = await api.post('/pack365/enrollment-codes', data, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  }
+};
+
+export const collegeApiExtended = {
+  ...collegeApi,
+  getCollegeStats: async (token: string) => {
+    try {
+      const response = await api.get('/college/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  getCollegeRequests: async (token: string) => {
+    try {
+      const response = await api.get('/college/requests', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  acceptServiceRequest: async (requestId: string, token: string) => {
+    try {
+      const response = await api.post(`/college/requests/${requestId}/accept`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  },
+  rejectServiceRequest: async (requestId: string, token: string) => {
+    try {
+      const response = await api.post(`/college/requests/${requestId}/reject`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response.data;
+    }
+  }
+};
+
+// Re-export everything from types/api
+export * from '@/types/api';

@@ -19,7 +19,7 @@ import {
   Award,
   ArrowLeft,
 } from 'lucide-react';
-import { pack365Api } from '@/services/api';
+import { pack365ApiExtended as pack365Api, collegeApiExtended as collegeApi } from '@/services/api';
 import { Pack365Course, EnhancedPack365Enrollment, TopicProgress } from '@/types/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -125,13 +125,11 @@ const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearnin
       const newTotalWatchedSeconds = updatedTopicProgress.reduce((sum, tp) => sum + tp.watchedDuration, 0);
       const newTotalWatchedPercentage = totalCourseDurationSeconds > 0 ? Math.round((newTotalWatchedSeconds / totalCourseDurationSeconds) * 100) : 0;
 
-      const response = await pack365Api.updateTopicProgress(token, {
-        courseId,
-        topicName,
+      const response = await pack365Api.updateTopicProgress(enrollment?._id || '', topicName, {
         watchedDuration: Math.floor(duration),
         totalCourseDuration: totalCourseDurationSeconds,
         totalWatchedPercentage: newTotalWatchedPercentage
-      });
+      }, token);
 
       if (response.success) {
         // Update progress based on response

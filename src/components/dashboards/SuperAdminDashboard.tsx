@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote } from 'lucide-react';
-import { pack365Api, collegeApi } from '@/services/api';
+import { pack365ApiExtended as pack365Api, collegeApiExtended as collegeApi } from '@/services/api';
 import Pack365Management from '../admin/Pack365Management';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';

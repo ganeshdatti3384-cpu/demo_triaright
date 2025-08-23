@@ -15,7 +15,7 @@ import Pack365Management from '../admin/Pack365Management';
 import PaymentAnalytics from '../admin/PaymentAnalytics';
 import CollegeManagement from '../admin/CollegeManagement';
 import Navbar from '../Navbar';
-import { collegeApi } from '@/services/api';
+import { collegeApiExtended as collegeApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface AdminDashboardProps {

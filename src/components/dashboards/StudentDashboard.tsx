@@ -16,15 +16,21 @@ import EnhancedProfile from '../EnhancedProfile';
 import { useNavigate } from 'react-router-dom';
 import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
-import { pack365Api, Pack365Course, EnhancedPack365Enrollment } from '@/services/api';
+import { pack365ApiExtended as pack365Api, Pack365Course, EnhancedPack365Enrollment } from '@/services/api';
+
+interface StudentDashboardProps {
+  user: { role: string; name: string };
+  onLogout: () => void;
+}
 import { useToast } from '@/hooks/use-toast';
 import Pack365Courses from '../Pack365Courses';
 import Pack365Dashboard from '../Pack365Dashboard';
 import Pack365CoursesStudent from '../Pack365Courses2';
 
-const StudentDashboard = () => {
+const StudentDashboard = ({ user, onLogout }: StudentDashboardProps) => {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showProfile, setShowProfile] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
@@ -32,9 +38,11 @@ const StudentDashboard = () => {
   const [pack365Enrollments, setPack365Enrollments] = useState<EnhancedPack365Enrollment[]>([]);
   const [loadingPack365, setLoadingPack365] = useState(false);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
-    const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [appliedJobs, setAppliedJobs] = useState<any[]>([]);
   const [courseFilter, setCourseFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const auth = useAuth();
 
   useEffect(() => {
     const fetchEnrollments = async () => {
@@ -199,7 +207,7 @@ const StudentDashboard = () => {
 
   return (
     <>
-      <Navbar />
+      <Navbar user={user} onLogout={onLogout} />
       <div className="min-h-screen bg-blue-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Eye, Edit, Trash, Upload, FileText, Download, ArrowLeft, BookOpen } from 'lucide-react';
-import { pack365Api, Pack365Course } from '@/services/api';
+import { pack365ApiExtended as pack365Api, Pack365Course } from '@/services/api';
 import { StreamData } from '@/types/api';
 
 const Pack365Management = () => {

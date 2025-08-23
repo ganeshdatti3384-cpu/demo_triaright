@@ -10,7 +10,7 @@ import { Search, Filter, BookOpen, Clock, Users, Star } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CourseCards from '@/components/CourseCards';
-import { courseApi, Course } from '@/services/courseApi';
+import { courseApi, Course } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 const RecordedCourses = () => {
