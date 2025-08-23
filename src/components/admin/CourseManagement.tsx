@@ -25,6 +25,293 @@ interface TopicForm {
   directLink: string;
   examExcelLink: string;
 }
+
+// CourseForm component - moved outside to prevent re-rendering issues
+const CourseForm: React.FC<{
+  formData: {
+    courseName: string;
+    courseDescription: string;
+    instructorName: string;
+    totalDuration: number;
+    courseType: 'paid' | 'unpaid';
+    price: number;
+    courseImageLink: string;
+    stream: 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability';
+    providerName: 'triaright' | 'etv' | 'kalasalingan' | 'instructor';
+    courseLanguage: string;
+    certificationProvided: 'yes' | 'no';
+    additionalInformation: string;
+    demoVideoLink: string;
+    curriculumDocLink: string;
+    curriculum: TopicForm[];
+    hasFinalExam: boolean;
+    finalExamExcelLink: string;
+  };
+  setFormData: React.Dispatch<React.SetStateAction<any>>;
+  handleTopicChange: (index: number, key: keyof TopicForm, value: string | number) => void;
+  handleSubtopicChange: (topicIndex: number, subtopicIndex: number, key: 'name' | 'link' | 'duration', value: string | number) => void;
+  handleAddTopic: () => void;
+  handleAddSubtopic: (topicIndex: number) => void;
+  onSubmit: () => void;
+  submitText: string;
+  loading: boolean;
+}> = ({ formData, setFormData, handleTopicChange, handleSubtopicChange, handleAddTopic, handleAddSubtopic, onSubmit, submitText, loading }) => (
+  <div className="space-y-4">
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <Label htmlFor="courseName">Course Name *</Label>
+        <Input
+          id="courseName"
+          value={formData.courseName}
+          onChange={(e) => setFormData(prev => ({ ...prev, courseName: e.target.value }))}
+          placeholder="Enter course name"
+        />
+      </div>
+      <div>
+        <Label htmlFor="instructorName">Instructor Name *</Label>
+        <Input
+          id="instructorName"
+          value={formData.instructorName}
+          onChange={(e) => setFormData(prev => ({ ...prev, instructorName: e.target.value }))}
+          placeholder="Enter instructor name"
+        />
+      </div>
+    </div>
+
+    <div>
+      <Label htmlFor="courseDescription">Course Description</Label>
+      <Textarea
+        id="courseDescription"
+        value={formData.courseDescription}
+        onChange={(e) => setFormData(prev => ({ ...prev, courseDescription: e.target.value }))}
+        placeholder="Enter course description"
+        rows={3}
+      />
+    </div>
+
+    <div className="grid grid-cols-3 gap-4">
+      <div>
+        <Label htmlFor="totalDuration">Total Duration (minutes)</Label>
+        <Input
+          id="totalDuration"
+          type="number"
+          value={formData.totalDuration}
+          onChange={(e) => setFormData(prev => ({ ...prev, totalDuration: parseInt(e.target.value) || 0 }))}
+          placeholder="e.g., 480"
+        />
+      </div>
+      <div>
+        <Label htmlFor="stream">Stream</Label>
+        <Select
+          value={formData.stream}
+          onValueChange={(value: 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability') =>
+            setFormData(prev => ({ ...prev, stream: value }))
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select stream" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="it">IT</SelectItem>
+            <SelectItem value="nonit">Non-IT</SelectItem>
+            <SelectItem value="finance">Finance</SelectItem>
+            <SelectItem value="management">Management</SelectItem>
+            <SelectItem value="pharmaceuticals">Pharmaceuticals</SelectItem>
+            <SelectItem value="carrerability">Career Ability</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="providerName">Provider</Label>
+        <Select
+          value={formData.providerName}
+          onValueChange={(value: 'triaright' | 'etv' | 'kalasalingan' | 'instructor') =>
+            setFormData(prev => ({ ...prev, providerName: value }))
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select provider" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="triaright">Triaright</SelectItem>
+            <SelectItem value="etv">ETV</SelectItem>
+            <SelectItem value="kalasalingan">Kalasalingan</SelectItem>
+            <SelectItem value="instructor">Instructor</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <Label htmlFor="courseLanguage">Course Language</Label>
+        <Input
+          id="courseLanguage"
+          value={formData.courseLanguage}
+          onChange={(e) => setFormData(prev => ({ ...prev, courseLanguage: e.target.value }))}
+          placeholder="e.g., English"
+        />
+      </div>
+      <div>
+        <Label htmlFor="courseImageLink">Course Image URL</Label>
+        <Input
+          id="courseImageLink"
+          value={formData.courseImageLink}
+          onChange={(e) => setFormData(prev => ({ ...prev, courseImageLink: e.target.value }))}
+          placeholder="Enter image URL"
+        />
+      </div>
+    </div>
+
+    <div>
+      <Label htmlFor="demoVideoLink">Demo Video Link *</Label>
+      <Input
+        id="demoVideoLink"
+        value={formData.demoVideoLink}
+        onChange={(e) => setFormData(prev => ({ ...prev, demoVideoLink: e.target.value }))}
+        placeholder="Enter demo video URL"
+      />
+    </div>
+
+    <div className="grid grid-cols-2 gap-4 items-center">
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="isPaid"
+          checked={formData.courseType === 'paid'}
+          onChange={(e) => setFormData(prev => ({ ...prev, courseType: e.target.checked ? 'paid' : 'unpaid' }))}
+        />
+        <Label htmlFor="isPaid">Paid Course</Label>
+      </div>
+      {formData.courseType === 'paid' && (
+        <div>
+          <Label htmlFor="price">Price ($)</Label>
+          <Input
+            id="price"
+            type="number"
+            value={formData.price}
+            onChange={(e) =>
+              setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
+            }
+            placeholder="0.00"
+          />
+        </div>
+      )}
+    </div>
+
+    <div className="flex items-center space-x-2">
+      <input
+        type="checkbox"
+        id="certificationProvided"
+        checked={formData.certificationProvided === 'yes'}
+        onChange={(e) => setFormData(prev => ({ ...prev, certificationProvided: e.target.checked ? 'yes' : 'no' }))}
+      />
+      <Label htmlFor="certificationProvided">Certification Provided</Label>
+    </div>
+
+    <div>
+      <Label htmlFor="additionalInformation">Additional Information</Label>
+      <Textarea
+        id="additionalInformation"
+        value={formData.additionalInformation}
+        onChange={(e) => setFormData(prev => ({ ...prev, additionalInformation: e.target.value }))}
+        placeholder="Enter additional information"
+        rows={2}
+      />
+    </div>
+
+    {/* Curriculum Section */}
+    <div>
+      <Label>Curriculum</Label>
+      <div className="space-y-6">
+        {formData.curriculum.map((topic, topicIndex) => (
+          <div key={topicIndex} className="border p-4 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <Input
+                placeholder="Topic Name"
+                value={topic.topicName}
+                onChange={(e) => handleTopicChange(topicIndex, 'topicName', e.target.value)}
+              />
+              <Input
+                placeholder="Topic Count"
+                type="number"
+                value={topic.topicCount}
+                onChange={(e) => handleTopicChange(topicIndex, 'topicCount', parseInt(e.target.value) || 1)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Subtopics</Label>
+              {topic.subtopics.map((subtopic, subtopicIndex) => (
+                <div key={subtopicIndex} className="grid grid-cols-3 gap-2">
+                  <Input
+                    placeholder="Subtopic Name"
+                    value={subtopic.name}
+                    onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'name', e.target.value)}
+                  />
+                  <Input
+                    placeholder="Subtopic Link"
+                    value={subtopic.link}
+                    onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'link', e.target.value)}
+                  />
+                  <Input
+                    placeholder="Duration (min)"
+                    type="number"
+                    value={subtopic.duration}
+                    onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value) || 0)}
+                  />
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddSubtopic(topicIndex)}
+              >
+                + Add Subtopic
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleAddTopic}
+        className="mt-2"
+      >
+        + Add Topic
+      </Button>
+    </div>
+
+    <div className="flex items-center space-x-2">
+      <input
+        type="checkbox"
+        id="hasFinalExam"
+        checked={formData.hasFinalExam}
+        onChange={(e) => setFormData(prev => ({ ...prev, hasFinalExam: e.target.checked }))}
+      />
+      <Label htmlFor="hasFinalExam">Has Final Exam</Label>
+    </div>
+
+    {formData.hasFinalExam && (
+      <div>
+        <Label htmlFor="finalExamExcelLink">Final Exam Excel Link</Label>
+        <Input
+          id="finalExamExcelLink"
+          value={formData.finalExamExcelLink}
+          onChange={(e) => setFormData(prev => ({ ...prev, finalExamExcelLink: e.target.value }))}
+          placeholder="Enter final exam excel file URL"
+        />
+      </div>
+    )}
+
+    <Button onClick={onSubmit} className="w-full mt-4" disabled={loading}>
+      {loading ? 'Processing...' : submitText}
+    </Button>
+  </div>
+);
+
 const CourseManagement = () => {
   const [courses, setCourses] = useState<EnhancedCourse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -364,267 +651,13 @@ const handleAddSubtopic = (topicIndex: number) => {
     const updated = [...formData.curriculum];
     if (key === 'topicCount') {
       (updated[index] as any)[key] = value as number;
-    } else if (key === 'topicName' || key === 'directLink' || key === 'examExcelLink') {
+    } else if (key === 'directLink' || key === 'examExcelLink') {
+      (updated[index] as any)[key] = value as string;
+    } else if (key === 'topicName') {
       (updated[index] as any)[key] = value as string;
     }
     setFormData(prev => ({ ...prev, curriculum: updated }));
   };
-  const CourseForm = ({ onSubmit, submitText }: { onSubmit: () => void; submitText: string }) => (
-     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="courseName">Course Name *</Label>
-          <Input
-            id="courseName"
-            value={formData.courseName}
-            onChange={(e) => setFormData(prev => ({ ...prev, courseName: e.target.value }))}
-            placeholder="Enter course name"
-          />
-        </div>
-        <div>
-          <Label htmlFor="instructorName">Instructor Name *</Label>
-          <Input
-            id="instructorName"
-            value={formData.instructorName}
-            onChange={(e) => setFormData(prev => ({ ...prev, instructorName: e.target.value }))}
-            placeholder="Enter instructor name"
-          />
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="courseDescription">Course Description</Label>
-        <Textarea
-          id="courseDescription"
-          value={formData.courseDescription}
-          onChange={(e) => setFormData(prev => ({ ...prev, courseDescription: e.target.value }))}
-          placeholder="Enter course description"
-          rows={3}
-        />
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <Label htmlFor="totalDuration">Total Duration (minutes)</Label>
-          <Input
-            id="totalDuration"
-            type="number"
-            value={formData.totalDuration}
-            onChange={(e) => setFormData(prev => ({ ...prev, totalDuration: parseInt(e.target.value) || 0 }))}
-            placeholder="e.g., 480"
-          />
-        </div>
-        <div>
-          <Label htmlFor="stream">Stream</Label>
-          <Select
-            value={formData.stream}
-            onValueChange={(value: 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability') =>
-              setFormData(prev => ({ ...prev, stream: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select stream" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="it">IT</SelectItem>
-              <SelectItem value="nonit">Non-IT</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
-              <SelectItem value="management">Management</SelectItem>
-              <SelectItem value="pharmaceuticals">Pharmaceuticals</SelectItem>
-              <SelectItem value="carrerability">Career Ability</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="providerName">Provider</Label>
-          <Select
-            value={formData.providerName}
-            onValueChange={(value: 'triaright' | 'etv' | 'kalasalingan' | 'instructor') =>
-              setFormData(prev => ({ ...prev, providerName: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select provider" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="triaright">Triaright</SelectItem>
-              <SelectItem value="etv">ETV</SelectItem>
-              <SelectItem value="kalasalingan">Kalasalingan</SelectItem>
-              <SelectItem value="instructor">Instructor</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="courseLanguage">Course Language</Label>
-          <Input
-            id="courseLanguage"
-            value={formData.courseLanguage}
-            onChange={(e) => setFormData(prev => ({ ...prev, courseLanguage: e.target.value }))}
-            placeholder="e.g., English"
-          />
-        </div>
-        <div>
-          <Label htmlFor="courseImageLink">Course Image URL</Label>
-          <Input
-            id="courseImageLink"
-            value={formData.courseImageLink}
-            onChange={(e) => setFormData(prev => ({ ...prev, courseImageLink: e.target.value }))}
-            placeholder="Enter image URL"
-          />
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="demoVideoLink">Demo Video Link *</Label>
-        <Input
-          id="demoVideoLink"
-          value={formData.demoVideoLink}
-          onChange={(e) => setFormData(prev => ({ ...prev, demoVideoLink: e.target.value }))}
-          placeholder="Enter demo video URL"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 items-center">
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="isPaid"
-            checked={formData.courseType === 'paid'}
-            onChange={(e) => setFormData(prev => ({ ...prev, courseType: e.target.checked ? 'paid' : 'unpaid' }))}
-          />
-          <Label htmlFor="isPaid">Paid Course</Label>
-        </div>
-        {formData.courseType === 'paid' && (
-          <div>
-            <Label htmlFor="price">Price ($)</Label>
-            <Input
-              id="price"
-              type="number"
-              value={formData.price}
-              onChange={(e) =>
-                setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
-              }
-              placeholder="0.00"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="certificationProvided"
-          checked={formData.certificationProvided === 'yes'}
-          onChange={(e) => setFormData(prev => ({ ...prev, certificationProvided: e.target.checked ? 'yes' : 'no' }))}
-        />
-        <Label htmlFor="certificationProvided">Certification Provided</Label>
-      </div>
-
-      <div>
-        <Label htmlFor="additionalInformation">Additional Information</Label>
-        <Textarea
-          id="additionalInformation"
-          value={formData.additionalInformation}
-          onChange={(e) => setFormData(prev => ({ ...prev, additionalInformation: e.target.value }))}
-          placeholder="Enter additional information"
-          rows={2}
-        />
-      </div>
-
-      {/* Curriculum Section */}
-      <div>
-        <Label>Curriculum</Label>
-        <div className="space-y-6">
-          {formData.curriculum.map((topic, topicIndex) => (
-            <div key={topicIndex} className="border p-4 rounded-lg">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <Input
-                  placeholder="Topic Name"
-                  value={topic.topicName}
-                  onChange={(e) => handleTopicChange(topicIndex, 'topicName', e.target.value)}
-                />
-                <Input
-                  placeholder="Topic Count"
-                  type="number"
-                  value={topic.topicCount}
-                  onChange={(e) => handleTopicChange(topicIndex, 'topicCount', parseInt(e.target.value) || 1)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Subtopics</Label>
-                {topic.subtopics.map((subtopic, subtopicIndex) => (
-                  <div key={subtopicIndex} className="grid grid-cols-3 gap-2">
-                    <Input
-                      placeholder="Subtopic Name"
-                      value={subtopic.name}
-                      onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'name', e.target.value)}
-                    />
-                    <Input
-                      placeholder="Subtopic Link"
-                      value={subtopic.link}
-                      onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'link', e.target.value)}
-                    />
-                    <Input
-                      placeholder="Duration (min)"
-                      type="number"
-                      value={subtopic.duration}
-                      onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value) || 0)}
-                    />
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAddSubtopic(topicIndex)}
-                >
-                  + Add Subtopic
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleAddTopic}
-          className="mt-2"
-        >
-          + Add Topic
-        </Button>
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="hasFinalExam"
-          checked={formData.hasFinalExam}
-          onChange={(e) => setFormData(prev => ({ ...prev, hasFinalExam: e.target.checked }))}
-        />
-        <Label htmlFor="hasFinalExam">Has Final Exam</Label>
-      </div>
-
-      {formData.hasFinalExam && (
-        <div>
-          <Label htmlFor="finalExamExcelLink">Final Exam Excel Link</Label>
-          <Input
-            id="finalExamExcelLink"
-            value={formData.finalExamExcelLink}
-            onChange={(e) => setFormData(prev => ({ ...prev, finalExamExcelLink: e.target.value }))}
-            placeholder="Enter final exam excel file URL"
-          />
-        </div>
-      )}
-
-      <Button onClick={onSubmit} className="w-full mt-4" disabled={loading}>
-        {loading ? 'Processing...' : submitText}
-      </Button>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -670,7 +703,17 @@ const handleAddSubtopic = (topicIndex: number) => {
               <DialogHeader>
                 <DialogTitle>Add New Course</DialogTitle>
               </DialogHeader>
-              <CourseForm onSubmit={handleAddCourse} submitText="Add Course" />
+              <CourseForm 
+                formData={formData}
+                setFormData={setFormData}
+                handleTopicChange={handleTopicChange}
+                handleSubtopicChange={handleSubtopicChange}
+                handleAddTopic={handleAddTopic}
+                handleAddSubtopic={handleAddSubtopic}
+                onSubmit={handleAddCourse} 
+                submitText="Add Course"
+                loading={loading}
+              />
             </DialogContent>
           </Dialog>
         </div>
@@ -736,7 +779,17 @@ const handleAddSubtopic = (topicIndex: number) => {
           <DialogHeader>
             <DialogTitle>Edit Course</DialogTitle>
           </DialogHeader>
-          <CourseForm onSubmit={handleEditCourse} submitText="Update Course" />
+          <CourseForm 
+            formData={formData}
+            setFormData={setFormData}
+            handleTopicChange={handleTopicChange}
+            handleSubtopicChange={handleSubtopicChange}
+            handleAddTopic={handleAddTopic}
+            handleAddSubtopic={handleAddSubtopic}
+            onSubmit={handleEditCourse} 
+            submitText="Update Course"
+            loading={loading}
+          />
         </DialogContent>
       </Dialog>
 
