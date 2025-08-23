@@ -19,15 +19,7 @@ interface EnrolledCourse {
   completedLessons?: number;
 }
 
-interface EnhancedStudentDashboardProps {
-  user: {
-    role: string;
-    name: string;
-  };
-  onLogout: () => void;
-}
-
-const EnhancedStudentDashboard = ({ user, onLogout }: EnhancedStudentDashboardProps) => {
+const EnhancedStudentDashboard = () => {
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);

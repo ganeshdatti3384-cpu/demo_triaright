@@ -75,13 +75,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
 
   const fetchCourses = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.error('No auth token found');
-        return;
-      }
-      
-      const response = await pack365Api.getAllCourses(token);
+      const response = await pack365Api.getAllCourses();
       if (response.success) {
         setCourses(response.data);
       }
@@ -194,13 +188,13 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
         return;
       }
 
-      const response = await pack365Api.createEnrollmentCode({
+      const response = await pack365Api.createEnrollmentCode(token, {
         code: enrollmentCode,
         stream: selectedStream,
         usageLimit: parseInt(usageLimit),
-        expiresAt: expiryDate || undefined,
-        description: description || `Enrollment code for ${selectedStream} stream`
-      }, token);
+        expiresAt: expiresAt || undefined,
+        description: description
+      });
 
       if (response.success) {
         toast.success('Enrollment code created successfully!');
@@ -227,14 +221,14 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
         return;
       }
 
-      const response = await pack365Api.createEnrollmentCode({
+      const response = await pack365Api.createEnrollmentCode(token, {
         code: couponCode,
         stream: selectedStream,
         discountAmount: parseInt(discount),
         usageLimit: parseInt(usageLimit),
         expiresAt: expiryDate || undefined,
-        description: description || `Discount code for ${selectedStream} stream - ${discount}% off`
-      }, token);
+        description: description
+      });
 
       if (response.success) {
         toast.success('Coupon created successfully!');

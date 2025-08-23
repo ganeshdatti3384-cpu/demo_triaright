@@ -96,11 +96,11 @@ const Pack365Management = () => {
         return;
       }
 
-      const response = await pack365Api.createStream({
+      const response = await pack365Api.createStream(token, {
         name: streamFormData.name,
         price: Number(streamFormData.price),
         imageFile: streamFormData.imageFile,
-      }, token);
+      });
 
       if (response.success) {
         await fetchStreams();
@@ -140,11 +140,11 @@ const Pack365Management = () => {
     try {
       setLoading(true);
 
-      const response = await pack365Api.updateStream(editingStream._id, {
+      const response = await pack365Api.updateStream(token, editingStream._id, {
         name: streamFormData.name || editingStream.name,
         price: streamFormData.price ? Number(streamFormData.price) : editingStream.price,
         imageFile: streamFormData.imageFile,
-      }, token);
+      });
 
       if (response.success) {
         await fetchStreams();
@@ -259,7 +259,7 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
       
-      const response = await pack365Api.createCourse(courseData, token);
+      const response = await pack365Api.createCourse(token, courseData);
       if (response.success) {
         toast({ title: 'Course created successfully!' });
         // Refresh streams to get updated course list
@@ -294,7 +294,7 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
 
-      const response = await pack365Api.updateCourse(editingCourse.courseId || editingCourse._id, courseData, token);
+      const response = await pack365Api.updateCourse(token, editingCourse.courseId || editingCourse._id, courseData);
       if (response.success) {
         toast({ title: 'Course updated successfully!' });
         // Refresh streams to get updated course list
