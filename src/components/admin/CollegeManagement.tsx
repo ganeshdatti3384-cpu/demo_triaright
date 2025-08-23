@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Building2, Users, MapPin, Globe, Phone, Mail, User, Calendar, GraduationCap, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
-import { collegeApiExtended as collegeApi } from '@/services/api';
+import { collegeApi } from '@/services/api';
 
 interface College {
   _id: string;
@@ -71,7 +71,10 @@ const fetchColleges = async () => {
     setLoading(true);
 
     // Ensure the API call is actually invoked
-    const response = await collegeApi.getCollegeStats(); // ← add ()
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No auth token found');
+    
+    const response = await collegeApi.getStudentCountByInstitution('', token);
 
     if (response?.colleges) {
       setColleges(response.colleges);

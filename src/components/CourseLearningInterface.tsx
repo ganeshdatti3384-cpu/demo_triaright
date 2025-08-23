@@ -19,7 +19,7 @@ import {
   Award,
   ArrowLeft,
 } from 'lucide-react';
-import { pack365ApiExtended as pack365Api, collegeApiExtended as collegeApi } from '@/services/api';
+import { pack365Api, collegeApi } from '@/services/api';
 import { Pack365Course, EnhancedPack365Enrollment, TopicProgress } from '@/types/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';

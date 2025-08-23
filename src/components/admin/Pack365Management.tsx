@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Eye, Edit, Trash, Upload, FileText, Download, ArrowLeft, BookOpen } from 'lucide-react';
-import { pack365ApiExtended as pack365Api, Pack365Course } from '@/services/api';
+import { pack365Api, Pack365Course } from '@/services/api';
 import { StreamData } from '@/types/api';
 
 const Pack365Management = () => {
@@ -96,11 +96,7 @@ const Pack365Management = () => {
         return;
       }
 
-      const response = await pack365Api.createStream(token, {
-        name: streamFormData.name,
-        price: Number(streamFormData.price),
-        imageFile: streamFormData.imageFile,
-      });
+      const response = await pack365Api.createStream(streamFormData, token);
 
       if (response.success) {
         await fetchStreams();
@@ -140,11 +136,7 @@ const Pack365Management = () => {
     try {
       setLoading(true);
 
-      const response = await pack365Api.updateStream(token, editingStream._id, {
-        name: streamFormData.name || editingStream.name,
-        price: streamFormData.price ? Number(streamFormData.price) : editingStream.price,
-        imageFile: streamFormData.imageFile,
-      });
+      const response = await pack365Api.updateStream(editingStream._id, streamFormData, token);
 
       if (response.success) {
         await fetchStreams();
@@ -189,7 +181,7 @@ const Pack365Management = () => {
     try {
       setLoading(true);
 
-      const response = await pack365Api.deleteStream(token, streamId);
+      const response = await pack365Api.deleteStream(streamId, token);
 
       if (response.success) {
         await fetchStreams();
@@ -259,7 +251,7 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
       
-      const response = await pack365Api.createCourse(token, courseData);
+      const response = await pack365Api.createCourse(courseData, token);
       if (response.success) {
         toast({ title: 'Course created successfully!' });
         // Refresh streams to get updated course list
@@ -294,7 +286,7 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
 
-      const response = await pack365Api.updateCourse(token, editingCourse.courseId || editingCourse._id, courseData);
+      const response = await pack365Api.updateCourse(editingCourse.courseId || editingCourse._id, courseData, token);
       if (response.success) {
         toast({ title: 'Course updated successfully!' });
         // Refresh streams to get updated course list
@@ -329,7 +321,7 @@ const Pack365Management = () => {
     }
 
     try {
-      const response = await pack365Api.deleteCourse(token,courseId);
+      const response = await pack365Api.deleteCourse(courseId, token);
       if (response.success) {
         toast({ title: 'Course deleted successfully!' });
         // Refresh streams to get updated course list

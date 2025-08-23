@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote } from 'lucide-react';
-import { pack365ApiExtended as pack365Api, collegeApiExtended as collegeApi } from '@/services/api';
+import { pack365Api, collegeApi } from '@/services/api';
 import Pack365Management from '../admin/Pack365Management';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
@@ -75,7 +75,10 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
 
   const fetchCourses = async () => {
     try {
-      const response = await pack365Api.getAllCourses();
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No auth token found');
+    
+    const response = await pack365Api.getAllCourses(token);
       if (response.success) {
         setCourses(response.data);
       }
@@ -188,13 +191,13 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
         return;
       }
 
-      const response = await pack365Api.createEnrollmentCode(token, {
+      const response = await pack365Api.createEnrollmentCode({
         code: enrollmentCode,
         stream: selectedStream,
         usageLimit: parseInt(usageLimit),
         expiresAt: expiresAt || undefined,
         description: description
-      });
+      }, token);
 
       if (response.success) {
         toast.success('Enrollment code created successfully!');
@@ -221,14 +224,14 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
         return;
       }
 
-      const response = await pack365Api.createEnrollmentCode(token, {
+      const response = await pack365Api.createEnrollmentCode({
         code: couponCode,
         stream: selectedStream,
         discountAmount: parseInt(discount),
         usageLimit: parseInt(usageLimit),
         expiresAt: expiryDate || undefined,
         description: description
-      });
+      }, token);
 
       if (response.success) {
         toast.success('Coupon created successfully!');
