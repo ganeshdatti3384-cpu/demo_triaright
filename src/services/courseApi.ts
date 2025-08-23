@@ -1,15 +1,8 @@
 
-import axios from 'axios';
+import { mockCourses, getFreeCourses, getPaidCourses, getCourseById } from '@/data/mockCourses';
 
-const BASE_URL = 'https://triaright.com/api';
-
-// Create axios instance with default config
-const api = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// Simulate API delay for realistic experience
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Course interfaces
 export interface Course {
@@ -51,16 +44,16 @@ export const courseApi = {
   // Get all courses
   getAllCourses: async (): Promise<CourseResponse> => {
     try {
-      const response = await api.get('/courses');
+      await delay(500); // Simulate network delay
       return {
         success: true,
-        courses: response.data
+        courses: mockCourses
       };
     } catch (error: any) {
       console.error('Error fetching courses:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to fetch courses'
+        message: 'Failed to fetch courses'
       };
     }
   },
@@ -68,16 +61,24 @@ export const courseApi = {
   // Get course by ID
   getCourseById: async (courseId: string): Promise<CourseResponse> => {
     try {
-      const response = await api.get(`/courses/${courseId}`);
-      return {
-        success: true,
-        course: response.data
-      };
+      await delay(300); // Simulate network delay
+      const course = getCourseById(courseId);
+      if (course) {
+        return {
+          success: true,
+          course
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Course not found'
+        };
+      }
     } catch (error: any) {
       console.error('Error fetching course:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to fetch course'
+        message: 'Failed to fetch course'
       };
     }
   },
@@ -85,16 +86,16 @@ export const courseApi = {
   // Get free courses
   getFreeCourses: async (): Promise<CourseResponse> => {
     try {
-      const response = await api.get('/courses/free');
+      await delay(400); // Simulate network delay
       return {
         success: true,
-        courses: response.data
+        courses: getFreeCourses()
       };
     } catch (error: any) {
       console.error('Error fetching free courses:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to fetch free courses'
+        message: 'Failed to fetch free courses'
       };
     }
   },
@@ -102,83 +103,70 @@ export const courseApi = {
   // Get paid courses
   getPaidCourses: async (): Promise<CourseResponse> => {
     try {
-      const response = await api.get('/courses/paid');
+      await delay(400); // Simulate network delay
       return {
         success: true,
-        courses: response.data
+        courses: getPaidCourses()
       };
     } catch (error: any) {
       console.error('Error fetching paid courses:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to fetch paid courses'
+        message: 'Failed to fetch paid courses'
       };
     }
   },
 
-  // Create course (admin only)
+  // Create course (admin only) - Mock implementation
   createCourse: async (courseData: FormData, token: string): Promise<CourseResponse> => {
     try {
-      const response = await api.post('/courses/postcourse', courseData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await delay(1000); // Simulate network delay
+      // In a real implementation, this would create a new course
       return {
         success: true,
-        course: response.data.course,
-        message: response.data.message
+        message: 'Course created successfully (mock)'
       };
     } catch (error: any) {
       console.error('Error creating course:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to create course'
+        message: 'Failed to create course'
       };
     }
   },
 
-  // Update course (superadmin only)
+  // Update course (superadmin only) - Mock implementation
   updateCourse: async (courseId: string, courseData: FormData, token: string): Promise<CourseResponse> => {
     try {
-      const response = await api.put(`/courses/${courseId}`, courseData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await delay(1000); // Simulate network delay
+      // In a real implementation, this would update the course
       return {
         success: true,
-        course: response.data.course,
-        message: response.data.message
+        message: 'Course updated successfully (mock)'
       };
     } catch (error: any) {
       console.error('Error updating course:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to update course'
+        message: 'Failed to update course'
       };
     }
   },
 
-  // Delete course (superadmin only)
+  // Delete course (superadmin only) - Mock implementation
   deleteCourse: async (courseId: string, token: string): Promise<CourseResponse> => {
     try {
-      const response = await api.delete(`/courses/${courseId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      await delay(800); // Simulate network delay
+      // In a real implementation, this would delete the course
       return {
         success: true,
-        message: response.data.message
+        message: 'Course deleted successfully (mock)'
       };
     } catch (error: any) {
       console.error('Error deleting course:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to delete course'
+        message: 'Failed to delete course'
       };
     }
   }
