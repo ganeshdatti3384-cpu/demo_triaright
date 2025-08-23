@@ -1,6 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 
+// Import types from centralized location
+export type { 
+  Pack365Course, 
+  EnhancedPack365Enrollment, 
+  RegisterPayload,
+  Course,
+  College,
+  StudentProfile,
+  JobSeekerProfile,
+  Employer,
+  EnrollmentCode,
+  CreateEnrollmentCodeInput,
+  Exam
+} from '@/types/api';
+
 const BASE_URL = 'https://triaright.com/api';
 
 // Create axios instance with default config
@@ -10,6 +25,15 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+import type { Course } from '@/types/api';
+
+export interface CourseResponse {
+  success: boolean;
+  message?: string;
+  course?: Course;
+  courses?: Course[];
+}
 
 // Auth API functions
 export const authApi = {
@@ -167,61 +191,6 @@ export const collegeApi = {
     }
   },
 };
-
-export interface Pack365Course {
-  _id: string;
-  courseId: string;
-  courseName: string;
-  courseDescription: string;
-  demoVideoLink?: string;
-  courseType: 'paid' | 'unpaid';
-  price: number;
-  duration: number;
-  stream: string;
-  providerName: string;
-  instructorName: string;
-  courseLanguage: string;
-  certificationProvided: boolean;
-  additionalInformation?: string;
-  courseImageLink?: string;
-  curriculumDocLink?: string;
-  curriculum: Array<{
-    title: string;
-    duration: number;
-    description?: string;
-  }>;
-  totalDuration: number;
-  createdAt: string;
-  updatedAt: string;
-  description?: string;
-  topics?: Array<{
-    name: string;
-    link: string;
-    duration: number;
-  }>;
-  examFile?: File;
-  documentLink?: string;
-}
-
-export interface EnhancedPack365Enrollment {
-  _id: string;
-  userId: string;
-  courseId: string;
-  course: Pack365Course;
-  enrolledAt: string;
-  progress: number;
-  completionStatus: 'enrolled' | 'in-progress' | 'completed';
-  topicProgress: Array<{
-    topicName: string;
-    completed: boolean;
-    completedAt?: string;
-  }>;
-  totalWatchedPercentage?: number;
-  isExamCompleted?: boolean;
-  examScore?: number;
-  courseName?: string;
-  stream?: string;
-}
 
 // Pack365 API functions
 export const pack365Api = {
@@ -626,44 +595,8 @@ export const razorpayApi = {
   },
 };
 
-// Course interfaces
-export interface Course {
-  _id: string;
-  courseId: string;
-  courseName: string;
-  courseDescription: string;
-  demoVideoLink?: string;
-  courseType: 'paid' | 'unpaid';
-  price: number;
-  duration: number;
-  stream: string;
-  providerName: string;
-  instructorName: string;
-  courseLanguage: string;
-  certificationProvided: boolean;
-  additionalInformation?: string;
-  courseImageLink?: string;
-  curriculumDocLink?: string;
-  curriculum: Array<{
-    title: string;
-    duration: number;
-    description?: string;
-  }>;
-  totalDuration: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CourseResponse {
-  success: boolean;
-  message?: string;
-  course?: Course;
-  courses?: Course[];
-}
-
 // Course API functions
 export const courseApi = {
-  // Get all courses
   getAllCourses: async (): Promise<CourseResponse> => {
     try {
       const response = await api.get('/courses');
@@ -679,8 +612,6 @@ export const courseApi = {
       };
     }
   },
-
-  // Get course by ID
   getCourseById: async (courseId: string): Promise<CourseResponse> => {
     try {
       const response = await api.get(`/courses/${courseId}`);
@@ -696,8 +627,6 @@ export const courseApi = {
       };
     }
   },
-
-  // Get free courses
   getFreeCourses: async (): Promise<CourseResponse> => {
     try {
       const response = await api.get('/courses/free');
@@ -713,8 +642,6 @@ export const courseApi = {
       };
     }
   },
-
-  // Get paid courses
   getPaidCourses: async (): Promise<CourseResponse> => {
     try {
       const response = await api.get('/courses/paid');
@@ -730,8 +657,6 @@ export const courseApi = {
       };
     }
   },
-
-  // Create course (admin only)
   createCourse: async (courseData: FormData, token: string): Promise<CourseResponse> => {
     try {
       const response = await api.post('/courses/postcourse', courseData, {
@@ -753,8 +678,6 @@ export const courseApi = {
       };
     }
   },
-
-  // Update course (superadmin only)
   updateCourse: async (courseId: string, courseData: FormData, token: string): Promise<CourseResponse> => {
     try {
       const response = await api.put(`/courses/${courseId}`, courseData, {
@@ -776,8 +699,6 @@ export const courseApi = {
       };
     }
   },
-
-  // Delete course (superadmin only)
   deleteCourse: async (courseId: string, token: string): Promise<CourseResponse> => {
     try {
       const response = await api.delete(`/courses/${courseId}`, {

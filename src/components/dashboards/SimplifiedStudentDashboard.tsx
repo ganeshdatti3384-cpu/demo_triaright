@@ -63,7 +63,7 @@ const SimplifiedStudentDashboard = ({ user, onLogout }: SimplifiedStudentDashboa
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome back, {user?.firstName || user?.name || currentUser?.firstName || currentUser?.name || 'Student'}!
+              Welcome back, {user?.name || currentUser?.name || 'Student'}!
             </h1>
             <p className="text-gray-600">Continue your learning journey</p>
           </div>
