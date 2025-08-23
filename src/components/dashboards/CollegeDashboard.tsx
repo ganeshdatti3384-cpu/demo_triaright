@@ -99,7 +99,7 @@ useEffect(() => {
         setCount(res.count);
         setStudents(res.students);
       } else {
-        setError(res.message ?? 'Failed to fetch.');
+        setError('Failed to fetch student count.');
       }
     } catch (err: any) {
       setError(err.message ?? 'Error occurred.');

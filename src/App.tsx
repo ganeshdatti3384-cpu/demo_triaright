@@ -170,7 +170,7 @@ const App = () => {
             path="/college"
             element={
               <ProtectedRoute allowedRoles={['college']}>
-                <CollegeDashboard />
+                <CollegeDashboard user={getCurrentUser()} onLogout={handleLogout} />
               </ProtectedRoute>
             }
           />

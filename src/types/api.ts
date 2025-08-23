@@ -279,3 +279,117 @@ export interface StreamData {
   id: string;
   status?: string;
 }
+
+// Enhanced Course Types based on MongoDB Schema
+export interface SubTopic {
+  name: string;
+  link: string;
+  duration: number;
+}
+
+export interface Topic {
+  topicName: string;
+  topicCount: number;
+  subtopics: SubTopic[];
+  directLink?: string;
+  examExcelLink?: string;
+}
+
+export interface EnhancedCourse {
+  _id: string;
+  courseId: string;
+  courseName: string;
+  courseDescription: string;
+  curriculum: Topic[];
+  demoVideoLink: string;
+  courseType: 'paid' | 'unpaid';
+  price: number;
+  totalDuration: number;
+  stream: 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability';
+  providerName: 'triaright' | 'etv' | 'kalasalingan' | 'instructor';
+  instructorName: string;
+  courseLanguage: string;
+  certificationProvided: 'yes' | 'no';
+  additionalInformation?: string;
+  courseImageLink: string;
+  curriculumDocLink?: string;
+  hasFinalExam: boolean;
+  finalExamExcelLink?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Question and Exam Types
+export interface Question {
+  questionText: string;
+  options: [string, string, string, string];
+  correctAnswer: string;
+  type: 'easy' | 'medium' | 'hard';
+  description?: string;
+}
+
+export interface CourseExam {
+  _id: string;
+  examId: string;
+  courseId: string;
+  topicName?: string;
+  isFinalExam: boolean;
+  questions: Question[];
+  maxAttempts: number;
+  passingScore: number;
+  timeLimit: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Exam Result Types
+export interface CourseExamResult {
+  _id: string;
+  userId: string;
+  courseId: string;
+  examId: string;
+  topicName?: string;
+  isFinalExam: boolean;
+  attemptNumber?: number;
+  score: number;
+  passed: boolean;
+  attemptedAt: string;
+}
+
+// Progress Tracking Types
+export interface SubTopicProgress {
+  subTopicName: string;
+  subTopicLink: string;
+  watchedDuration: number;
+  totalDuration: number;
+}
+
+export interface TopicProgressEnhanced {
+  topicName: string;
+  subtopics: SubTopicProgress[];
+  topicWatchedDuration: number;
+  topicTotalDuration: number;
+  examAttempted: boolean;
+  examScore: number;
+  passed: boolean;
+}
+
+export interface CourseEnrollment {
+  _id: string;
+  userId: string;
+  courseId: string;
+  enrollmentDate: string;
+  isPaid: boolean;
+  orderId?: string;
+  paymentId?: string;
+  amountPaid?: number;
+  progress: TopicProgressEnhanced[];
+  totalWatchedDuration: number;
+  totalVideoDuration: number;
+  finalExamEligible: boolean;
+  finalExamAttempted: boolean;
+  accessExpiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
