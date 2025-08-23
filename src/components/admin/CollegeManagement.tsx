@@ -71,10 +71,7 @@ const fetchColleges = async () => {
     setLoading(true);
 
     // Ensure the API call is actually invoked
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('No auth token found');
-    
-    const response = await collegeApi.getStudentCountByInstitution('', token);
+    const response = await collegeApi.getCollegeStats(); // ← add ()
 
     if (response?.colleges) {
       setColleges(response.colleges);

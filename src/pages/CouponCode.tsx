@@ -40,7 +40,10 @@ const CouponCode = () => {
         throw new Error('Authentication required');
       }
 
-      const response = await pack365Api.enrollWithCode(couponCode, streamName, token);
+      const response = await pack365Api.enrollWithCode(token, {
+        code: couponCode,
+        courseId: courseId || courseName || streamName
+      });
 
       if (response?.success) {
         if (fromStream && streamName) {

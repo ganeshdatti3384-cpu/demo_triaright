@@ -183,7 +183,7 @@ const ExamInterface: React.FC = () => {
         timeTaken: Math.round(timeTaken / 60) // Convert to minutes
       };
 
-      const response = await pack365Api.submitExam(examId, answers, token);
+      const response = await pack365Api.submitExam(token, submitData);
       
       setExamCompleted(true);
       setShowSubmitDialog(false);
