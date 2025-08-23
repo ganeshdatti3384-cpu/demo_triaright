@@ -1,217 +1,201 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import Footer from '@/components/Footer';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, Filter, BookOpen, Clock, Users, Star } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import AuthModal from '@/components/AuthModal';
-import { useNavigate } from 'react-router-dom';
-import { Clock, Users, Star, Code, Database, Calculator, TrendingUp, Briefcase } from 'lucide-react';
+import Footer from '@/components/Footer';
+import CourseCards from '@/components/CourseCards';
+import { courseApi, Course } from '@/services/courseApi';
+import { useToast } from '@/hooks/use-toast';
 
 const RecordedCourses = () => {
-  const navigate = useNavigate();
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStream, setSelectedStream] = useState('all');
+  const [selectedType, setSelectedType] = useState('all');
+  const { toast } = useToast();
 
-  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
-    setAuthModal({ isOpen: true, type, userType });
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const response = await courseApi.getAllCourses();
+      
+      if (response.success && response.courses) {
+        setCourses(response.courses);
+        setFilteredCourses(response.courses);
+      } else {
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to load courses',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load courses',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCloseAuth = () => {
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-  };
+  useEffect(() => {
+    let filtered = courses;
 
-  const handleAuthSuccess = (userRole: string, userName: string) => {
-    console.log(`User ${userName} logged in as ${userRole}`);
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-    // You can add additional logic here like redirecting or updating user state
-  };
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(course =>
+        course.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        course.courseDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        course.instructorName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
-  const courses = [
-  {
-    id: 'web-development',
-    title: 'Web Development',
-    description: 'Master HTML, CSS, JavaScript, React and build modern web applications',
-    duration: '12 weeks',
-    students: '2,500+',
-    rating: 4.8,
-    color: 'bg-blue-500',
-    icon: Code,
-    price: "₹2,999",
-    originalPrice: "₹4,999",
-    lessons: 45,
-    level: "Beginner to Advanced"
-  },
-  {
-    id: 'data-science',
-    title: 'Data Science',
-    description: 'Learn Python, Machine Learning, Statistics and Data Analysis',
-    duration: '16 weeks',
-    students: '1,800+',
-    rating: 4.9,
-    color: 'bg-orange-500',
-    icon: Database,
-    price: "₹2,499",
-    originalPrice: "₹3,999",
-    lessons: 38,
-    level: "Beginner"
-  },
-  {
-    id: 3,
-    title: 'Aptitude Training',
-    description: 'Quantitative aptitude, logical reasoning, and verbal ability',
-    duration: '8 weeks',
-    students: '3,200+',
-    rating: 4.7,
-    color: 'bg-green-500',
-    icon: Calculator,
-    price: "₹1,999",
-    originalPrice: "₹2,999",
-    lessons: 30,
-    level: "Beginner to Intermediate"
-  },
-  {
-    id: 4,
-    title: 'Business Analytics',
-    description: 'Excel, Power BI, Tableau and business intelligence tools',
-    duration: '10 weeks',
-    students: '1,500+',
-    rating: 4.6,
-    color: 'bg-purple-500',
-    icon: TrendingUp,
-    price: "₹3,499",
-    originalPrice: "₹5,499",
-    lessons: 55,
-    level: "Beginner to Advanced"
-  },
-  {
-    id: 5,
-    title: 'Soft Skills',
-    description: 'Communication, leadership and professional development',
-    duration: '6 weeks',
-    students: '4,000+',
-    rating: 4.8,
-    color: 'bg-pink-500',
-    icon: Users,
-    price: "₹2,299",
-    originalPrice: "₹3,499",
-    lessons: 35,
-    level: "Beginner"
-  },
-  {
-    id: 6,
-    title: 'Job Readiness',
-    description: 'Resume building, interview preparation and placement support',
-    duration: '4 weeks',
-    students: '2,800+',
-    rating: 4.9,
-    color: 'bg-indigo-500',
-    icon: Briefcase,
-    price: "₹3,299",
-    originalPrice: "₹4,799",
-    lessons: 42,
-    level: "Intermediate"
-  }
-];
+    // Filter by stream
+    if (selectedStream !== 'all') {
+      filtered = filtered.filter(course => course.stream === selectedStream);
+    }
 
-  const handleCourseClick = (courseId: string) => {
-    navigate(`/courses/recorded/${courseId}`);
-  };
+    // Filter by type
+    if (selectedType !== 'all') {
+      filtered = filtered.filter(course => course.courseType === selectedType);
+    }
+
+    setFilteredCourses(filtered);
+  }, [courses, searchTerm, selectedStream, selectedType]);
+
+  const streams = [...new Set(courses.map(course => course.stream))];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <>
       <Navbar />
-      
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Recorded Courses</h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Learn at your own pace with our comprehensive recorded courses. Access lifetime content and build your skills with industry-expert instructors.
-            </p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        {/* Hero Section */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <h1 className="text-4xl md:text-6xl font-bold mb-4">
+                Recorded Courses
+              </h1>
+              <p className="text-xl md:text-2xl text-blue-100 mb-8">
+                Learn at your own pace with our comprehensive course library
+              </p>
+              <div className="flex items-center justify-center space-x-8 text-blue-100">
+                <div className="flex items-center space-x-2">
+                  <BookOpen className="h-5 w-5" />
+                  <span>{courses.length}+ Courses</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Expert Instructors</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-5 w-5" />
+                  <span>Lifetime Access</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Courses Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {courses.map((course) => (
-           <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleCourseClick(String(course.id))}>
-  <div className="relative flex items-center justify-center h-48">
-    <div className={`h-24 w-24 ${course.color} rounded-full flex items-center justify-center`}>
-      <course.icon className="h-12 w-12 text-white" />
-    </div>
-    <div className="absolute top-4 right-4">
-      <Badge variant="secondary" className="bg-white/90">
-        {course.level}
-      </Badge>
-    </div>
-  </div>
+        {/* Filters Section */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Filter className="h-5 w-5 mr-2" />
+                Filter Courses
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    type="text"
+                    placeholder="Search courses..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                <Select value={selectedStream} onValueChange={setSelectedStream}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Stream" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Streams</SelectItem>
+                    {streams.map((stream) => (
+                      <SelectItem key={stream} value={stream}>
+                        {stream}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-  <CardHeader>
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        <CardTitle className="text-lg mb-2">{course.title}</CardTitle>
-        <CardDescription className="text-sm">{course.description}</CardDescription>
-      </div>
-    </div>
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Course Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="free">Free Courses</SelectItem>
+                    <SelectItem value="paid">Paid Courses</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
 
-    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-4">
-      <div className="flex items-center">
-        <Clock className="h-4 w-4 mr-1" />
-        {course.duration}
-      </div>
-      <div className="flex items-center">
-        <Users className="h-4 w-4 mr-1" />
-        {course.students}
-      </div>
-      <div className="flex items-center">
-        <Star className="h-4 w-4 mr-1 fill-yellow-400 text-yellow-400" />
-        {course.rating}
-      </div>
-    </div>
-  </CardHeader>
-
-  <CardContent>
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center space-x-2">
-        <span className="text-2xl font-bold text-brand-primary">{course.price}</span>
-        <span className="text-lg text-gray-500 line-through">{course.originalPrice}</span>
-      </div>
-      <div className="text-sm text-gray-600">
-        {course.lessons} lessons
-      </div>
-    </div>
-  </CardContent>
-
-  <CardFooter>
-    <Button 
-      onClick={(e) => {
-        e.stopPropagation();
-        handleCourseClick(String(course.id));
-      }}
-      className="w-full bg-brand-primary hover:bg-blue-700 text-white"
-    >
-      View Details
-    </Button>
-  </CardFooter>
-</Card>
-
-          ))}
+          {/* Course Tabs */}
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="all">All Courses ({filteredCourses.length})</TabsTrigger>
+              <TabsTrigger value="free">
+                Free Courses ({filteredCourses.filter(c => c.courseType === 'unpaid').length})
+              </TabsTrigger>
+              <TabsTrigger value="paid">
+                Paid Courses ({filteredCourses.filter(c => c.courseType === 'paid').length})
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="all" className="mt-8">
+              <CourseCards courses={filteredCourses} type="recorded" />
+            </TabsContent>
+            
+            <TabsContent value="free" className="mt-8">
+              <CourseCards 
+                courses={filteredCourses.filter(c => c.courseType === 'unpaid')} 
+                type="free" 
+              />
+            </TabsContent>
+            
+            <TabsContent value="paid" className="mt-8">
+              <CourseCards 
+                courses={filteredCourses.filter(c => c.courseType === 'paid')} 
+                type="paid" 
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-
-      <AuthModal
-        isOpen={authModal.isOpen}
-        onClose={handleCloseAuth}
-        type={authModal.type}
-        userType={authModal.userType}
-        onAuthSuccess={handleAuthSuccess}
-      />
       <Footer />
-    </div>
+    </>
   );
 };
 
