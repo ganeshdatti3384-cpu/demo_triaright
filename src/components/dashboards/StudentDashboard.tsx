@@ -16,11 +16,12 @@ import EnhancedProfile from '../EnhancedProfile';
 import { useNavigate } from 'react-router-dom';
 import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
-import { pack365Api, Pack365Course, EnhancedPack365Enrollment } from '@/services/api';
+import { pack365Api, Pack365Course, EnhancedPack365Enrollment, courseApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import Pack365Courses from '../Pack365Courses';
 import Pack365Dashboard from '../Pack365Dashboard';
 import Pack365CoursesStudent from '../Pack365Courses2';
+import { EnhancedCourse } from '@/types/api';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -30,8 +31,12 @@ const StudentDashboard = () => {
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
   const [pack365Courses, setPack365Courses] = useState<Pack365Course[]>([]);
   const [pack365Enrollments, setPack365Enrollments] = useState<EnhancedPack365Enrollment[]>([]);
+  const [allCourses, setAllCourses] = useState<EnhancedCourse[]>([]);
+  const [freeCourses, setFreeCourses] = useState<EnhancedCourse[]>([]);
+  const [paidCourses, setPaidCourses] = useState<EnhancedCourse[]>([]);
   const [loadingPack365, setLoadingPack365] = useState(false);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
     const [loading, setLoading] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,31 +59,31 @@ const StudentDashboard = () => {
       }
     };
 
-    fetchEnrollments();
+    loadPack365Enrollments();
+    loadAllCourses();
   }, []);
 
-  const loadPack365Courses = async () => {
+  const loadAllCourses = async () => {
     try {
-      setLoadingPack365(true);
-      const response = await pack365Api.getAllCourses();
-      if (response.success) {
-        setPack365Courses(response.data);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to load Pack365 courses",
-          variant: "destructive",
-        });
-      }
+      setLoadingCourses(true);
+      const [allCoursesData, freeCoursesData, paidCoursesData] = await Promise.all([
+        courseApi.getAllCourses(),
+        courseApi.getFreeCourses(),
+        courseApi.getPaidCourses()
+      ]);
+      
+      setAllCourses(allCoursesData);
+      setFreeCourses(freeCoursesData);
+      setPaidCourses(paidCoursesData);
     } catch (error: any) {
-      console.error('Error loading Pack365 courses:', error);
+      console.error('Error loading courses:', error);
       toast({
         title: "Error",
-        description: "Failed to load Pack365 courses. Please try again.",
+        description: "Failed to load courses. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setLoadingPack365(false);
+      setLoadingCourses(false);
     }
   };
   const loadPack365Enrollments = async () => {
@@ -149,14 +154,25 @@ const StudentDashboard = () => {
 
 
   // Filter courses based on stream and search term
-  const filteredCourses = pack365Courses.filter(course => {
+  const filteredFreeCourses = freeCourses.filter(course => {
     const matchesFilter = courseFilter === 'all' || course.stream.toLowerCase() === courseFilter.toLowerCase();
     const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  // Get unique streams for filter options
-  const streams = ['all', ...Array.from(new Set(pack365Courses.map(course => course.stream)))];
+  const filteredPaidCourses = paidCourses.filter(course => {
+    const matchesFilter = courseFilter === 'all' || course.stream.toLowerCase() === courseFilter.toLowerCase();
+    const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  // Get unique streams for filter options from all courses
+  const streams = ['all', ...Array.from(new Set(allCourses.map(course => course.stream)))];
+
+  const handleEnrollInCourse = (courseId: string) => {
+    // Navigate to course enrollment page
+    navigate(`/course-enrollment/${courseId}`);
+  };
   const pack365Stats = {
     totalStreams: pack365Enrollments.length,
     totalCourses: pack365Enrollments.length, // Each enrollment represents one course/stream
@@ -507,7 +523,7 @@ const StudentDashboard = () => {
                 <CardContent>
                   <Tabs defaultValue="browse" className="w-full">
                     <TabsList className="mb-4">
-                      <TabsTrigger value="browse" onClick={loadPack365Courses}>Browse Courses</TabsTrigger>
+                      <TabsTrigger value="browse">Browse Courses</TabsTrigger>
                       <TabsTrigger value="enrollments" onClick={loadPack365Enrollments}>My Enrollments</TabsTrigger>
                     </TabsList>
 

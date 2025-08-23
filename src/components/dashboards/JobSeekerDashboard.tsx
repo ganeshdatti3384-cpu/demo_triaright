@@ -22,6 +22,7 @@ import {
   Edit,
   Trash2
 } from 'lucide-react';
+import { courseApi } from '@/services/api';
 import Navbar from '../Navbar';
 
 interface Course {
@@ -71,6 +72,8 @@ const JobSeekerDashboard = () => {
       deadline: '2024-08-01'
     }
   ]);
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(false);
   const [newGoal, setNewGoal] = useState('');
   const [goals, setGoals] = useState<string[]>([]);
   const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
@@ -91,7 +94,22 @@ const JobSeekerDashboard = () => {
     if (storedGoals) {
       setGoals(JSON.parse(storedGoals));
     }
+
+    // Load available courses
+    loadAvailableCourses();
   }, []);
+
+  const loadAvailableCourses = async () => {
+    try {
+      setLoadingCourses(true);
+      const courses = await courseApi.getAllCourses();
+      setAvailableCourses(courses);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('jobSeekerGoals', JSON.stringify(goals));

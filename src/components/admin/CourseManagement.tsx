@@ -9,83 +9,171 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Upload, FileSpreadsheet } from 'lucide-react';
+import { courseApi } from '@/services/api';
+import { EnhancedCourse } from '@/types/api';
 
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  instructor: string;
-  duration: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced';
-  type: 'live' | 'recorded';
-  price: number;
-  isPaid: boolean;
-  image: string;
-  skills: string[];
-  category: string;
-  subtopics: SubTopicSchema[];
-}
-
-interface SubTopicSchema {
+interface SubTopicForm {
   name: string;
   link: string;
+  duration: number;
+}
+
+interface TopicForm {
+  topicName: string;
+  topicCount: number;
+  subtopics: SubTopicForm[];
+  directLink: string;
+  examExcelLink: string;
 }
 const CourseManagement = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<EnhancedCourse[]>([]);
+  const [loading, setLoading] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isExcelUploadOpen, setIsExcelUploadOpen] = useState(false);
   const [isExamUploadOpen, setIsExamUploadOpen] = useState(false);
   const [selectedCourseForExam, setSelectedCourseForExam] = useState<string>('');
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editingCourse, setEditingCourse] = useState<EnhancedCourse | null>(null);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    instructor: '',
-    duration: '',
-    level: 'Beginner' as 'Beginner' | 'Intermediate' | 'Advanced',
-    type: 'live' as 'live' | 'recorded',
+    courseName: '',
+    courseDescription: '',
+    instructorName: '',
+    totalDuration: 0,
+    courseType: 'unpaid' as 'paid' | 'unpaid',
     price: 0,
-    isPaid: false,
-    image: '',
-    skills: '',
-    category: '',
-    subtopics: [{ name: '', link: '' }],
+    courseImageLink: '',
+    stream: 'it' as 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability',
+    providerName: 'triaright' as 'triaright' | 'etv' | 'kalasalingan' | 'instructor',
+    courseLanguage: 'English',
+    certificationProvided: 'yes' as 'yes' | 'no',
+    additionalInformation: '',
+    demoVideoLink: '',
+    curriculumDocLink: '',
+    curriculum: [{ 
+      topicName: '', 
+      topicCount: 1, 
+      subtopics: [{ name: '', link: '', duration: 0 }], 
+      directLink: '', 
+      examExcelLink: '' 
+    }] as TopicForm[],
+    hasFinalExam: false,
+    finalExamExcelLink: '',
   });
   const { toast } = useToast();
 
-  // Load courses from localStorage on component mount
+  // Load courses from API on component mount
   useEffect(() => {
-    const savedCourses = localStorage.getItem('adminCourses');
-    if (savedCourses) {
-      setCourses(JSON.parse(savedCourses));
-    }
+    fetchCourses();
   }, []);
 
-  // Save courses to localStorage whenever courses change
-  useEffect(() => {
-    localStorage.setItem('adminCourses', JSON.stringify(courses));
-  }, [courses]);
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const coursesData = await courseApi.getAllCourses();
+      setCourses(coursesData);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load courses",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
-      title: '',
-      description: '',
-      instructor: '',
-      duration: '',
-      level: 'Beginner',
-      type: 'live',
+      courseName: '',
+      courseDescription: '',
+      instructorName: '',
+      totalDuration: 0,
+      courseType: 'unpaid',
       price: 0,
-      isPaid: false,
-      image: '',
-      skills: '',
-      category: '',
-      subtopics: [{ name: '', link: '' }],
+      courseImageLink: '',
+      stream: 'it',
+      providerName: 'triaright',
+      courseLanguage: 'English',
+      certificationProvided: 'yes',
+      additionalInformation: '',
+      demoVideoLink: '',
+      curriculumDocLink: '',
+      curriculum: [{ 
+        topicName: '', 
+        topicCount: 1, 
+        subtopics: [{ name: '', link: '', duration: 0 }], 
+        directLink: '', 
+        examExcelLink: '' 
+      }] as TopicForm[],
+      hasFinalExam: false,
+      finalExamExcelLink: '',
     });
   };
 
-  const handleAddCourse = () => {
-    if (!formData.title || !formData.instructor) {
+  const handleAddCourse = async () => {
+    if (!formData.courseName || !formData.instructorName || !formData.demoVideoLink) {
+      toast({
+        title: "Error",
+        description: "Please fill in required fields (Course Name, Instructor, Demo Video)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create FormData for multipart/form-data request
+      const formDataToSend = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key === 'curriculum') {
+          formDataToSend.append(key, JSON.stringify(value));
+        } else {
+          formDataToSend.append(key, value.toString());
+        }
+      });
+
+      const response = await courseApi.createCourse(token, formDataToSend);
+      
+      if (response.success) {
+        await fetchCourses(); // Refresh courses list
+        resetForm();
+        setIsAddDialogOpen(false);
+        toast({
+          title: "Success",
+          description: response.message || "Course added successfully"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: response.message || "Failed to add course",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error('Error adding course:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add course",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditCourse = async () => {
+    if (!editingCourse || !formData.courseName || !formData.instructorName) {
       toast({
         title: "Error",
         description: "Please fill in required fields",
@@ -94,74 +182,124 @@ const CourseManagement = () => {
       return;
     }
 
-    const newCourse: Course = {
-      id: Date.now().toString(),
-      ...formData,
-      skills: formData.skills.split(',').map(skill => skill.trim()),
-      subtopics: formData.subtopics.filter(st => st.name.trim() && st.link.trim()),
-    };
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    setCourses(prev => [...prev, newCourse]);
-    resetForm();
-    setIsAddDialogOpen(false);
-    toast({
-      title: "Success",
-      description: "Course added successfully"
-    });
-  };
+      // Create FormData for multipart/form-data request
+      const formDataToSend = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key === 'curriculum') {
+          formDataToSend.append(key, JSON.stringify(value));
+        } else {
+          formDataToSend.append(key, value.toString());
+        }
+      });
 
-  const handleEditCourse = () => {
-    if (!editingCourse || !formData.title || !formData.instructor) {
+      const response = await courseApi.updateCourse(token, editingCourse.courseId!, formDataToSend);
+      
+      if (response.success) {
+        await fetchCourses(); // Refresh courses list
+        resetForm();
+        setIsEditDialogOpen(false);
+        setEditingCourse(null);
+        toast({
+          title: "Success",
+          description: response.message || "Course updated successfully"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: response.message || "Failed to update course",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error('Error updating course:', error);
       toast({
         title: "Error",
-        description: "Please fill in required fields",
+        description: error.message || "Failed to update course",
         variant: "destructive"
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    const updatedCourse: Course = {
-      ...editingCourse,
-      ...formData,
-      skills: formData.skills.split(',').map(skill => skill.trim()),
-      subtopics: formData.subtopics.filter(st => st.name.trim() && st.link.trim()),
-    };
-
-    setCourses(prev => prev.map(course => 
-      course.id === editingCourse.id ? updatedCourse : course
-    ));
-    resetForm();
-    setIsEditDialogOpen(false);
-    setEditingCourse(null);
-    toast({
-      title: "Success",
-      description: "Course updated successfully"
-    });
   };
 
-  const handleDeleteCourse = (courseId: string) => {
-    setCourses(prev => prev.filter(course => course.id !== courseId));
-    toast({
-      title: "Success",
-      description: "Course deleted successfully"
-    });
+  const handleDeleteCourse = async (courseId: string) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await courseApi.deleteCourse(token, courseId);
+      
+      if (response.success) {
+        await fetchCourses(); // Refresh courses list
+        toast({
+          title: "Success",
+          description: response.message || "Course deleted successfully"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: response.message || "Failed to delete course",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error('Error deleting course:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete course",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const openEditDialog = (course: Course) => {
+  const openEditDialog = (course: EnhancedCourse) => {
     setEditingCourse(course);
     setFormData({
-      title: course.title,
-      description: course.description,
-      instructor: course.instructor,
-      duration: course.duration,
-      level: course.level,
-      type: course.type,
-      price: course.price,
-      isPaid: course.isPaid,
-      image: course.image,
-      skills: course.skills.join(', '),
-      category: course.category,
-      subtopics: course.subtopics
+      courseName: course.courseName,
+      courseDescription: course.courseDescription,
+      instructorName: course.instructorName,
+      totalDuration: course.totalDuration,
+      courseType: course.courseType,
+      price: course.price || 0,
+      courseImageLink: course.courseImageLink,
+      stream: course.stream,
+      providerName: course.providerName,
+      courseLanguage: course.courseLanguage,
+      certificationProvided: course.certificationProvided,
+      additionalInformation: course.additionalInformation || '',
+      demoVideoLink: course.demoVideoLink,
+      curriculumDocLink: course.curriculumDocLink || '',
+      curriculum: course.curriculum.map(topic => ({
+        topicName: topic.topicName,
+        topicCount: topic.topicCount,
+        subtopics: topic.subtopics,
+        directLink: topic.directLink || '',
+        examExcelLink: topic.examExcelLink || ''
+      })) as TopicForm[],
+      hasFinalExam: course.hasFinalExam || false,
+      finalExamExcelLink: course.finalExamExcelLink || '',
     });
     setIsEditDialogOpen(true);
   };
@@ -193,47 +331,73 @@ const CourseManagement = () => {
     setSelectedCourseForExam(courseId);
     setIsExamUploadOpen(true);
   };
-const handleAddSubtopic = () => {
+const handleAddSubtopic = (topicIndex: number) => {
+    const updated = [...formData.curriculum];
+    updated[topicIndex].subtopics.push({ name: '', link: '', duration: 0 });
+    setFormData(prev => ({ ...prev, curriculum: updated }));
+  };
+
+  const handleSubtopicChange = (topicIndex: number, subtopicIndex: number, key: 'name' | 'link' | 'duration', value: string | number) => {
+    const updated = [...formData.curriculum];
+    if (key === 'duration') {
+      updated[topicIndex].subtopics[subtopicIndex][key] = value as number;
+    } else {
+      updated[topicIndex].subtopics[subtopicIndex][key] = value as string;
+    }
+    setFormData(prev => ({ ...prev, curriculum: updated }));
+  };
+
+  const handleAddTopic = () => {
     setFormData(prev => ({
       ...prev,
-      subtopics: [...prev.subtopics, { name: '', link: '' }],
+      curriculum: [...prev.curriculum, { 
+        topicName: '', 
+        topicCount: 1, 
+        subtopics: [{ name: '', link: '', duration: 0 }], 
+        directLink: '', 
+        examExcelLink: '' 
+      }]
     }));
   };
 
-  const handleSubtopicChange = (index: number, key: 'name' | 'link', value: string) => {
-    const updated = [...formData.subtopics];
-    updated[index][key] = value;
-    setFormData(prev => ({ ...prev, subtopics: updated }));
+  const handleTopicChange = (index: number, key: keyof TopicForm, value: string | number) => {
+    const updated = [...formData.curriculum];
+    if (key === 'topicCount') {
+      (updated[index] as any)[key] = value as number;
+    } else if (key === 'topicName' || key === 'directLink' || key === 'examExcelLink') {
+      (updated[index] as any)[key] = value as string;
+    }
+    setFormData(prev => ({ ...prev, curriculum: updated }));
   };
   const CourseForm = ({ onSubmit, submitText }: { onSubmit: () => void; submitText: string }) => (
      <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="title">Course Title *</Label>
+          <Label htmlFor="courseName">Course Name *</Label>
           <Input
-            id="title"
-            value={formData.title}
-            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-            placeholder="Enter course title"
+            id="courseName"
+            value={formData.courseName}
+            onChange={(e) => setFormData(prev => ({ ...prev, courseName: e.target.value }))}
+            placeholder="Enter course name"
           />
         </div>
         <div>
-          <Label htmlFor="instructor">Instructor *</Label>
+          <Label htmlFor="instructorName">Instructor Name *</Label>
           <Input
-            id="instructor"
-            value={formData.instructor}
-            onChange={(e) => setFormData(prev => ({ ...prev, instructor: e.target.value }))}
+            id="instructorName"
+            value={formData.instructorName}
+            onChange={(e) => setFormData(prev => ({ ...prev, instructorName: e.target.value }))}
             placeholder="Enter instructor name"
           />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="courseDescription">Course Description</Label>
         <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+          id="courseDescription"
+          value={formData.courseDescription}
+          onChange={(e) => setFormData(prev => ({ ...prev, courseDescription: e.target.value }))}
           placeholder="Enter course description"
           rows={3}
         />
@@ -241,46 +405,52 @@ const handleAddSubtopic = () => {
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <Label htmlFor="duration">Duration</Label>
+          <Label htmlFor="totalDuration">Total Duration (minutes)</Label>
           <Input
-            id="duration"
-            value={formData.duration}
-            onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
-            placeholder="e.g., 8 weeks"
+            id="totalDuration"
+            type="number"
+            value={formData.totalDuration}
+            onChange={(e) => setFormData(prev => ({ ...prev, totalDuration: parseInt(e.target.value) || 0 }))}
+            placeholder="e.g., 480"
           />
         </div>
         <div>
-          <Label htmlFor="level">Level</Label>
+          <Label htmlFor="stream">Stream</Label>
           <Select
-            value={formData.level}
-            onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') =>
-              setFormData(prev => ({ ...prev, level: value }))
+            value={formData.stream}
+            onValueChange={(value: 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability') =>
+              setFormData(prev => ({ ...prev, stream: value }))
             }
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select level" />
+              <SelectValue placeholder="Select stream" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Beginner">Beginner</SelectItem>
-              <SelectItem value="Intermediate">Intermediate</SelectItem>
-              <SelectItem value="Advanced">Advanced</SelectItem>
+              <SelectItem value="it">IT</SelectItem>
+              <SelectItem value="nonit">Non-IT</SelectItem>
+              <SelectItem value="finance">Finance</SelectItem>
+              <SelectItem value="management">Management</SelectItem>
+              <SelectItem value="pharmaceuticals">Pharmaceuticals</SelectItem>
+              <SelectItem value="carrerability">Career Ability</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label htmlFor="type">Type</Label>
+          <Label htmlFor="providerName">Provider</Label>
           <Select
-            value={formData.type}
-            onValueChange={(value: 'live' | 'recorded') =>
-              setFormData(prev => ({ ...prev, type: value }))
+            value={formData.providerName}
+            onValueChange={(value: 'triaright' | 'etv' | 'kalasalingan' | 'instructor') =>
+              setFormData(prev => ({ ...prev, providerName: value }))
             }
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select type" />
+              <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="live">Live</SelectItem>
-              <SelectItem value="recorded">Recorded</SelectItem>
+              <SelectItem value="triaright">Triaright</SelectItem>
+              <SelectItem value="etv">ETV</SelectItem>
+              <SelectItem value="kalasalingan">Kalasalingan</SelectItem>
+              <SelectItem value="instructor">Instructor</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -288,32 +458,32 @@ const handleAddSubtopic = () => {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="category">Category</Label>
+          <Label htmlFor="courseLanguage">Course Language</Label>
           <Input
-            id="category"
-            value={formData.category}
-            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-            placeholder="e.g., Web Development"
+            id="courseLanguage"
+            value={formData.courseLanguage}
+            onChange={(e) => setFormData(prev => ({ ...prev, courseLanguage: e.target.value }))}
+            placeholder="e.g., English"
           />
         </div>
         <div>
-          <Label htmlFor="image">Image URL</Label>
+          <Label htmlFor="courseImageLink">Course Image URL</Label>
           <Input
-            id="image"
-            value={formData.image}
-            onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
+            id="courseImageLink"
+            value={formData.courseImageLink}
+            onChange={(e) => setFormData(prev => ({ ...prev, courseImageLink: e.target.value }))}
             placeholder="Enter image URL"
           />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="skills">Skills (comma-separated)</Label>
+        <Label htmlFor="demoVideoLink">Demo Video Link *</Label>
         <Input
-          id="skills"
-          value={formData.skills}
-          onChange={(e) => setFormData(prev => ({ ...prev, skills: e.target.value }))}
-          placeholder="e.g., React, JavaScript, CSS"
+          id="demoVideoLink"
+          value={formData.demoVideoLink}
+          onChange={(e) => setFormData(prev => ({ ...prev, demoVideoLink: e.target.value }))}
+          placeholder="Enter demo video URL"
         />
       </div>
 
@@ -322,12 +492,12 @@ const handleAddSubtopic = () => {
           <input
             type="checkbox"
             id="isPaid"
-            checked={formData.isPaid}
-            onChange={(e) => setFormData(prev => ({ ...prev, isPaid: e.target.checked }))}
+            checked={formData.courseType === 'paid'}
+            onChange={(e) => setFormData(prev => ({ ...prev, courseType: e.target.checked ? 'paid' : 'unpaid' }))}
           />
           <Label htmlFor="isPaid">Paid Course</Label>
         </div>
-        {formData.isPaid && (
+        {formData.courseType === 'paid' && (
           <div>
             <Label htmlFor="price">Price ($)</Label>
             <Input
@@ -343,37 +513,115 @@ const handleAddSubtopic = () => {
         )}
       </div>
 
-      {/* Subtopics Section */}
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="certificationProvided"
+          checked={formData.certificationProvided === 'yes'}
+          onChange={(e) => setFormData(prev => ({ ...prev, certificationProvided: e.target.checked ? 'yes' : 'no' }))}
+        />
+        <Label htmlFor="certificationProvided">Certification Provided</Label>
+      </div>
+
       <div>
-        <Label>Subtopics</Label>
-        <div className="space-y-4">
-          {formData.subtopics.map((subtopic, index) => (
-            <div key={index} className="grid grid-cols-2 gap-4">
-              <Input
-                placeholder="Subtopic Name"
-                value={subtopic.name}
-                onChange={(e) => handleSubtopicChange(index, 'name', e.target.value)}
-              />
-              <Input
-                placeholder="Subtopic Link"
-                value={subtopic.link}
-                onChange={(e) => handleSubtopicChange(index, 'link', e.target.value)}
-              />
+        <Label htmlFor="additionalInformation">Additional Information</Label>
+        <Textarea
+          id="additionalInformation"
+          value={formData.additionalInformation}
+          onChange={(e) => setFormData(prev => ({ ...prev, additionalInformation: e.target.value }))}
+          placeholder="Enter additional information"
+          rows={2}
+        />
+      </div>
+
+      {/* Curriculum Section */}
+      <div>
+        <Label>Curriculum</Label>
+        <div className="space-y-6">
+          {formData.curriculum.map((topic, topicIndex) => (
+            <div key={topicIndex} className="border p-4 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <Input
+                  placeholder="Topic Name"
+                  value={topic.topicName}
+                  onChange={(e) => handleTopicChange(topicIndex, 'topicName', e.target.value)}
+                />
+                <Input
+                  placeholder="Topic Count"
+                  type="number"
+                  value={topic.topicCount}
+                  onChange={(e) => handleTopicChange(topicIndex, 'topicCount', parseInt(e.target.value) || 1)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Subtopics</Label>
+                {topic.subtopics.map((subtopic, subtopicIndex) => (
+                  <div key={subtopicIndex} className="grid grid-cols-3 gap-2">
+                    <Input
+                      placeholder="Subtopic Name"
+                      value={subtopic.name}
+                      onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'name', e.target.value)}
+                    />
+                    <Input
+                      placeholder="Subtopic Link"
+                      value={subtopic.link}
+                      onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'link', e.target.value)}
+                    />
+                    <Input
+                      placeholder="Duration (min)"
+                      type="number"
+                      value={subtopic.duration}
+                      onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddSubtopic(topicIndex)}
+                >
+                  + Add Subtopic
+                </Button>
+              </div>
             </div>
           ))}
         </div>
         <Button
           type="button"
           variant="outline"
-          onClick={handleAddSubtopic}
+          onClick={handleAddTopic}
           className="mt-2"
         >
-          + Add Subtopic
+          + Add Topic
         </Button>
       </div>
 
-      <Button onClick={onSubmit} className="w-full mt-4">
-        {submitText}
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="hasFinalExam"
+          checked={formData.hasFinalExam}
+          onChange={(e) => setFormData(prev => ({ ...prev, hasFinalExam: e.target.checked }))}
+        />
+        <Label htmlFor="hasFinalExam">Has Final Exam</Label>
+      </div>
+
+      {formData.hasFinalExam && (
+        <div>
+          <Label htmlFor="finalExamExcelLink">Final Exam Excel Link</Label>
+          <Input
+            id="finalExamExcelLink"
+            value={formData.finalExamExcelLink}
+            onChange={(e) => setFormData(prev => ({ ...prev, finalExamExcelLink: e.target.value }))}
+            placeholder="Enter final exam excel file URL"
+          />
+        </div>
+      )}
+
+      <Button onClick={onSubmit} className="w-full mt-4" disabled={loading}>
+        {loading ? 'Processing...' : submitText}
       </Button>
     </div>
   );
@@ -430,18 +678,18 @@ const handleAddSubtopic = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (
-          <Card key={course.id}>
+          <Card key={course.courseId}>
             <CardHeader>
               <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{course.title}</CardTitle>
+                <CardTitle className="text-lg">{course.courseName}</CardTitle>
                 <div className="flex space-x-1">
-                  <Button variant="outline" size="sm" onClick={() => openExamUpload(course.id)}>
+                  <Button variant="outline" size="sm" onClick={() => openExamUpload(course.courseId!)}>
                     <Upload className="h-4 w-4" />
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteCourse(course.id)}>
+                  <Button variant="destructive" size="sm" onClick={() => handleDeleteCourse(course.courseId!)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -449,38 +697,33 @@ const handleAddSubtopic = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <p className="text-sm text-gray-600">Instructor: {course.instructor}</p>
-                <p className="text-sm text-gray-600">Duration: {course.duration}</p>
+                <p className="text-sm text-gray-600">Instructor: {course.instructorName}</p>
+                <p className="text-sm text-gray-600">Duration: {course.totalDuration} minutes</p>
                 <div className="flex items-center space-x-2">
-                  <Badge variant={course.type === 'live' ? 'default' : 'secondary'}>
-                    {course.type.toUpperCase()}
+                  <Badge variant={course.stream === 'it' ? 'default' : 'secondary'}>
+                    {course.stream.toUpperCase()}
                   </Badge>
-                  <Badge variant="outline">{course.level}</Badge>
-                  <Badge variant={course.isPaid ? 'destructive' : 'secondary'}>
-                    {course.isPaid ? `$${course.price}` : 'FREE'}
+                  <Badge variant="outline">{course.providerName}</Badge>
+                  <Badge variant={course.courseType === 'paid' ? 'destructive' : 'secondary'}>
+                    {course.courseType === 'paid' ? `$${course.price}` : 'FREE'}
                   </Badge>
                 </div>
-                {course.skills.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {course.skills.slice(0, 3).map((skill, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                    {course.skills.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{course.skills.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
-                )}
+                <p className="text-xs text-gray-500 mt-2">{course.courseDescription}</p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {courses.length === 0 && (
+      {loading && (
+        <Card>
+          <CardContent className="text-center py-8">
+            <p className="text-gray-500">Loading courses...</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && courses.length === 0 && (
         <Card>
           <CardContent className="text-center py-8">
             <p className="text-gray-500">No courses added yet. Click "Add Course" to get started.</p>
