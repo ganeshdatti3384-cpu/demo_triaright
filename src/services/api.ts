@@ -62,6 +62,32 @@ export const authApi = {
       throw error.response.data;
     }
   },
+  updatePassword: async (passwordData: { currentPassword: string; newPassword: string }, token: string) => {
+    try {
+      const response = await api.put('/auth/update-password', passwordData, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Update password failed:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  changePasswordWithEmail: async (email: string, newPassword: string, token: string) => {
+    try {
+      const response = await api.put('/auth/change-password-email', { email, newPassword }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Change password with email failed:', error.response.data);
+      throw error.response.data;
+    }
+  },
   verifyEmail: async (verificationToken: string) => {
     try {
       const response = await api.get(`/auth/verifyemail/${verificationToken}`);
@@ -88,7 +114,114 @@ export const collegeApi = {
       throw error.response.data;
     }
   },
+  getCollegeStats: async (token: string) => {
+    try {
+      const response = await api.get('/college/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch college stats:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  getCollegeRequests: async (token: string) => {
+    try {
+      const response = await api.get('/college/requests', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch college requests:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  acceptServiceRequest: async (requestId: string, token: string) => {
+    try {
+      const response = await api.put(`/college/requests/${requestId}/accept`, {}, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to accept service request:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  rejectServiceRequest: async (requestId: string, token: string) => {
+    try {
+      const response = await api.put(`/college/requests/${requestId}/reject`, {}, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to reject service request:', error.response.data);
+      throw error.response.data;
+    }
+  },
 };
+
+export interface Pack365Course {
+  _id: string;
+  courseId: string;
+  courseName: string;
+  courseDescription: string;
+  demoVideoLink?: string;
+  courseType: 'paid' | 'unpaid';
+  price: number;
+  duration: number;
+  stream: string;
+  providerName: string;
+  instructorName: string;
+  courseLanguage: string;
+  certificationProvided: boolean;
+  additionalInformation?: string;
+  courseImageLink?: string;
+  curriculumDocLink?: string;
+  curriculum: Array<{
+    title: string;
+    duration: number;
+    description?: string;
+  }>;
+  totalDuration: number;
+  createdAt: string;
+  updatedAt: string;
+  description?: string;
+  topics?: Array<{
+    name: string;
+    link: string;
+    duration: number;
+  }>;
+  examFile?: File;
+  documentLink?: string;
+}
+
+export interface EnhancedPack365Enrollment {
+  _id: string;
+  userId: string;
+  courseId: string;
+  course: Pack365Course;
+  enrolledAt: string;
+  progress: number;
+  completionStatus: 'enrolled' | 'in-progress' | 'completed';
+  topicProgress: Array<{
+    topicName: string;
+    completed: boolean;
+    completedAt?: string;
+  }>;
+  totalWatchedPercentage?: number;
+  isExamCompleted?: boolean;
+  examScore?: number;
+  courseName?: string;
+  stream?: string;
+}
 
 // Pack365 API functions
 export const pack365Api = {
@@ -172,6 +305,271 @@ export const pack365Api = {
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch stream courses:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  updateTopicProgress: async (enrollmentId: string, topicName: string, progress: any, token: string) => {
+    try {
+      const response = await api.put(`/pack365/enrollment/${enrollmentId}/progress`, 
+        { topicName, progress }, 
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to update topic progress:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  validateEnrollmentCode: async (code: string, streamName: string, token: string) => {
+    try {
+      const response = await api.post('/pack365/enrollment/validate-code', 
+        { code, streamName }, 
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to validate enrollment code:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  createStream: async (streamData: { name: string; price: number; imageFile: File }, token: string) => {
+    try {
+      const formData = new FormData();
+      formData.append('name', streamData.name);
+      formData.append('price', streamData.price.toString());
+      formData.append('imageFile', streamData.imageFile);
+      
+      const response = await api.post('/pack365/streams', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create stream:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  updateStream: async (streamId: string, streamData: { name: string; price: number; imageFile?: File }, token: string) => {
+    try {
+      const formData = new FormData();
+      formData.append('name', streamData.name);
+      formData.append('price', streamData.price.toString());
+      if (streamData.imageFile) {
+        formData.append('imageFile', streamData.imageFile);
+      }
+      
+      const response = await api.put(`/pack365/streams/${streamId}`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to update stream:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  deleteStream: async (streamId: string, token: string) => {
+    try {
+      const response = await api.delete(`/pack365/streams/${streamId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to delete stream:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  createCourse: async (courseData: any, token: string) => {
+    try {
+      const formData = new FormData();
+      Object.keys(courseData).forEach(key => {
+        if (key === 'topics') {
+          formData.append(key, JSON.stringify(courseData[key]));
+        } else if (courseData[key] instanceof File) {
+          formData.append(key, courseData[key]);
+        } else {
+          formData.append(key, courseData[key]);
+        }
+      });
+      
+      const response = await api.post('/pack365/courses', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create course:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  updateCourse: async (courseId: string, courseData: any, token: string) => {
+    try {
+      const formData = new FormData();
+      Object.keys(courseData).forEach(key => {
+        if (key === 'topics') {
+          formData.append(key, JSON.stringify(courseData[key]));
+        } else if (courseData[key] instanceof File) {
+          formData.append(key, courseData[key]);
+        } else {
+          formData.append(key, courseData[key]);
+        }
+      });
+      
+      const response = await api.put(`/pack365/courses/${courseId}`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to update course:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  deleteCourse: async (courseId: string, token: string) => {
+    try {
+      const response = await api.delete(`/pack365/courses/${courseId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to delete course:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  getAllCourses: async (token: string) => {
+    try {
+      const response = await api.get('/pack365/courses', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch courses:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  getAllEnrollmentCodes: async (token: string) => {
+    try {
+      const response = await api.get('/pack365/enrollment-codes', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch enrollment codes:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  createEnrollmentCode: async (codeData: any, token: string) => {
+    try {
+      const response = await api.post('/pack365/enrollment-codes', codeData, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create enrollment code:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  deactivateEnrollmentCode: async (codeId: string, token: string) => {
+    try {
+      const response = await api.put(`/pack365/enrollment-codes/${codeId}/deactivate`, {}, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to deactivate enrollment code:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  enrollWithCode: async (code: string, token: string) => {
+    try {
+      const response = await api.post('/pack365/enrollment/enroll-with-code', { code }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to enroll with code:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  getExamDetails: async (examId: string, token: string) => {
+    try {
+      const response = await api.get(`/pack365/exams/${examId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch exam details:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  getExamQuestions: async (examId: string, token: string) => {
+    try {
+      const response = await api.get(`/pack365/exams/${examId}/questions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch exam questions:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  submitExam: async (examId: string, answers: any, token: string) => {
+    try {
+      const response = await api.post(`/pack365/exams/${examId}/submit`, { answers }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to submit exam:', error.response.data);
+      throw error.response.data;
+    }
+  },
+  getAvailableExamsForUser: async (token: string) => {
+    try {
+      const response = await api.get('/pack365/exams/available', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch available exams:', error.response.data);
       throw error.response.data;
     }
   },
@@ -401,3 +799,271 @@ export const courseApi = {
   }
 };
 
+// Profile API functions
+export const profileApi = {
+  getProfile: async (token: string) => {
+    try {
+      const response = await api.get('/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to fetch profile:', error.response.data);
+      return {
+        success: false,
+        profile: {}
+      };
+    }
+  },
+  getStudentProfile: async (token: string) => {
+    try {
+      const response = await api.get('/profile/student', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to fetch student profile:', error.response.data);
+      return {
+        success: false,
+        profile: {}
+      };
+    }
+  },
+  getJobSeekerProfile: async (token: string) => {
+    try {
+      const response = await api.get('/profile/jobseeker', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to fetch jobseeker profile:', error.response.data);
+      return {
+        success: false,
+        profile: {}
+      };
+    }
+  },
+  getEmployerProfile: async (token: string) => {
+    try {
+      const response = await api.get('/profile/employer', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to fetch employer profile:', error.response.data);
+      return {
+        success: false,
+        profile: {}
+      };
+    }
+  },
+  getCollegeProfile: async (token: string) => {
+    try {
+      const response = await api.get('/profile/college', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to fetch college profile:', error.response.data);
+      return {
+        success: false,
+        profile: {}
+      };
+    }
+  },
+  updateProfile: async (profileData: any, token: string) => {
+    try {
+      const formData = new FormData();
+      Object.keys(profileData).forEach(key => {
+        if (profileData[key] instanceof File) {
+          formData.append(key, profileData[key]);
+        } else if (typeof profileData[key] === 'object') {
+          formData.append(key, JSON.stringify(profileData[key]));
+        } else {
+          formData.append(key, profileData[key]);
+        }
+      });
+      
+      const response = await api.put('/profile', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to update profile:', error.response.data);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update profile'
+      };
+    }
+  },
+  updateStudentProfile: async (profileData: any, token: string) => {
+    try {
+      const formData = new FormData();
+      Object.keys(profileData).forEach(key => {
+        if (profileData[key] instanceof File) {
+          formData.append(key, profileData[key]);
+        } else if (typeof profileData[key] === 'object') {
+          formData.append(key, JSON.stringify(profileData[key]));
+        } else {
+          formData.append(key, profileData[key]);
+        }
+      });
+      
+      const response = await api.put('/profile/student', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to update student profile:', error.response.data);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update student profile'
+      };
+    }
+  },
+  updateJobSeekerProfile: async (profileData: any, token: string) => {
+    try {
+      const formData = new FormData();
+      Object.keys(profileData).forEach(key => {
+        if (profileData[key] instanceof File) {
+          formData.append(key, profileData[key]);
+        } else if (typeof profileData[key] === 'object') {
+          formData.append(key, JSON.stringify(profileData[key]));
+        } else {
+          formData.append(key, profileData[key]);
+        }
+      });
+      
+      const response = await api.put('/profile/jobseeker', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to update jobseeker profile:', error.response.data);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update jobseeker profile'
+      };
+    }
+  },
+  updateEmployerProfile: async (profileData: any, token: string) => {
+    try {
+      const formData = new FormData();
+      Object.keys(profileData).forEach(key => {
+        if (profileData[key] instanceof File) {
+          formData.append(key, profileData[key]);
+        } else if (typeof profileData[key] === 'object') {
+          formData.append(key, JSON.stringify(profileData[key]));
+        } else {
+          formData.append(key, profileData[key]);
+        }
+      });
+      
+      const response = await api.put('/profile/employer', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to update employer profile:', error.response.data);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update employer profile'
+      };
+    }
+  },
+  updateCollegeProfile: async (profileData: any, token: string) => {
+    try {
+      const formData = new FormData();
+      Object.keys(profileData).forEach(key => {
+        if (profileData[key] instanceof File) {
+          formData.append(key, profileData[key]);
+        } else if (typeof profileData[key] === 'object') {
+          formData.append(key, JSON.stringify(profileData[key]));
+        } else {
+          formData.append(key, profileData[key]);
+        }
+      });
+      
+      const response = await api.put('/profile/college', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return {
+        success: true,
+        profile: response.data
+      };
+    } catch (error: any) {
+      console.error('Failed to update college profile:', error.response.data);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update college profile'
+      };
+    }
+  },
+  updatePassword: async (passwordData: { currentPassword: string; newPassword: string }, token: string) => {
+    try {
+      const response = await api.put('/auth/update-password', passwordData, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Update password failed:', error.response.data);
+      throw error.response.data;
+    }
+  },
+};
+
+export default api;

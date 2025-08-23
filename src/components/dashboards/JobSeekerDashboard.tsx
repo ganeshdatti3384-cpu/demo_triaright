@@ -41,7 +41,15 @@ interface Opportunity {
   deadline: string;
 }
 
-const JobSeekerDashboard = () => {
+interface JobSeekerDashboardProps {
+  user: {
+    role: string;
+    name: string;
+  };
+  onLogout: () => void;
+}
+
+const JobSeekerDashboard = ({ user, onLogout }: JobSeekerDashboardProps) => {
   const navigate = useNavigate();
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
   const [userName, setUserName] = useState<string>('');
