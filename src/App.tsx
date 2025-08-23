@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import ScrollToTop from '@/components/ScrollToTop';
@@ -72,67 +72,65 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <ScrollToTop />
-        <div className="App">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/about" element={<AboutUs />} />
-            <Route path="/contact" element={<ContactUs />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/courses/recorded" element={<RecordedCourses />} />
-            <Route path="/courses/live" element={<LiveCourses />} />
-            <Route path="/course/:courseId" element={<CourseDetail />} />
-            <Route path="/course-enrollment/:courseId" element={<CourseEnrollment />} />
-            <Route path="/paid-course-enrollment/:courseId" element={<PaidCourseEnrollment />} />
-            <Route path="/free-course-enrollment/:courseId" element={<FreeCourseEnrollment />} />
-            <Route path="/course-payment/:courseId" element={<CoursePayment />} />
-            <Route path="/payment-success" element={<PaymentSuccess />} />
-            <Route path="/payment-failed" element={<PaymentFailed />} />
-            <Route path="/pack365" element={<Pack365 />} />
-            <Route path="/pack365/:streamName" element={<Pack365BundleDetail />} />
-            <Route path="/pack365-payment" element={<Pack365Payment />} />
-            <Route path="/coupon-code" element={<CouponCode />} />
-            <Route path="/razorpay-payment" element={<RazorpayPayment />} />
-            <Route path="/pack365-learning/:streamName" element={<Pack365StreamLearning />} />
-            <Route path="/course-learning/:courseId" element={<CourseLearning />} />
-            <Route path="/internships/online" element={<OnlineInternships />} />
-            <Route path="/internships/offline" element={<OfflineInternships />} />
-            <Route path="/job-assistance" element={<JobAssistance />} />
-            <Route path="/job-assurance" element={<JobAssurance />} />
-            <Route path="/exams" element={<ExamList />} />
-            <Route path="/exam/:examId" element={<ExamInterface />} />
-            <Route path="/terms" element={<TermsConditions />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/refund" element={<RefundPolicy />} />
-            <Route path="/forgot-password" element={<Forgotpassword />} />
-            <Route path="/change-password" element={<ChangePassword />} />
-            <Route path="/payment-selection" element={<PaymentSelection />} />
+      <ScrollToTop />
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/contact" element={<ContactUs />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/courses/recorded" element={<RecordedCourses />} />
+          <Route path="/courses/live" element={<LiveCourses />} />
+          <Route path="/course/:courseId" element={<CourseDetail />} />
+          <Route path="/course-enrollment/:courseId" element={<CourseEnrollment />} />
+          <Route path="/paid-course-enrollment/:courseId" element={<PaidCourseEnrollment />} />
+          <Route path="/free-course-enrollment/:courseId" element={<FreeCourseEnrollment />} />
+          <Route path="/course-payment/:courseId" element={<CoursePayment />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/pack365" element={<Pack365 />} />
+          <Route path="/pack365/:streamName" element={<Pack365BundleDetail />} />
+          <Route path="/pack365-payment" element={<Pack365Payment />} />
+          <Route path="/coupon-code" element={<CouponCode />} />
+          <Route path="/razorpay-payment" element={<RazorpayPayment />} />
+          <Route path="/pack365-learning/:streamName" element={<Pack365StreamLearning />} />
+          <Route path="/course-learning/:courseId" element={<CourseLearning />} />
+          <Route path="/internships/online" element={<OnlineInternships />} />
+          <Route path="/internships/offline" element={<OfflineInternships />} />
+          <Route path="/job-assistance" element={<JobAssistance />} />
+          <Route path="/job-assurance" element={<JobAssurance />} />
+          <Route path="/exams" element={<ExamList />} />
+          <Route path="/exam/:examId" element={<ExamInterface />} />
+          <Route path="/terms" element={<TermsConditions />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/refund" element={<RefundPolicy />} />
+          <Route path="/forgot-password" element={<Forgotpassword />} />
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/payment-selection" element={<PaymentSelection />} />
 
-            {/* Dashboard Routes */}
-            <Route path="/admin" element={<AdminDashboard user={{ role: 'admin', name: 'Admin' }} onLogout={handleLogout} />} />
-            <Route path="/superadmin" element={<SuperAdminDashboard user={{ role: 'superadmin', name: 'Super Admin' }} onLogout={handleLogout} />} />
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/student-dashboard" element={<EnhancedStudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={handleLogout} />} />
-            <Route path="/student-simple" element={<SimplifiedStudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={handleLogout} />} />
-            <Route path="/jobseeker" element={<JobSeekerDashboard user={{ role: 'jobseeker', name: 'Job Seeker' }} onLogout={handleLogout} />} />
-            <Route path="/employer" element={<EmployerDashboard user={{ role: 'employer', name: 'Employer' }} onLogout={handleLogout} />} />
-            <Route path="/employee" element={<EmployeeDashboard user={{ role: 'employee', name: 'Employee' }} onLogout={handleLogout} />} />
-            <Route path="/college" element={<CollegeDashboard user={{ role: 'college', name: 'College' }} onLogout={handleLogout} />} />
+          {/* Dashboard Routes */}
+          <Route path="/admin" element={<AdminDashboard user={{ role: 'admin', name: 'Admin' }} onLogout={handleLogout} />} />
+          <Route path="/superadmin" element={<SuperAdminDashboard user={{ role: 'superadmin', name: 'Super Admin' }} onLogout={handleLogout} />} />
+          <Route path="/student" element={<StudentDashboard />} />
+          <Route path="/student-dashboard" element={<EnhancedStudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={handleLogout} />} />
+          <Route path="/student-simple" element={<SimplifiedStudentDashboard user={{ role: 'student', name: 'Student' }} onLogout={handleLogout} />} />
+          <Route path="/jobseeker" element={<JobSeekerDashboard user={{ role: 'jobseeker', name: 'Job Seeker' }} onLogout={handleLogout} />} />
+          <Route path="/employer" element={<EmployerDashboard user={{ role: 'employer', name: 'Employer' }} onLogout={handleLogout} />} />
+          <Route path="/employee" element={<EmployeeDashboard user={{ role: 'employee', name: 'Employee' }} onLogout={handleLogout} />} />
+          <Route path="/college" element={<CollegeDashboard user={{ role: 'college', name: 'College' }} onLogout={handleLogout} />} />
 
-            {/* Profile Routes */}
-            <Route path="/profile/student" element={<StudentProfilePage />} />
-            <Route path="/profile/jobseeker" element={<JobSeekerProfilePage />} />
-            <Route path="/profile/employer" element={<EmployerProfilePage />} />
+          {/* Profile Routes */}
+          <Route path="/profile/student" element={<StudentProfilePage />} />
+          <Route path="/profile/jobseeker" element={<JobSeekerProfilePage />} />
+          <Route path="/profile/employer" element={<EmployerProfilePage />} />
 
-            {/* 404 Route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
-        <Toaster />
-      </Router>
+          {/* 404 Route */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
+      <Toaster />
     </QueryClientProvider>
   );
 };
