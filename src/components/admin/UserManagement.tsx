@@ -1,5 +1,6 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import Papa from 'papaparse';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -410,20 +411,96 @@ const UserManagement = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBulkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    try {
-      console.log('Uploading file:', file.name);
-      toast.success('Users uploaded successfully!');
-      fetchUsers();
-    } catch (error) {
-      console.error('Error uploading users:', error);
-      toast.error('Failed to upload users');
-    }
-  };
+    setLoading(true);
 
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        try {
+          const newUsers = results.data.map((row: any) => {
+            // A helper to create a full name from firstname and lastname
+            const fullName = `${row.firstname || ''} ${row.lastname || ''}`.trim();
+
+            // Skip if essential data like email or name is missing
+            if (!fullName || !row.email) {
+              return null;
+            }
+
+            return {
+              id: Date.now() + Math.random(), // Generate a unique ID
+              // --- Basic Information ---
+              fullName: fullName,
+              dateOfBirth: row.dateOfBirth || '',
+              gender: row.gender || '',
+              email: row.email || '',
+              phone: row.phone || '',
+              alternatePhone: row.whatsappnumber || '', // Mapping whatsappnumber
+              address: row.address || '',
+              
+              // --- Education ---
+              // Creating a default education structure from the CSV
+              education: row.collegename ? [{ 
+                  instituteName: row.collegename, 
+                  stream: '', // CSV does not have this, leave empty
+                  yearOfPassing: '' // CSV does not have this, leave empty
+              }] : [],
+
+              // --- Account Setup ---
+              username: row.email || `user_${Date.now()}`, // Use email as username by default
+              password: row.password || 'password123', // Set a default password if not provided
+
+              // --- Other default fields ---
+              role: row.role || 'student',
+              status: 'active',
+              createdAt: new Date().toISOString().split('T')[0],
+              
+              // --- Fields not in CSV are initialized empty ---
+              profilePicture: null,
+              fatherName: '',
+              maritalStatus: '',
+              nationality: '',
+              languagesKnown: '',
+              hobbies: '',
+              projects: [],
+              certifications: [],
+              internships: [],
+              jobCategory: '',
+              experience: [],
+              resume: null,
+            };
+          });
+
+          // Filter out any null entries (rows that were skipped)
+          const validNewUsers = newUsers.filter(user => user !== null);
+
+          setUsers(prevUsers => [...prevUsers, ...validNewUsers]);
+          toast.success(`${validNewUsers.length} users uploaded successfully!`);
+
+        } catch (error) {
+          console.error('Error processing uploaded users:', error);
+          toast.error('Failed to process uploaded data.');
+        } finally {
+          setLoading(false);
+          if (event.target) {
+            event.target.value = '';
+          }
+        }
+      },
+      error: (error) => {
+        console.error('Error parsing CSV file:', error);
+        toast.error('Failed to parse the CSV file.');
+        setLoading(false);
+        if (event.target) {
+            event.target.value = '';
+        }
+      },
+    });
+  };
   const renderBasicInformation = () => (
     <Collapsible open={openSections.basic} onOpenChange={() => toggleSection('basic')}>
       <CollapsibleTrigger asChild>
