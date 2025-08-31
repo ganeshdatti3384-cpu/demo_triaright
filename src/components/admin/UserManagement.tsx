@@ -1,6 +1,8 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,62 +12,116 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, Calendar, Building, GraduationCap, Briefcase, ChevronDown, Plus } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, User, Lock, Eye as EyeIcon, EyeOff, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
+import { authApi, RegisterPayload } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
+
+// Registration validation schema - same as Register.tsx
+const registrationSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
+  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
+  whatsappNumber: z.string().min(10, 'WhatsApp number must be at least 10 digits'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
+  address: z.string().min(1, 'Address is required'),
+  state: z.string().min(1, 'State is required'),
+  role: z.enum(['trainer', 'jobseeker', 'student', 'employer', 'college']),
+  collegeName: z.string().optional(),
+  collegeCode: z.string().optional(),
+  acceptTerms: z.boolean().refine(val => val === true, {
+    message: 'You must accept terms and conditions'
+  })
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+}).refine((data) => {
+  if (data.role === 'student' && !data.collegeName) {
+    return false;
+  }
+  return true;
+}, {
+  message: "College selection is required for students",
+  path: ["collegeName"],
+}).refine((data) => {
+  if (data.role === 'college' && !data.collegeCode) {
+    return false;
+  }
+  return true;
+}, {
+  message: "College code is required for colleges",
+  path: ["collegeCode"],
+});
+
+type RegistrationFormData = z.infer<typeof registrationSchema>;
+
+interface College {
+  _id: string;
+  collegeName?: string;
+  userId: string;
+  university: string;
+  city: string;
+  state: string;
+}
 
 const UserManagement = () => {
+  const { toast: hookToast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRole, setSelectedRole] = useState('all');
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState('all');
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [editUserOpen, setEditUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
-    basic: true,
-    personal: false,
-    education: false,
-    projects: false,
-    certifications: false,
-    internships: false,
-    account: false,
+  const [showPassword, setShowPassword] = useState(false);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [loadingColleges, setLoadingColleges] = useState(false);
+
+  // Indian states list - same as Register.tsx
+  const indianStates = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+  ];
+
+  // Form setup - same as Register.tsx
+  const { register, handleSubmit, setValue, control, watch, formState: { errors }, reset } = useForm<RegistrationFormData>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: {
+      acceptTerms: false
+    }
   });
 
-  // Form states matching registration form
-  const [formData, setFormData] = useState({
-    role: 'student',
-    profilePicture: null,
-    fullName: '',
-    dateOfBirth: '',
-    gender: '',
-    email: '',
-    phone: '',
-    alternatePhone: '',
-    address: '',
-    fatherName: '',
-    maritalStatus: '',
-    nationality: '',
-    languagesKnown: '',
-    hobbies: '',
-    education: [{ instituteName: '', stream: '', yearOfPassing: '' }],
-    projects: [],
-    certifications: [],
-    internships: [],
-    username: '',
-    password: '',
-    confirmPassword: '',
-    // Job seeker specific
-    jobCategory: '',
-    experience: [],
-    resume: null,
-  });
+  const selectedRole = watch('role');
 
   useEffect(() => {
     fetchUsers();
+    fetchColleges();
   }, []);
+
+  // Fetch colleges - same as Register.tsx
+  const fetchColleges = async () => {
+    try {
+      setLoadingColleges(true);
+      const response = await fetch('https://triaright.com/api/colleges/collegedata');
+      const data = await response.json();
+      setColleges(data.colleges || []);
+    } catch (error) {
+      console.error('Error fetching colleges:', error);
+      hookToast({
+        title: "Error",
+        description: "Failed to load colleges list",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingColleges(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -74,26 +130,24 @@ const UserManagement = () => {
       const mockUsers = [
         {
           id: 1,
-          fullName: 'John Doe',
+          firstName: 'John',
+          lastName: 'Doe',
           email: 'john@example.com',
           role: 'student',
-          phone: '+91-9876543210',
+          phoneNumber: '+91-9876543210',
           status: 'active',
           createdAt: '2024-01-15',
           collegeName: 'ABC University',
-          course: 'Computer Science',
-          year: '3rd'
         },
         {
           id: 2,
-          fullName: 'Jane Smith',
+          firstName: 'Jane',
+          lastName: 'Smith',
           email: 'jane@company.com',
-          role: 'job-seeker',
-          phone: '+91-9876543211',
+          role: 'jobseeker',
+          phoneNumber: '+91-9876543211',
           status: 'active',
           createdAt: '2024-01-14',
-          companyName: 'Tech Corp',
-          designation: 'HR Manager'
         }
       ];
       setUsers(mockUsers);
@@ -105,127 +159,35 @@ const UserManagement = () => {
     }
   };
 
-  const validateForm = () => {
-    if (!formData.fullName.trim()) {
-      toast.error('Full name is required');
-      return false;
-    }
-    if (!formData.email.trim()) {
-      toast.error('Email is required');
-      return false;
-    }
-    if (!formData.email.includes('@')) {
-      toast.error('Please enter a valid email address');
-      return false;
-    }
-    if (!formData.password && !selectedUser) {
-      toast.error('Password is required');
-      return false;
-    }
-    if (!formData.role) {
-      toast.error('Role is required');
-      return false;
-    }
-    if (!formData.dateOfBirth) {
-      toast.error('Date of birth is required');
-      return false;
-    }
-    if (!formData.gender) {
-      toast.error('Gender is required');
-      return false;
-    }
-    if (!formData.phone.trim()) {
-      toast.error('Phone number is required');
-      return false;
-    }
-    if (!formData.address.trim()) {
-      toast.error('Address is required');
-      return false;
-    }
-    if (!formData.maritalStatus) {
-      toast.error('Marital status is required');
-      return false;
-    }
-    if (!formData.nationality.trim()) {
-      toast.error('Nationality is required');
-      return false;
-    }
-    if (!formData.languagesKnown.trim()) {
-      toast.error('Languages known is required');
-      return false;
-    }
-    if (!formData.username.trim()) {
-      toast.error('Username is required');
-      return false;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return false;
-    }
-
-    // Validate education
-    if (formData.education.length === 0 || !formData.education[0].instituteName.trim()) {
-      toast.error('At least one education entry is required');
-      return false;
-    }
-
-    // Role-specific validation
-    if (formData.role === 'job-seeker' && !formData.jobCategory) {
-      toast.error('Job category is required for job seekers');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleCreateUser = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
+  // Handle registration - same API call as Register.tsx
+  const handleRegister = async (formData: RegistrationFormData) => {
     try {
-      // Simulate API call - replace with actual implementation
-      const newUser = {
-        id: Date.now(),
-        ...formData,
-        status: 'active',
-        createdAt: new Date().toISOString().split('T')[0]
+      setLoading(true);
+      const registerPayload: RegisterPayload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber,
+        whatsappNumber: formData.whatsappNumber,
+        address: formData.address,
+        role: formData.role === 'trainer' ? 'admin' : formData.role,
+        password: formData.password,
+        ...(formData.role === 'student' && formData.collegeName && { collegeName: formData.collegeName }),
+        ...(formData.role === 'college' && formData.collegeCode && { collegeCode: formData.collegeCode })
       };
-
-      // Add to users list
-      setUsers(prevUsers => [...prevUsers, newUser]);
       
-      toast.success('User created successfully!');
+      const response = await authApi.register(registerPayload);
+      hookToast({ title: "Success", description: "User registered successfully!" });
+      
       setCreateUserOpen(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error creating user:', error);
-      toast.error('Failed to create user');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateUser = async () => {
-    if (!selectedUser || !validateForm()) return;
-
-    setLoading(true);
-    try {
-      // Simulate API call - replace with actual implementation
-      const updatedUsers = users.map(user => 
-        user.id === selectedUser.id 
-          ? { ...user, ...formData }
-          : user
-      );
-      
-      setUsers(updatedUsers);
-      toast.success('User updated successfully!');
-      setEditUserOpen(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error updating user:', error);
-      toast.error('Failed to update user');
+      reset();
+      fetchUsers(); // Refresh user list
+    } catch (error: any) {
+      hookToast({
+        title: "Registration Failed",
+        description: error?.response?.data?.error || "Something went wrong",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -243,162 +205,17 @@ const UserManagement = () => {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      role: 'student',
-      profilePicture: null,
-      fullName: '',
-      dateOfBirth: '',
-      gender: '',
-      email: '',
-      phone: '',
-      alternatePhone: '',
-      address: '',
-      fatherName: '',
-      maritalStatus: '',
-      nationality: '',
-      languagesKnown: '',
-      hobbies: '',
-      education: [{ instituteName: '', stream: '', yearOfPassing: '' }],
-      projects: [],
-      certifications: [],
-      internships: [],
-      username: '',
-      password: '',
-      confirmPassword: '',
-      jobCategory: '',
-      experience: [],
-      resume: null,
-    });
-    setSelectedUser(null);
-    setOpenSections({
-      basic: true,
-      personal: false,
-      education: false,
-      projects: false,
-      certifications: false,
-      internships: false,
-      account: false,
-    });
-  };
-
-  const openEditModal = (user: any) => {
-    setSelectedUser(user);
-    setFormData({
-      role: user.role || 'student',
-      profilePicture: user.profilePicture || null,
-      fullName: user.fullName || '',
-      dateOfBirth: user.dateOfBirth || '',
-      gender: user.gender || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      alternatePhone: user.alternatePhone || '',
-      address: user.address || '',
-      fatherName: user.fatherName || '',
-      maritalStatus: user.maritalStatus || '',
-      nationality: user.nationality || '',
-      languagesKnown: user.languagesKnown || '',
-      hobbies: user.hobbies || '',
-      education: user.education || [{ instituteName: '', stream: '', yearOfPassing: '' }],
-      projects: user.projects || [],
-      certifications: user.certifications || [],
-      internships: user.internships || [],
-      username: user.username || '',
-      password: '',
-      confirmPassword: '',
-      jobCategory: user.jobCategory || '',
-      experience: user.experience || [],
-      resume: user.resume || null,
-    });
-    setEditUserOpen(true);
-  };
-
-  const toggleSection = (section: string) => {
-    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const addEducation = () => {
-    setFormData(prev => ({
-      ...prev,
-      education: [...prev.education, { instituteName: '', stream: '', yearOfPassing: '' }]
-    }));
-  };
-
-  const removeEducation = (index: number) => {
-    if (formData.education.length > 1) {
-      setFormData(prev => ({
-        ...prev,
-        education: prev.education.filter((_, i) => i !== index)
-      }));
-    }
-  };
-
-  const addProject = () => {
-    setFormData(prev => ({
-      ...prev,
-      projects: [...prev.projects, { name: '', githubLink: '', description: '' }]
-    }));
-  };
-
-  const removeProject = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      projects: prev.projects.filter((_, i) => i !== index)
-    }));
-  };
-
-  const addCertification = () => {
-    setFormData(prev => ({
-      ...prev,
-      certifications: [...prev.certifications, { name: '', details: '' }]
-    }));
-  };
-
-  const removeCertification = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      certifications: prev.certifications.filter((_, i) => i !== index)
-    }));
-  };
-
-  const addInternship = () => {
-    setFormData(prev => ({
-      ...prev,
-      internships: [...prev.internships, { companyName: '', role: '', responsibilities: '' }]
-    }));
-  };
-
-  const removeInternship = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      internships: prev.internships.filter((_, i) => i !== index)
-    }));
-  };
-
-  const addExperience = () => {
-    setFormData(prev => ({
-      ...prev,
-      experience: [...prev.experience, { companyName: '', role: '', duration: '', responsibilities: '' }]
-    }));
-  };
-
-  const removeExperience = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      experience: prev.experience.filter((_, i) => i !== index)
-    }));
-  };
-
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+    const matchesRole = selectedRoleFilter === 'all' || user.role === selectedRoleFilter;
     return matchesSearch && matchesRole;
   });
 
+  // Bulk upload functionality
   const downloadSampleExcel = () => {
-    // Sample data for Excel file
     const sampleData = [
       ['firstname', 'lastname', 'email', 'role', 'phoneNumber', 'whatsappNumber', 'address', 'password', 'collegeName'],
       ['John', 'Doe', 'john@example.com', 'student', '9876543210', '9876543210', '123 Main St', 'password123', 'ABC College'],
@@ -406,9 +223,7 @@ const UserManagement = () => {
       ['Mark', 'Johnson', 'mark@example.com', 'college', '9876543212', '9876543212', '789 College St', 'password123', 'College123']
     ];
     
-    // Create CSV content (Excel can open CSV files)
     const csvContent = sampleData.map(row => row.join(',')).join('\n');
-    
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -424,7 +239,6 @@ const UserManagement = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Check if file is Excel format
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       toast.error('Please upload an Excel file (.xlsx or .xls)');
       return;
@@ -433,11 +247,9 @@ const UserManagement = () => {
     setLoading(true);
 
     try {
-      // Create FormData to send the file
       const formData = new FormData();
       formData.append('file', file);
 
-      // Get admin token from localStorage or context
       const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
       
       const response = await axios.post('https://triaright.com/api/users/bulk-register', formData, {
@@ -447,7 +259,6 @@ const UserManagement = () => {
         }
       });
 
-      // Handle response
       if (response.data && response.data.results) {
         const results = response.data.results;
         const successCount = results.filter((r: any) => r.status === 'success').length;
@@ -464,13 +275,11 @@ const UserManagement = () => {
         toast.success('Bulk upload completed successfully!');
       }
 
-      // Refresh the user list
       fetchUsers();
 
     } catch (error: any) {
       console.error('Error during bulk upload:', error);
       
-      // Handle different error responses
       if (error.response?.data?.message) {
         toast.error(`Upload failed: ${error.response.data.message}`);
       } else if (error.response?.status === 401) {
@@ -482,334 +291,11 @@ const UserManagement = () => {
       }
     } finally {
       setLoading(false);
-      // Clear the file input
       if (event.target) {
         event.target.value = '';
       }
     }
   };
-  const renderBasicInformation = () => (
-    <Collapsible open={openSections.basic} onOpenChange={() => toggleSection('basic')}>
-      <CollapsibleTrigger asChild>
-        <Card className="cursor-pointer hover:bg-gray-50">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Basic Information</CardTitle>
-            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.basic ? 'rotate-180' : ''}`} />
-          </CardHeader>
-        </Card>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <CardContent className="space-y-4 pt-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="fullName">Full Name *</Label>
-              <Input
-                id="fullName"
-                value={formData.fullName}
-                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="dateOfBirth">Date of Birth *</Label>
-              <Input
-                id="dateOfBirth"
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label>Gender *</Label>
-            <RadioGroup value={formData.gender} onValueChange={(value) => setFormData({...formData, gender: value})}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="male" id="male" />
-                <Label htmlFor="male">Male</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="female" id="female" />
-                <Label htmlFor="female">Female</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="other" id="other" />
-                <Label htmlFor="other">Other</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="phone">Phone *</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="alternatePhone">Alternate Phone</Label>
-            <Input
-              id="alternatePhone"
-              value={formData.alternatePhone}
-              onChange={(e) => setFormData({...formData, alternatePhone: e.target.value})}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="address">Address *</Label>
-            <Textarea
-              id="address"
-              value={formData.address}
-              onChange={(e) => setFormData({...formData, address: e.target.value})}
-              required
-            />
-          </div>
-        </CardContent>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-
-  const renderPersonalInfo = () => (
-    <Collapsible open={openSections.personal} onOpenChange={() => toggleSection('personal')}>
-      <CollapsibleTrigger asChild>
-        <Card className="cursor-pointer hover:bg-gray-50">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Family & Personal Info</CardTitle>
-            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.personal ? 'rotate-180' : ''}`} />
-          </CardHeader>
-        </Card>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <CardContent className="space-y-4 pt-4">
-          <div>
-            <Label htmlFor="fatherName">Father's Name</Label>
-            <Input
-              id="fatherName"
-              value={formData.fatherName}
-              onChange={(e) => setFormData({...formData, fatherName: e.target.value})}
-            />
-          </div>
-
-          <div>
-            <Label>Marital Status *</Label>
-            <RadioGroup value={formData.maritalStatus} onValueChange={(value) => setFormData({...formData, maritalStatus: value})}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="single" id="single" />
-                <Label htmlFor="single">Single</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="married" id="married" />
-                <Label htmlFor="married">Married</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="nationality">Nationality *</Label>
-              <Input
-                id="nationality"
-                value={formData.nationality}
-                onChange={(e) => setFormData({...formData, nationality: e.target.value})}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="languagesKnown">Languages Known *</Label>
-              <Input
-                id="languagesKnown"
-                value={formData.languagesKnown}
-                onChange={(e) => setFormData({...formData, languagesKnown: e.target.value})}
-                placeholder="e.g., English, Hindi, Telugu"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="hobbies">Hobbies</Label>
-            <Textarea
-              id="hobbies"
-              value={formData.hobbies}
-              onChange={(e) => setFormData({...formData, hobbies: e.target.value})}
-            />
-          </div>
-
-          {formData.role === 'job-seeker' && (
-            <div>
-              <Label htmlFor="jobCategory">Looking for Job Category *</Label>
-              <Select value={formData.jobCategory} onValueChange={(value) => setFormData({...formData, jobCategory: value})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select job category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="IT">IT</SelectItem>
-                  <SelectItem value="Non-IT">Non-IT</SelectItem>
-                  <SelectItem value="Finance">Finance</SelectItem>
-                  <SelectItem value="Marketing">Marketing</SelectItem>
-                  <SelectItem value="HR">HR</SelectItem>
-                  <SelectItem value="Management">Management</SelectItem>
-                  <SelectItem value="Pharma">Pharma</SelectItem>
-                  <SelectItem value="Business">Business</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </CardContent>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-
-  const renderEducation = () => (
-    <Collapsible open={openSections.education} onOpenChange={() => toggleSection('education')}>
-      <CollapsibleTrigger asChild>
-        <Card className="cursor-pointer hover:bg-gray-50">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Education</CardTitle>
-            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.education ? 'rotate-180' : ''}`} />
-          </CardHeader>
-        </Card>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <CardContent className="space-y-4 pt-4">
-          {formData.education.map((edu, index) => (
-            <div key={index} className="border p-4 rounded-lg space-y-4">
-              <div className="flex justify-between items-center">
-                <h4 className="font-medium">Education {index + 1}</h4>
-                {formData.education.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeEducation(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-
-              <div>
-                <Label>Institute Name *</Label>
-                <Input
-                  value={edu.instituteName}
-                  onChange={(e) => {
-                    const newEducation = [...formData.education];
-                    newEducation[index].instituteName = e.target.value;
-                    setFormData({...formData, education: newEducation});
-                  }}
-                />
-              </div>
-
-              <div>
-                <Label>Stream/Course *</Label>
-                <Select value={edu.stream} onValueChange={(value) => {
-                  const newEducation = [...formData.education];
-                  newEducation[index].stream = value;
-                  setFormData({...formData, education: newEducation});
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select stream" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="B.Tech">B.Tech</SelectItem>
-                    <SelectItem value="MCA">MCA</SelectItem>
-                    <SelectItem value="B.Sc">B.Sc</SelectItem>
-                    <SelectItem value="M.Sc">M.Sc</SelectItem>
-                    <SelectItem value="MBA">MBA</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Year of Passing *</Label>
-                <Input
-                  type="number"
-                  min="1950"
-                  max="2030"
-                  value={edu.yearOfPassing}
-                  onChange={(e) => {
-                    const newEducation = [...formData.education];
-                    newEducation[index].yearOfPassing = e.target.value;
-                    setFormData({...formData, education: newEducation});
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-
-          <Button type="button" variant="outline" onClick={addEducation}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Education
-          </Button>
-        </CardContent>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-
-  const renderAccountSetup = () => (
-    <Collapsible open={openSections.account} onOpenChange={() => toggleSection('account')}>
-      <CollapsibleTrigger asChild>
-        <Card className="cursor-pointer hover:bg-gray-50">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Account Setup</CardTitle>
-            <ChevronDown className={`h-4 w-4 transition-transform ${openSections.account ? 'rotate-180' : ''}`} />
-          </CardHeader>
-        </Card>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <CardContent className="space-y-4 pt-4">
-          <div>
-            <Label htmlFor="username">Username *</Label>
-            <Input
-              id="username"
-              value={formData.username}
-              onChange={(e) => setFormData({...formData, username: e.target.value})}
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="password">Password *</Label>
-            <Input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="confirmPassword">Re-enter Password *</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-              required
-            />
-          </div>
-        </CardContent>
-      </CollapsibleContent>
-    </Collapsible>
-  );
 
   return (
     <div className="space-y-6">
@@ -847,50 +333,263 @@ const UserManagement = () => {
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Create New User
+                  Register New User
                 </DialogTitle>
                 <DialogDescription>
-                  Add a new user to the platform with complete registration details.
+                  Register a new user with complete details using the same form as the registration page.
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-6">
-                {/* Role Selection */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Select Role</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <RadioGroup value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="student" id="student-role" />
-                        <Label htmlFor="student-role">User / Student</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="job-seeker" id="job-seeker-role" />
-                        <Label htmlFor="job-seeker-role">Job Seeker</Label>
-                      </div>
-                    </RadioGroup>
-                  </CardContent>
-                </Card>
+              <form onSubmit={handleSubmit(handleRegister)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="firstName" className="text-gray-700 font-medium">First Name *</Label>
+                    <div className="relative mt-1">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input 
+                        id="firstName" 
+                        {...register('firstName')} 
+                        placeholder="Enter first name" 
+                        className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>}
+                  </div>
 
-                {renderBasicInformation()}
-                {renderPersonalInfo()}
-                {renderEducation()}
-                {renderAccountSetup()}
-              </div>
+                  <div>
+                    <Label htmlFor="lastName" className="text-gray-700 font-medium">Last Name *</Label>
+                    <div className="relative mt-1">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input 
+                        id="lastName" 
+                        {...register('lastName')} 
+                        placeholder="Enter last name" 
+                        className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>}
+                  </div>
 
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => {
-                  setCreateUserOpen(false);
-                  resetForm();
-                }}>
-                  Cancel
-                </Button>
-                <Button type="button" onClick={handleCreateUser} disabled={loading}>
-                  {loading ? 'Creating...' : `Register as ${formData.role === 'student' ? 'Student' : 'Job Seeker'}`}
-                </Button>
-              </DialogFooter>
+                  <div>
+                    <Label htmlFor="email" className="text-gray-700 font-medium">Email Address *</Label>
+                    <div className="relative mt-1">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        {...register('email')} 
+                        placeholder="Enter email address" 
+                        className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="phoneNumber" className="text-gray-700 font-medium">Phone Number *</Label>
+                    <div className="relative mt-1">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input 
+                        id="phoneNumber" 
+                        {...register('phoneNumber')} 
+                        placeholder="Enter phone number" 
+                        className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="whatsappNumber" className="text-gray-700 font-medium">WhatsApp Number *</Label>
+                    <div className="relative mt-1">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input 
+                        id="whatsappNumber" 
+                        {...register('whatsappNumber')} 
+                        placeholder="Enter WhatsApp number" 
+                        className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    {errors.whatsappNumber && <p className="text-red-500 text-sm mt-1">{errors.whatsappNumber.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="password" className="text-gray-700 font-medium">Password *</Label>
+                    <div className="relative mt-1">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        {...register("password")}
+                        placeholder="Enter password"
+                        className="pl-10 pr-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-400"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="confirmPassword" className="text-gray-700 font-medium">Confirm Password *</Label>
+                    <div className="relative mt-1">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input 
+                        id="confirmPassword" 
+                        type="password" 
+                        {...register('confirmPassword')} 
+                        placeholder="Confirm password" 
+                        className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label htmlFor="address" className="text-gray-700 font-medium">Address *</Label>
+                    <div className="relative mt-1">
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input 
+                        id="address" 
+                        {...register('address')} 
+                        placeholder="Enter complete address" 
+                        className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="state" className="text-gray-700 font-medium">State *</Label>
+                    <Controller
+                      name="state"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
+                            <SelectValue placeholder="Select state" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                            {indianStates.map((state) => (
+                              <SelectItem key={state} value={state} className="hover:bg-gray-100">
+                                {state}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="role" className="text-gray-700 font-medium">Role *</Label>
+                    <Controller
+                      name="role"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                            <SelectItem value="student" className="hover:bg-gray-100">Student</SelectItem>
+                            <SelectItem value="jobseeker" className="hover:bg-gray-100">Job Seeker</SelectItem>
+                            <SelectItem value="employer" className="hover:bg-gray-100">Employer</SelectItem>
+                            <SelectItem value="trainer" className="hover:bg-gray-100">Trainer</SelectItem>
+                            <SelectItem value="college" className="hover:bg-gray-100">College</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role.message}</p>}
+                  </div>
+
+                  {/* College Dropdown - Only show when student role is selected */}
+                  {selectedRole === 'student' && (
+                    <div className="md:col-span-2">
+                      <Label htmlFor="collegeName" className="text-gray-700 font-medium">Select College *</Label>
+                      <Controller
+                        name="collegeName"
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={loadingColleges}>
+                            <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
+                              <div className="flex items-center">
+                                <GraduationCap className="h-4 w-4 mr-2 text-gray-400" />
+                                <SelectValue placeholder={loadingColleges ? "Loading colleges..." : "Select college"} />
+                              </div>
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                              {colleges.map((college) => (
+                                <SelectItem key={college._id} value={college.collegeName} className="hover:bg-gray-100">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{college.collegeName}</span>
+                                    <span className="text-sm text-gray-500">{college.university} - {college.city}, {college.state}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {errors.collegeName && <p className="text-red-500 text-sm mt-1">{errors.collegeName.message}</p>}
+                    </div>
+                  )}
+
+                  {/* College Code - Only show when college role is selected */}
+                  {selectedRole === 'college' && (
+                    <div className="md:col-span-2">
+                      <Label htmlFor="collegeCode" className="text-gray-700 font-medium">College Code *</Label>
+                      <div className="relative mt-1">
+                        <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input 
+                          id="collegeCode" 
+                          {...register('collegeCode')} 
+                          placeholder="Enter college code" 
+                          className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+                      {errors.collegeCode && <p className="text-red-500 text-sm mt-1">{errors.collegeCode.message}</p>}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Controller
+                    name="acceptTerms"
+                    control={control}
+                    render={({ field }) => (
+                      <Checkbox
+                        id="acceptTerms"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    )}
+                  />
+                  <Label htmlFor="acceptTerms" className="text-sm text-gray-600">
+                    I agree to the Terms and Conditions and Privacy Policy *
+                  </Label>
+                </div>
+                {errors.acceptTerms && <p className="text-red-500 text-sm">{errors.acceptTerms.message}</p>}
+
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setCreateUserOpen(false);
+                    reset();
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? 'Registering...' : 'Register User'}
+                  </Button>
+                </DialogFooter>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
@@ -911,15 +610,17 @@ const UserManagement = () => {
                 />
               </div>
             </div>
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
+            <Select value={selectedRoleFilter} onValueChange={setSelectedRoleFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="student">Students</SelectItem>
-                <SelectItem value="job-seeker">Job Seekers</SelectItem>
-                <SelectItem value="admin">Admins</SelectItem>
+                <SelectItem value="jobseeker">Job Seekers</SelectItem>
+                <SelectItem value="employer">Employers</SelectItem>
+                <SelectItem value="trainer">Trainers</SelectItem>
+                <SelectItem value="college">Colleges</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -951,12 +652,10 @@ const UserManagement = () => {
                 <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      {user.role === 'student' && <GraduationCap className="h-5 w-5 text-blue-600" />}
-                      {user.role === 'job-seeker' && <Briefcase className="h-5 w-5 text-blue-600" />}
-                      {user.role === 'admin' && <Users className="h-5 w-5 text-blue-600" />}
+                      <User className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="font-medium">{user.fullName}</p>
+                      <p className="font-medium">{user.firstName} {user.lastName}</p>
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <span className="flex items-center">
                           <Mail className="h-3 w-3 mr-1" />
@@ -964,25 +663,15 @@ const UserManagement = () => {
                         </span>
                         <span className="flex items-center">
                           <Phone className="h-3 w-3 mr-1" />
-                          {user.phone}
-                        </span>
-                        <span className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {user.createdAt}
+                          {user.phoneNumber}
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant={user.role === 'admin' ? 'secondary' : 'outline'}>
+                    <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
                       {user.role}
                     </Badge>
-                    <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                      {user.status}
-                    </Badge>
-                    <Button variant="outline" size="sm" onClick={() => openEditModal(user)}>
-                      <Edit className="h-3 w-3" />
-                    </Button>
                     <Button variant="outline" size="sm" onClick={() => handleDeleteUser(user.id)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -993,37 +682,6 @@ const UserManagement = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Edit User Dialog */}
-      <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update user information below.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {renderBasicInformation()}
-            {renderPersonalInfo()}
-            {renderEducation()}
-            {renderAccountSetup()}
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => {
-              setEditUserOpen(false);
-              resetForm();
-            }}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={handleUpdateUser} disabled={loading}>
-              {loading ? 'Updating...' : 'Update User'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
