@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Upload, FileSpreadsheet } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, FileSpreadsheet, X } from 'lucide-react';
 import { courseApi } from '@/services/api';
 import { EnhancedCourse } from '@/types/api';
 
@@ -26,7 +26,7 @@ interface TopicForm {
   examExcelLink: string;
 }
 
-// CourseForm component - moved outside to prevent re-rendering issues
+// Enhanced CourseForm component with proper file uploads matching backend requirements
 const CourseForm: React.FC<{
   formData: {
     courseName: string;
@@ -35,28 +35,47 @@ const CourseForm: React.FC<{
     totalDuration: number;
     courseType: 'paid' | 'unpaid';
     price: number;
-    courseImageLink: string;
     stream: 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability';
     providerName: 'triaright' | 'etv' | 'kalasalingan' | 'instructor';
     courseLanguage: string;
     certificationProvided: 'yes' | 'no';
     additionalInformation: string;
     demoVideoLink: string;
-    curriculumDocLink: string;
     curriculum: TopicForm[];
     hasFinalExam: boolean;
-    finalExamExcelLink: string;
+  };
+  files: {
+    courseImage: File | null;
+    curriculumDoc: File | null;
+    finalExamExcel: File | null;
+    topicExams: Record<string, File | null>;
   };
   setFormData: React.Dispatch<React.SetStateAction<any>>;
+  setFiles: React.Dispatch<React.SetStateAction<any>>;
   handleTopicChange: (index: number, key: keyof TopicForm, value: string | number) => void;
   handleSubtopicChange: (topicIndex: number, subtopicIndex: number, key: 'name' | 'link' | 'duration', value: string | number) => void;
   handleAddTopic: () => void;
   handleAddSubtopic: (topicIndex: number) => void;
+  handleRemoveTopic: (index: number) => void;
   onSubmit: () => void;
   submitText: string;
   loading: boolean;
-}> = ({ formData, setFormData, handleTopicChange, handleSubtopicChange, handleAddTopic, handleAddSubtopic, onSubmit, submitText, loading }) => (
-  <div className="space-y-4">
+}> = ({ 
+  formData, 
+  files,
+  setFormData, 
+  setFiles,
+  handleTopicChange, 
+  handleSubtopicChange, 
+  handleAddTopic, 
+  handleAddSubtopic, 
+  handleRemoveTopic,
+  onSubmit, 
+  submitText, 
+  loading 
+}) => (
+  <div className="space-y-6">
+    {/* Basic Information */}
     <div className="grid grid-cols-2 gap-4">
       <div>
         <Label htmlFor="courseName">Course Name *</Label>
@@ -79,7 +98,7 @@ const CourseForm: React.FC<{
     </div>
 
     <div>
-      <Label htmlFor="courseDescription">Course Description</Label>
+      <Label htmlFor="courseDescription">Course Description *</Label>
       <Textarea
         id="courseDescription"
         value={formData.courseDescription}
@@ -89,19 +108,20 @@ const CourseForm: React.FC<{
       />
     </div>
 
+    <div>
+      <Label htmlFor="demoVideoLink">Demo Video Link *</Label>
+      <Input
+        id="demoVideoLink"
+        value={formData.demoVideoLink}
+        onChange={(e) => setFormData(prev => ({ ...prev, demoVideoLink: e.target.value }))}
+        placeholder="Enter demo video URL (YouTube, Vimeo, etc.)"
+      />
+    </div>
+
+    {/* Course Details */}
     <div className="grid grid-cols-3 gap-4">
       <div>
-        <Label htmlFor="totalDuration">Total Duration (minutes)</Label>
-        <Input
-          id="totalDuration"
-          type="number"
-          value={formData.totalDuration}
-          onChange={(e) => setFormData(prev => ({ ...prev, totalDuration: parseInt(e.target.value) || 0 }))}
-          placeholder="e.g., 480"
-        />
-      </div>
-      <div>
-        <Label htmlFor="stream">Stream</Label>
+        <Label htmlFor="stream">Stream *</Label>
         <Select
           value={formData.stream}
           onValueChange={(value: 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability') =>
@@ -122,7 +142,7 @@ const CourseForm: React.FC<{
         </Select>
       </div>
       <div>
-        <Label htmlFor="providerName">Provider</Label>
+        <Label htmlFor="providerName">Provider *</Label>
         <Select
           value={formData.providerName}
           onValueChange={(value: 'triaright' | 'etv' | 'kalasalingan' | 'instructor') =>
@@ -140,11 +160,8 @@ const CourseForm: React.FC<{
           </SelectContent>
         </Select>
       </div>
-    </div>
-
-    <div className="grid grid-cols-2 gap-4">
       <div>
-        <Label htmlFor="courseLanguage">Course Language</Label>
+        <Label htmlFor="courseLanguage">Language *</Label>
         <Input
           id="courseLanguage"
           value={formData.courseLanguage}
@@ -152,27 +169,9 @@ const CourseForm: React.FC<{
           placeholder="e.g., English"
         />
       </div>
-      <div>
-        <Label htmlFor="courseImageLink">Course Image URL</Label>
-        <Input
-          id="courseImageLink"
-          value={formData.courseImageLink}
-          onChange={(e) => setFormData(prev => ({ ...prev, courseImageLink: e.target.value }))}
-          placeholder="Enter image URL"
-        />
-      </div>
     </div>
 
-    <div>
-      <Label htmlFor="demoVideoLink">Demo Video Link *</Label>
-      <Input
-        id="demoVideoLink"
-        value={formData.demoVideoLink}
-        onChange={(e) => setFormData(prev => ({ ...prev, demoVideoLink: e.target.value }))}
-        placeholder="Enter demo video URL"
-      />
-    </div>
-
+    {/* Pricing */}
     <div className="grid grid-cols-2 gap-4 items-center">
       <div className="flex items-center space-x-2">
         <input
@@ -185,20 +184,20 @@ const CourseForm: React.FC<{
       </div>
       {formData.courseType === 'paid' && (
         <div>
-          <Label htmlFor="price">Price ($)</Label>
+          <Label htmlFor="price">Price (₹) *</Label>
           <Input
             id="price"
             type="number"
             value={formData.price}
-            onChange={(e) =>
-              setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
-            }
+            onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
             placeholder="0.00"
+            min="0"
           />
         </div>
       )}
     </div>
 
+    {/* Certification */}
     <div className="flex items-center space-x-2">
       <input
         type="checkbox"
@@ -209,105 +208,178 @@ const CourseForm: React.FC<{
       <Label htmlFor="certificationProvided">Certification Provided</Label>
     </div>
 
-    <div>
-      <Label htmlFor="additionalInformation">Additional Information</Label>
-      <Textarea
-        id="additionalInformation"
-        value={formData.additionalInformation}
-        onChange={(e) => setFormData(prev => ({ ...prev, additionalInformation: e.target.value }))}
-        placeholder="Enter additional information"
-        rows={2}
-      />
+    {/* File Uploads */}
+    <div className="space-y-4 border-t pt-4">
+      <h3 className="text-lg font-medium">File Uploads</h3>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="courseImage">Course Image *</Label>
+          <Input
+            id="courseImage"
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFiles(prev => ({ ...prev, courseImage: e.target.files?.[0] || null }))}
+          />
+          {files.courseImage && <p className="text-sm text-green-600">✓ {files.courseImage.name}</p>}
+        </div>
+        <div>
+          <Label htmlFor="curriculumDoc">Curriculum Document</Label>
+          <Input
+            id="curriculumDoc"
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => setFiles(prev => ({ ...prev, curriculumDoc: e.target.files?.[0] || null }))}
+          />
+          {files.curriculumDoc && <p className="text-sm text-green-600">✓ {files.curriculumDoc.name}</p>}
+        </div>
+      </div>
     </div>
 
     {/* Curriculum Section */}
-    <div>
-      <Label>Curriculum</Label>
-      <div className="space-y-6">
-        {formData.curriculum.map((topic, topicIndex) => (
-          <div key={topicIndex} className="border p-4 rounded-lg">
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <Input
-                placeholder="Topic Name"
-                value={topic.topicName}
-                onChange={(e) => handleTopicChange(topicIndex, 'topicName', e.target.value)}
-              />
-              <Input
-                placeholder="Topic Count"
-                type="number"
-                value={topic.topicCount}
-                onChange={(e) => handleTopicChange(topicIndex, 'topicCount', parseInt(e.target.value) || 1)}
-              />
-            </div>
-            
-            <div className="space-y-2">
+    <div className="space-y-4 border-t pt-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Curriculum *</h3>
+        <Button type="button" variant="outline" onClick={handleAddTopic}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Topic
+        </Button>
+      </div>
+      
+      {formData.curriculum.map((topic, topicIndex) => (
+        <div key={topicIndex} className="border p-4 rounded-lg space-y-4">
+          <div className="flex justify-between items-center">
+            <Label>Topic {topicIndex + 1}</Label>
+            {formData.curriculum.length > 1 && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => handleRemoveTopic(topicIndex)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              placeholder="Topic Name *"
+              value={topic.topicName}
+              onChange={(e) => handleTopicChange(topicIndex, 'topicName', e.target.value)}
+            />
+            <Input
+              placeholder="Topic Count"
+              type="number"
+              value={topic.topicCount}
+              onChange={(e) => handleTopicChange(topicIndex, 'topicCount', parseInt(e.target.value) || 1)}
+            />
+          </div>
+          
+          {/* Topic Exam Upload */}
+          <div>
+            <Label>Topic Exam Excel (10 questions) *</Label>
+            <Input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                setFiles(prev => ({
+                  ...prev,
+                  topicExams: { ...prev.topicExams, [topic.topicName]: file }
+                }));
+              }}
+            />
+            {files.topicExams[topic.topicName] && (
+              <p className="text-sm text-green-600">✓ {files.topicExams[topic.topicName]?.name}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Excel format: Question | Option1 | Option2 | Option3 | Option4 | CorrectAnswer | Type | Description
+            </p>
+          </div>
+
+          {/* Subtopics */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
               <Label>Subtopics</Label>
-              {topic.subtopics.map((subtopic, subtopicIndex) => (
-                <div key={subtopicIndex} className="grid grid-cols-3 gap-2">
-                  <Input
-                    placeholder="Subtopic Name"
-                    value={subtopic.name}
-                    onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'name', e.target.value)}
-                  />
-                  <Input
-                    placeholder="Subtopic Link"
-                    value={subtopic.link}
-                    onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'link', e.target.value)}
-                  />
-                  <Input
-                    placeholder="Duration (min)"
-                    type="number"
-                    value={subtopic.duration}
-                    onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-              ))}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleAddSubtopic(topicIndex)}
               >
-                + Add Subtopic
+                <Plus className="h-4 w-4 mr-1" />
+                Add Subtopic
               </Button>
             </div>
+            {topic.subtopics.map((subtopic, subtopicIndex) => (
+              <div key={subtopicIndex} className="grid grid-cols-3 gap-2">
+                <Input
+                  placeholder="Subtopic Name *"
+                  value={subtopic.name}
+                  onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'name', e.target.value)}
+                />
+                <Input
+                  placeholder="Video/Content Link *"
+                  value={subtopic.link}
+                  onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'link', e.target.value)}
+                />
+                <Input
+                  placeholder="Duration (minutes) *"
+                  type="number"
+                  value={subtopic.duration}
+                  onChange={(e) => handleSubtopicChange(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value) || 0)}
+                />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleAddTopic}
-        className="mt-2"
-      >
-        + Add Topic
-      </Button>
+        </div>
+      ))}
     </div>
 
-    <div className="flex items-center space-x-2">
-      <input
-        type="checkbox"
-        id="hasFinalExam"
-        checked={formData.hasFinalExam}
-        onChange={(e) => setFormData(prev => ({ ...prev, hasFinalExam: e.target.checked }))}
-      />
-      <Label htmlFor="hasFinalExam">Has Final Exam</Label>
-    </div>
-
-    {formData.hasFinalExam && (
-      <div>
-        <Label htmlFor="finalExamExcelLink">Final Exam Excel Link</Label>
-        <Input
-          id="finalExamExcelLink"
-          value={formData.finalExamExcelLink}
-          onChange={(e) => setFormData(prev => ({ ...prev, finalExamExcelLink: e.target.value }))}
-          placeholder="Enter final exam excel file URL"
+    {/* Final Exam */}
+    <div className="border-t pt-4">
+      <div className="flex items-center space-x-2 mb-4">
+        <input
+          type="checkbox"
+          id="hasFinalExam"
+          checked={formData.hasFinalExam}
+          onChange={(e) => setFormData(prev => ({ ...prev, hasFinalExam: e.target.checked }))}
         />
+        <Label htmlFor="hasFinalExam">Has Final Exam</Label>
       </div>
-    )}
+
+      {formData.hasFinalExam && (
+        <div>
+          <Label htmlFor="finalExamExcel">Final Exam Excel *</Label>
+          <Input
+            id="finalExamExcel"
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={(e) => setFiles(prev => ({ ...prev, finalExamExcel: e.target.files?.[0] || null }))}
+          />
+          {files.finalExamExcel && <p className="text-sm text-green-600">✓ {files.finalExamExcel.name}</p>}
+          <p className="text-xs text-gray-500 mt-1">
+            Excel format: Question | Option1 | Option2 | Option3 | Option4 | CorrectAnswer | Type | Description
+          </p>
+        </div>
+      )}
+    </div>
+
+    {/* Additional Information */}
+    <div>
+      <Label htmlFor="additionalInformation">Additional Information</Label>
+      <Textarea
+        id="additionalInformation"
+        value={formData.additionalInformation}
+        onChange={(e) => setFormData(prev => ({ ...prev, additionalInformation: e.target.value }))}
+        placeholder="Enter additional information about the course"
+        rows={2}
+      />
+    </div>
 
     <Button onClick={onSubmit} className="w-full mt-4" disabled={loading}>
-      {loading ? 'Processing...' : submitText}
+      {loading ? 'Creating Course...' : submitText}
     </Button>
   </div>
 );
@@ -321,6 +393,8 @@ const CourseManagement = () => {
   const [isExamUploadOpen, setIsExamUploadOpen] = useState(false);
   const [selectedCourseForExam, setSelectedCourseForExam] = useState<string>('');
   const [editingCourse, setEditingCourse] = useState<EnhancedCourse | null>(null);
+  
+  // Form data state
   const [formData, setFormData] = useState({
     courseName: '',
     courseDescription: '',
@@ -328,14 +402,12 @@ const CourseManagement = () => {
     totalDuration: 0,
     courseType: 'unpaid' as 'paid' | 'unpaid',
     price: 0,
-    courseImageLink: '',
     stream: 'it' as 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability',
     providerName: 'triaright' as 'triaright' | 'etv' | 'kalasalingan' | 'instructor',
     courseLanguage: 'English',
     certificationProvided: 'yes' as 'yes' | 'no',
     additionalInformation: '',
     demoVideoLink: '',
-    curriculumDocLink: '',
     curriculum: [{ 
       topicName: '', 
       topicCount: 1, 
@@ -344,8 +416,16 @@ const CourseManagement = () => {
       examExcelLink: '' 
     }] as TopicForm[],
     hasFinalExam: false,
-    finalExamExcelLink: '',
   });
+
+  // File upload state
+  const [files, setFiles] = useState({
+    courseImage: null as File | null,
+    curriculumDoc: null as File | null,
+    finalExamExcel: null as File | null,
+    topicExams: {} as Record<string, File | null>
+  });
+
   const { toast } = useToast();
 
   // Load courses from API on component mount
@@ -378,14 +458,12 @@ const CourseManagement = () => {
       totalDuration: 0,
       courseType: 'unpaid',
       price: 0,
-      courseImageLink: '',
       stream: 'it',
       providerName: 'triaright',
       courseLanguage: 'English',
       certificationProvided: 'yes',
       additionalInformation: '',
       demoVideoLink: '',
-      curriculumDocLink: '',
       curriculum: [{ 
         topicName: '', 
         topicCount: 1, 
@@ -394,15 +472,51 @@ const CourseManagement = () => {
         examExcelLink: '' 
       }] as TopicForm[],
       hasFinalExam: false,
-      finalExamExcelLink: '',
+    });
+    setFiles({
+      courseImage: null,
+      curriculumDoc: null,
+      finalExamExcel: null,
+      topicExams: {}
     });
   };
 
   const handleAddCourse = async () => {
+    // Validation
     if (!formData.courseName || !formData.instructorName || !formData.demoVideoLink) {
       toast({
         title: "Error",
         description: "Please fill in required fields (Course Name, Instructor, Demo Video)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!files.courseImage) {
+      toast({
+        title: "Error",
+        description: "Course image is required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if all topics have exam files
+    for (const topic of formData.curriculum) {
+      if (topic.topicName && !files.topicExams[topic.topicName]) {
+        toast({
+          title: "Error",
+          description: `Topic exam excel file is required for "${topic.topicName}"`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    if (formData.hasFinalExam && !files.finalExamExcel) {
+      toast({
+        title: "Error", 
+        description: "Final exam excel file is required when 'Has Final Exam' is checked",
         variant: "destructive"
       });
       return;
@@ -420,13 +534,43 @@ const CourseManagement = () => {
         return;
       }
 
-      // Create FormData for multipart/form-data request
+      // Create FormData with all required fields matching backend expectations
       const formDataToSend = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'curriculum') {
-          formDataToSend.append(key, JSON.stringify(value));
-        } else {
-          formDataToSend.append(key, value.toString());
+      
+      // Add all form fields
+      formDataToSend.append('courseName', formData.courseName);
+      formDataToSend.append('courseDescription', formData.courseDescription);
+      formDataToSend.append('instructorName', formData.instructorName);
+      formDataToSend.append('demoVideoLink', formData.demoVideoLink);
+      formDataToSend.append('courseType', formData.courseType);
+      formDataToSend.append('price', formData.price.toString());
+      formDataToSend.append('stream', formData.stream);
+      formDataToSend.append('providerName', formData.providerName);
+      formDataToSend.append('courseLanguage', formData.courseLanguage);
+      formDataToSend.append('certificationProvided', formData.certificationProvided);
+      formDataToSend.append('additionalInformation', formData.additionalInformation);
+      formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
+      
+      // Add curriculum as JSON string
+      formDataToSend.append('curriculum', JSON.stringify(formData.curriculum));
+      
+      // Add required files
+      if (files.courseImage) {
+        formDataToSend.append('courseImage', files.courseImage);
+      }
+      
+      if (files.curriculumDoc) {
+        formDataToSend.append('curriculumDoc', files.curriculumDoc);
+      }
+      
+      if (formData.hasFinalExam && files.finalExamExcel) {
+        formDataToSend.append('finalExamExcel', files.finalExamExcel);
+      }
+      
+      // Add topic-wise exam files with correct field names
+      formData.curriculum.forEach(topic => {
+        if (topic.topicName && files.topicExams[topic.topicName]) {
+          formDataToSend.append(`topicExam_${topic.topicName}`, files.topicExams[topic.topicName]!);
         }
       });
 
@@ -438,20 +582,20 @@ const CourseManagement = () => {
         setIsAddDialogOpen(false);
         toast({
           title: "Success",
-          description: response.message || "Course added successfully"
+          description: response.message || "Course created successfully with all exam files"
         });
       } else {
         toast({
           title: "Error",
-          description: response.message || "Failed to add course",
+          description: response.message || "Failed to create course",
           variant: "destructive"
         });
       }
     } catch (error: any) {
-      console.error('Error adding course:', error);
+      console.error('Error creating course:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to add course",
+        description: error.response?.data?.message || error.message || "Failed to create course",
         variant: "destructive"
       });
     } finally {
@@ -570,14 +714,12 @@ const CourseManagement = () => {
       totalDuration: course.totalDuration,
       courseType: course.courseType,
       price: course.price || 0,
-      courseImageLink: course.courseImageLink,
       stream: course.stream,
       providerName: course.providerName,
       courseLanguage: course.courseLanguage,
       certificationProvided: course.certificationProvided,
       additionalInformation: course.additionalInformation || '',
       demoVideoLink: course.demoVideoLink,
-      curriculumDocLink: course.curriculumDocLink || '',
       curriculum: course.curriculum.map(topic => ({
         topicName: topic.topicName,
         topicCount: topic.topicCount,
@@ -586,9 +728,21 @@ const CourseManagement = () => {
         examExcelLink: topic.examExcelLink || ''
       })) as TopicForm[],
       hasFinalExam: course.hasFinalExam || false,
-      finalExamExcelLink: course.finalExamExcelLink || '',
     });
     setIsEditDialogOpen(true);
+  };
+
+  const handleRemoveTopic = (index: number) => {
+    const updated = formData.curriculum.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, curriculum: updated }));
+    
+    // Also remove the corresponding topic exam file if it exists
+    const topicName = formData.curriculum[index]?.topicName;
+    if (topicName && files.topicExams[topicName]) {
+      const updatedTopicExams = { ...files.topicExams };
+      delete updatedTopicExams[topicName];
+      setFiles(prev => ({ ...prev, topicExams: updatedTopicExams }));
+    }
   };
 
   const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -705,11 +859,14 @@ const handleAddSubtopic = (topicIndex: number) => {
               </DialogHeader>
               <CourseForm 
                 formData={formData}
+                files={files}
                 setFormData={setFormData}
+                setFiles={setFiles}
                 handleTopicChange={handleTopicChange}
                 handleSubtopicChange={handleSubtopicChange}
                 handleAddTopic={handleAddTopic}
                 handleAddSubtopic={handleAddSubtopic}
+                handleRemoveTopic={handleRemoveTopic}
                 onSubmit={handleAddCourse} 
                 submitText="Add Course"
                 loading={loading}
@@ -781,11 +938,14 @@ const handleAddSubtopic = (topicIndex: number) => {
           </DialogHeader>
           <CourseForm 
             formData={formData}
+            files={files}
             setFormData={setFormData}
+            setFiles={setFiles}
             handleTopicChange={handleTopicChange}
             handleSubtopicChange={handleSubtopicChange}
             handleAddTopic={handleAddTopic}
             handleAddSubtopic={handleAddSubtopic}
+            handleRemoveTopic={handleRemoveTopic}
             onSubmit={handleEditCourse} 
             submitText="Update Course"
             loading={loading}
