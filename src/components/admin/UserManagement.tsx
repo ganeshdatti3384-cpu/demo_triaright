@@ -71,33 +71,16 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Mock data - replace with actual API call
-      const mockUsers = [
-        {
-          id: 1,
-          fullName: 'John Doe',
-          email: 'john@example.com',
-          role: 'student',
-          phone: '+91-9876543210',
-          status: 'active',
-          createdAt: '2024-01-15',
-          collegeName: 'ABC University',
-          course: 'Computer Science',
-          year: '3rd'
-        },
-        {
-          id: 2,
-          fullName: 'Jane Smith',
-          email: 'jane@company.com',
-          role: 'job-seeker',
-          phone: '+91-9876543211',
-          status: 'active',
-          createdAt: '2024-01-14',
-          companyName: 'Tech Corp',
-          designation: 'HR Manager'
-        }
-      ];
-      setUsers(mockUsers);
+      // Fetch both students and job seekers from your backend
+      const [studentRes, jobseekerRes] = await Promise.all([
+        axios.get('http://localhost:8080/api/students'),
+        axios.get('http://localhost:8080/api/jobseekers')
+      ]);
+
+      // Combine the two lists
+      const allUsers = [...studentRes.data, ...jobseekerRes.data];
+      setUsers(allUsers);
+
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to fetch users');
@@ -105,7 +88,6 @@ const UserManagement = () => {
       setLoading(false);
     }
   };
-
   const validateForm = () => {
     if (!formData.fullName.trim()) {
       toast.error('Full name is required');
@@ -183,67 +165,66 @@ const UserManagement = () => {
     if (!validateForm()) {
       return;
     }
-
     setLoading(true);
     try {
-      // Simulate API call - replace with actual implementation
-      const newUser = {
-        id: Date.now(),
-        ...formData,
-        status: 'active',
-        createdAt: new Date().toISOString().split('T')[0]
-      };
+      const role = formData.role;
+      const endpoint = role === 'student'
+        ? 'http://localhost:8080/api/auth/register/student'
+        : 'http://localhost:8080/api/auth/register/jobseeker';
 
-      // Add to users list
-      setUsers(prevUsers => [...prevUsers, newUser]);
-      
+      await axios.post(endpoint, formData);
+
       toast.success('User created successfully!');
+      fetchUsers(); // Refresh the list with the new user
       setCreateUserOpen(false);
       resetForm();
+
     } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to create user';
+      toast.error(errorMessage);
       console.error('Error creating user:', error);
-      toast.error('Failed to create user');
     } finally {
       setLoading(false);
     }
   };
-
   const handleUpdateUser = async () => {
     if (!selectedUser || !validateForm()) return;
-
     setLoading(true);
     try {
-      // Simulate API call - replace with actual implementation
-      const updatedUsers = users.map(user => 
-        user.id === selectedUser.id 
-          ? { ...user, ...formData }
-          : user
-      );
+      const endpoint = selectedUser.role === 'student'
+        ? `http://localhost:8080/api/students/${selectedUser._id}`
+        : `http://localhost:8080/api/jobseekers/${selectedUser._id}`;
       
-      setUsers(updatedUsers);
+      await axios.put(endpoint, formData); // Using PUT for update
+
       toast.success('User updated successfully!');
+      fetchUsers();
       setEditUserOpen(false);
       resetForm();
     } catch (error) {
-      console.error('Error updating user:', error);
       toast.error('Failed to update user');
+      console.error('Error updating user:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteUser = async (userId: number) => {
+  const handleDeleteUser = async (userToDelete: any) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
-
     try {
-      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+      const endpoint = userToDelete.role === 'student'
+        ? `http://localhost:8080/api/students/${userToDelete._id}`
+        : `http://localhost:8080/api/jobseekers/${userToDelete._id}`;
+
+      await axios.delete(endpoint); // Using DELETE
+
       toast.success('User deleted successfully!');
+      fetchUsers(); // Refresh the list
     } catch (error) {
-      console.error('Error deleting user:', error);
       toast.error('Failed to delete user');
+      console.error('Error deleting user:', error);
     }
   };
-
   const resetForm = () => {
     setFormData({
       role: 'student',
@@ -399,9 +380,9 @@ const UserManagement = () => {
   });
 
   const downloadSampleExcel = () => {
-    const sampleData = `firstname,lastname,email,role,phone,whatsappnumber,address,dateOfBirth,gender,password,collegename
-    John,Doe,john@example.com,student,9876543210,9876543210,123 Main St,1999-01-01,male,password123,Bcd College
-    Jane,Smith,jane@company.com,job-seeker,9876543211,9876543211,456 Business Ave,1985-05-15,female,password123,JHJ College`;
+    const sampleData = `firstname,lastname,email,role,phone,whatsappnumber,address,password,collegename
+    John,Doe,john@example.com,student,9876543210,9876543210,123 Main St,password123,Bcd College
+    Jane,Smith,jane@company.com,job-seeker,9876543211,9876543211,456 Business Ave,password123,JHJ College`;
     
     const blob = new Blob([sampleData], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
