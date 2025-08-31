@@ -1,6 +1,5 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import Papa from 'papaparse';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import axios from 'axios';
@@ -399,87 +398,95 @@ const UserManagement = () => {
   });
 
   const downloadSampleExcel = () => {
-    const sampleData = `firstname,lastname,email,role,phone,whatsappnumber,address,password,collegename
-    John,Doe,john@example.com,student,9876543210,9876543210,123 Main St,password123,Bcd College
-    Jane,Smith,jane@company.com,job-seeker,9876543211,9876543211,456 Business Ave,password123,JHJ College`;
+    // Sample data for Excel file
+    const sampleData = [
+      ['firstname', 'lastname', 'email', 'role', 'phoneNumber', 'whatsappNumber', 'address', 'password', 'collegeName'],
+      ['John', 'Doe', 'john@example.com', 'student', '9876543210', '9876543210', '123 Main St', 'password123', 'ABC College'],
+      ['Jane', 'Smith', 'jane@example.com', 'jobseeker', '9876543211', '9876543211', '456 Business Ave', 'password123', 'XYZ College'],
+      ['Mark', 'Johnson', 'mark@example.com', 'college', '9876543212', '9876543212', '789 College St', 'password123', 'College123']
+    ];
     
-    const blob = new Blob([sampleData], { type: 'text/csv' });
+    // Create CSV content (Excel can open CSV files)
+    const csvContent = sampleData.map(row => row.join(',')).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'user_sample.csv';
+    a.download = 'bulk_users_sample.csv';
     a.click();
     window.URL.revokeObjectURL(url);
+    
+    toast.success('Sample file downloaded! You can open it in Excel and save as .xlsx');
   };
 
   const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Check if file is Excel format
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      toast.error('Please upload an Excel file (.xlsx or .xls)');
+      return;
+    }
+
     setLoading(true);
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const parsedUsers = results.data;
+    try {
+      // Create FormData to send the file
+      const formData = new FormData();
+      formData.append('file', file);
 
-        // Create an array of API call promises
-        const userCreationPromises = parsedUsers.map((userRow: any) => {
-          const role = userRow.role || 'student';
-          const endpoint = role === 'student' 
-            ? 'https://triaright.com/api/users/bulk-register' 
-            : 'https://triaright.com/api/users/bulk-register';
-
-          // Map CSV columns to your formData structure
-          const userData = {
-            fullName: `${userRow.firstname || ''} ${userRow.lastname || ''}`.trim(),
-            email: userRow.email,
-            password: userRow.password,
-            phone: userRow.phone,
-            role: role,
-            // Add any other required fields from your CSV here...
-            dateOfBirth: userRow.dateOfBirth,
-            gender: userRow.gender,
-            address: userRow.address,
-          };
-          
-          return axios.post(endpoint, userData);
-        });
-
-        try {
-          // Wait for all the API calls to complete
-          const responses = await Promise.allSettled(userCreationPromises);
-          
-          const successfulUploads = responses.filter(res => res.status === 'fulfilled').length;
-          const failedUploads = responses.length - successfulUploads;
-
-          if (successfulUploads > 0) {
-            toast.success(`${successfulUploads} users uploaded successfully!`);
-          }
-          if (failedUploads > 0) {
-            toast.error(`${failedUploads} users failed to upload.`);
-            console.error('Failed uploads:', responses.filter(res => res.status === 'rejected'));
-          }
-
-          // Refresh the user list from the database
-          fetchUsers();
-        } catch (error) {
-          console.error('An unexpected error occurred during bulk upload:', error);
-          toast.error('An unexpected error occurred during bulk upload.');
-        } finally {
-          setLoading(false);
-          if (event.target) {
-            event.target.value = '';
-          }
+      // Get admin token from localStorage or context
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      
+      const response = await axios.post('https://triaright.com/api/users/bulk-register', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         }
-      },
-      error: (error) => {
-        console.error('Error parsing CSV file:', error);
-        toast.error('Failed to parse the CSV file.');
-        setLoading(false);
-      },
-    });
+      });
+
+      // Handle response
+      if (response.data && response.data.results) {
+        const results = response.data.results;
+        const successCount = results.filter((r: any) => r.status === 'success').length;
+        const failCount = results.filter((r: any) => r.status === 'failed').length;
+
+        if (successCount > 0) {
+          toast.success(`${successCount} users uploaded successfully!`);
+        }
+        if (failCount > 0) {
+          toast.error(`${failCount} users failed to upload. Check console for details.`);
+          console.error('Failed uploads:', results.filter((r: any) => r.status === 'failed'));
+        }
+      } else {
+        toast.success('Bulk upload completed successfully!');
+      }
+
+      // Refresh the user list
+      fetchUsers();
+
+    } catch (error: any) {
+      console.error('Error during bulk upload:', error);
+      
+      // Handle different error responses
+      if (error.response?.data?.message) {
+        toast.error(`Upload failed: ${error.response.data.message}`);
+      } else if (error.response?.status === 401) {
+        toast.error('Unauthorized. Please check your admin credentials.');
+      } else if (error.response?.status === 400) {
+        toast.error('Bad request. Please check your Excel file format.');
+      } else {
+        toast.error('Failed to upload users. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+      // Clear the file input
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
   };
   const renderBasicInformation = () => (
     <Collapsible open={openSections.basic} onOpenChange={() => toggleSection('basic')}>
