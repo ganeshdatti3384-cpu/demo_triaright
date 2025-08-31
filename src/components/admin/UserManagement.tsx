@@ -3,6 +3,7 @@
 import Papa from 'papaparse';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -411,7 +412,7 @@ const UserManagement = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const handleBulkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -420,70 +421,52 @@ const UserManagement = () => {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: async (results) => {
+        const parsedUsers = results.data;
+
+        // Create an array of API call promises
+        const userCreationPromises = parsedUsers.map((userRow: any) => {
+          const role = userRow.role || 'student';
+          const endpoint = role === 'student' 
+            ? 'http://localhost:8080/api/auth/register/student' 
+            : 'http://localhost:8080/api/auth/register/jobseeker';
+
+          // Map CSV columns to your formData structure
+          const userData = {
+            fullName: `${userRow.firstname || ''} ${userRow.lastname || ''}`.trim(),
+            email: userRow.email,
+            password: userRow.password,
+            phone: userRow.phone,
+            role: role,
+            // Add any other required fields from your CSV here...
+            dateOfBirth: userRow.dateOfBirth,
+            gender: userRow.gender,
+            address: userRow.address,
+          };
+          
+          return axios.post(endpoint, userData);
+        });
+
         try {
-          const newUsers = results.data.map((row: any) => {
-            // A helper to create a full name from firstname and lastname
-            const fullName = `${row.firstname || ''} ${row.lastname || ''}`.trim();
+          // Wait for all the API calls to complete
+          const responses = await Promise.allSettled(userCreationPromises);
+          
+          const successfulUploads = responses.filter(res => res.status === 'fulfilled').length;
+          const failedUploads = responses.length - successfulUploads;
 
-            // Skip if essential data like email or name is missing
-            if (!fullName || !row.email) {
-              return null;
-            }
+          if (successfulUploads > 0) {
+            toast.success(`${successfulUploads} users uploaded successfully!`);
+          }
+          if (failedUploads > 0) {
+            toast.error(`${failedUploads} users failed to upload.`);
+            console.error('Failed uploads:', responses.filter(res => res.status === 'rejected'));
+          }
 
-            return {
-              id: Date.now() + Math.random(), // Generate a unique ID
-              // --- Basic Information ---
-              fullName: fullName,
-              dateOfBirth: row.dateOfBirth || '',
-              gender: row.gender || '',
-              email: row.email || '',
-              phone: row.phone || '',
-              alternatePhone: row.whatsappnumber || '', // Mapping whatsappnumber
-              address: row.address || '',
-              
-              // --- Education ---
-              // Creating a default education structure from the CSV
-              education: row.collegename ? [{ 
-                  instituteName: row.collegename, 
-                  stream: '', // CSV does not have this, leave empty
-                  yearOfPassing: '' // CSV does not have this, leave empty
-              }] : [],
-
-              // --- Account Setup ---
-              username: row.email || `user_${Date.now()}`, // Use email as username by default
-              password: row.password || 'password123', // Set a default password if not provided
-
-              // --- Other default fields ---
-              role: row.role || 'student',
-              status: 'active',
-              createdAt: new Date().toISOString().split('T')[0],
-              
-              // --- Fields not in CSV are initialized empty ---
-              profilePicture: null,
-              fatherName: '',
-              maritalStatus: '',
-              nationality: '',
-              languagesKnown: '',
-              hobbies: '',
-              projects: [],
-              certifications: [],
-              internships: [],
-              jobCategory: '',
-              experience: [],
-              resume: null,
-            };
-          });
-
-          // Filter out any null entries (rows that were skipped)
-          const validNewUsers = newUsers.filter(user => user !== null);
-
-          setUsers(prevUsers => [...prevUsers, ...validNewUsers]);
-          toast.success(`${validNewUsers.length} users uploaded successfully!`);
-
+          // Refresh the user list from the database
+          fetchUsers();
         } catch (error) {
-          console.error('Error processing uploaded users:', error);
-          toast.error('Failed to process uploaded data.');
+          console.error('An unexpected error occurred during bulk upload:', error);
+          toast.error('An unexpected error occurred during bulk upload.');
         } finally {
           setLoading(false);
           if (event.target) {
@@ -495,9 +478,6 @@ const UserManagement = () => {
         console.error('Error parsing CSV file:', error);
         toast.error('Failed to parse the CSV file.');
         setLoading(false);
-        if (event.target) {
-            event.target.value = '';
-        }
       },
     });
   };
