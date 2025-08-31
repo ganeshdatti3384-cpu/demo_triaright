@@ -436,8 +436,31 @@ const CourseManagement = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const coursesData = await courseApi.getAllCourses();
-      setCourses(coursesData);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await fetch('https://triaright.com/api/courses', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setCourses(data.courses || []);
     } catch (error) {
       console.error('Error fetching courses:', error);
       toast({
