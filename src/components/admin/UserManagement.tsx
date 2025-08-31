@@ -428,8 +428,8 @@ const UserManagement = () => {
         const userCreationPromises = parsedUsers.map((userRow: any) => {
           const role = userRow.role || 'student';
           const endpoint = role === 'student' 
-            ? 'http://localhost:8080/api/auth/register/student' 
-            : 'http://localhost:8080/api/auth/register/jobseeker';
+            ? 'https://triaright.com/api/users/bulk-register' 
+            : 'https://triaright.com/api/users/bulk-register';
 
           // Map CSV columns to your formData structure
           const userData = {
