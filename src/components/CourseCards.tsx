@@ -52,8 +52,21 @@ interface CourseCardsProps {
 const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
   const navigate = useNavigate();
 
-  const handleEnrollClick = (courseId: string) => {
-    navigate(`/course-enrollment/${courseId}`);
+  const handleEnrollClick = (courseId: string, isPaid: boolean, price: string) => {
+    if (isPaid) {
+      // For paid courses, redirect to payment selection
+      navigate('/payment-selection', {
+        state: {
+          courseId: courseId,
+          courseName: courses.find(c => (c._id || c.id) === courseId)?.courseName || courses.find(c => (c._id || c.id) === courseId)?.title,
+          fromCourse: true,
+          streamPrice: parseInt(price.replace('₹', '')) || 0
+        }
+      });
+    } else {
+      // For free courses, redirect to course enrollment
+      navigate(`/course-enrollment/${courseId}`);
+    }
   };
 
   // Helper function to normalize course data for display
@@ -65,7 +78,7 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
     instructor: course.instructorName || course.instructor || '',
     duration: course.totalDuration ? `${course.totalDuration} minutes` : course.duration || '',
     level: course.stream || course.level || 'Beginner',
-    price: course.courseType === 'paid' ? `₹${course.price}` : course.price || '₹0',
+    price: course.courseType === 'paid' ? `₹${course.price}` : '₹0',
     originalPrice: course.originalPrice || (course.courseType === 'paid' ? `₹${Math.round(course.price * 1.5)}` : '₹0'),
     isPaid: course.courseType === 'paid' || course.isPaid || false,
     image: course.courseImageLink || course.image || '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
@@ -158,7 +171,7 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
               </div>
               
               <Button 
-                onClick={() => handleEnrollClick(course.courseId)}
+                onClick={() => handleEnrollClick(course.courseId, course.isPaid, course.price)}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {course.isPaid ? `Enroll Now - ${course.price}` : 'Join Free'}
