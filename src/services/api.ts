@@ -844,10 +844,13 @@ export const courseApi = {
     return res.data;
   },
 
-  // ✅ Get All Courses (Public/Student)
+  // ✅ Get All Courses (requires authentication)
   getAllCourses: async (): Promise<any[]> => {
-    const res = await axios.get(`${API_BASE_URL}/courses`);
-    return res.data;
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE_URL}/courses`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    return res.data.courses || res.data;
   },
 
   // ✅ Get Course by ID (Public/Student)
@@ -858,16 +861,24 @@ export const courseApi = {
     return res.data;
   },
 
-  // ✅ Get Free Courses (Public/Student)
+  // ✅ Get Free Courses (requires authentication)
   getFreeCourses: async (): Promise<any[]> => {
-    const res = await axios.get(`${API_BASE_URL}/courses/free`);
-    return res.data;
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE_URL}/courses`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    const allCourses = res.data.courses || res.data;
+    return allCourses.filter((course: any) => course.courseType === 'unpaid');
   },
 
-  // ✅ Get Paid Courses (Public/Student)
+  // ✅ Get Paid Courses (requires authentication)
   getPaidCourses: async (): Promise<any[]> => {
-    const res = await axios.get(`${API_BASE_URL}/courses/paid`);
-    return res.data;
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE_URL}/courses`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    const allCourses = res.data.courses || res.data;
+    return allCourses.filter((course: any) => course.courseType === 'paid');
   },
 };
 
