@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Users, Star, PlayCircle } from 'lucide-react';
+import { Clock, Users, Star, PlayCircle, BookOpen } from 'lucide-react';
 
 interface CourseHeaderProps {
   course: any;
@@ -9,16 +9,18 @@ interface CourseHeaderProps {
 }
 
 const CourseHeader = ({ course, IconComponent }: CourseHeaderProps) => {
+  const DefaultIcon = IconComponent || BookOpen;
+  
   return (
     <div className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center mb-4">
           <div className={`${course.color} p-2 rounded-lg text-white mr-4`}>
-            <IconComponent className="h-6 w-6" />
+            <DefaultIcon className="h-6 w-6" />
           </div>
           <Badge variant="secondary">{course.level}</Badge>
           <Badge variant="outline" className="ml-2">
-            {window.location.pathname.includes('live') ? 'Live Course' : 'Recorded Course'}
+            {course.courseType === 'unpaid' ? 'Free Course' : 'Paid Course'}
           </Badge>
         </div>
         

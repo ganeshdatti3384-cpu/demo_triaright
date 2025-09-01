@@ -44,7 +44,62 @@ const CourseDetail = () => {
       try {
         setLoading(true);
         const response = await courseApi.getCourseById(courseId);
-        setCourse(response.course);
+        
+        // Transform API response to match component expectations
+        const apiCourse = response.course;
+        const transformedCourse = {
+          _id: apiCourse._id,
+          title: apiCourse.courseName,
+          tagline: apiCourse.courseDescription,
+          duration: `${Math.ceil(apiCourse.totalDuration / 60)} weeks`,
+          students: '1,000+', // Default value
+          rating: 4.5, // Default value
+          lessons: apiCourse.curriculum?.reduce((total, topic) => total + (topic.subtopics?.length || 0), 0) || 0,
+          price: apiCourse.price === 0 ? 'Free' : `₹${apiCourse.price}`,
+          originalPrice: apiCourse.price === 0 ? 'Free' : `₹${apiCourse.price + 1000}`,
+          level: 'Beginner to Intermediate', // Default value
+          icon: null, // Will use a default icon
+          color: 'bg-blue-500', // Default color
+          courseType: apiCourse.courseType,
+          stream: apiCourse.stream,
+          instructorName: apiCourse.instructorName,
+          courseLanguage: apiCourse.courseLanguage,
+          certificationProvided: apiCourse.certificationProvided,
+          demoVideoLink: apiCourse.demoVideoLink,
+          courseImageLink: apiCourse.courseImageLink,
+          hasFinalExam: apiCourse.hasFinalExam,
+          whatYoullLearn: [
+            'Master the fundamentals and advanced concepts',
+            'Build practical, real-world projects',
+            'Learn industry best practices',
+            'Get hands-on experience with tools and frameworks',
+            'Prepare for certification and career advancement',
+            'Develop problem-solving skills'
+          ],
+          curriculum: apiCourse.curriculum?.map(topic => ({
+            module: topic.topicName,
+            lessons: topic.subtopics?.map(subtopic => subtopic.name) || []
+          })) || [],
+          instructor: {
+            name: apiCourse.instructorName || 'Expert Instructor',
+            bio: `Experienced ${apiCourse.stream} professional with years of industry expertise`,
+            quote: 'Learn by doing and master the skills that matter!'
+          },
+          reviews: [
+            {
+              name: 'Student',
+              rating: 5,
+              comment: 'Excellent course with great practical examples!'
+            },
+            {
+              name: 'Learner',
+              rating: 4,
+              comment: 'Very informative and well-structured content.'
+            }
+          ]
+        };
+        
+        setCourse(transformedCourse);
       } catch (err: any) {
         console.error('Error fetching course:', err);
         // Fallback to static data if API fails
