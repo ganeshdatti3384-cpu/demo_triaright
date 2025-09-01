@@ -855,9 +855,9 @@ export const courseApi = {
 
   // ✅ Get Course by ID (Public/Student)
   getCourseById: async (
-    courseId: string
+    id: string
   ): Promise<any> => {
-    const res = await axios.get(`${API_BASE_URL}/courses/${courseId}`);
+    const res = await axios.get(`${API_BASE_URL}/courses/${id}`);
     return res.data;
   },
 

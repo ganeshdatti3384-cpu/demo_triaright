@@ -55,7 +55,7 @@ interface Course {
 }
 
 const CourseEnrollment = () => {
-  const { courseId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [course, setCourse] = useState<Course | null>(null);
@@ -66,14 +66,14 @@ const CourseEnrollment = () => {
 
   useEffect(() => {
     loadCourse();
-  }, [courseId]);
+  }, [id]);
 
   const loadCourse = async () => {
-    if (!courseId) return;
+    if (!id) return;
     
     try {
       setLoading(true);
-      const courseData = await courseApi.getCourseById(courseId);
+      const courseData = await courseApi.getCourseById(id);
       setCourse(courseData.course || courseData);
     } catch (error: any) {
       console.error('Error loading course:', error);

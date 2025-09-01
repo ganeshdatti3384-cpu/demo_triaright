@@ -52,8 +52,8 @@ interface CourseCardsProps {
 const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
   const navigate = useNavigate();
 
-  const handleEnrollClick = (courseId: string) => {
-    navigate(`/course-enrollment/${courseId}`);
+  const handleEnrollClick = (id: string) => {
+    navigate(`/course-enrollment/${id}`);
   };
 
   // Helper function to normalize course data for display
@@ -158,7 +158,7 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
               </div>
               
               <Button 
-                onClick={() => handleEnrollClick(course.courseId)}
+                onClick={() => handleEnrollClick(course.id)}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {course.isPaid ? `Enroll Now - ${course.price}` : 'Join Free'}
