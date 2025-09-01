@@ -90,7 +90,15 @@ const CourseEnrollment = () => {
   const handleEnrollClick = () => {
     if (!course) return;
     
-    const isPaid = course.courseType === 'paid' || course.isPaid;
+    const isPaid = course.courseType === 'paid' || course.isPaid || course.price > 0;
+    
+    console.log('Course enrollment debug:', {
+      course: course,
+      courseType: course.courseType,
+      isPaid: course.isPaid,
+      price: course.price,
+      finalIsPaid: isPaid
+    });
     
     if (isPaid) {
       // For paid courses, redirect to payment
@@ -103,6 +111,14 @@ const CourseEnrollment = () => {
 
   const handleConfirmEnrollment = async () => {
     if (!course) return;
+    
+    // Double check if this is actually a paid course that shouldn't be here
+    const isPaid = course.courseType === 'paid' || course.isPaid || course.price > 0;
+    if (isPaid) {
+      console.log('Redirecting to payment for paid course');
+      navigate(`/course-payment/${id}`);
+      return;
+    }
     
     const token = localStorage.getItem('token');
     if (!token) {
