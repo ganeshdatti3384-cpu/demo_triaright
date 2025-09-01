@@ -34,7 +34,6 @@ const StudentDashboard = () => {
   const [allCourses, setAllCourses] = useState<EnhancedCourse[]>([]);
   const [freeCourses, setFreeCourses] = useState<EnhancedCourse[]>([]);
   const [paidCourses, setPaidCourses] = useState<EnhancedCourse[]>([]);
-  const [myEnrollments, setMyEnrollments] = useState<any[]>([]);
   const [loadingPack365, setLoadingPack365] = useState(false);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -62,7 +61,6 @@ const StudentDashboard = () => {
 
     loadPack365Enrollments();
     loadAllCourses();
-    loadMyEnrollments();
   }, []);
 
   const loadAllCourses = async () => {
@@ -86,21 +84,6 @@ const StudentDashboard = () => {
       });
     } finally {
       setLoadingCourses(false);
-    }
-  };
-
-  const loadMyEnrollments = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await courseApi.getMyEnrollments(token);
-      if (response.success) {
-        setMyEnrollments(response.enrollments);
-        setEnrolledCourses(response.enrollments);
-      }
-    } catch (error: any) {
-      console.error('Error loading enrollments:', error);
     }
   };
   const loadPack365Enrollments = async () => {
@@ -349,29 +332,27 @@ const StudentDashboard = () => {
                       <CardDescription>Continue your learning journey</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {myEnrollments.length > 0 ? (
+                      {enrolledCourses.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {myEnrollments.map((enrollment, index) => (
+                          {enrolledCourses.map((course, index) => (
                             <Card key={index} className="hover:shadow-md transition-shadow border-blue-200">
                               <CardContent className="p-6">
                                 <div className="space-y-4">
                                   <div className="flex items-center justify-between">
                                     <Badge className="bg-blue-500 text-white">Enrolled</Badge>
-                                    <span className="text-sm text-gray-500">
-                                      {new Date(enrollment.enrolledAt).toLocaleDateString()}
-                                    </span>
+                                    <span className="text-sm text-gray-500">{course.enrollmentDate}</span>
                                   </div>
-                                  <h3 className="font-semibold">{enrollment.courseName}</h3>
+                                  <h3 className="font-semibold">{course.courseName}</h3>
                                   <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                       <span>Progress</span>
-                                      <span>{enrollment.progress || 0}%</span>
+                                      <span>45%</span>
                                     </div>
-                                    <Progress value={enrollment.progress || 0} className="h-2" />
+                                    <Progress value={45} className="h-2" />
                                   </div>
                                   <Button 
                                     className="w-full bg-blue-600 hover:bg-blue-700"
-                                    onClick={() => navigate(`/course-learning/${enrollment.courseId}`)}
+                                    onClick={() => navigate(`/course-learning/${course.courseId || course.id}`)}
                                   >
                                     <Play className="h-4 w-4 mr-2" />
                                     Continue Learning
