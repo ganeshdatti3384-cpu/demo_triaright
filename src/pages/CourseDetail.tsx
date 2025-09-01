@@ -137,7 +137,22 @@ const CourseDetail = () => {
   const IconComponent = course.icon;
 
   const handleEnrollClick = () => {
-    navigate('/register');
+    const isPaid = course.courseType === 'paid' || course.price !== 'Free';
+    
+    if (isPaid) {
+      // For paid courses, redirect to payment selection
+      navigate('/payment-selection', {
+        state: {
+          courseId: course._id,
+          courseName: course.title,
+          fromCourse: true,
+          streamPrice: parseInt(course.price.replace('₹', '')) || 0
+        }
+      });
+    } else {
+      // For free courses, redirect to course enrollment
+      navigate(`/course-enrollment/${course._id}`);
+    }
   };
 
   return (
