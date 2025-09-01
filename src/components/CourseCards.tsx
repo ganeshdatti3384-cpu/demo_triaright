@@ -65,7 +65,7 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
     instructor: course.instructorName || course.instructor || '',
     duration: course.totalDuration ? `${course.totalDuration} minutes` : course.duration || '',
     level: course.stream || course.level || 'Beginner',
-    price: course.courseType === 'paid' ? `₹${course.price}` : '₹0',
+    price: course.courseType === 'paid' ? `₹${course.price}` : course.price || '₹0',
     originalPrice: course.originalPrice || (course.courseType === 'paid' ? `₹${Math.round(course.price * 1.5)}` : '₹0'),
     isPaid: course.courseType === 'paid' || course.isPaid || false,
     image: course.courseImageLink || course.image || '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
