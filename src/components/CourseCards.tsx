@@ -52,129 +52,12 @@ interface CourseCardsProps {
 const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
   const navigate = useNavigate();
 
-  // Default demo courses if none provided
-  const defaultCourses: Course[] = [
-    {
-      _id: '1',
-      courseId: 'CRS_DEMO_001',
-      courseName: 'Full Stack Web Development',
-      courseDescription: 'Learn modern web development with React, Node.js, and MongoDB',
-      instructorName: 'John Doe',
-      totalDuration: 720,
-      courseType: 'paid',
-      price: 9999,
-      courseImageLink: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-      stream: 'it',
-      providerName: 'triaright',
-      courseLanguage: 'English',
-      certificationProvided: 'yes',
-      curriculum: [
-        {
-          topicName: 'React Basics',
-          topicCount: 5,
-          subtopics: [
-            { name: 'Introduction to React', link: '', duration: 60 }
-          ]
-        }
-      ],
-      // Legacy fields for backward compatibility
-      id: '1',
-      title: 'Full Stack Web Development',
-      description: 'Learn modern web development with React, Node.js, and MongoDB',
-      instructor: 'John Doe',
-      duration: '12 weeks',
-      level: 'Intermediate',
-      originalPrice: '₹15,999',
-      isPaid: true,
-      image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-      skills: ['React', 'Node.js', 'MongoDB', 'JavaScript'],
-      rating: 4.8,
-      studentsEnrolled: 1250
-    },
-    {
-      _id: '2',
-      courseId: 'CRS_DEMO_002',
-      courseName: 'Data Science Fundamentals',
-      courseDescription: 'Master data analysis, visualization, and machine learning basics',
-      instructorName: 'Jane Smith',
-      totalDuration: 480,
-      courseType: 'paid',
-      price: 7999,
-      courseImageLink: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-      stream: 'it',
-      providerName: 'triaright',
-      courseLanguage: 'English',
-      certificationProvided: 'yes',
-      curriculum: [
-        {
-          topicName: 'Python Basics',
-          topicCount: 3,
-          subtopics: [
-            { name: 'Introduction to Python', link: '', duration: 45 }
-          ]
-        }
-      ],
-      // Legacy fields for backward compatibility
-      id: '2',
-      title: 'Data Science Fundamentals',
-      description: 'Master data analysis, visualization, and machine learning basics',
-      instructor: 'Jane Smith',
-      duration: '8 weeks',
-      level: 'Beginner',
-      originalPrice: '₹12,999',
-      isPaid: true,
-      image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-      skills: ['Python', 'Pandas', 'Matplotlib', 'Scikit-learn'],
-      rating: 4.6,
-      studentsEnrolled: 890
-    },
-    {
-      _id: '3',
-      courseId: 'CRS_DEMO_003',
-      courseName: 'Introduction to Programming',
-      courseDescription: 'Start your coding journey with fundamental programming concepts',
-      instructorName: 'Mike Johnson',
-      totalDuration: 360,
-      courseType: 'unpaid',
-      price: 0,
-      courseImageLink: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-      stream: 'it',
-      providerName: 'triaright',
-      courseLanguage: 'English',
-      certificationProvided: 'yes',
-      curriculum: [
-        {
-          topicName: 'Programming Basics',
-          topicCount: 2,
-          subtopics: [
-            { name: 'Introduction to Programming', link: '', duration: 30 }
-          ]
-        }
-      ],
-      // Legacy fields for backward compatibility
-      id: '3',
-      title: 'Introduction to Programming',
-      description: 'Start your coding journey with fundamental programming concepts',
-      instructor: 'Mike Johnson',
-      duration: '6 weeks',
-      level: 'Beginner',
-      originalPrice: '₹0',
-      isPaid: false,
-      image: '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png',
-      skills: ['Programming Basics', 'Logic', 'Problem Solving'],
-      rating: 4.7,
-      studentsEnrolled: 2340
-    }
-  ];
-
-  const displayCourses = courses.length > 0 ? courses : defaultCourses;
-
   const handleEnrollClick = (courseId: string) => {
     navigate(`/course-enrollment/${courseId}`);
   };
 
   // Helper function to normalize course data for display
-  const normalizedCourses = displayCourses.map(course => ({
+  const normalizedCourses = courses.map(course => ({
     id: course._id || course.id || '',
     courseId: course.courseId || course.id || '',
     title: course.courseName || course.title || '',
@@ -194,6 +77,17 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
     courseLanguage: course.courseLanguage || 'English',
     certificationProvided: course.certificationProvided || 'yes'
   }));
+
+  // Show empty state if no courses
+  if (courses.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available</h3>
+        <p className="text-gray-600">Check back later for new courses or try different filters.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
