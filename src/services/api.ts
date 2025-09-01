@@ -882,6 +882,76 @@ export const courseApi = {
   },
 };
 
+// Course API
+export const courseApi = {
+  getAllCourses: async (token: string): Promise<{ success: boolean; courses: EnhancedCourse[] }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/courses`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch courses');
+      }
+
+      const data = await response.json();
+      return { success: true, courses: data.courses || [] };
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      return { success: false, courses: [] };
+    }
+  },
+
+  enrollInCourse: async (courseId: string, token: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/courses/${courseId}/enroll`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to enroll in course');
+      }
+
+      return { success: true, message: data.message || 'Enrolled successfully' };
+    } catch (error: any) {
+      console.error('Error enrolling in course:', error);
+      return { success: false, message: error.message || 'Enrollment failed' };
+    }
+  },
+
+  getMyEnrollments: async (token: string): Promise<{ success: boolean; enrollments: any[] }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/courses/my-enrollments`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch enrollments');
+      }
+
+      const data = await response.json();
+      return { success: true, enrollments: data.enrollments || [] };
+    } catch (error) {
+      console.error('Error fetching enrollments:', error);
+      return { success: false, enrollments: [] };
+    }
+  }
+};
+
 export type { 
   Pack365Course, 
   RegisterPayload, 
@@ -893,3 +963,5 @@ export type {
   EnrollmentCode,
   Exam
 };
+
+export { courseApi };

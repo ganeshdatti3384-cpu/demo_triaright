@@ -4,15 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Play, Clock, Users, Star, BookOpen, Award } from 'lucide-react';
+import { ArrowLeft, Play, Clock, BookOpen, Award } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { EnhancedCourse } from '@/types/api';
-import { courseApi, pack365PaymentService } from '@/services/api';
+import { courseApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 
-const CourseEnrollment = () => {
+const SimpleCourseEnrollment = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -20,7 +20,6 @@ const CourseEnrollment = () => {
   const [course, setCourse] = useState<EnhancedCourse | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
     fetchCourse();
@@ -31,11 +30,6 @@ const CourseEnrollment = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       if (!token) {
-        toast({
-          title: 'Authentication Required',
-          description: 'Please login to view course details.',
-          variant: 'destructive'
-        });
         navigate('/login');
         return;
       }
@@ -47,51 +41,39 @@ const CourseEnrollment = () => {
       }
     } catch (error) {
       console.error('Error fetching course:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load course details.',
-        variant: 'destructive'
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEnrollmentConfirm = async () => {
+  const handleEnrollment = async () => {
     if (!course || !user) return;
 
     try {
       setEnrolling(true);
       const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token');
+      if (!token) throw new Error('No token');
 
       if (course.courseType === 'paid') {
-        // Redirect to payment page for paid courses
         navigate(`/course-payment/${courseId}`);
       } else {
-        // Direct enrollment for free courses
         const response = await courseApi.enrollInCourse(courseId!, token);
         if (response.success) {
           toast({
             title: "Enrollment Successful!",
-            description: "You have been enrolled in this free course.",
-            variant: "default"
+            description: "You have been enrolled in this free course."
           });
-          navigate('/student-dashboard?tab=enrollments');
-        } else {
-          throw new Error(response.message || 'Enrollment failed');
+          navigate('/student-dashboard');
         }
       }
     } catch (error: any) {
-      console.error('Enrollment error:', error);
       toast({
         title: 'Enrollment Failed',
-        description: error.message || 'Failed to enroll in course.',
+        description: error.message,
         variant: 'destructive'
       });
     } finally {
       setEnrolling(false);
-      setShowConfirmDialog(false);
     }
   };
 
@@ -100,10 +82,7 @@ const CourseEnrollment = () => {
       <>
         <Navbar />
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <h2 className="text-xl font-semibold text-gray-900">Loading course details...</h2>
-          </div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
         <Footer />
       </>
@@ -116,7 +95,7 @@ const CourseEnrollment = () => {
         <Navbar />
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Course not found</h2>
+            <h2 className="text-2xl font-bold mb-4">Course not found</h2>
             <Button onClick={() => navigate('/student-dashboard')}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
@@ -177,14 +156,6 @@ const CourseEnrollment = () => {
                     <Badge variant="outline" className="capitalize">{course.stream}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Provider:</span>
-                    <span className="font-medium capitalize">{course.providerName}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Language:</span>
-                    <span className="font-medium">{course.courseLanguage}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Certification:</span>
                     <Badge variant={course.certificationProvided === 'yes' ? 'default' : 'secondary'}>
                       {course.certificationProvided === 'yes' ? 'Provided' : 'Not Provided'}
@@ -234,11 +205,8 @@ const CourseEnrollment = () => {
                         Premium
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">One-time payment</span>
-                      <div className="text-right">
-                        <span className="text-2xl font-bold text-blue-600">₹{course.price}</span>
-                      </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-blue-600">₹{course.price}</span>
                     </div>
                   </div>
                 ) : (
@@ -264,10 +232,6 @@ const CourseEnrollment = () => {
                     <Clock className="h-4 w-4" />
                     <span>Learn at your own pace</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-green-600">
-                    <Users className="h-4 w-4" />
-                    <span>Interactive learning experience</span>
-                  </div>
                   {course.certificationProvided === 'yes' && (
                     <div className="flex items-center space-x-2 text-sm text-green-600">
                       <Award className="h-4 w-4" />
@@ -277,7 +241,7 @@ const CourseEnrollment = () => {
                 </div>
 
                 <div className="border-t pt-4">
-                  <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                  <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3">
                         {course.courseType === 'paid' ? `Enroll Now - ₹${course.price}` : 'Join Free Course'}
@@ -297,7 +261,7 @@ const CourseEnrollment = () => {
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction 
-                          onClick={handleEnrollmentConfirm}
+                          onClick={handleEnrollment}
                           disabled={enrolling}
                         >
                           {enrolling ? 'Processing...' : 'Confirm'}
@@ -322,4 +286,4 @@ const CourseEnrollment = () => {
   );
 };
 
-export default CourseEnrollment;
+export default SimpleCourseEnrollment;

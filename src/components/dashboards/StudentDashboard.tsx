@@ -20,7 +20,7 @@ import { pack365Api, Pack365Course, EnhancedPack365Enrollment, courseApi } from 
 import { useToast } from '@/hooks/use-toast';
 import Pack365Courses from '../Pack365Courses';
 import Pack365Dashboard from '../Pack365Dashboard';
-import Pack365CoursesStudent from '../Pack365Courses2';
+import MyEnrollments from '../MyEnrollments';
 import { EnhancedCourse } from '@/types/api';
 
 const StudentDashboard = () => {
@@ -34,20 +34,33 @@ const StudentDashboard = () => {
   const [allCourses, setAllCourses] = useState<EnhancedCourse[]>([]);
   const [freeCourses, setFreeCourses] = useState<EnhancedCourse[]>([]);
   const [paidCourses, setPaidCourses] = useState<EnhancedCourse[]>([]);
+  const [myEnrollments, setMyEnrollments] = useState<any[]>([]);
   const [loadingPack365, setLoadingPack365] = useState(false);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
-    const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchEnrollments = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+    fetchAllData();
+  }, []);
 
-      try {
-        const response = await pack365Api.getMyEnrollments(token);
+  const fetchAllData = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    await Promise.all([
+      fetchPack365Enrollments(token),
+      fetchCourses(token),
+      fetchMyEnrollments(token)
+    ]);
+  };
+
+  const fetchPack365Enrollments = async (token: string) => {
+    try {
+      setLoadingEnrollments(true);
+      const response = await pack365Api.getMyEnrollments(token);
         if (response.success || response.enrollments) {
           console.log('Pack365 Enrollments fetched:', response.enrollments);
           setPack365Enrollments(response.enrollments);
@@ -484,9 +497,149 @@ const StudentDashboard = () => {
                       <Pack365CoursesStudent />
                     </TabsContent>
 
-                    {/* ---------------- Enrollments Tab ---------------- */}
-                    <TabsContent value="enrollments">
-                      <div className="space-y-6">
+                       <div className="space-y-6">
+                         {/* Pack365 Stats */}
+                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                           {/* Total Streams */}
+                           <Card>
+                             <CardContent className="p-6">
+                               <div className="flex items-center">
+                                 <Award className="h-8 w-8 text-purple-600" />
+                                 <div className="ml-4">
+                                   <p className="text-sm font-medium text-gray-600">Total Streams</p>
+                                   <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalStreams}</p>
+                                 </div>
+                               </div>
+                             </CardContent>
+                           </Card>
+
+                           {/* Total Courses */}
+                           <Card>
+                             <CardContent className="p-6">
+                               <div className="flex items-center">
+                                 <BookOpen className="h-8 w-8 text-blue-600" />
+                                 <div className="ml-4">
+                                   <p className="text-sm font-medium text-gray-600">Total Courses</p>
+                                   <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalCourses}</p>
+                                 </div>
+                               </div>
+                             </CardContent>
+                           </Card>
+
+                           {/* Average Progress */}
+                           <Card>
+                             <CardContent className="p-6">
+                               <div className="flex items-center">
+                                 <Target className="h-8 w-8 text-green-600" />
+                                 <div className="ml-4">
+                                   <p className="text-sm font-medium text-gray-600">Average Progress</p>
+                                   <p className="text-2xl font-bold text-gray-900">{pack365Stats.averageProgress}%</p>
+                                 </div>
+                               </div>
+                             </CardContent>
+                           </Card>
+
+                           {/* Completed Exams */}
+                           <Card>
+                             <CardContent className="p-6">
+                               <div className="flex items-center">
+                                 <Trophy className="h-8 w-8 text-yellow-600" />
+                                 <div className="ml-4">
+                                   <p className="text-sm font-medium text-gray-600">Completed Exams</p>
+                                   <p className="text-2xl font-bold text-gray-900">{pack365Stats.completedExams}</p>
+                                 </div>
+                               </div>
+                             </CardContent>
+                           </Card>
+                         </div>
+
+                         {/* My Enrollments */}
+                         <Card>
+                           <CardHeader>
+                             <CardTitle className="flex items-center">
+                               <GraduationCap className="h-6 w-6 mr-2" />
+                               My Pack365 Enrollments
+                             </CardTitle>
+                           </CardHeader>
+
+                           <CardContent>
+                             {loading ? (
+                               <div className="text-center py-8">
+                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                 <p>Loading your enrollments...</p>
+                               </div>
+                             ) : pack365Enrollments.length === 0 ? (
+                               <div className="text-center py-8">
+                                 <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                                 <h3 className="text-lg font-semibold text-gray-600 mb-2">No Pack365 Enrollments</h3>
+                                 <p className="text-gray-500 mb-6">You haven't enrolled in any Pack365 streams yet.</p>
+                                 <Button onClick={() => navigate('/pack365')}>
+                                   Browse Pack365 Streams
+                                 </Button>
+                               </div>
+                             ) : (
+                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                 {pack365Enrollments.map((enrollment, index) => (
+                                   <Card key={index} className="border-2 hover:border-blue-200 transition-colors">
+                                     <CardHeader>
+                                       <div className="flex items-center justify-between">
+                                         <CardTitle className="text-lg capitalize">{enrollment.stream} Stream</CardTitle>
+                                         <Badge 
+                                           variant={enrollment.paymentStatus === 'completed' ? 'default' : 'secondary'}
+                                           className={enrollment.paymentStatus === 'completed' ? 'bg-green-500' : ''}
+                                         >
+                                           {enrollment.paymentStatus}
+                                         </Badge>
+                                       </div>
+                                     </CardHeader>
+                                     <CardContent className="space-y-4">
+                                       <div className="grid grid-cols-2 gap-4 text-sm">
+                                         <div>
+                                           <div className="flex items-center text-gray-500 mb-1">
+                                             <Calendar className="h-4 w-4 mr-1" />
+                                             Enrolled
+                                           </div>
+                                           <p className="font-medium">{new Date(enrollment.enrollmentDate).toLocaleDateString()}</p>
+                                         </div>
+                                         <div>
+                                           <div className="flex items-center text-gray-500 mb-1">
+                                             <BookOpen className="h-4 w-4 mr-1" />
+                                             Courses
+                                           </div>
+                                           <p className="font-medium">{enrollment.coursesCount}</p>
+                                         </div>
+                                       </div>
+                                       
+                                       <div className="space-y-2">
+                                         <div className="flex justify-between text-sm">
+                                           <span>Overall Progress</span>
+                                           <span>{Math.round(enrollment.totalWatchedPercentage)}%</span>
+                                         </div>
+                                         <Progress value={enrollment.totalWatchedPercentage} className="h-2" />
+                                       </div>
+                                       
+                                       <Button 
+                                         onClick={() => navigate(`/pack365-stream-learning/${enrollment.stream}`, {
+                                           state: { enrollment }
+                                         })}
+                                         className="w-full" 
+                                         variant="outline"
+                                       >
+                                         <Play className="h-4 w-4 mr-2" />
+                                         Continue Learning
+                                       </Button>
+                                     </CardContent>
+                                   </Card>
+                                 ))}
+                               </div>
+                             )}
+                           </CardContent>
+                         </Card>
+                       </div>
+                      </TabsContent>
+
+                     {/* Pack365 Enrollments Tab */}
+                     <TabsContent value="pack365-enrollments">
                         {/* Pack365 Stats */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                           {/* Total Streams */}
