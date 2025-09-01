@@ -9,7 +9,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { EnhancedCourse } from '@/types/api';
-import { courseApi, pack365PaymentService } from '@/services/api';
+import { courseApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 
 const CourseEnrollment = () => {

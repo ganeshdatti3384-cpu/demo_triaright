@@ -844,47 +844,7 @@ export const courseApi = {
     return res.data;
   },
 
-  // ✅ Get All Courses (requires authentication)
-  getAllCourses: async (): Promise<any[]> => {
-    const token = localStorage.getItem('token');
-    const res = await axios.get(`${API_BASE_URL}/courses`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
-    return res.data.courses || res.data;
-  },
-
-  // ✅ Get Course by ID (Public/Student)
-  getCourseById: async (
-    courseId: string
-  ): Promise<any> => {
-    const res = await axios.get(`${API_BASE_URL}/courses/${courseId}`);
-    return res.data;
-  },
-
-  // ✅ Get Free Courses (requires authentication)
-  getFreeCourses: async (): Promise<any[]> => {
-    const token = localStorage.getItem('token');
-    const res = await axios.get(`${API_BASE_URL}/courses`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
-    const allCourses = res.data.courses || res.data;
-    return allCourses.filter((course: any) => course.courseType === 'unpaid');
-  },
-
-  // ✅ Get Paid Courses (requires authentication)
-  getPaidCourses: async (): Promise<any[]> => {
-    const token = localStorage.getItem('token');
-    const res = await axios.get(`${API_BASE_URL}/courses`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
-    const allCourses = res.data.courses || res.data;
-    return allCourses.filter((course: any) => course.courseType === 'paid');
-  },
-};
-
-// Course API
-export const courseApi = {
-  getAllCourses: async (token: string): Promise<{ success: boolean; courses: EnhancedCourse[] }> => {
+  getAllCourses: async (token: string): Promise<{ success: boolean; courses: any[] }> => {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/courses`, {
         method: 'GET',
@@ -949,7 +909,7 @@ export const courseApi = {
       console.error('Error fetching enrollments:', error);
       return { success: false, enrollments: [] };
     }
-  }
+  },
 };
 
 export type { 
@@ -963,5 +923,3 @@ export type {
   EnrollmentCode,
   Exam
 };
-
-export { courseApi };

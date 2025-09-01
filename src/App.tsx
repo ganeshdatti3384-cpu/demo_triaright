@@ -22,7 +22,7 @@ import TermsConditions from '@/pages/TermsConditions';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import RefundPolicy from '@/pages/RefundPolicy';
 import CourseDetail from '@/pages/CourseDetail';
-import SimpleCourseEnrollment from '@/pages/SimpleCourseEnrollment';
+import CourseEnrollment from '@/pages/CourseEnrollment';
 import CoursePayment from '@/pages/CoursePayment';
 import Pack365Payment from '@/pages/Pack365Payment';
 import PaymentSuccess from '@/pages/PaymentSuccess';
@@ -95,7 +95,7 @@ const App = () => {
           <Route path="/services" element={<Services />} />
           <Route path="/contact" element={<ContactUs />} />
           <Route path="/course/:id" element={<CourseDetail />} />
-          <Route path="/course-enrollment/:courseId" element={<SimpleCourseEnrollment />} />
+          <Route path="/course-enrollment/:courseId" element={<CourseEnrollment />} />
           <Route path="/course-payment/:id" element={<CoursePayment />} />
           <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
