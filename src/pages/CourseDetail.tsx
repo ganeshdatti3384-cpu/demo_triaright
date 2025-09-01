@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
@@ -14,11 +14,15 @@ import PricingCard from '@/components/CourseDetail/PricingCard';
 import CourseFeatures from '@/components/CourseDetail/CourseFeatures';
 import MobileCTA from '@/components/CourseDetail/MobileCTA';
 import { courseData } from '@/data/courseData';
+import { courseApi } from '@/services/api';
 
 const CourseDetail = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
     setAuthModal({ isOpen: true, type, userType });
@@ -31,10 +35,50 @@ const CourseDetail = () => {
   const handleAuthSuccess = (userRole: string, userName: string) => {
     console.log(`User ${userName} logged in as ${userRole}`);
     setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-    // You can add additional logic here like redirecting or updating user state
   };
 
-  const course = courseData[courseId] || courseData['web-development'];
+  useEffect(() => {
+    const fetchCourse = async () => {
+      if (!courseId) return;
+      
+      try {
+        setLoading(true);
+        const response = await courseApi.getCourseById(courseId);
+        setCourse(response.course);
+      } catch (err: any) {
+        console.error('Error fetching course:', err);
+        // Fallback to static data if API fails
+        const fallbackCourse = courseData[courseId] || courseData['web-development'];
+        setCourse(fallbackCourse);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourse();
+  }, [courseId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-lg text-gray-600">Loading course...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl text-gray-600">Course not found</p>
+        </div>
+      </div>
+    );
+  }
   const IconComponent = course.icon;
 
   const handleEnrollClick = () => {
