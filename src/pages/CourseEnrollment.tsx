@@ -94,7 +94,7 @@ const CourseEnrollment = () => {
     
     if (isPaid) {
       // For paid courses, redirect to payment
-      navigate(`/course-payment/${courseId}`);
+      navigate(`/course-payment/${id}`);
     } else {
       // For free courses, show confirmation dialog
       setShowConfirmDialog(true);
@@ -119,7 +119,7 @@ const CourseEnrollment = () => {
       setEnrolling(true);
       setShowConfirmDialog(false);
       
-      const response = await courseApi.enrollInCourse(token, courseId!);
+      const response = await courseApi.enrollInCourse(token, id!);
       
       if (response.success) {
         setEnrollmentSuccess(true);
@@ -210,7 +210,7 @@ const CourseEnrollment = () => {
                 </div>
                 <div className="space-y-4">
                   <Button 
-                    onClick={() => navigate(`/course-learning/${courseId}`)}
+                    onClick={() => navigate(`/course-learning/${id}`)}
                     className="w-full bg-green-600 hover:bg-green-700"
                   >
                     <Play className="h-4 w-4 mr-2" />
