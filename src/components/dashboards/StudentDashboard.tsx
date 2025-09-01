@@ -409,104 +409,56 @@ const StudentDashboard = () => {
                 </TabsContent>
 
                 <TabsContent value="browse-courses" className="space-y-6">
-                  <Tabs defaultValue="recorded" className="space-y-4">
+                  {/* Course Filters */}
+                  <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Search courses..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <Select value={courseFilter} onValueChange={setCourseFilter}>
+                      <SelectTrigger className="w-full sm:w-48">
+                        <SelectValue placeholder="Filter by stream" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {streams.map((stream) => (
+                          <SelectItem key={stream} value={stream}>
+                            {stream === 'all' ? 'All Streams' : stream.toUpperCase()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Tabs defaultValue="free" className="space-y-4">
                     <TabsList className="bg-white">
-                      <TabsTrigger value="recorded">Recorded Courses</TabsTrigger>
-                      <TabsTrigger value="live">Live Courses</TabsTrigger>
+                      <TabsTrigger value="free">Free Courses</TabsTrigger>
+                      <TabsTrigger value="paid">Paid Courses</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="recorded" className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[
-                          { id: 'web-development', title: 'Web Development', description: 'Master HTML, CSS, JavaScript, React and build modern web applications', duration: '12 weeks', students: '2,500+', rating: 4.8, color: 'bg-blue-500', icon: Code, price: "₹2,999", originalPrice: "₹4,999", lessons: 45, level: "Beginner to Advanced" },
-                          { id: 'data-science', title: 'Data Science', description: 'Learn Python, Machine Learning, Statistics and Data Analysis', duration: '16 weeks', students: '1,800+', rating: 4.9, color: 'bg-orange-500', icon: BookOpen, price: "₹2,499", originalPrice: "₹3,999", lessons: 38, level: "Beginner" },
-                          { id: 3, title: 'Aptitude Training', description: 'Quantitative aptitude, logical reasoning, and verbal ability', duration: '8 weeks', students: '3,200+', rating: 4.7, color: 'bg-green-500', icon: Calculator, price: "₹1,999", originalPrice: "₹2,999", lessons: 30, level: "Beginner to Intermediate" }
-                        ].map((course) => (
-                          <Card key={course.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/courses/recorded/${course.id}`)}>
-                            <div className="relative flex items-center justify-center h-32">
-                              <div className={`h-16 w-16 ${course.color} rounded-full flex items-center justify-center`}>
-                                <course.icon className="h-8 w-8 text-white" />
-                              </div>
-                              <div className="absolute top-2 right-2">
-                                <Badge variant="secondary" className="bg-white/90 text-xs">{course.level}</Badge>
-                              </div>
-                            </div>
-                            <CardContent className="p-4">
-                              <CardTitle className="text-sm mb-2">{course.title}</CardTitle>
-                              <CardDescription className="text-xs mb-3">{course.description}</CardDescription>
-                              <div className="flex items-center space-x-3 text-xs text-gray-600 mb-3">
-                                <div className="flex items-center">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  {course.duration}
-                                </div>
-                                <div className="flex items-center">
-                                  <Users className="h-3 w-3 mr-1" />
-                                  {course.students}
-                                </div>
-                                <div className="flex items-center">
-                                  <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
-                                  {course.rating}
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-lg font-bold text-blue-600">{course.price}</span>
-                                  <span className="text-sm text-gray-500 line-through">{course.originalPrice}</span>
-                                </div>
-                                <div className="text-xs text-gray-600">{course.lessons} lessons</div>
-                              </div>
-                              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">View Details</Button>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
+                    <TabsContent value="free" className="space-y-6">
+                      {loadingCourses ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                          <p className="mt-2 text-gray-600">Loading courses...</p>
+                        </div>
+                      ) : (
+                        <CourseCards courses={filteredFreeCourses} type="recorded" />
+                      )}
                     </TabsContent>
 
-                    <TabsContent value="live" className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[
-                          { id: 'web-development', title: 'Web Development', description: 'Master HTML, CSS, JavaScript, React and build modern web applications', duration: '12 weeks', students: '2,500+', rating: 4.8, color: 'bg-blue-500', icon: Code, price: "₹2,999", originalPrice: "₹4,999", lessons: 45, level: "Beginner to Advanced" },
-                          { id: 'data-science', title: 'Data Science', description: 'Learn Python, Machine Learning, Statistics and Data Analysis', duration: '16 weeks', students: '1,800+', rating: 4.9, color: 'bg-orange-500', icon: BookOpen, price: "₹2,499", originalPrice: "₹3,999", lessons: 38, level: "Beginner" },
-                          { id: 5, title: 'Soft Skills', description: 'Communication, leadership and professional development', duration: '6 weeks', students: '4,000+', rating: 4.8, color: 'bg-pink-500', icon: Users, price: "₹2,299", originalPrice: "₹3,499", lessons: 35, level: "Beginner" }
-                        ].map((course) => (
-                          <Card key={course.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/courses/live/${course.id}`)}>
-                            <div className="relative flex items-center justify-center h-32">
-                              <div className={`h-16 w-16 ${course.color} rounded-full flex items-center justify-center`}>
-                                <course.icon className="h-8 w-8 text-white" />
-                              </div>
-                              <div className="absolute top-2 right-2">
-                                <Badge variant="secondary" className="bg-white/90 text-xs">{course.level}</Badge>
-                              </div>
-                            </div>
-                            <CardContent className="p-4">
-                              <CardTitle className="text-sm mb-2">{course.title}</CardTitle>
-                              <CardDescription className="text-xs mb-3">{course.description}</CardDescription>
-                              <div className="flex items-center space-x-3 text-xs text-gray-600 mb-3">
-                                <div className="flex items-center">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  {course.duration}
-                                </div>
-                                <div className="flex items-center">
-                                  <Users className="h-3 w-3 mr-1" />
-                                  {course.students}
-                                </div>
-                                <div className="flex items-center">
-                                  <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
-                                  {course.rating}
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-lg font-bold text-blue-600">{course.price}</span>
-                                  <span className="text-sm text-gray-500 line-through">{course.originalPrice}</span>
-                                </div>
-                                <div className="text-xs text-gray-600">{course.lessons} lessons</div>
-                              </div>
-                              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">View Details</Button>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
+                    <TabsContent value="paid" className="space-y-6">
+                      {loadingCourses ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                          <p className="mt-2 text-gray-600">Loading courses...</p>
+                        </div>
+                      ) : (
+                        <CourseCards courses={filteredPaidCourses} type="recorded" />
+                      )}
                     </TabsContent>
                   </Tabs>
                 </TabsContent>
