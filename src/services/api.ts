@@ -844,71 +844,41 @@ export const courseApi = {
     return res.data;
   },
 
-  getAllCourses: async (token: string): Promise<{ success: boolean; courses: any[] }> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/courses`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch courses');
-      }
-
-      const data = await response.json();
-      return { success: true, courses: data.courses || [] };
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-      return { success: false, courses: [] };
-    }
+  // ✅ Get All Courses (requires authentication)
+  getAllCourses: async (): Promise<any[]> => {
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE_URL}/courses`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    return res.data.courses || res.data;
   },
 
-  enrollInCourse: async (courseId: string, token: string): Promise<{ success: boolean; message: string }> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/courses/${courseId}/enroll`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to enroll in course');
-      }
-
-      return { success: true, message: data.message || 'Enrolled successfully' };
-    } catch (error: any) {
-      console.error('Error enrolling in course:', error);
-      return { success: false, message: error.message || 'Enrollment failed' };
-    }
+  // ✅ Get Course by ID (Public/Student)
+  getCourseById: async (
+    courseId: string
+  ): Promise<any> => {
+    const res = await axios.get(`${API_BASE_URL}/courses/${courseId}`);
+    return res.data;
   },
 
-  getMyEnrollments: async (token: string): Promise<{ success: boolean; enrollments: any[] }> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/courses/my-enrollments`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  // ✅ Get Free Courses (requires authentication)
+  getFreeCourses: async (): Promise<any[]> => {
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE_URL}/courses`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    const allCourses = res.data.courses || res.data;
+    return allCourses.filter((course: any) => course.courseType === 'unpaid');
+  },
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch enrollments');
-      }
-
-      const data = await response.json();
-      return { success: true, enrollments: data.enrollments || [] };
-    } catch (error) {
-      console.error('Error fetching enrollments:', error);
-      return { success: false, enrollments: [] };
-    }
+  // ✅ Get Paid Courses (requires authentication)
+  getPaidCourses: async (): Promise<any[]> => {
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE_URL}/courses`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    const allCourses = res.data.courses || res.data;
+    return allCourses.filter((course: any) => course.courseType === 'paid');
   },
 };
 

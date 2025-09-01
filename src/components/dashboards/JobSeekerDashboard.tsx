@@ -102,11 +102,8 @@ const JobSeekerDashboard = () => {
   const loadAvailableCourses = async () => {
     try {
       setLoadingCourses(true);
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      
-      const response = await courseApi.getAllCourses(token);
-      setAvailableCourses(response.courses || []);
+      const courses = await courseApi.getAllCourses();
+      setAvailableCourses(courses);
     } catch (error) {
       console.error('Error loading courses:', error);
     } finally {

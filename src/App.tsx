@@ -95,7 +95,7 @@ const App = () => {
           <Route path="/services" element={<Services />} />
           <Route path="/contact" element={<ContactUs />} />
           <Route path="/course/:id" element={<CourseDetail />} />
-          <Route path="/course-enrollment/:courseId" element={<CourseEnrollment />} />
+          <Route path="/course-enrollment/:id" element={<CourseEnrollment />} />
           <Route path="/course-payment/:id" element={<CoursePayment />} />
           <Route path="/pack365/payment/:courseId" element={<Pack365Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
