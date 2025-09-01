@@ -880,6 +880,41 @@ export const courseApi = {
     const allCourses = res.data.courses || res.data;
     return allCourses.filter((course: any) => course.courseType === 'paid');
   },
+
+  // ✅ Enroll in a course (Student/JobSeeker)
+  enrollInCourse: async (
+    token: string,
+    courseId: string
+  ): Promise<{ success: boolean; message: string; enrollment: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/courses/enroll`, 
+      { courseId }, 
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    return res.data;
+  },
+
+  // ✅ Get user's course enrollments
+  getMyEnrollments: async (
+    token: string
+  ): Promise<{ success: boolean; enrollments: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/courses/my-enrollments`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // ✅ Check enrollment status for a course
+  checkEnrollmentStatus: async (
+    token: string,
+    courseId: string
+  ): Promise<{ success: boolean; isEnrolled: boolean; enrollment?: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/courses/enrollment-status/${courseId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
 };
 
 export type { 
