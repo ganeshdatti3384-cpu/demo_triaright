@@ -8,16 +8,18 @@ import { ArrowLeft, CreditCard, Shield, Clock } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PaymentGateway from '@/components/PaymentGateway';
+import { courseApi } from '@/services/api';
 
 interface Course {
-  id: string;
-  title: string;
-  description: string;
-  instructor: string;
-  duration: string;
-  price: string;
-  skills: string[];
-  image: string;
+  _id: string;
+  courseName: string;
+  courseDescription: string;
+  instructorName: string;
+  totalDuration: string;
+  coursePrice: number;
+  skillsYoullLearn: string[];
+  courseImageLink: string;
+  courseType: 'paid' | 'unpaid';
 }
 
 const CoursePayment = () => {
@@ -25,19 +27,24 @@ const CoursePayment = () => {
   const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
   const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedRecordedCourses = localStorage.getItem('adminCourses');
-    const savedLiveCourses = localStorage.getItem('liveCourses');
-    
-    if (savedRecordedCourses || savedLiveCourses) {
-      const recordedCourses = savedRecordedCourses ? JSON.parse(savedRecordedCourses) : [];
-      const liveCourses = savedLiveCourses ? JSON.parse(savedLiveCourses) : [];
-      const allCourses = [...recordedCourses, ...liveCourses];
+    const fetchCourse = async () => {
+      if (!courseId) return;
       
-      const foundCourse = allCourses.find((c: Course) => c.id === courseId);
-      setCourse(foundCourse);
-    }
+      try {
+        setLoading(true);
+        const response = await courseApi.getCourseById(courseId);
+        setCourse(response.course || response);
+      } catch (error) {
+        console.error('Error fetching course:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourse();
   }, [courseId]);
 
   const handlePaymentComplete = (success: boolean) => {
@@ -52,14 +59,25 @@ const CoursePayment = () => {
     setShowPaymentGateway(true);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading course details...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!course) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Course not found</h2>
-          <Button onClick={() => navigate('/courses/recorded')}>
+          <Button onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Courses
+            Go Back
           </Button>
         </div>
       </div>
@@ -71,8 +89,8 @@ const CoursePayment = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="max-w-4xl mx-auto px-4 py-12">
           <PaymentGateway
-            amount={parseInt(course.price.replace('₹', '').replace(',', ''))}
-            courseName={course.title}
+            amount={course.coursePrice}
+            courseName={course.courseName}
             onPaymentComplete={handlePaymentComplete}
             onBack={() => setShowPaymentGateway(false)}
           />
@@ -103,23 +121,23 @@ const CoursePayment = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <img
-                  src={course.image}
-                  alt={course.title}
+                  src={course.courseImageLink}
+                  alt={course.courseName}
                   className="w-full h-48 object-cover rounded-lg"
                 />
-                <h3 className="text-xl font-semibold">{course.title}</h3>
-                <p className="text-gray-600">{course.description}</p>
+                <h3 className="text-xl font-semibold">{course.courseName}</h3>
+                <p className="text-gray-600">{course.courseDescription}</p>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Instructor:</span>
-                    <span className="font-medium">{course.instructor}</span>
+                    <span className="font-medium">{course.instructorName}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Duration:</span>
                     <div className="flex items-center space-x-1">
                       <Clock className="h-4 w-4" />
-                      <span className="font-medium">{course.duration}</span>
+                      <span className="font-medium">{course.totalDuration}</span>
                     </div>
                   </div>
                 </div>
@@ -127,7 +145,7 @@ const CoursePayment = () => {
                 <div className="space-y-2">
                   <span className="text-sm text-gray-500">Skills you'll learn:</span>
                   <div className="flex flex-wrap gap-1">
-                    {course.skills.map((skill, index) => (
+                    {course.skillsYoullLearn && course.skillsYoullLearn.map((skill, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {skill}
                       </Badge>
@@ -155,7 +173,7 @@ const CoursePayment = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">One-time payment</span>
-                    <span className="text-2xl font-bold">{course.price}</span>
+                    <span className="text-2xl font-bold">₹{course.coursePrice}</span>
                   </div>
                 </div>
 
@@ -177,7 +195,7 @@ const CoursePayment = () => {
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-medium">Total Amount</span>
-                    <span className="text-2xl font-bold text-blue-600">{course.price}</span>
+                    <span className="text-2xl font-bold text-blue-600">₹{course.coursePrice}</span>
                   </div>
                   
                   <div className="space-y-3">
@@ -193,8 +211,8 @@ const CoursePayment = () => {
                       onClick={() => {
                         const params = new URLSearchParams({
                           courseId: courseId || '',
-                          courseName: course.title,
-                          amount: course.price.replace('₹', '').replace(',', ''),
+                          courseName: course.courseName,
+                          amount: course.coursePrice.toString(),
                           type: 'course'
                         });
                         navigate(`/coupon-code?${params.toString()}`);
