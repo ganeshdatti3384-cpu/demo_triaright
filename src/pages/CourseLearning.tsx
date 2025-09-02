@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { pack365Api } from '@/services/api';
+import { courseApi, pack365Api } from '@/services/api';
 import { Pack365Course, EnhancedPack365Enrollment } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
 import CourseLearningInterface from '@/components/CourseLearningInterface';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
 const CourseLearning = () => {
-  const { courseId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [course, setCourse] = useState<Pack365Course | null>(null);
@@ -22,25 +22,25 @@ const CourseLearning = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (courseId && token) {
-      fetchCourseAndEnrollment(courseId, token);
+    if (id && token) {
+      fetchCourseAndEnrollment(id);
     } else if (!token) {
       toast({ title: 'Please login to continue.', variant: 'destructive' });
       navigate('/login');
     }
-  }, [courseId, navigate, toast]);
+  }, [id, navigate, toast]);
 
-  const fetchCourseAndEnrollment = async (id: string, token: string) => {
+  const fetchCourseAndEnrollment = async (id: string,) => {
     try {
       setLoading(true);
       
       // Fetch course details
-      const courseResponse = await pack365Api.getCourseById(courseId, token);
+      const courseResponse = await courseApi.getCourseById(id);
       if (!courseResponse.success) {
         throw new Error('Course not found');
       }
-      console.log( 'Course data:', courseResponse.data);
-      setCourse(courseResponse.data);
+      console.log( 'Course data:', courseResponse.course);
+      setCourse(courseResponse.course);
       
     } catch (error: any) {
       console.error('Error fetching course data:', error);
@@ -91,7 +91,7 @@ const CourseLearning = () => {
     <>
       <Navbar />
       <CourseLearningInterface 
-        courseId={courseId!} 
+        courseId={id!} 
         course={course} 
         enrollment={enrollment} 
       />
