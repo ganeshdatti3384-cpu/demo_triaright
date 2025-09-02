@@ -886,7 +886,7 @@ export const courseApi = {
     token: string,
     courseId: string
   ): Promise<{ success: boolean; message: string; enrollment: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/courses/enrollFreeCourse`, 
+    const res = await axios.post(`${API_BASE_URL}/courses/enrollments/free`, 
       { courseId }, 
       {
         headers: { Authorization: `Bearer ${token}` }
@@ -950,7 +950,7 @@ export const courseApi = {
   getMyEnrollments: async (
     token: string
   ): Promise<{ success: boolean; enrollments: any[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/courses/my-enrollments`, {
+    const res = await axios.get(`${API_BASE_URL}/courses/enrollment/allcourses`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

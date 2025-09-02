@@ -119,7 +119,7 @@ const StudentDashboard = () => {
       const response = await pack365Api.getMyEnrollments(token);
       console.log('Pack365 Enrollments Response:', response);
       
-      if (response.success && response.enrollments) {
+      if (response.success || response.enrollments) {
         setPack365Enrollments(response.enrollments);
         console.log('Pack365 Enrollments set:', response.enrollments);
       } else {
@@ -141,6 +141,9 @@ const StudentDashboard = () => {
       setLoadingEnrollments(false);
     }
   };
+
+
+
   const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
     const courseId = enrollment.courseId;
 
