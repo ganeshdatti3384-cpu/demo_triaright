@@ -135,7 +135,7 @@ const CourseEnrollment = () => {
       setEnrolling(true);
       setShowConfirmDialog(false);
       
-      const response = await courseApi.enrollInCourse(token, id!);
+      const response = await courseApi.enrollFreeCourse(token, id!);
       
       if (response.success) {
         setEnrollmentSuccess(true);

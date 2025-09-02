@@ -881,13 +881,64 @@ export const courseApi = {
     return allCourses.filter((course: any) => course.courseType === 'paid');
   },
 
-  // ✅ Enroll in a course (Student/JobSeeker)
-  enrollInCourse: async (
+  // ✅ Enroll in Free Course
+  enrollFreeCourse: async (
     token: string,
     courseId: string
   ): Promise<{ success: boolean; message: string; enrollment: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/courses/enroll`, 
+    const res = await axios.post(`${API_BASE_URL}/courses/enrollFreeCourse`, 
       { courseId }, 
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    return res.data;
+  },
+
+  // ✅ Create Razorpay Order for Paid Course
+  createOrder: async (
+    token: string,
+    courseId: string
+  ): Promise<{ success: boolean; order: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/courses/createOrder`, 
+      { courseId }, 
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    return res.data;
+  },
+
+  // ✅ Verify Payment and Enroll
+  verifyPaymentAndEnroll: async (
+    token: string,
+    paymentData: {
+      razorpay_order_id: string;
+      razorpay_payment_id: string;
+      razorpay_signature: string;
+    }
+  ): Promise<{ success: boolean; message: string; enrollment: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/courses/verifyPaymentAndEnroll`, 
+      paymentData, 
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    return res.data;
+  },
+
+  // ✅ Update Topic Progress
+  updateTopicProgress: async (
+    token: string,
+    progressData: {
+      courseId: string;
+      topicName: string;
+      subTopicName: string;
+      watchedDuration: number;
+    }
+  ): Promise<{ success: boolean; message: string; topicProgress: any; totalWatchedDuration: number }> => {
+    const res = await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, 
+      progressData, 
       {
         headers: { Authorization: `Bearer ${token}` }
       }

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CreditCard, Shield, Clock } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import PaymentGateway from '@/components/PaymentGateway';
+import RealPaymentGateway from '@/components/RealPaymentGateway';
 import { courseApi } from '@/services/api';
 
 interface Course {
@@ -16,10 +16,12 @@ interface Course {
   courseDescription: string;
   instructorName: string;
   totalDuration: string;
-  coursePrice: number;
+  price: number;
+  coursePrice?: number; // For backward compatibility
   skillsYoullLearn: string[];
   courseImageLink: string;
   courseType: 'paid' | 'unpaid';
+  isPaid?: boolean;
 }
 
 const CoursePayment = () => {
@@ -88,8 +90,9 @@ const CoursePayment = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="max-w-4xl mx-auto px-4 py-12">
-          <PaymentGateway
-            amount={course.coursePrice}
+          <RealPaymentGateway
+            courseId={courseId!}
+            amount={course.price || course.coursePrice || 0}
             courseName={course.courseName}
             onPaymentComplete={handlePaymentComplete}
             onBack={() => setShowPaymentGateway(false)}
@@ -173,7 +176,7 @@ const CoursePayment = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">One-time payment</span>
-                    <span className="text-2xl font-bold">₹{course.coursePrice}</span>
+                    <span className="text-2xl font-bold">₹{course.price || course.coursePrice}</span>
                   </div>
                 </div>
 
@@ -195,7 +198,7 @@ const CoursePayment = () => {
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-medium">Total Amount</span>
-                    <span className="text-2xl font-bold text-blue-600">₹{course.coursePrice}</span>
+                    <span className="text-2xl font-bold text-blue-600">₹{course.price || course.coursePrice}</span>
                   </div>
                   
                   <div className="space-y-3">
@@ -212,7 +215,7 @@ const CoursePayment = () => {
                         const params = new URLSearchParams({
                           courseId: courseId || '',
                           courseName: course.courseName,
-                          amount: course.coursePrice.toString(),
+                          amount: (course.price || course.coursePrice || 0).toString(),
                           type: 'course'
                         });
                         navigate(`/coupon-code?${params.toString()}`);
