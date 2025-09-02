@@ -40,7 +40,21 @@ const CourseLearning = () => {
         throw new Error('Course not found');
       }
       console.log( 'Course data:', courseResponse.course);
-      setCourse(courseResponse.course);
+      
+      // Transform curriculum to topics format for the learning interface
+      const transformedCourse = {
+        ...courseResponse.course,
+        topics: courseResponse.course.curriculum?.flatMap((curriculumItem: any) => 
+          curriculumItem.subtopics?.map((subtopic: any) => ({
+            name: subtopic.name,
+            link: subtopic.link,
+            duration: subtopic.duration,
+            videoUrl: subtopic.link
+          })) || []
+        ) || []
+      };
+      
+      setCourse(transformedCourse);
       
     } catch (error: any) {
       console.error('Error fetching course data:', error);
