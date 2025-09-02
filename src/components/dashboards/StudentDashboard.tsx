@@ -153,18 +153,33 @@ const StudentDashboard = () => {
 
 
   const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
-    const courseId = enrollment.courseId;
+    console.log('🚀 Continue Learning clicked, enrollment:', enrollment);
+    
+    // Extract courseId from enrollment object (handle both string and object types)
+    let courseId: string;
+    
+    if (typeof enrollment.courseId === 'string') {
+      courseId = enrollment.courseId;
+    } else if (enrollment.courseId && typeof enrollment.courseId === 'object' && '_id' in enrollment.courseId) {
+      courseId = (enrollment.courseId as any)._id;
+    } else {
+      courseId = enrollment._id || '';
+    }
+    
+    console.log('📋 Course ID extracted:', courseId);
+    console.log('🎯 Navigation path:', `/course-learning/${courseId}`);
 
-  if (courseId) {
-    console.log('Navigating to course learning:', courseId);
-    navigate(`/course-learning/${courseId}`);
-  } else {
-    toast({
-      title: "Error",
-      description: "Course ID not found for this enrollment.",
-      variant: "destructive",
-    });
-  }
+    if (courseId) {
+      console.log('✅ Navigating to course learning page...');
+      navigate(`/course-learning/${courseId}`);
+    } else {
+      console.error('❌ No valid course ID found in enrollment:', enrollment);
+      toast({
+        title: "Navigation Error",
+        description: "Course ID not found. Please try again or contact support.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -383,17 +398,7 @@ const StudentDashboard = () => {
                                    </div>
                                     <Button 
                                       className="w-full bg-blue-600 hover:bg-blue-700"
-                                      onClick={() => {
-                                        console.log('Continue Learning clicked, enrollment:', enrollment);
-                                        const courseId = enrollment.courseId?._id || enrollment.courseId;
-                                        console.log('Course ID to navigate to:', courseId);
-                                        console.log('Navigation path:', `/course-learning/${courseId}`);
-                                        if (courseId) {
-                                          navigate(`/course-learning/${courseId}`);
-                                        } else {
-                                          console.error('No valid course ID found');
-                                        }
-                                      }}
+                                      onClick={() => handleContinueLearning(enrollment)}
                                     >
                                      <Play className="h-4 w-4 mr-2" />
                                      Continue Learning
