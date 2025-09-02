@@ -381,10 +381,20 @@ const StudentDashboard = () => {
                                      </div>
                                      <Progress value={enrollment.videoProgressPercent || 0} className="h-2" />
                                    </div>
-                                   <Button 
-                                     className="w-full bg-blue-600 hover:bg-blue-700"
-                                     onClick={() => navigate(`/course-learning/${enrollment.courseId}`)}
-                                   >
+                                    <Button 
+                                      className="w-full bg-blue-600 hover:bg-blue-700"
+                                      onClick={() => {
+                                        console.log('Continue Learning clicked, enrollment:', enrollment);
+                                        const courseId = enrollment.courseId?._id || enrollment.courseId;
+                                        console.log('Course ID to navigate to:', courseId);
+                                        console.log('Navigation path:', `/course-learning/${courseId}`);
+                                        if (courseId) {
+                                          navigate(`/course-learning/${courseId}`);
+                                        } else {
+                                          console.error('No valid course ID found');
+                                        }
+                                      }}
+                                    >
                                      <Play className="h-4 w-4 mr-2" />
                                      Continue Learning
                                    </Button>
