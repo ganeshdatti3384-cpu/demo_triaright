@@ -93,13 +93,21 @@ const StudentDashboard = () => {
     if (!token) return;
 
     try {
+      console.log('Loading regular course enrollments...');
       const response = await courseApi.getMyEnrollments(token);
-      if (response.success) {
+      console.log('Regular Course Enrollments Response:', response);
+      
+      if (response.success && response.enrollments) {
+        console.log('Setting myEnrollments:', response.enrollments);
         setMyEnrollments(response.enrollments);
-        setEnrolledCourses(response.enrollments);
+        // Don't overwrite enrolledCourses here - let Pack365 handle it
+      } else {
+        console.log('No regular course enrollments found');
+        setMyEnrollments([]);
       }
     } catch (error: any) {
-      console.error('Error loading enrollments:', error);
+      console.error('Error loading regular course enrollments:', error);
+      setMyEnrollments([]);
     }
   };
   const loadPack365Enrollments = async () => {
@@ -204,7 +212,7 @@ const StudentDashboard = () => {
   const stats = [
     {
       title: 'Enrolled Courses',
-      value: enrolledCourses.length.toString(),
+      value: myEnrollments.length.toString(),
       icon: BookOpen,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50'
@@ -353,35 +361,37 @@ const StudentDashboard = () => {
                     <CardContent>
                       {myEnrollments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {myEnrollments.map((enrollment, index) => (
-                            <Card key={index} className="hover:shadow-md transition-shadow border-blue-200">
-                              <CardContent className="p-6">
-                                <div className="space-y-4">
-                                  <div className="flex items-center justify-between">
-                                    <Badge className="bg-blue-500 text-white">Enrolled</Badge>
-                                    <span className="text-sm text-gray-500">
-                                      {new Date(enrollment.enrolledAt).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                  <h3 className="font-semibold">{enrollment.courseName}</h3>
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                      <span>Progress</span>
-                                      <span>{enrollment.progress || 0}%</span>
-                                    </div>
-                                    <Progress value={enrollment.progress || 0} className="h-2" />
-                                  </div>
-                                  <Button 
-                                    className="w-full bg-blue-600 hover:bg-blue-700"
-                                    onClick={() => navigate(`/course-learning/${enrollment.courseId}`)}
-                                  >
-                                    <Play className="h-4 w-4 mr-2" />
-                                    Continue Learning
-                                  </Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
+                           {myEnrollments.map((enrollment, index) => (
+                             <Card key={index} className="hover:shadow-md transition-shadow border-blue-200">
+                               <CardContent className="p-6">
+                                 <div className="space-y-4">
+                                   <div className="flex items-center justify-between">
+                                     <Badge className="bg-blue-500 text-white">
+                                       {enrollment.isPaid ? 'Paid' : 'Free'}
+                                     </Badge>
+                                     <span className="text-sm text-gray-500">
+                                       {new Date(enrollment.enrollmentDate).toLocaleDateString()}
+                                     </span>
+                                   </div>
+                                   <h3 className="font-semibold">{enrollment.courseName}</h3>
+                                   <div className="space-y-2">
+                                     <div className="flex justify-between text-sm">
+                                       <span>Progress</span>
+                                       <span>{enrollment.videoProgressPercent || 0}%</span>
+                                     </div>
+                                     <Progress value={enrollment.videoProgressPercent || 0} className="h-2" />
+                                   </div>
+                                   <Button 
+                                     className="w-full bg-blue-600 hover:bg-blue-700"
+                                     onClick={() => navigate(`/course-learning/${enrollment.courseId}`)}
+                                   >
+                                     <Play className="h-4 w-4 mr-2" />
+                                     Continue Learning
+                                   </Button>
+                                 </div>
+                               </CardContent>
+                             </Card>
+                           ))}
                         </div>
                       ) : (
                         <div className="text-center py-8">
