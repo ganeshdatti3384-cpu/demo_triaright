@@ -90,20 +90,7 @@ const Index = () => {
           </div>
           <CourseCards />
           
-          <div className="text-center mt-12 space-y-4">
-            {/* Test Payment Button */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 max-w-md mx-auto">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Test Payment System</h3>
-              <p className="text-sm text-gray-600 mb-4">Try our payment flow with a sample course</p>
-              <Button 
-                onClick={() => navigate('/course-payment/test-course-1')}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 mr-4"
-              >
-                Test Paid Course Payment
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            
+          <div className="text-center mt-12">
             <Button 
               onClick={() => setShowSuccessStories(true)}
               className="bg-brand-primary hover:bg-blue-700 text-white px-8 py-3 text-lg"

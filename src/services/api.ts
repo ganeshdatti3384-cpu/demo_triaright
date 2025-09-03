@@ -908,37 +908,8 @@ export const courseApi = {
   getCourseById: async (
     id: string
   ): Promise<{ success: boolean; course: any }> => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/courses/${id}`);
-      return { success: true, course: res.data.course };
-    } catch (error: any) {
-      console.log('Course API unavailable, using sample course data');
-      // Return sample course data for testing
-      const sampleCourse = {
-        _id: id,
-        courseName: 'Full Stack Web Development',
-        courseDescription: 'Learn to build modern web applications with React, Node.js, and MongoDB. Master both frontend and backend development in this comprehensive course.',
-        instructorName: 'John Smith',
-        totalDuration: '40 hours',
-        price: 4999,
-        coursePrice: 4999,
-        skillsYoullLearn: [
-          'React.js',
-          'Node.js',
-          'MongoDB',
-          'Express.js',
-          'JavaScript ES6+',
-          'HTML5 & CSS3',
-          'REST APIs',
-          'Git & GitHub'
-        ],
-        courseImageLink: '/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png',
-        courseType: 'paid',
-        isPaid: true
-      };
-      
-      return { success: true, course: sampleCourse };
-    }
+    const res = await axios.get(`${API_BASE_URL}/courses/${id}`);
+    return { success: true, course: res.data.course };
   },
 
   // ✅ Get Free Courses (requires authentication)
@@ -979,7 +950,7 @@ export const courseApi = {
   createOrder: async (
     token: string,
     courseId: string
-  ): Promise<{ success: boolean; order: any; message?: string }> => {
+  ): Promise<{ success: boolean; order: any }> => {
     try {
       console.log('Making order creation request to:', `${API_BASE_URL}/courses/enrollments/order`);
       console.log('Request payload:', { courseId });
@@ -998,25 +969,27 @@ export const courseApi = {
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
       
-      // If API is unavailable, create a mock order for testing
-      console.log('API unavailable, creating mock order for testing');
+      // If local dev server doesn't have the endpoint, try production
+      if (error.response?.status === 404 && API_BASE_URL.includes('localhost')) {
+        console.log('Local endpoint not found, trying production URL:', `${PRODUCTION_API_URL}/courses/enrollments/order`);
+        
+        try {
+          const res = await axios.post(`${PRODUCTION_API_URL}/courses/enrollments/order`, 
+            { courseId }, 
+            {
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+          
+          console.log('Production order creation response:', res.data);
+          return res.data;
+        } catch (prodError: any) {
+          console.error('Production API also failed:', prodError);
+          throw prodError;
+        }
+      }
       
-      // Generate a mock order ID
-      const mockOrderId = `order_${Date.now()}`;
-      const mockOrder = {
-        id: mockOrderId,
-        entity: 'order',
-        amount: 50000, // Amount in paise (₹500)
-        currency: 'INR',
-        receipt: `receipt_${courseId}_${Date.now()}`,
-        status: 'created'
-      };
-      
-      return {
-        success: true,
-        order: mockOrder,
-        message: 'Order created successfully (test mode)'
-      };
+      throw error;
     }
   },
 
