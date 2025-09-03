@@ -89,7 +89,13 @@ const RealPaymentGateway = ({
       console.log('Order response received:', orderResponse);
       
       if (!orderResponse.success) {
+        console.error('Order creation failed:', orderResponse);
         throw new Error('Failed to create order');
+      }
+      
+      if (!orderResponse.order || !orderResponse.order.id) {
+        console.error('Invalid order data received:', orderResponse);
+        throw new Error('Invalid order data received from server');
       }
 
       const { order } = orderResponse;

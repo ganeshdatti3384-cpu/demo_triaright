@@ -900,13 +900,25 @@ export const courseApi = {
     token: string,
     courseId: string
   ): Promise<{ success: boolean; order: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/courses/enrollments/order`, 
-      { courseId }, 
-      {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-    );
-    return res.data;
+    try {
+      console.log('Making order creation request to:', `${API_BASE_URL}/courses/enrollments/order`);
+      console.log('Request payload:', { courseId });
+      
+      const res = await axios.post(`${API_BASE_URL}/courses/enrollments/order`, 
+        { courseId }, 
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      console.log('Order creation response:', res.data);
+      return res.data;
+    } catch (error: any) {
+      console.error('Order creation API error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      throw error;
+    }
   },
 
   // ✅ Verify Payment and Enroll
