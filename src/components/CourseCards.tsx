@@ -53,7 +53,23 @@ const CourseCards = ({ courses = [], type = 'recorded' }: CourseCardsProps) => {
   const navigate = useNavigate();
 
   const handleEnrollClick = (id: string) => {
-    navigate(`/course-enrollment/${id}`);
+    const course = courses.find(c => (c._id || c.id) === id);
+    
+    if (course && course.courseType === 'paid') {
+      // For paid courses, navigate to payment selection
+      navigate('/payment-selection', {
+        state: {
+          courseId: id,
+          courseName: course.courseName,
+          streamPrice: course.price,
+          fromCourse: true,
+          fromStream: false
+        }
+      });
+    } else {
+      // For free courses, use the existing enrollment flow
+      navigate(`/course-enrollment/${id}`);
+    }
   };
 
   // Helper function to normalize course data for display

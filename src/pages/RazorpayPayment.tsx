@@ -9,12 +9,13 @@ import { AlertCircle, ArrowLeft } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import Pack365PaymentInterface from '@/components/Pack365PaymentInterface';
+import RealPaymentGateway from '@/components/RealPaymentGateway';
 import { useToast } from '@/hooks/use-toast';
 
 const RazorpayPayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { streamName, fromStream, coursesCount, streamPrice } = location.state || {};
+  const { streamName, fromStream, coursesCount, streamPrice, courseId, courseName, fromCourse } = location.state || {};
   const [user, setUser] = useState<any>(null);
   const [isUserLoaded, setIsUserLoaded] = useState(false);
   const { toast } = useToast();
@@ -72,7 +73,8 @@ const RazorpayPayment = () => {
 
   useEffect(() => {
     if (isUserLoaded) {
-      if (!streamName) {
+      // Check if we have either stream data (Pack365) or course data (individual course)
+      if (!streamName && !courseId) {
         toast({
           title: 'Error',
           description: 'Invalid payment data. Please try again.',
@@ -82,10 +84,10 @@ const RazorpayPayment = () => {
         return;
       }
       
-      console.log('Payment data:', { streamName, fromStream, coursesCount, streamPrice });
+      console.log('Payment data:', { streamName, fromStream, coursesCount, streamPrice, courseId, courseName, fromCourse });
       console.log('User loaded:', user);
     }
-  }, [isUserLoaded, streamName, toast, fromStream, coursesCount, streamPrice, user, navigate]);
+  }, [isUserLoaded, streamName, courseId, toast, fromStream, coursesCount, streamPrice, courseName, fromCourse, user, navigate]);
 
   const handlePaymentSuccess = async (response: any) => {
     console.log('Payment success handler called in RazorpayPayment');
@@ -107,16 +109,32 @@ const RazorpayPayment = () => {
         description: 'You have been enrolled successfully.',
       });
       
-      navigate('/payment-success', {
-        state: {
-          paymentId: response.razorpay_payment_id,
-          orderId: response.razorpay_order_id,
-          streamName,
-          fromStream,
-          type: 'pack365',
-          enrollmentDetails: response
-        },
-      });
+      // Navigate based on payment type
+      if (fromCourse && courseId) {
+        // Individual course payment
+        navigate('/payment-success', {
+          state: {
+            paymentId: response.razorpay_payment_id,
+            orderId: response.razorpay_order_id,
+            courseName,
+            courseId,
+            type: 'course',
+            enrollmentDetails: response
+          },
+        });
+      } else {
+        // Pack365 payment
+        navigate('/payment-success', {
+          state: {
+            paymentId: response.razorpay_payment_id,
+            orderId: response.razorpay_order_id,
+            streamName,
+            fromStream,
+            type: 'pack365',
+            enrollmentDetails: response
+          },
+        });
+      }
     } catch (err: any) {
       console.error('Payment verification error:', err);
       console.error('Error details:', {
@@ -134,8 +152,8 @@ const RazorpayPayment = () => {
       navigate('/payment-failed', {
         state: {
           error: err.message || 'Verification failed',
-          streamName,
-          type: 'pack365',
+          streamName: streamName || courseName,
+          type: fromCourse ? 'course' : 'pack365',
           paymentId: response.razorpay_payment_id,
           orderId: response.razorpay_order_id
         },
@@ -165,7 +183,7 @@ const RazorpayPayment = () => {
     );
   }
 
-  if (!streamName) {
+  if (!streamName && !courseId) {
     return (
       <>
         <Navbar />
@@ -179,7 +197,7 @@ const RazorpayPayment = () => {
               </p>
               <Button onClick={() => navigate('/pack365')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Pack365
+                Back to Courses
               </Button>
             </div>
           </div>
@@ -194,13 +212,37 @@ const RazorpayPayment = () => {
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-16">
         <div className="container mx-auto px-4">
-          <Pack365PaymentInterface
-            streamName={streamName}
-            coursesCount={coursesCount || 3}
-            onPaymentSuccess={handlePaymentSuccess}
-            onBack={handleBack}
-            streamPrice={streamPrice}
-          />
+          {fromCourse && courseId ? (
+            // Individual course payment
+            <RealPaymentGateway
+              courseId={courseId}
+              amount={streamPrice || 999}
+              courseName={courseName || 'Course'}
+              onPaymentComplete={(success: boolean) => {
+                if (success) {
+                  // This will be handled by RealPaymentGateway's internal success logic
+                } else {
+                  navigate('/payment-failed', {
+                    state: {
+                      error: 'Payment was not completed',
+                      courseName,
+                      type: 'course'
+                    }
+                  });
+                }
+              }}
+              onBack={handleBack}
+            />
+          ) : (
+            // Pack365 stream payment
+            <Pack365PaymentInterface
+              streamName={streamName}
+              coursesCount={coursesCount || 3}
+              onPaymentSuccess={handlePaymentSuccess}
+              onBack={handleBack}
+              streamPrice={streamPrice}
+            />
+          )}
         </div>
       </div>
       <Footer />
