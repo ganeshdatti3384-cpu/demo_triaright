@@ -63,11 +63,20 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   const loadCoursesAndEnrollments = async () => {
     try {
       setLoading(true);
+      setError(''); // Clear any previous errors
+      
       const streamsResponse = await pack365Api.getAllStreams();
       if (streamsResponse.success && streamsResponse.streams) {
         setStreams(streamsResponse.streams);
       } else {
-        setError('Failed to load streams');
+        // Set empty array as fallback and show a graceful message
+        setStreams([]);
+        if (showLoginRequired) {
+          // For homepage, don't show error, just hide the section
+          return;
+        } else {
+          setError('Unable to load course bundles at the moment');
+        }
         return;
       }
 
@@ -84,8 +93,16 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
       }
     } catch (err: any) {
       console.error('Error loading streams:', err);
-      setError(err.message || 'Failed to load streams');
-      toast({ title: 'Error', description: 'Failed to load streams. Please try again.', variant: 'destructive' });
+      setStreams([]); // Set empty array as fallback
+      
+      if (showLoginRequired) {
+        // For homepage, don't show error toast or error state, just fail silently
+        setError('');
+        return;
+      } else {
+        setError('Unable to load course bundles at the moment');
+        toast({ title: 'Error', description: 'Failed to load streams. Please try again.', variant: 'destructive' });
+      }
     } finally {
       setLoading(false);
     }
@@ -271,7 +288,33 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     );
   }
 
-  // Default bundle view
+  // If no streams available and this is the homepage, don't show anything
+  if (streams.length === 0 && showLoginRequired) {
+    return (
+      <div className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-8">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Pack365 Coming Soon</h3>
+            <p className="text-gray-600">Our premium learning bundles are being prepared. Check back soon!</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If no streams available and this is not homepage
+  if (streams.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Course Bundles Available</h2>
+          <p className="text-gray-600 mb-4">Course bundles are being prepared. Please check back later.</p>
+          <Button onClick={loadCoursesAndEnrollments}>Refresh</Button>
+        </div>
+      </div>
+    );
+  }
   const sliderSettings = {
     dots: true,
     infinite: true,
