@@ -212,7 +212,7 @@ const RazorpayPayment = () => {
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-16">
         <div className="container mx-auto px-4">
-          {fromCourse && courseId ? (
+           {fromCourse && courseId ? (
             // Individual course payment
             <RealPaymentGateway
               courseId={courseId}
@@ -220,7 +220,8 @@ const RazorpayPayment = () => {
               courseName={courseName || 'Course'}
               onPaymentComplete={(success: boolean) => {
                 if (success) {
-                  // This will be handled by RealPaymentGateway's internal success logic
+                  // Payment success is handled internally by RealPaymentGateway
+                  // It will navigate to success page automatically
                 } else {
                   navigate('/payment-failed', {
                     state: {

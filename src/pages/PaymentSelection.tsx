@@ -44,26 +44,24 @@ const PaymentSelection = () => {
                   ? `You're enrolling in the ${streamName} Bundle` 
                   : `You're enrolling in ${courseName}`}
               </p>
-              {fromStream && (
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 max-w-md mx-auto">
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <div className="flex justify-between">
-                      <span>Base Price:</span>
-                      <span>₹{basePrice}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>GST (18%):</span>
-                      <span>₹{gst}</span>
-                    </div>
-                    <div className="border-t border-blue-300 pt-1 mt-2">
-                      <div className="flex justify-between font-semibold text-blue-700">
-                        <span>Total Amount:</span>
-                        <span>₹{totalPrice}</span>
-                      </div>
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 max-w-md mx-auto">
+                <div className="text-sm text-gray-600 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Base Price:</span>
+                    <span>₹{basePrice}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>GST (18%):</span>
+                    <span>₹{gst}</span>
+                  </div>
+                  <div className="border-t border-blue-300 pt-1 mt-2">
+                    <div className="flex justify-between font-semibold text-blue-700">
+                      <span>Total Amount:</span>
+                      <span>₹{totalPrice}</span>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-8">
@@ -82,11 +80,9 @@ const PaymentSelection = () => {
                   <p className="text-gray-600 mb-4">
                     Use UPI, card, or net banking with secure Razorpay integration.
                   </p>
-                  {fromStream && (
-                    <div className="text-lg font-semibold text-blue-600 mb-4">
-                      Total: ₹{totalPrice}
-                    </div>
-                  )}
+                  <div className="text-lg font-semibold text-blue-600 mb-4">
+                    Total: ₹{totalPrice}
+                  </div>
                   <Button className="w-full text-lg py-2">Proceed to Payment</Button>
                 </CardContent>
               </Card>
