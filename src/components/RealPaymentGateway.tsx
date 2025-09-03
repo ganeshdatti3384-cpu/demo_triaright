@@ -82,7 +82,11 @@ const RealPaymentGateway = ({
       // Create order
       console.log('Creating order for courseId:', courseId);
       console.log('API URL:', `${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/courses/enrollments/order`);
+      console.log('Auth token exists:', !!token);
+      console.log('Amount to be paid:', amount);
+      
       const orderResponse = await courseApi.createOrder(token, courseId);
+      console.log('Order response received:', orderResponse);
       
       if (!orderResponse.success) {
         throw new Error('Failed to create order');
@@ -91,8 +95,16 @@ const RealPaymentGateway = ({
       const { order } = orderResponse;
 
       // Configure Razorpay options
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_9WaeLLfVddGUmR';
+      console.log('Using Razorpay key:', razorpayKey);
+      console.log('Order details from backend:', {
+        id: order.id,
+        amount: order.amount,
+        currency: order.currency
+      });
+      
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_9WaeLLfVddGUmR', // Use env key
+        key: razorpayKey,
         amount: order.amount,
         currency: order.currency || 'INR',
         name: 'TriaRight',
@@ -150,6 +162,13 @@ const RealPaymentGateway = ({
         }
       };
 
+      console.log('Initializing Razorpay with options:', {
+        key: options.key,
+        amount: options.amount,
+        currency: options.currency,
+        order_id: options.order_id
+      });
+      
       const rzp = new window.Razorpay(options);
       rzp.open();
 
