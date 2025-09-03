@@ -80,6 +80,8 @@ const RealPaymentGateway = ({
 
     try {
       // Create order
+      console.log('Creating order for courseId:', courseId);
+      console.log('API URL:', `${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/courses/enrollments/order`);
       const orderResponse = await courseApi.createOrder(token, courseId);
       
       if (!orderResponse.success) {
