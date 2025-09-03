@@ -3,6 +3,7 @@ import axios from 'axios';
 import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload, UpdateEnrollmentCodeInput } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
+const PRODUCTION_API_URL = 'https://triaright.com/api';
 
 // Add request interceptor for better error handling
 axios.interceptors.request.use(
@@ -917,6 +918,27 @@ export const courseApi = {
       console.error('Order creation API error:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
+      
+      // If local dev server doesn't have the endpoint, try production
+      if (error.response?.status === 404 && API_BASE_URL.includes('localhost')) {
+        console.log('Local endpoint not found, trying production URL:', `${PRODUCTION_API_URL}/courses/enrollments/order`);
+        
+        try {
+          const res = await axios.post(`${PRODUCTION_API_URL}/courses/enrollments/order`, 
+            { courseId }, 
+            {
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+          
+          console.log('Production order creation response:', res.data);
+          return res.data;
+        } catch (prodError: any) {
+          console.error('Production API also failed:', prodError);
+          throw prodError;
+        }
+      }
+      
       throw error;
     }
   },
@@ -930,10 +952,35 @@ export const courseApi = {
       razorpay_signature: string;
     }
   ): Promise<{ success: boolean; message: string; enrollment: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/courses/enrollments/verify-payment`, 
-      paymentData
-    );
-    return res.data;
+    try {
+      const res = await axios.post(`${API_BASE_URL}/courses/enrollments/verify-payment`, 
+        paymentData,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      return res.data;
+    } catch (error: any) {
+      // If local dev server doesn't have the endpoint, try production
+      if (error.response?.status === 404 && API_BASE_URL.includes('localhost')) {
+        console.log('Local verify endpoint not found, trying production URL');
+        
+        try {
+          const res = await axios.post(`${PRODUCTION_API_URL}/courses/enrollments/verify-payment`, 
+            paymentData,
+            {
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+          return res.data;
+        } catch (prodError: any) {
+          console.error('Production verify API also failed:', prodError);
+          throw prodError;
+        }
+      }
+      
+      throw error;
+    }
   },
 
   // ✅ Update Topic Progress
