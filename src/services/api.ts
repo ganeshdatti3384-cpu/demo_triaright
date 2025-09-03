@@ -900,7 +900,7 @@ export const courseApi = {
     token: string,
     courseId: string
   ): Promise<{ success: boolean; order: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/courses/createOrder`, 
+    const res = await axios.post(`${API_BASE_URL}/courses/enrollments/order`, 
       { courseId }, 
       {
         headers: { Authorization: `Bearer ${token}` }
@@ -918,11 +918,8 @@ export const courseApi = {
       razorpay_signature: string;
     }
   ): Promise<{ success: boolean; message: string; enrollment: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/courses/verifyPaymentAndEnroll`, 
-      paymentData, 
-      {
-        headers: { Authorization: `Bearer ${token}` }
-      }
+    const res = await axios.post(`${API_BASE_URL}/courses/enrollments/verify-payment`, 
+      paymentData
     );
     return res.data;
   },

@@ -90,7 +90,7 @@ const RealPaymentGateway = ({
 
       // Configure Razorpay options
       const options = {
-        key: order.key || 'rzp_test_9WaeLLfVddGUmR', // Fallback to test key
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_9WaeLLfVddGUmR', // Use env key
         amount: order.amount,
         currency: order.currency || 'INR',
         name: 'TriaRight',
