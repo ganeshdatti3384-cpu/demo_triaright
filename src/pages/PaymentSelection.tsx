@@ -10,22 +10,22 @@ import Footer from '@/components/Footer';
 const PaymentSelection = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount } = location.state || {};
+  const { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount, coursePrice } = location.state || {};
 
   const handleRazorpayPayment = () => {
     navigate('/razorpay-payment', { 
-      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount } 
+      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount, coursePrice } 
     });
   };
 
   const handleCouponCode = () => {
     navigate('/Coupon-code', { 
-      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount } 
+      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount, coursePrice } 
     });
   };
 
-  // Calculate GST for display
-  const basePrice = streamPrice || 365;
+  // Calculate GST for display - use coursePrice for individual courses
+  const basePrice = fromCourse ? (coursePrice || streamPrice || 999) : (streamPrice || 365);
   const gst = Math.round(basePrice * 0.18);
   const totalPrice = basePrice + gst;
 

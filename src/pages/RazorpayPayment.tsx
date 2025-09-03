@@ -15,7 +15,14 @@ import { useToast } from '@/hooks/use-toast';
 const RazorpayPayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { streamName, fromStream, coursesCount, streamPrice, courseId, courseName, fromCourse } = location.state || {};
+  const { streamName, fromStream, coursesCount, streamPrice, courseId, courseName, fromCourse, coursePrice } = location.state || {};
+
+  // Calculate the correct amount including GST
+  const getPaymentAmount = () => {
+    const basePrice = fromCourse ? (coursePrice || streamPrice || 999) : (streamPrice || 365);
+    const gst = Math.round(basePrice * 0.18);
+    return basePrice + gst;
+  };
   const [user, setUser] = useState<any>(null);
   const [isUserLoaded, setIsUserLoaded] = useState(false);
   const { toast } = useToast();
@@ -216,7 +223,7 @@ const RazorpayPayment = () => {
             // Individual course payment
             <RealPaymentGateway
               courseId={courseId}
-              amount={streamPrice || 999}
+              amount={getPaymentAmount()}
               courseName={courseName || 'Course'}
               onPaymentComplete={(success: boolean) => {
                 if (success) {
