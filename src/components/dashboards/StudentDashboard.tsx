@@ -67,24 +67,39 @@ const StudentDashboard = () => {
   const loadAllCourses = async () => {
     try {
       setLoadingCourses(true);
+      console.log('🔄 Loading all courses...');
+      
       const [allCoursesData, freeCoursesData, paidCoursesData] = await Promise.all([
         courseApi.getAllCourses(),
         courseApi.getFreeCourses(),
         courseApi.getPaidCourses()
       ]);
       
-      setAllCourses(allCoursesData);
-      setFreeCourses(freeCoursesData);
-      setPaidCourses(paidCoursesData);
+      console.log('📊 All courses data:', allCoursesData);
+      console.log('🆓 Free courses data:', freeCoursesData);
+      console.log('💰 Paid courses data:', paidCoursesData);
+      
+      setAllCourses(allCoursesData || []);
+      setFreeCourses(freeCoursesData || []);
+      setPaidCourses(paidCoursesData || []);
+      
+      console.log('✅ Courses loaded successfully');
     } catch (error: any) {
-      console.error('Error loading courses:', error);
+      console.error('❌ Error loading courses:', error);
+      
+      // Set empty arrays to avoid infinite loading
+      setAllCourses([]);
+      setFreeCourses([]);
+      setPaidCourses([]);
+      
       toast({
         title: "Error",
-        description: "Failed to load courses. Please try again.",
+        description: `Failed to load courses: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
       setLoadingCourses(false);
+      console.log('🏁 Course loading completed');
     }
   };
 
@@ -485,27 +500,57 @@ const StudentDashboard = () => {
                       <TabsTrigger value="paid">Paid Courses</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="free" className="space-y-6">
-                      {loadingCourses ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                          <p className="mt-2 text-gray-600">Loading courses...</p>
-                        </div>
-                      ) : (
-                        <CourseCards courses={filteredFreeCourses} type="recorded" />
-                      )}
-                    </TabsContent>
+                     <TabsContent value="free" className="space-y-6">
+                       {loadingCourses ? (
+                         <div className="text-center py-8">
+                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                           <p className="mt-2 text-gray-600">Loading courses...</p>
+                           <Button 
+                             variant="outline" 
+                             onClick={loadAllCourses}
+                             className="mt-4"
+                           >
+                             Retry Loading
+                           </Button>
+                         </div>
+                       ) : filteredFreeCourses.length > 0 ? (
+                         <CourseCards courses={filteredFreeCourses} type="recorded" />
+                       ) : (
+                         <div className="text-center py-8">
+                           <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                           <p className="text-gray-600 mb-4">No free courses available at the moment.</p>
+                           <Button onClick={loadAllCourses} variant="outline">
+                             Refresh Courses
+                           </Button>
+                         </div>
+                       )}
+                     </TabsContent>
 
-                    <TabsContent value="paid" className="space-y-6">
-                      {loadingCourses ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                          <p className="mt-2 text-gray-600">Loading courses...</p>
-                        </div>
-                      ) : (
-                        <CourseCards courses={filteredPaidCourses} type="recorded" />
-                      )}
-                    </TabsContent>
+                     <TabsContent value="paid" className="space-y-6">
+                       {loadingCourses ? (
+                         <div className="text-center py-8">
+                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                           <p className="mt-2 text-gray-600">Loading courses...</p>
+                           <Button 
+                             variant="outline" 
+                             onClick={loadAllCourses}
+                             className="mt-4"
+                           >
+                             Retry Loading
+                           </Button>
+                         </div>
+                       ) : filteredPaidCourses.length > 0 ? (
+                         <CourseCards courses={filteredPaidCourses} type="recorded" />
+                       ) : (
+                         <div className="text-center py-8">
+                           <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                           <p className="text-gray-600 mb-4">No paid courses available at the moment.</p>
+                           <Button onClick={loadAllCourses} variant="outline">
+                             Refresh Courses
+                           </Button>
+                         </div>
+                       )}
+                     </TabsContent>
                   </Tabs>
                 </TabsContent>
               </Tabs>

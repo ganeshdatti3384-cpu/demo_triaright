@@ -94,7 +94,8 @@ const Register = () => {
     const fetchColleges = async () => {
       try {
         setLoadingColleges(true);
-        const response = await fetch('https://triaright.com/api/colleges/collegedata');
+        const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5003/api';
+        const response = await fetch(`${API_BASE_URL}/colleges/collegedata`);
         const data = await response.json();
         setColleges(data.colleges || []);
       } catch (error) {

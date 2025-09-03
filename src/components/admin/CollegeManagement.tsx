@@ -60,7 +60,7 @@ const CollegeManagement = () => {
   const [isStudentsDialogOpen, setIsStudentsDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const API_BASE_URL = 'https://triaright.com/api';
+  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5003/api';
 
 useEffect(() => {
   fetchColleges();

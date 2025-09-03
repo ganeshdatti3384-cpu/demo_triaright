@@ -447,7 +447,8 @@ const CourseManagement = () => {
         return;
       }
 
-      const response = await fetch('https://triaright.com/api/courses', {
+      const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5003/api';
+      const response = await fetch(`${API_BASE_URL}/courses`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
