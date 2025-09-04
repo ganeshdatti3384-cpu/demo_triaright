@@ -976,6 +976,9 @@ export const courseApi = {
   },
 
   // ✅ Create Razorpay Order for Paid Course
+  // api.ts
+
+// ...
   createOrder: async (
     token: string,
     courseId: string
@@ -996,30 +999,11 @@ export const courseApi = {
     } catch (error: any) {
       console.error('Order creation API error:', error);
       console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      
-      // If API is unavailable, create a mock order for testing
-      console.log('API unavailable, creating mock order for testing');
-      
-      // Generate a mock order ID
-      const mockOrderId = `order_${Date.now()}`;
-      const mockOrder = {
-        id: mockOrderId,
-        entity: 'order',
-        amount: 50000, // Amount in paise (₹500)
-        currency: 'INR',
-        receipt: `receipt_${courseId}_${Date.now()}`,
-        status: 'created'
-      };
-      
-      return {
-        success: true,
-        order: mockOrder,
-        message: 'Order created successfully (test mode)'
-      };
+      // Re-throw the error so the UI can handle it properly
+      throw error;
     }
   },
-
+// ...
   // ✅ Verify Payment and Enroll
   verifyPaymentAndEnroll: async (
     token: string,
