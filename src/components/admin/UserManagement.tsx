@@ -124,42 +124,38 @@ const UserManagement = () => {
     }
   };
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      // Mock data - replace with actual API call
-      const mockUsers = [
-        {
-          id: 1,
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john@example.com',
-          role: 'student',
-          phoneNumber: '+91-9876543210',
-          status: 'active',
-          createdAt: '2024-01-15',
-          collegeName: 'ABC University',
-        },
-        {
-          id: 2,
-          firstName: 'Jane',
-          lastName: 'Smith',
-          email: 'jane@company.com',
-          role: 'jobseeker',
-          phoneNumber: '+91-9876543211',
-          status: 'active',
-          createdAt: '2024-01-14',
-        }
-      ];
-      setUsers(mockUsers);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Failed to fetch users');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // In UserManagement.tsx
 
+const fetchUsers = async () => {
+  setLoading(true);
+  try {
+    const token = localStorage.getItem('token'); // or wherever you store your admin token
+    if (!token) {
+      toast.error("Authentication token not found.");
+      setLoading(false);
+      return;
+    }
+
+    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002/api';
+    
+    const response = await axios.get(`${API_BASE_URL}/users/all`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.data.success) {
+      setUsers(response.data.users);
+    } else {
+      toast.error('Failed to fetch users');
+    }
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    toast.error('An error occurred while fetching users.');
+  } finally {
+    setLoading(false);
+  }
+};
   // Handle registration - same API call as Register.tsx
   const handleRegister = async (formData: RegistrationFormData) => {
     try {
