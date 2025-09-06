@@ -72,23 +72,27 @@ const Pack365Dashboard = () => {
 
     try {
       setLoading(true);
+      console.log('Fetching Pack365 enrollments...');
       const response = await pack365Api.getMyEnrollments(token);
+      
+      console.log('Enrollment response received:', response);
       
       if (response.success && response.enrollments) {
         // Cast the response to the new StreamEnrollment format
         const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
+        console.log('Processed enrollments:', streamEnrollments);
         setEnrollments(streamEnrollments);
         
         // Calculate stats
         const totalStreams = streamEnrollments.length;
         const totalCourses = streamEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => 
-          sum + enrollment.coursesCount, 0
+          sum + (enrollment.coursesCount || 0), 0
         );
         const completedStreams = streamEnrollments.filter(
-          (enrollment: StreamEnrollment) => enrollment.totalWatchedPercentage >= 100
+          (enrollment: StreamEnrollment) => (enrollment.totalWatchedPercentage || 0) >= 100
         ).length;
         const totalHours = streamEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => {
-          return sum + enrollment.courses.reduce((courseSum, course) => courseSum + course.totalDuration, 0);
+          return sum + (enrollment.courses || []).reduce((courseSum, course) => courseSum + (course.totalDuration || 0), 0);
         }, 0);
         
         setStats({
@@ -97,12 +101,29 @@ const Pack365Dashboard = () => {
           completedStreams,
           totalHours: Math.round(totalHours / 60) // Convert minutes to hours
         });
+        
+        if (streamEnrollments.length === 0) {
+          toast({
+            title: 'No Enrollments Found',
+            description: 'You haven\'t enrolled in any Pack365 streams yet. Browse available streams to get started!',
+            variant: 'default'
+          });
+        }
+      } else {
+        console.log('No enrollments found or response not successful');
+        setEnrollments([]);
+        toast({
+          title: 'No Enrollments',
+          description: 'No Pack365 enrollments found. If you recently enrolled, please wait a few minutes and refresh.',
+          variant: 'default'
+        });
       }
     } catch (error: any) {
       console.error('Error fetching enrollments:', error);
+      setEnrollments([]);
       toast({
-        title: 'Error',
-        description: 'Failed to load your enrollments. Please try again.',
+        title: 'Error Loading Enrollments',
+        description: 'Failed to load your enrollments. Please check your connection and try again.',
         variant: 'destructive'
       });
     } finally {
@@ -142,8 +163,21 @@ const Pack365Dashboard = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Pack365 Dashboard</h1>
-          <p className="text-gray-600">Track your learning progress and achievements</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Pack365 Dashboard</h1>
+              <p className="text-gray-600">Track your learning progress and achievements</p>
+            </div>
+            <Button 
+              onClick={fetchEnrollments}
+              variant="outline"
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              <BookOpen className="h-4 w-4" />
+              {loading ? 'Loading...' : 'Refresh'}
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
