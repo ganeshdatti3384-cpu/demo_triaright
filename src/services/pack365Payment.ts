@@ -96,6 +96,23 @@ export class Pack365PaymentService {
     };
   }
 
+  // Helper method to normalize stream names for backend
+  private static normalizeStreamName(streamName: string): string {
+    if (!streamName) return 'it';
+    
+    const normalized = streamName.toLowerCase();
+    
+    if (normalized.includes('it')) return 'it';
+    if (normalized.includes('finance')) return 'finance';
+    if (normalized.includes('marketing')) return 'marketing';
+    if (normalized.includes('hr')) return 'hr';
+    if (normalized.includes('pharma')) return 'pharma';
+    if (normalized.includes('non')) return 'non-it';
+    
+    // Default fallback
+    return 'it';
+  }
+
   static async createOrder(options: PaymentOptions): Promise<OrderResponse> {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -105,8 +122,12 @@ export class Pack365PaymentService {
     console.log('Creating order with options:', options);
 
     try {
+      // Normalize stream name for backend compatibility
+      const normalizedStream = this.normalizeStreamName(options.streamName);
+      console.log('Normalized stream name:', options.streamName, '->', normalizedStream);
+
       const requestData: any = {
-        stream: options.streamName || 'it',
+        stream: normalizedStream,
         fromStream: options.fromStream
       };
 
@@ -150,8 +171,13 @@ export class Pack365PaymentService {
       };
     } catch (error: any) {
       console.error('Error creating order:', error);
+      console.error('Request was for stream:', options.streamName);
+      console.error('Normalized to:', this.normalizeStreamName(options.streamName));
+      
       if (error.response) {
-        throw new Error(error.response.data?.error || error.response.data?.message || 'Failed to create payment order');
+        const errorMessage = error.response.data?.error || error.response.data?.message || 'Failed to create payment order';
+        console.error('Backend error response:', error.response.data);
+        throw new Error(errorMessage);
       } else if (error.request) {
         throw new Error('Network error. Please check your connection and try again.');
       } else {

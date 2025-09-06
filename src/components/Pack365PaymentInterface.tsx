@@ -1,6 +1,4 @@
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +19,23 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Pack365PaymentService } from '@/services/pack365Payment';
 import { pack365Api } from '@/services/api';
+
+// Helper function to normalize stream names for backend compatibility
+const normalizeStreamName = (streamName: string): string => {
+  if (!streamName) return 'it';
+  
+  const normalized = streamName.toLowerCase();
+  
+  if (normalized.includes('it')) return 'it';
+  if (normalized.includes('finance')) return 'finance';
+  if (normalized.includes('marketing')) return 'marketing';
+  if (normalized.includes('hr')) return 'hr';
+  if (normalized.includes('pharma')) return 'pharma';
+  if (normalized.includes('non')) return 'non-it';
+  
+  // Default fallback
+  return 'it';
+};
 
 interface Pack365PaymentInterfaceProps {
   streamName: string;
@@ -73,7 +88,11 @@ const Pack365PaymentInterface = ({
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Authentication required');
 
-      const result = await pack365Api.validateEnrollmentCode(token, couponCode.trim(), streamName);
+      const result = await pack365Api.validateEnrollmentCode(
+        token, 
+        couponCode.trim(), 
+        normalizeStreamName(streamName)
+      );
 
       if (!result.success) {
         throw new Error(result.message || "Invalid coupon");
