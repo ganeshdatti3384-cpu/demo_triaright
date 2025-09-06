@@ -681,6 +681,22 @@ export const pack365Api = {
     return res.data;
   },
 
+  bulkUploadCoursesFromExcel: async (
+    token: string,
+    file: File
+  ): Promise<{ success: boolean; message: string; results: any[] }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await axios.post(`${API_BASE_URL}/courses/bulk-upload`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      }
+    });
+    return res.data;
+  },
+
   getExamQuestions: async (
     token: string,
     examId: string
