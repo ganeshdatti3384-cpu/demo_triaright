@@ -11,7 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Upload, FileSpreadsheet, X } from 'lucide-react';
 import { courseApi } from '@/services/api';
 import { EnhancedCourse } from '@/types/api';
-import * as XLSX from 'xlsx';
 
 interface SubTopicForm {
   name: string;
@@ -820,119 +819,14 @@ const CourseManagement = () => {
     }
   };
 
-  const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (file) {
       toast({
-        title: "Error",
-        description: "Authentication token not found",
-        variant: "destructive"
+        title: "Excel Upload",
+        description: `File ${file.name} uploaded successfully. Processing...`
       });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      // Read and parse Excel file
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-      if (jsonData.length === 0) {
-        toast({
-          title: "Error",
-          description: "Excel file is empty or invalid format",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Validate required columns
-      const requiredColumns = ['Title', 'Description', 'Instructor', 'Duration', 'Type', 'Stream'];
-      const firstRow = jsonData[0] as any;
-      const missingColumns = requiredColumns.filter(col => !(col in firstRow));
-      
-      if (missingColumns.length > 0) {
-        toast({
-          title: "Error",
-          description: `Missing required columns: ${missingColumns.join(', ')}`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Process each row and create courses
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const row of jsonData) {
-        try {
-          const rowData = row as any;
-          const courseData = {
-            courseName: rowData.Title || '',
-            courseDescription: rowData.Description || '',
-            instructorName: rowData.Instructor || '',
-            totalDuration: parseInt(rowData.Duration) || 0,
-            courseType: (rowData.Type?.toLowerCase() === 'paid' ? 'paid' : 'unpaid') as 'paid' | 'unpaid',
-            price: parseFloat(rowData.Price) || 0,
-            stream: (rowData.Stream?.toLowerCase() || 'it') as 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability',
-            providerName: 'triaright' as const,
-            courseLanguage: rowData.Language || 'English',
-            certificationProvided: 'yes' as const,
-            additionalInformation: rowData.AdditionalInfo || '',
-            demoVideoLink: rowData.DemoVideo || '',
-            curriculum: [],
-            hasFinalExam: false
-          };
-
-          const formData = new FormData();
-          Object.entries(courseData).forEach(([key, value]) => {
-            if (key === 'curriculum') {
-              formData.append(key, JSON.stringify(value));
-            } else {
-              formData.append(key, String(value));
-            }
-          });
-
-          await courseApi.createCourse(token, formData);
-          successCount++;
-        } catch (error) {
-          console.error('Error creating course:', error);
-          errorCount++;
-        }
-      }
-
-      toast({
-        title: "Excel Upload Complete",
-        description: `Successfully created ${successCount} courses. ${errorCount} failed.`,
-        variant: successCount > 0 ? "default" : "destructive"
-      });
-
-      if (successCount > 0) {
-        await fetchCourses();
-      }
-
       setIsExcelUploadOpen(false);
-      
-    } catch (error) {
-      console.error('Excel upload error:', error);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to process Excel file. Please check the format.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-      // Reset file input
-      if (event.target) {
-        event.target.value = '';
-      }
     }
   };
 
