@@ -562,10 +562,30 @@ export const pack365Api = {
   getMyEnrollments: async (
     token: string
   ): Promise<{ success: boolean; enrollments: EnhancedPack365Enrollment[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
+    try {
+      console.log('Fetching pack365 enrollments from API...');
+      const res = await axios.get(`${API_BASE_URL}/pack365/myenrollments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Pack365 enrollments response:', res.data);
+      return res.data;
+    } catch (error: any) {
+      console.error('Error fetching pack365 enrollments:', error);
+      if (error.response?.status === 404) {
+        console.log('Trying alternative endpoint...');
+        try {
+          const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          console.log('Alternative endpoint response:', res.data);
+          return res.data;
+        } catch (altError: any) {
+          console.error('Alternative endpoint also failed:', altError);
+          return { success: false, enrollments: [] };
+        }
+      }
+      return { success: false, enrollments: [] };
+    }
   },
 
   checkEnrollmentStatus: async (
