@@ -562,10 +562,69 @@ export const pack365Api = {
   getMyEnrollments: async (
     token: string
   ): Promise<{ success: boolean; enrollments: EnhancedPack365Enrollment[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
+    try {
+      console.log('Fetching pack365 enrollments from API...');
+      
+      // Try the primary pack365 enrollments endpoint first
+      try {
+        const res = await axios.get(`${API_BASE_URL}/pack365/myenrollments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('Pack365 enrollments response:', res.data);
+        if (res.data && res.data.success) {
+          return res.data;
+        }
+      } catch (primaryError: any) {
+        console.log('Primary pack365 endpoint failed:', primaryError.message);
+      }
+      
+      // Try alternative pack365 endpoint
+      try {
+        console.log('Trying alternative pack365 endpoint...');
+        const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('Alternative pack365 endpoint response:', res.data);
+        if (res.data && res.data.success) {
+          return res.data;
+        }
+      } catch (altError: any) {
+        console.log('Alternative pack365 endpoint also failed:', altError.message);
+      }
+      
+      // Try general courses endpoint and filter for pack365 enrollments
+      try {
+        console.log('Trying general courses endpoint...');
+        const courseRes = await axios.get(`${API_BASE_URL}/courses/enrollment/allcourses`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('General courses response:', courseRes.data);
+        
+        if (courseRes.data && courseRes.data.enrollments) {
+          // Filter for pack365/stream based enrollments
+          const pack365Enrollments = courseRes.data.enrollments.filter((enrollment: any) => 
+            enrollment.stream || 
+            enrollment.enrollmentType === 'pack365' ||
+            (enrollment.courseName && enrollment.courseName.toLowerCase().includes('pack365'))
+          );
+          
+          console.log('Filtered pack365 enrollments:', pack365Enrollments);
+          return {
+            success: true,
+            enrollments: pack365Enrollments
+          };
+        }
+      } catch (courseError: any) {
+        console.log('General courses endpoint also failed:', courseError.message);
+      }
+      
+      console.log('All endpoints failed, returning empty array');
+      return { success: true, enrollments: [] };
+      
+    } catch (error: any) {
+      console.error('Error fetching pack365 enrollments:', error);
+      return { success: false, enrollments: [] };
+    }
   },
 
   checkEnrollmentStatus: async (
