@@ -11,6 +11,7 @@ import Footer from '@/components/Footer';
 import Pack365PaymentInterface from '@/components/Pack365PaymentInterface';
 import RealPaymentGateway from '@/components/RealPaymentGateway';
 import { useToast } from '@/hooks/use-toast';
+import { courseApi, pack365Api } from '@/services/api';
 
 const RazorpayPayment = () => {
   const navigate = useNavigate();
@@ -96,78 +97,89 @@ const RazorpayPayment = () => {
     }
   }, [isUserLoaded, streamName, courseId, toast, fromStream, coursesCount, streamPrice, courseName, fromCourse, user, navigate]);
 
-  const handlePaymentSuccess = async (response: any) => {
-    console.log('Payment success handler called in RazorpayPayment');
-    console.log('Payment response received:', response);
-    
+   const handlePaymentSuccess = async (response: any) => {
+    console.log('Payment success handler called. Response from Razorpay:', response);
+
+    // 1. Get the token from localStorage
+    const token = localStorage.getItem('token');
+
+    // 2. Add a guard clause to ensure the user is logged in
+    if (!token) {
+      toast({
+        title: 'Authentication Error',
+        description: 'You are not logged in. Please log in again to complete enrollment.',
+        variant: 'destructive',
+      });
+      navigate('/login');
+      return; // Stop the function
+    }
+
+    // 3. Prepare the data for backend verification
     const requestData = {
       razorpay_order_id: response.razorpay_order_id,
       razorpay_payment_id: response.razorpay_payment_id,
       razorpay_signature: response.razorpay_signature,
     };
 
-    console.log("Sending verification request with data:", requestData);
-
     try {
-      console.log('Payment verification successful, navigating to success page');
-      
-      toast({
-        title: 'Payment Successful!',
-        description: 'You have been enrolled successfully.',
-      });
-      
-      // Navigate based on payment type
+      let verificationResponse: { success: any; enrollment: any; message: any; };
+
+      // 4. Call the correct backend verification endpoint based on payment type
       if (fromCourse && courseId) {
-        // Individual course payment
-        navigate('/payment-success', {
-          state: {
-            paymentId: response.razorpay_payment_id,
-            orderId: response.razorpay_order_id,
-            courseName,
-            courseId,
-            type: 'course',
-            enrollmentDetails: response
-          },
-        });
+        // This is for individual course payments
+        // Make sure you have a `verifyPayment` function in `courseApi` that accepts (token, data)
+        verificationResponse = await courseApi.verifyPaymentAndEnroll(token, requestData);
       } else {
-        // Pack365 payment
-        navigate('/payment-success', {
-          state: {
-            paymentId: response.razorpay_payment_id,
-            orderId: response.razorpay_order_id,
-            streamName,
-            fromStream,
-            type: 'pack365',
-            enrollmentDetails: response
-          },
-        });
+        // This is for Pack365 stream payments
+        verificationResponse = await pack365Api.verifyPayment(token, requestData);
       }
-    } catch (err: any) {
-      console.error('Payment verification error:', err);
-      console.error('Error details:', {
-        message: err.message,
-        stack: err.stack,
-        response: err.response
-      });
       
+      // 5. Check the response from YOUR backend
+      if (verificationResponse && verificationResponse.success) {
+        // This block now only runs if YOUR server confirms the payment is valid
+        toast({
+          title: 'Payment Successful!',
+          description: 'You have been enrolled successfully.',
+        });
+
+        // Navigate to the success page with relevant details
+        const successState = {
+          paymentId: response.razorpay_payment_id,
+          orderId: response.razorpay_order_id,
+          type: fromCourse ? 'course' : 'pack365',
+          enrollmentDetails: verificationResponse.enrollment, // Use data from your backend
+          courseName: courseName,
+          courseId: courseId,
+          streamName: streamName,
+        };
+        navigate('/payment-success', { state: successState });
+
+      } else {
+        // This handles cases where your backend says the payment is invalid
+        throw new Error(verificationResponse?.message || 'Payment verification failed on the server.');
+      }
+
+    } catch (err: any) {
+      // This will catch network errors or errors thrown from the block above
+      console.error('Payment verification error:', err);
       toast({
         title: 'Payment Verification Failed',
         description: err.message || 'Could not verify payment. Please contact support.',
         variant: 'destructive',
       });
-      
+
       navigate('/payment-failed', {
         state: {
           error: err.message || 'Verification failed',
           streamName: streamName || courseName,
           type: fromCourse ? 'course' : 'pack365',
           paymentId: response.razorpay_payment_id,
-          orderId: response.razorpay_order_id
+          orderId: response.razorpay_order_id,
         },
       });
     }
   };
-
+  
   const handleBack = () => {
     navigate(-1);
   };
