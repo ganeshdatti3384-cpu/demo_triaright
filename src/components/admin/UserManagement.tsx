@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, User, Lock, Eye as EyeIcon, EyeOff, GraduationCap } from 'lucide-react';
+import { toast } from 'sonner';
 import { authApi, RegisterPayload } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -130,11 +131,7 @@ const fetchUsers = async () => {
   try {
     const token = localStorage.getItem('token'); // or wherever you store your admin token
     if (!token) {
-      hookToast({
-        title: "Authentication Error",
-        description: "Authentication token not found.",
-        variant: "destructive",
-      });
+      toast.error("Authentication token not found.");
       setLoading(false);
       return;
     }
@@ -150,19 +147,11 @@ const fetchUsers = async () => {
     if (response.data.success) {
       setUsers(response.data.users);
     } else {
-      hookToast({
-        title: "Error",
-        description: "Failed to fetch users",
-        variant: "destructive",
-      });
+      toast.error('Failed to fetch users');
     }
   } catch (error) {
     console.error('Error fetching users:', error);
-    hookToast({
-      title: "Error",
-      description: "An error occurred while fetching users.",
-      variant: "destructive",
-    });
+    toast.error('An error occurred while fetching users.');
   } finally {
     setLoading(false);
   }
@@ -206,17 +195,10 @@ const fetchUsers = async () => {
 
     try {
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
-      hookToast({
-        title: "Success",
-        description: "User deleted successfully!",
-      });
+      toast.success('User deleted successfully!');
     } catch (error) {
       console.error('Error deleting user:', error);
-      hookToast({
-        title: "Error",
-        description: "Failed to delete user",
-        variant: "destructive",
-      });
+      toast.error('Failed to delete user');
     }
   };
 
@@ -247,10 +229,7 @@ const fetchUsers = async () => {
     a.click();
     window.URL.revokeObjectURL(url);
     
-    hookToast({
-      title: "Success",
-      description: "Sample file downloaded! You can open it in Excel and save as .xlsx",
-    });
+    toast.success('Sample file downloaded! You can open it in Excel and save as .xlsx');
   };
 
   const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -258,11 +237,7 @@ const fetchUsers = async () => {
     if (!file) return;
 
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      hookToast({
-        title: "Error",
-        description: "Please upload an Excel file (.xlsx or .xls)",
-        variant: "destructive",
-      });
+      toast.error('Please upload an Excel file (.xlsx or .xls)');
       return;
     }
 
@@ -288,24 +263,14 @@ const fetchUsers = async () => {
         const failCount = results.filter((r: any) => r.status === 'failed').length;
 
         if (successCount > 0) {
-          hookToast({
-            title: "Success",
-            description: `${successCount} users uploaded successfully!`,
-          });
+          toast.success(`${successCount} users uploaded successfully!`);
         }
         if (failCount > 0) {
-          hookToast({
-            title: "Upload Warning",
-            description: `${failCount} users failed to upload. Check console for details.`,
-            variant: "destructive",
-          });
+          toast.error(`${failCount} users failed to upload. Check console for details.`);
           console.error('Failed uploads:', results.filter((r: any) => r.status === 'failed'));
         }
       } else {
-        hookToast({
-          title: "Success",
-          description: "Bulk upload completed successfully!",
-        });
+        toast.success('Bulk upload completed successfully!');
       }
 
       fetchUsers();
@@ -314,29 +279,13 @@ const fetchUsers = async () => {
       console.error('Error during bulk upload:', error);
       
       if (error.response?.data?.message) {
-        hookToast({
-          title: "Upload Failed",
-          description: error.response.data.message,
-          variant: "destructive",
-        });
+        toast.error(`Upload failed: ${error.response.data.message}`);
       } else if (error.response?.status === 401) {
-        hookToast({
-          title: "Unauthorized",
-          description: "Please check your admin credentials.",
-          variant: "destructive",
-        });
+        toast.error('Unauthorized. Please check your admin credentials.');
       } else if (error.response?.status === 400) {
-        hookToast({
-          title: "Bad Request",
-          description: "Please check your Excel file format.",
-          variant: "destructive",
-        });
+        toast.error('Bad request. Please check your Excel file format.');
       } else {
-        hookToast({
-          title: "Upload Failed",
-          description: "Failed to upload users. Please try again.",
-          variant: "destructive",
-        });
+        toast.error('Failed to upload users. Please try again.');
       }
     } finally {
       setLoading(false);
