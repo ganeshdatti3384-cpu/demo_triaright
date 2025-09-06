@@ -100,6 +100,13 @@ export const authApi = {
     return res.data;
   },
 
+  getAllUsers: async (token: string): Promise<{ success: boolean; users: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  },
+
   getStatistics: async (token: string): Promise<{
     totalUsers: number;
     students: number;
