@@ -525,56 +525,6 @@ const CourseManagement = () => {
       return;
     }
 
-    // Validation for curriculum structure
-    for (const topic of formData.curriculum) {
-      if (!topic.topicName.trim()) {
-        toast({
-          title: "Error",
-          description: "All topics must have a name",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Check if topic has at least one subtopic with valid data
-      if (topic.subtopics.length === 0) {
-        toast({
-          title: "Error",
-          description: `Topic "${topic.topicName}" must have at least one subtopic`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Validate each subtopic
-      for (const subtopic of topic.subtopics) {
-        if (!subtopic.name.trim()) {
-          toast({
-            title: "Error",
-            description: `All subtopics in "${topic.topicName}" must have a name`,
-            variant: "destructive"
-          });
-          return;
-        }
-        if (!subtopic.link.trim()) {
-          toast({
-            title: "Error",
-            description: `All subtopics in "${topic.topicName}" must have a video/content link`,
-            variant: "destructive"
-          });
-          return;
-        }
-        if (!subtopic.duration || subtopic.duration <= 0) {
-          toast({
-            title: "Error",
-            description: `All subtopics in "${topic.topicName}" must have a valid duration`,
-            variant: "destructive"
-          });
-          return;
-        }
-      }
-    }
-
     // Check if all topics have exam files
     for (const topic of formData.curriculum) {
       if (topic.topicName && !files.topicExams[topic.topicName]) {

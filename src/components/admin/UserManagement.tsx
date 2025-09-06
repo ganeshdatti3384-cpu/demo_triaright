@@ -139,10 +139,16 @@ const fetchUsers = async () => {
       return;
     }
 
-    const response = await authApi.getAllUsers(token);
+    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002/api';
+    
+    const response = await axios.get(`${API_BASE_URL}/users/all`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    if (response.success) {
-      setUsers(response.users);
+    if (response.data.success) {
+      setUsers(response.data.users);
     } else {
       hookToast({
         title: "Error",
