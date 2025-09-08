@@ -712,7 +712,7 @@ const CourseManagement = () => {
         }
       });
 
-      const response = await courseApi.updateCourse(token, editingCourse.courseId!, formDataToSend);
+      const response = await courseApi.updateCourse(token, editingCourse._id!, formDataToSend);
       
       if (response.success) {
         await fetchCourses(); // Refresh courses list
@@ -762,7 +762,7 @@ const CourseManagement = () => {
         return;
       }
 
-      const response = await courseApi.deleteCourse(token, courseToDelete.courseId!);
+      const response = await courseApi.deleteCourse(token, courseToDelete._id!);
       
       if (response.success) {
         await fetchCourses(); // Refresh courses list
