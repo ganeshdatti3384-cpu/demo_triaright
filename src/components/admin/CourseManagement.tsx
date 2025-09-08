@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Upload, FileSpreadsheet, X } from 'lucide-react';
@@ -393,6 +394,8 @@ const CourseManagement = () => {
   const [isExamUploadOpen, setIsExamUploadOpen] = useState(false);
   const [selectedCourseForExam, setSelectedCourseForExam] = useState<string>('');
   const [editingCourse, setEditingCourse] = useState<EnhancedCourse | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<EnhancedCourse | null>(null);
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -739,7 +742,14 @@ const CourseManagement = () => {
     }
   };
 
-  const handleDeleteCourse = async (courseId: string) => {
+  const openDeleteDialog = (course: EnhancedCourse) => {
+    setCourseToDelete(course);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!courseToDelete) return;
+    
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -752,10 +762,12 @@ const CourseManagement = () => {
         return;
       }
 
-      const response = await courseApi.deleteCourse(token, courseId);
+      const response = await courseApi.deleteCourse(token, courseToDelete.courseId!);
       
       if (response.success) {
         await fetchCourses(); // Refresh courses list
+        setIsDeleteDialogOpen(false);
+        setCourseToDelete(null);
         toast({
           title: "Success",
           description: response.message || "Course deleted successfully"
@@ -963,7 +975,7 @@ const handleAddSubtopic = (topicIndex: number) => {
                   <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteCourse(course.courseId!)}>
+                  <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(course)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -1048,6 +1060,29 @@ const handleAddSubtopic = (topicIndex: number) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Course</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{courseToDelete?.courseName}"? This action cannot be undone.
+              All enrolled students, course content, and exam data will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsDeleteDialogOpen(false);
+              setCourseToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCourse} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Course
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
