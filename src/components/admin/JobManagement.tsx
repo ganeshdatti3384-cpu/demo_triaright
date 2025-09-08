@@ -1,263 +1,222 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Eye, Edit, Trash2, Briefcase, Users } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import axios from 'axios'; // 💡 Using axios for API calls
 
+// ✅ Interface updated to match your backend schema
 interface Job {
-  id: string;
+  _id: string;
   title: string;
-  company: string;
+  companyName: string;
   location: string;
-  type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
-  salary: string;
+  jobType: 'Full-Time' | 'Part-Time' | 'Contract' | 'Internship';
+  salaryMin?: number;
+  salaryMax?: number;
   description: string;
-  requirements: string[];
-  postedDate: string;
-  status: 'active' | 'closed';
+  skills: string[];
+  createdAt: string;
+  status: 'Open' | 'Closed' | 'On Hold';
 }
 
 interface JobApplication {
-  id: string;
+  _id: string;
   jobId: string;
   jobTitle: string;
   applicantName: string;
   applicantEmail: string;
-  resumeUrl: string;
-  coverLetter: string;
-  applicationDate: string;
-  status: 'pending' | 'reviewed' | 'accepted' | 'rejected';
+  createdAt: string;
+  status: 'Applied' | 'Reviewed' | 'Shortlisted' | 'Rejected' | 'Hired';
 }
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002/api';
 
 const JobManagement = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [isAddJobOpen, setIsAddJobOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Dialog states
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+
+  // State for items being acted upon
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
-  const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
-  const [isApplicationDetailOpen, setIsApplicationDetailOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+  
   const { toast } = useToast();
 
   const [jobForm, setJobForm] = useState({
     title: '',
-    company: '',
+    companyName: '',
     location: '',
-    type: 'Full-time' as Job['type'],
-    salary: '',
+    jobType: 'Full-Time' as Job['jobType'],
+    salaryMin: '',
+    salaryMax: '',
     description: '',
-    requirements: ''
+    skills: ''
   });
 
-  useEffect(() => {
-    // Load sample data
-    const sampleJobs: Job[] = [
-      {
-        id: '1',
-        title: 'Frontend Developer',
-        company: 'TechCorp',
-        location: 'Remote',
-        type: 'Full-time',
-        salary: '$60,000 - $80,000',
-        description: 'We are looking for a skilled Frontend Developer...',
-        requirements: ['React', 'TypeScript', 'CSS'],
-        postedDate: '2024-01-15',
-        status: 'active'
-      },
-      {
-        id: '2',
-        title: 'Backend Developer',
-        company: 'StartupXYZ',
-        location: 'New York',
-        type: 'Full-time',
-        salary: '$70,000 - $90,000',
-        description: 'Join our backend team to build scalable systems...',
-        requirements: ['Node.js', 'Python', 'MongoDB'],
-        postedDate: '2024-01-10',
-        status: 'active'
-      }
-    ];
-
-    const sampleApplications: JobApplication[] = [
-      {
-        id: '1',
-        jobId: '1',
-        jobTitle: 'Frontend Developer',
-        applicantName: 'John Doe',
-        applicantEmail: 'john@example.com',
-        resumeUrl: '/resume.pdf',
-        coverLetter: 'I am excited to apply for this position...',
-        applicationDate: '2024-01-16',
-        status: 'pending'
-      },
-      {
-        id: '2',
-        jobId: '1',
-        jobTitle: 'Frontend Developer',
-        applicantName: 'Jane Smith',
-        applicantEmail: 'jane@example.com',
-        resumeUrl: '/resume2.pdf',
-        coverLetter: 'With 3 years of React experience...',
-        applicationDate: '2024-01-17',
-        status: 'reviewed'
-      }
-    ];
-
-    setJobs(sampleJobs);
-    setApplications(sampleApplications);
-  }, []);
-
-  const handleAddJob = () => {
-    if (!jobForm.title || !jobForm.company) {
-      toast({
-        title: "Error",
-        description: "Please fill in required fields",
-        variant: "destructive"
-      });
-      return;
+  // ✅ Fetch jobs from the API
+  const fetchJobs = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/jobs`);
+      setJobs(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch jobs:", error);
+      toast({ title: "Error", description: "Could not fetch jobs.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const newJob: Job = {
-      id: Date.now().toString(),
-      ...jobForm,
-      requirements: jobForm.requirements.split(',').map(req => req.trim()),
-      postedDate: new Date().toISOString().split('T')[0],
-      status: 'active'
-    };
-
-    setJobs(prev => [...prev, newJob]);
+  useEffect(() => {
+    fetchJobs();
+    // In a real app, you would fetch applications here too.
+  }, []);
+  
+  const resetForm = () => {
+    setEditingJob(null);
     setJobForm({
       title: '',
-      company: '',
+      companyName: '',
       location: '',
-      type: 'Full-time',
-      salary: '',
+      jobType: 'Full-Time',
+      salaryMin: '',
+      salaryMax: '',
       description: '',
-      requirements: ''
-    });
-    setIsAddJobOpen(false);
-    toast({
-      title: "Success",
-      description: "Job posted successfully"
+      skills: ''
     });
   };
 
-  const updateApplicationStatus = (applicationId: string, status: JobApplication['status']) => {
-    setApplications(prev => prev.map(app => 
-      app.id === applicationId ? { ...app, status } : app
-    ));
-    toast({
-      title: "Success",
-      description: `Application status updated to ${status}`
+  const handleFormSubmit = () => {
+    if (editingJob) {
+      handleUpdateJob();
+    } else {
+      handleCreateJob();
+    }
+  };
+
+  const handleCreateJob = async () => {
+    if (!jobForm.title || !jobForm.companyName) {
+      toast({ title: "Error", description: "Title and Company are required.", variant: "destructive" });
+      return;
+    }
+
+    const newJobPayload = {
+      ...jobForm,
+      skills: jobForm.skills.split(',').map(req => req.trim()),
+      salaryMin: Number(jobForm.salaryMin) || undefined,
+      salaryMax: Number(jobForm.salaryMax) || undefined,
+    };
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_BASE_URL}/jobs`, newJobPayload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast({ title: "Success", description: "Job posted successfully." });
+      fetchJobs();
+      setIsFormOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error("Failed to create job:", error);
+      toast({ title: "Error", description: "Failed to post job.", variant: "destructive" });
+    }
+  };
+
+  // ✅ Function to open the edit form
+  const openEditForm = (job: Job) => {
+    setEditingJob(job);
+    setJobForm({
+      title: job.title,
+      companyName: job.companyName,
+      location: job.location,
+      jobType: job.jobType,
+      salaryMin: job.salaryMin?.toString() || '',
+      salaryMax: job.salaryMax?.toString() || '',
+      description: job.description,
+      skills: job.skills.join(', ')
     });
+    setIsFormOpen(true);
+  };
+
+  // ✅ Function to handle the update API call
+  const handleUpdateJob = async () => {
+    if (!editingJob) return;
+
+    const updatedJobPayload = {
+        ...jobForm,
+        skills: jobForm.skills.split(',').map(req => req.trim()),
+        salaryMin: Number(jobForm.salaryMin) || undefined,
+        salaryMax: Number(jobForm.salaryMax) || undefined,
+    };
+
+    try {
+        const token = localStorage.getItem('token');
+        await axios.put(`${API_BASE_URL}/jobs/${editingJob._id}`, updatedJobPayload, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        toast({ title: "Success", description: "Job updated successfully." });
+        fetchJobs();
+        setIsFormOpen(false);
+        resetForm();
+    } catch (error) {
+        console.error("Failed to update job:", error);
+        toast({ title: "Error", description: "Failed to update job.", variant: "destructive" });
+    }
+  };
+
+  // ✅ Function to open the delete confirmation
+  const openDeleteAlert = (job: Job) => {
+    setJobToDelete(job);
+    setIsDeleteAlertOpen(true);
+  };
+
+  // ✅ Function to handle the delete API call
+  const handleDeleteJob = async () => {
+    if (!jobToDelete) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        await axios.delete(`${API_BASE_URL}/jobs/${jobToDelete._id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        toast({ title: "Success", description: "Job deleted successfully." });
+        fetchJobs();
+        setIsDeleteAlertOpen(false);
+        setJobToDelete(null);
+    } catch (error) {
+        console.error("Failed to delete job:", error);
+        toast({ title: "Error", description: "Failed to delete job.", variant: "destructive" });
+    }
   };
 
   const viewJobDetails = (job: Job) => {
     setSelectedJob(job);
-    setIsJobDetailOpen(true);
-  };
-
-  const viewApplicationDetails = (application: JobApplication) => {
-    setSelectedApplication(application);
-    setIsApplicationDetailOpen(true);
+    setIsDetailOpen(true);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Job Management</h2>
-        <Dialog open={isAddJobOpen} onOpenChange={setIsAddJobOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Post New Job
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Post New Job</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Job Title *</Label>
-                  <Input
-                    value={jobForm.title}
-                    onChange={(e) => setJobForm(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="e.g., Frontend Developer"
-                  />
-                </div>
-                <div>
-                  <Label>Company *</Label>
-                  <Input
-                    value={jobForm.company}
-                    onChange={(e) => setJobForm(prev => ({ ...prev, company: e.target.value }))}
-                    placeholder="Company name"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label>Location</Label>
-                  <Input
-                    value={jobForm.location}
-                    onChange={(e) => setJobForm(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="Remote/City"
-                  />
-                </div>
-                <div>
-                  <Label>Type</Label>
-                  <select
-                    value={jobForm.type}
-                    onChange={(e) => setJobForm(prev => ({ ...prev, type: e.target.value as Job['type'] }))}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="Full-time">Full-time</option>
-                    <option value="Part-time">Part-time</option>
-                    <option value="Contract">Contract</option>
-                    <option value="Internship">Internship</option>
-                  </select>
-                </div>
-                <div>
-                  <Label>Salary Range</Label>
-                  <Input
-                    value={jobForm.salary}
-                    onChange={(e) => setJobForm(prev => ({ ...prev, salary: e.target.value }))}
-                    placeholder="$50,000 - $70,000"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Job Description</Label>
-                <Textarea
-                  value={jobForm.description}
-                  onChange={(e) => setJobForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Describe the role and responsibilities..."
-                  rows={4}
-                />
-              </div>
-              <div>
-                <Label>Requirements (comma-separated)</Label>
-                <Input
-                  value={jobForm.requirements}
-                  onChange={(e) => setJobForm(prev => ({ ...prev, requirements: e.target.value }))}
-                  placeholder="React, TypeScript, 2+ years experience"
-                />
-              </div>
-              <Button onClick={handleAddJob} className="w-full">
-                Post Job
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => { resetForm(); setIsFormOpen(true); }}>
+          <Plus className="h-4 w-4 mr-2" />
+          Post New Job
+        </Button>
       </div>
 
       <Tabs defaultValue="jobs" className="space-y-4">
@@ -268,9 +227,7 @@ const JobManagement = () => {
 
         <TabsContent value="jobs">
           <Card>
-            <CardHeader>
-              <CardTitle>Job Postings</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Job Postings</CardTitle></CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
@@ -286,28 +243,26 @@ const JobManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {jobs.map((job) => (
-                    <TableRow key={job.id}>
+                    <TableRow key={job._id}>
                       <TableCell className="font-medium">{job.title}</TableCell>
-                      <TableCell>{job.company}</TableCell>
+                      <TableCell>{job.companyName}</TableCell>
                       <TableCell>{job.location}</TableCell>
+                      <TableCell><Badge variant="outline">{job.jobType}</Badge></TableCell>
                       <TableCell>
-                        <Badge variant="outline">{job.type}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
+                        <Badge variant={job.status === 'Open' ? 'default' : 'secondary'}>
                           {job.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{job.postedDate}</TableCell>
+                      <TableCell>{new Date(job.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex space-x-1">
                           <Button variant="outline" size="sm" onClick={() => viewJobDetails(job)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => openEditForm(job)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="destructive" size="sm">
+                          <Button variant="destructive" size="sm" onClick={() => openDeleteAlert(job)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -321,172 +276,104 @@ const JobManagement = () => {
         </TabsContent>
 
         <TabsContent value="applications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Job Applications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Applicant</TableHead>
-                    <TableHead>Job Title</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Applied Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {applications.map((application) => (
-                    <TableRow key={application.id}>
-                      <TableCell className="font-medium">{application.applicantName}</TableCell>
-                      <TableCell>{application.jobTitle}</TableCell>
-                      <TableCell>{application.applicantEmail}</TableCell>
-                      <TableCell>{application.applicationDate}</TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          application.status === 'accepted' ? 'default' :
-                          application.status === 'rejected' ? 'destructive' :
-                          application.status === 'reviewed' ? 'secondary' : 'outline'
-                        }>
-                          {application.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-1">
-                          <Button variant="outline" size="sm" onClick={() => viewApplicationDetails(application)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="default" 
-                            size="sm"
-                            onClick={() => updateApplicationStatus(application.id, 'accepted')}
-                          >
-                            Accept
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => updateApplicationStatus(application.id, 'rejected')}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+            <p className="p-4">Application management can be connected here.</p>
         </TabsContent>
       </Tabs>
 
-      {/* Job Details Dialog */}
-      <Dialog open={isJobDetailOpen} onOpenChange={setIsJobDetailOpen}>
+      {/* Add/Edit Job Dialog */}
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Job Details</DialogTitle>
+            <DialogTitle>{editingJob ? 'Edit Job' : 'Post New Job'}</DialogTitle>
           </DialogHeader>
-          {selectedJob && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold">{selectedJob.title}</h3>
-                <p className="text-gray-600">{selectedJob.company} • {selectedJob.location}</p>
+          <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <Label>Job Title *</Label>
+                      <Input value={jobForm.title} onChange={(e) => setJobForm(prev => ({ ...prev, title: e.target.value }))} />
+                  </div>
+                  <div>
+                      <Label>Company *</Label>
+                      <Input value={jobForm.companyName} onChange={(e) => setJobForm(prev => ({ ...prev, companyName: e.target.value }))} />
+                  </div>
               </div>
-              <div className="flex space-x-2">
-                <Badge variant="outline">{selectedJob.type}</Badge>
-                <Badge variant={selectedJob.status === 'active' ? 'default' : 'secondary'}>
-                  {selectedJob.status}
-                </Badge>
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <Label>Location</Label>
+                      <Input value={jobForm.location} onChange={(e) => setJobForm(prev => ({ ...prev, location: e.target.value }))} />
+                  </div>
+                  <div>
+                      <Label>Type</Label>
+                      <select value={jobForm.jobType} onChange={(e) => setJobForm(prev => ({ ...prev, jobType: e.target.value as Job['jobType'] }))} className="w-full p-2 border rounded">
+                          <option value="Full-Time">Full-Time</option>
+                          <option value="Part-Time">Part-Time</option>
+                          <option value="Contract">Contract</option>
+                          <option value="Internship">Internship</option>
+                      </select>
+                  </div>
               </div>
-              <div>
-                <Label>Salary</Label>
-                <p>{selectedJob.salary}</p>
-              </div>
-              <div>
-                <Label>Description</Label>
-                <p className="text-sm">{selectedJob.description}</p>
-              </div>
-              <div>
-                <Label>Requirements</Label>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {selectedJob.requirements.map((req, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {req}
-                    </Badge>
-                  ))}
+               <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label>Salary Minimum</Label>
+                        <Input type="number" value={jobForm.salaryMin} onChange={(e) => setJobForm(prev => ({ ...prev, salaryMin: e.target.value }))} />
+                    </div>
+                    <div>
+                        <Label>Salary Maximum</Label>
+                        <Input type="number" value={jobForm.salaryMax} onChange={(e) => setJobForm(prev => ({ ...prev, salaryMax: e.target.value }))} />
+                    </div>
                 </div>
+              <div>
+                  <Label>Job Description</Label>
+                  <Textarea value={jobForm.description} onChange={(e) => setJobForm(prev => ({ ...prev, description: e.target.value }))} rows={4} />
               </div>
               <div>
-                <Label>Posted Date</Label>
-                <p>{selectedJob.postedDate}</p>
+                  <Label>Skills (comma-separated)</Label>
+                  <Input value={jobForm.skills} onChange={(e) => setJobForm(prev => ({ ...prev, skills: e.target.value }))} />
               </div>
-            </div>
-          )}
+              <Button onClick={handleFormSubmit} className="w-full">
+                {editingJob ? 'Save Changes' : 'Post Job'}
+              </Button>
+          </div>
         </DialogContent>
+      </Dialog>
+      
+      {/* View Job Details Dialog */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+          <DialogContent className="max-w-2xl">
+              <DialogHeader><DialogTitle>Job Details</DialogTitle></DialogHeader>
+              {selectedJob && (
+                  <div className="space-y-4 py-4">
+                    <h3 className="text-xl font-semibold">{selectedJob.title}</h3>
+                    <p>{selectedJob.companyName} • {selectedJob.location}</p>
+                    <p>{selectedJob.description}</p>
+                    <div>
+                      <Label>Skills</Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {selectedJob.skills.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
+                      </div>
+                    </div>
+                  </div>
+              )}
+          </DialogContent>
       </Dialog>
 
-      {/* Application Details Dialog */}
-      <Dialog open={isApplicationDetailOpen} onOpenChange={setIsApplicationDetailOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Application Details</DialogTitle>
-          </DialogHeader>
-          {selectedApplication && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold">{selectedApplication.applicantName}</h3>
-                <p className="text-gray-600">{selectedApplication.applicantEmail}</p>
-              </div>
-              <div>
-                <Label>Applied for</Label>
-                <p>{selectedApplication.jobTitle}</p>
-              </div>
-              <div>
-                <Label>Application Date</Label>
-                <p>{selectedApplication.applicationDate}</p>
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Badge variant={
-                  selectedApplication.status === 'accepted' ? 'default' :
-                  selectedApplication.status === 'rejected' ? 'destructive' :
-                  selectedApplication.status === 'reviewed' ? 'secondary' : 'outline'
-                }>
-                  {selectedApplication.status}
-                </Badge>
-              </div>
-              <div>
-                <Label>Cover Letter</Label>
-                <p className="text-sm bg-gray-50 p-3 rounded">{selectedApplication.coverLetter}</p>
-              </div>
-              <div>
-                <Label>Resume</Label>
-                <Button variant="outline" size="sm">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Resume
-                </Button>
-              </div>
-              <div className="flex space-x-2 pt-4">
-                <Button onClick={() => {
-                  updateApplicationStatus(selectedApplication.id, 'accepted');
-                  setIsApplicationDetailOpen(false);
-                }}>
-                  Accept Application
-                </Button>
-                <Button variant="destructive" onClick={() => {
-                  updateApplicationStatus(selectedApplication.id, 'rejected');
-                  setIsApplicationDetailOpen(false);
-                }}>
-                  Reject Application
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the job posting for "{jobToDelete?.title}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteJob} className="bg-destructive hover:bg-destructive/90">
+                Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
