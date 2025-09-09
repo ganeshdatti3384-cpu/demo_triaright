@@ -108,7 +108,7 @@ const UserManagement = () => {
     try {
       setLoadingColleges(true);
       const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5003/api';
-      const response = await fetch(`${API_BASE_URL}/colleges/collegedata`);
+      const response = await fetch(`${API_BASE_URL}users/statistics/count/colleges`);
       const data = await response.json();
       setColleges(data.colleges || []);
     } catch (error) {
