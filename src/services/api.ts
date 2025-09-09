@@ -101,7 +101,7 @@ export const authApi = {
   },
 
   getAllUsers: async (token: string): Promise<{ success: boolean; users: any[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/users`, {
+    const res = await axios.get(`${API_BASE_URL}/allusers`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     return res.data;
