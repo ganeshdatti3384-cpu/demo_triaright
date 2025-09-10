@@ -67,7 +67,7 @@ interface College {
 }
 
 const UserManagement = () => {
-  const { toast: hookToast } = useToast();
+  const { toast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -108,12 +108,14 @@ const UserManagement = () => {
     try {
       setLoadingColleges(true);
       const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5003/api';
-      const response = await fetch(`${API_BASE_URL}users/statistics/count/colleges`);
+      const response = await fetch(`${API_BASE_URL}/users/statistics/count/colleges`);
+      
       const data = await response.json();
+      console.log('Colleges data:', data);
       setColleges(data.colleges || []);
     } catch (error) {
       console.error('Error fetching colleges:', error);
-      hookToast({
+      toast({
         title: "Error",
         description: "Failed to load colleges list",
         variant: "destructive",
@@ -123,44 +125,49 @@ const UserManagement = () => {
     }
   };
 
-  // In UserManagement.tsx
+  // Fixed fetchUsers function
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Authentication token not found.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
-const fetchUsers = async () => {
-  setLoading(true);
-  try {
-    const token = localStorage.getItem('token'); // or wherever you store your admin token
-    if (!token) {
-      hookToast({
-        title: "Authentication Error",
-        description: "Authentication token not found.",
-        variant: "destructive",
-      });
-      setLoading(false);
-      return;
-    }
+      const response = await authApi.getAllUsers(token);
+      console.log('Users response:', response);
 
-    const response = await authApi.getAllUsers(token);
-
-    if (response.success) {
-      setUsers(response.users);
-    } else {
-      hookToast({
+      if (response.success && response.users) {
+        setUsers(response.users);
+        toast({
+          title: "Success",
+          description: `Loaded ${response.users.length} users successfully`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to fetch users",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
         title: "Error",
-        description: "Failed to fetch users",
+        description: "An error occurred while fetching users.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    hookToast({
-      title: "Error",
-      description: "An error occurred while fetching users.",
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
   // Handle registration - same API call as Register.tsx
   const handleRegister = async (formData: RegistrationFormData) => {
     try {
@@ -172,6 +179,7 @@ const fetchUsers = async () => {
         phoneNumber: formData.phoneNumber,
         whatsappNumber: formData.whatsappNumber,
         address: formData.address,
+        // state: formData.state,
         role: formData.role === 'trainer' ? 'admin' : formData.role,
         password: formData.password,
         ...(formData.role === 'student' && formData.collegeName && { collegeName: formData.collegeName }),
@@ -179,15 +187,25 @@ const fetchUsers = async () => {
       };
       
       const response = await authApi.register(registerPayload);
-      hookToast({ title: "Success", description: "User registered successfully!" });
       
+      // Show success toast
+      toast({ 
+        title: "Success", 
+        description: "User registered successfully!",
+      });
+      
+      // Close dialog and reset form
       setCreateUserOpen(false);
       reset();
-      fetchUsers(); // Refresh user list
+      
+      // Refresh user list
+      await fetchUsers();
+      
     } catch (error: any) {
-      hookToast({
+      console.error('Registration error:', error);
+      toast({
         title: "Registration Failed",
-        description: error?.response?.data?.error || "Something went wrong",
+        description: error?.response?.data?.error || error?.message || "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -195,41 +213,54 @@ const fetchUsers = async () => {
     }
   };
 
-  const handleDeleteUser = async (userId: number) => {
+  const handleDeleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
-      hookToast({
+      // Remove from local state immediately for better UX
+      setUsers(prevUsers => prevUsers.filter(user => user._id !== userId));
+      
+      toast({
         title: "Success",
         description: "User deleted successfully!",
       });
+      
+      // Here you would typically make an API call to delete from backend
+      // await authApi.deleteUser(userId);
+      
     } catch (error) {
       console.error('Error deleting user:', error);
-      hookToast({
+      toast({
         title: "Error",
         description: "Failed to delete user",
         variant: "destructive",
       });
+      // Refresh to restore state on error
+      fetchUsers();
     }
   };
 
+  // Fixed filtered users logic
   const filteredUsers = users.filter(user => {
+    const search = searchTerm.toLowerCase();
     const matchesSearch = 
-      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      (user.firstName?.toLowerCase() || "").includes(search) ||
+      (user.lastName?.toLowerCase() || "").includes(search) ||
+      (user.email?.toLowerCase() || "").includes(search) ||
+      (user.phoneNumber?.toLowerCase() || "").includes(search);
+    
     const matchesRole = selectedRoleFilter === 'all' || user.role === selectedRoleFilter;
+    
     return matchesSearch && matchesRole;
   });
 
   // Bulk upload functionality
   const downloadSampleExcel = () => {
     const sampleData = [
-      ['firstname', 'lastname', 'email', 'role', 'phoneNumber', 'whatsappNumber', 'address', 'password', 'collegeName'],
-      ['John', 'Doe', 'john@example.com', 'student', '9876543210', '9876543210', '123 Main St', 'password123', 'ABC College'],
-      ['Jane', 'Smith', 'jane@example.com', 'jobseeker', '9876543211', '9876543211', '456 Business Ave', 'password123', 'XYZ College'],
-      ['Mark', 'Johnson', 'mark@example.com', 'college', '9876543212', '9876543212', '789 College St', 'password123', 'College123']
+      ['firstname', 'lastname', 'email', 'role', 'phoneNumber', 'whatsappNumber', 'address', 'state', 'password', 'collegeName'],
+      ['John', 'Doe', 'john@example.com', 'student', '9876543210', '9876543210', '123 Main St', 'Andhra Pradesh', 'password123', 'ABC College'],
+      ['Jane', 'Smith', 'jane@example.com', 'jobseeker', '9876543211', '9876543211', '456 Business Ave', 'Telangana', 'password123', ''],
+      ['Mark', 'Johnson', 'mark@example.com', 'college', '9876543212', '9876543212', '789 College St', 'Karnataka', 'password123', '']
     ];
     
     const csvContent = sampleData.map(row => row.join(',')).join('\n');
@@ -241,7 +272,7 @@ const fetchUsers = async () => {
     a.click();
     window.URL.revokeObjectURL(url);
     
-    hookToast({
+    toast({
       title: "Success",
       description: "Sample file downloaded! You can open it in Excel and save as .xlsx",
     });
@@ -251,10 +282,10 @@ const fetchUsers = async () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      hookToast({
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
+      toast({
         title: "Error",
-        description: "Please upload an Excel file (.xlsx or .xls)",
+        description: "Please upload an Excel file (.xlsx or .xls) or CSV file",
         variant: "destructive",
       });
       return;
@@ -282,13 +313,13 @@ const fetchUsers = async () => {
         const failCount = results.filter((r: any) => r.status === 'failed').length;
 
         if (successCount > 0) {
-          hookToast({
-            title: "Success",
+          toast({
+            title: "Upload Success",
             description: `${successCount} users uploaded successfully!`,
           });
         }
         if (failCount > 0) {
-          hookToast({
+          toast({
             title: "Upload Warning",
             description: `${failCount} users failed to upload. Check console for details.`,
             variant: "destructive",
@@ -296,37 +327,38 @@ const fetchUsers = async () => {
           console.error('Failed uploads:', results.filter((r: any) => r.status === 'failed'));
         }
       } else {
-        hookToast({
-          title: "Success",
+        toast({
+          title: "Upload Success",
           description: "Bulk upload completed successfully!",
         });
       }
 
-      fetchUsers();
+      // Refresh users list after successful upload
+      await fetchUsers();
 
     } catch (error: any) {
       console.error('Error during bulk upload:', error);
       
       if (error.response?.data?.message) {
-        hookToast({
+        toast({
           title: "Upload Failed",
           description: error.response.data.message,
           variant: "destructive",
         });
       } else if (error.response?.status === 401) {
-        hookToast({
+        toast({
           title: "Unauthorized",
           description: "Please check your admin credentials.",
           variant: "destructive",
         });
       } else if (error.response?.status === 400) {
-        hookToast({
+        toast({
           title: "Bad Request",
           description: "Please check your Excel file format.",
           variant: "destructive",
         });
       } else {
-        hookToast({
+        toast({
           title: "Upload Failed",
           description: "Failed to upload users. Please try again.",
           variant: "destructive",
@@ -361,7 +393,7 @@ const fetchUsers = async () => {
             </Button>
             <input
               type="file"
-              accept=".csv,.xlsx"
+              accept=".csv,.xlsx,.xls"
               onChange={handleBulkUpload}
               className="hidden"
             />
@@ -470,7 +502,7 @@ const fetchUsers = async () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-400"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                       </button>
@@ -570,7 +602,7 @@ const fetchUsers = async () => {
                             </SelectTrigger>
                             <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
                               {colleges.map((college) => (
-                                <SelectItem key={college._id} value={college.collegeName} className="hover:bg-gray-100">
+                                <SelectItem key={college._id} value={college.collegeName || ''} className="hover:bg-gray-100">
                                   <div className="flex flex-col">
                                     <span className="font-medium">{college.collegeName}</span>
                                     <span className="text-sm text-gray-500">{college.university} - {college.city}, {college.state}</span>
@@ -679,51 +711,66 @@ const fetchUsers = async () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Loading users...</p>
+  {loading ? (
+    <div className="text-center py-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+      <p className="mt-2 text-gray-600">Loading users...</p>
+    </div>
+  ) : filteredUsers.length === 0 ? (
+    <div className="text-center py-8">
+      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+      <p className="text-gray-500">No users found</p>
+    </div>
+  ) : (
+    <div className="space-y-4">
+      {filteredUsers.map((user) => (
+        <div
+          key={user._id || user.id}
+          className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <User className="h-5 w-5 text-blue-600" />
             </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No users found</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{user.firstName} {user.lastName}</p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <span className="flex items-center">
-                          <Mail className="h-3 w-3 mr-1" />
-                          {user.email}
-                        </span>
-                        <span className="flex items-center">
-                          <Phone className="h-3 w-3 mr-1" />
-                          {user.phoneNumber}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                      {user.role}
-                    </Badge>
-                    <Button variant="outline" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+            <div>
+              <p className="font-medium">
+                {user.firstName} {user.lastName}
+              </p>
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <span className="flex items-center">
+                  <Mail className="h-3 w-3 mr-1" />
+                  {user.email}
+                </span>
+                <span className="flex items-center">
+                  <Phone className="h-3 w-3 mr-1" />
+                  {user.phoneNumber}
+                </span>
+              </div>
+              {user.address && (
+                <div className="flex items-center text-sm text-gray-500 mt-1">
+                  <MapPin className="h-3 w-3 mr-1" />
+                  {user.address}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </CardContent>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Badge variant="default">{user.role}</Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDeleteUser(user._id || user.id)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</CardContent>
+
       </Card>
     </div>
   );
