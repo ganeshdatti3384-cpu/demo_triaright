@@ -118,6 +118,18 @@ const Pack365PaymentInterface = ({
         description: result.couponDetails?.description || 'Discount applied',
       });
 
+      // Check if this is a 100% discount (free enrollment)
+      if (finalAmount === 0) {
+        toast({
+          title: 'Free Enrollment!',
+          description: 'This coupon provides 100% discount. Processing enrollment...',
+        });
+        
+        // Automatically enroll the user for free
+        handleFreeEnrollment();
+        return;
+      }
+
       toast({
         title: 'Coupon Applied!',
         description: `₹${discount} discount applied. New amount: ₹${finalAmount}`,
@@ -190,6 +202,52 @@ const Pack365PaymentInterface = ({
       toast({
         title: 'Payment Error',
         description: error.message || 'Failed to initiate payment. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handleFreeEnrollment = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('User not authenticated');
+
+      setIsProcessingPayment(true);
+      
+      // Use the enrollWithCode API for free enrollment
+      const enrollmentResult = await pack365Api.enrollWithCode(token, {
+        code: appliedCoupon?.code || couponCode,
+        courseId: undefined // For stream enrollment
+      });
+
+      if (enrollmentResult.success) {
+        toast({
+          title: 'Enrollment Successful!',
+          description: 'You have been enrolled successfully with 100% discount!',
+        });
+
+        // Navigate to success page with enrollment details
+        const successState = {
+          type: 'pack365',
+          enrollmentDetails: enrollmentResult.enrollment,
+          streamName: streamName,
+          couponCode: appliedCoupon?.code || couponCode,
+          amount: 0,
+          message: 'Free enrollment successful!'
+        };
+
+        // Use window.location to ensure proper navigation
+        window.location.href = `/payment-success?enrolled=true&stream=${encodeURIComponent(streamName)}`;
+      } else {
+        throw new Error(enrollmentResult.message || 'Enrollment failed');
+      }
+    } catch (error: any) {
+      console.error('Free enrollment error:', error);
+      toast({
+        title: 'Enrollment Failed',
+        description: error.message || 'Failed to complete free enrollment. Please try again.',
         variant: 'destructive',
       });
     } finally {

@@ -483,9 +483,9 @@ export const pack365Api = {
     code: string;
   };
 }> => {
-  const data = { code, stream };
+  const data = { stream, coupon: code };
 
-  const res = await axios.post(`${API_BASE_URL}/pack365/verify/enrollment-codes`, data, {
+  const res = await axios.post(`${API_BASE_URL}/verify/enrollment-code`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
