@@ -526,35 +526,50 @@ const Register = () => {
 
                       {/* College Dropdown - Only show when student role is selected */}
                       {selectedRole === 'student' && (
-                        <div className="md:col-span-2">
-                          <Label htmlFor="collegeName" className="text-black-700 font-medium">Select College *</Label>
-                          <Controller
-                            name="collegeName"
-                            control={control}
-                            render={({ field }) => (
-                              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={loadingColleges}>
-                                <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
-                                  <div className="flex items-center">
-                                    <GraduationCap className="h-4 w-4 mr-2 text-black-400" />
-                                    <SelectValue placeholder={loadingColleges ? "Loading colleges..." : "Select your college"} />
-                                  </div>
-                                </SelectTrigger>
-                                <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
-                                  {colleges.map((college) => (
-                                    <SelectItem key={college._id} value={college.collegeName} className="hover:bg-gray-100">
-                                      <div className="flex flex-col">
-                                        <span className="font-medium">{college.collegeName}</span>
-                                        <span className="text-sm text-gray-500">{college.university} - {college.city}, {college.state}</span>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
-                          {errors.collegeName && <p className="text-red-500 text-sm mt-1">{errors.collegeName.message}</p>}
-                        </div>
-                      )}
+  <div className="md:col-span-2 mt-4">
+    <Label htmlFor="collegeName" className="text-black-700 font-medium mb-1 block">
+      Select College *
+    </Label>
+    <Controller
+      name="collegeName"
+      control={control}
+      render={({ field }) => (
+        <Select
+          onValueChange={field.onChange}
+          value={field.value || ""}
+          disabled={loadingColleges}
+        >
+          <SelectTrigger className="h-11 border border-gray-200 rounded-md focus:border-blue-500">
+            <div className="flex items-center gap-2 px-2 w-full">
+              <GraduationCap className="h-4 w-4 text-black-400" />
+              <SelectValue placeholder={loadingColleges ? "Loading colleges..." : "Select your college"} />
+            </div>
+          </SelectTrigger>
+          <SelectContent className="bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
+            {colleges.length > 0 ? (
+              colleges
+                .filter(college => college && college.collegeName)
+                .map((college) => (
+                  <SelectItem key={college._id} value={college.collegeName} className="hover:bg-gray-100">
+                    <div className="flex flex-col px-2 py-1">
+                      <span className="font-medium">{college.collegeName}</span>
+                      <span className="text-sm text-gray-500">{college.university} - {college.city}, {college.state}</span>
+                    </div>
+                  </SelectItem>
+                ))
+            ) : (
+              <div className="p-2 text-gray-500 text-sm">No colleges available</div>
+            )}
+          </SelectContent>
+        </Select>
+      )}
+    />
+    {errors.collegeName && (
+      <p className="text-red-500 text-sm mt-1">{errors.collegeName.message}</p>
+    )}
+  </div>
+)}
+
 
                       {/* College Code - Only show when college role is selected */}
                       {selectedRole === 'college' && (
