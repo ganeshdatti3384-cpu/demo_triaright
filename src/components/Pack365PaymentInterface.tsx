@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -72,6 +73,7 @@ const Pack365PaymentInterface = ({
     setPaymentCalculation(calculation);
   }, [streamPrice]);
 
+
   const validateCoupon = async () => {
     if (!couponCode.trim()) {
       toast({
@@ -91,7 +93,7 @@ const Pack365PaymentInterface = ({
       const result = await pack365Api.validateEnrollmentCode(
         token, 
         couponCode.trim(), 
-        normalizeStreamName(streamName)
+        streamName
       );
 
       if (!result.success) {
@@ -117,18 +119,6 @@ const Pack365PaymentInterface = ({
         discount,
         description: result.couponDetails?.description || 'Discount applied',
       });
-
-      // Check if this is a 100% discount (free enrollment)
-      if (finalAmount === 0) {
-        toast({
-          title: 'Free Enrollment!',
-          description: 'This coupon provides 100% discount. Processing enrollment...',
-        });
-        
-        // Automatically enroll the user for free
-        handleFreeEnrollment();
-        return;
-      }
 
       toast({
         title: 'Coupon Applied!',
@@ -217,12 +207,12 @@ const Pack365PaymentInterface = ({
       setIsProcessingPayment(true);
       
       // Use the enrollWithCode API for free enrollment
-      const enrollmentResult = await pack365Api.enrollWithCode(token, {
+      const enrollmentResult = await pack365Api.createOrder(token, {
         code: appliedCoupon?.code || couponCode,
-        courseId: undefined // For stream enrollment
+        stream: streamName // For stream enrollment
       });
 
-      if (enrollmentResult.success) {
+      if (enrollmentResult.status === 'success') {
         toast({
           title: 'Enrollment Successful!',
           description: 'You have been enrolled successfully with 100% discount!',
@@ -406,7 +396,14 @@ const Pack365PaymentInterface = ({
                 ) : (
                   <>
                     <IndianRupee className="h-5 w-5 mr-2" />
-                    Pay ₹{paymentCalculation.finalAmount} Securely
+                    {paymentCalculation.finalAmount === 0 ? (
+                      <>
+                        Pay ₹0 Securely
+                        {()=>handleFreeEnrollment()} {/* Trigger handleFreeEnrollment when finalAmount is 0 */}
+                      </>
+                    ) : (
+                      <>Pay ₹{paymentCalculation.finalAmount} Securely</>
+                    )}
                   </>
                 )}
               </Button>

@@ -483,15 +483,16 @@ export const pack365Api = {
     code: string;
   };
 }> => {
-  const data = { stream, coupon: code };
-
-  const res = await axios.post(`${API_BASE_URL}/verify/enrollment-code`, data, {
+  const data = { stream, code };
+  console.log(data)
+  const res = await axios.post(`${API_BASE_URL}/pack365/verify/enrollment-codes`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
+    
   });
-
+  console.log(res.data);
   return res.data;
 },
   enrollWithCode: async (
@@ -509,8 +510,12 @@ export const pack365Api = {
 
   createOrder: async (
     token: string,
-    data: { stream: string }
-  ): Promise<{ orderId: string; key: string }> => {
+    data: { stream: string ; code?: string }
+  ): Promise<{
+    status: string;
+    enrollment: any;
+    message: string; orderId: string; key: string 
+}> => {
     const res = await axios.post(
       `${API_BASE_URL}/pack365/create-order`,
       data,
