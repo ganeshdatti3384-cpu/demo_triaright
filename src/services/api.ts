@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { AxiosResponse } from 'axios';
-import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload, UpdateEnrollmentCodeInput } from '@/types/api';
+import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload, UpdateEnrollmentCodeInput, Course } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 const PRODUCTION_API_URL = 'https://triaright.com/api';
@@ -968,9 +968,9 @@ export const courseApi = {
   },
 
   // ✅ Get All Courses (public endpoint)
-  getAllCourses: async (): Promise<any> => {
+  getAllCourses: async (): Promise<Course> => {
     const response = await axios.get(`${API_BASE_URL}/courses`);
-    return response.data;
+    return response.data.courses;
   },
 
   // ✅ Get Course by ID (Public/Student)
