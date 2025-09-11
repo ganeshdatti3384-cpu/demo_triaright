@@ -439,31 +439,9 @@ const CourseManagement = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
-      if (!token) {
-        toast({
-          title: "Error",
-          description: "Authentication token not found",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5003/api';
-      const response = await fetch(`${API_BASE_URL}/courses`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await courseApi.getAllCourses();
+      console.log('Course data:', data);
       setCourses(data.courses || []);
     } catch (error) {
       console.error('Error fetching courses:', error);

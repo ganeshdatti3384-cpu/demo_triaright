@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -72,6 +73,7 @@ const Pack365PaymentInterface = ({
     setPaymentCalculation(calculation);
   }, [streamPrice]);
 
+
   const validateCoupon = async () => {
     if (!couponCode.trim()) {
       toast({
@@ -91,7 +93,7 @@ const Pack365PaymentInterface = ({
       const result = await pack365Api.validateEnrollmentCode(
         token, 
         couponCode.trim(), 
-        normalizeStreamName(streamName)
+        streamName
       );
 
       if (!result.success) {
@@ -163,6 +165,12 @@ const Pack365PaymentInterface = ({
         return;
       }
 
+      // If final amount is 0, handle free enrollment
+      if (paymentCalculation.finalAmount === 0) {
+        await handleFreeEnrollment();
+        return;
+      }
+
       await Pack365PaymentService.processPayment(
         {
           streamName,
@@ -190,6 +198,52 @@ const Pack365PaymentInterface = ({
       toast({
         title: 'Payment Error',
         description: error.message || 'Failed to initiate payment. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handleFreeEnrollment = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('User not authenticated');
+
+      setIsProcessingPayment(true);
+      
+      // Use the enrollWithCode API for free enrollment
+      const enrollmentResult = await pack365Api.createOrder(token, {
+        code: appliedCoupon?.code || couponCode,
+        stream: streamName // For stream enrollment
+      });
+
+      if (enrollmentResult.status === 'success') {
+        toast({
+          title: 'Enrollment Successful!',
+          description: 'You have been enrolled successfully with 100% discount!',
+        });
+
+        // Navigate to success page with enrollment details
+        const successState = {
+          type: 'pack365',
+          enrollmentDetails: enrollmentResult.enrollment,
+          streamName: streamName,
+          couponCode: appliedCoupon?.code || couponCode,
+          amount: 0,
+          message: 'Free enrollment successful!'
+        };
+
+        // Use window.location to ensure proper navigation
+        window.location.href = `/payment-success?enrolled=true&stream=${encodeURIComponent(streamName)}`;
+      } else {
+        throw new Error(enrollmentResult.message || 'Enrollment failed');
+      }
+    } catch (error: any) {
+      console.error('Free enrollment error:', error);
+      toast({
+        title: 'Enrollment Failed',
+        description: error.message || 'Failed to complete free enrollment. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -348,7 +402,11 @@ const Pack365PaymentInterface = ({
                 ) : (
                   <>
                     <IndianRupee className="h-5 w-5 mr-2" />
-                    Pay ₹{paymentCalculation.finalAmount} Securely
+                    {paymentCalculation.finalAmount === 0 ? (
+                      'Enroll for Free'
+                    ) : (
+                      `Pay ₹${paymentCalculation.finalAmount} Securely`
+                    )}
                   </>
                 )}
               </Button>

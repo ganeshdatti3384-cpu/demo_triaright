@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
+import { AxiosResponse } from 'axios';
 import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload, UpdateEnrollmentCodeInput } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
@@ -318,11 +319,8 @@ export const pack365Api = {
 
   getCourseById: async (
     id: string, 
-    token: string
   ): Promise<{ success: boolean; data: Pack365Course; message?: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/courses/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await axios.get(`${API_BASE_URL}/pack365/courses/${id}`);
     return res.data;
   },
   createStream: async (
@@ -483,15 +481,16 @@ export const pack365Api = {
     code: string;
   };
 }> => {
-  const data = { code, stream };
-
+  const data = { stream, code };
+  console.log(data)
   const res = await axios.post(`${API_BASE_URL}/pack365/verify/enrollment-codes`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
+    
   });
-
+  console.log(res.data);
   return res.data;
 },
   enrollWithCode: async (
@@ -509,8 +508,12 @@ export const pack365Api = {
 
   createOrder: async (
     token: string,
-    data: { stream: string }
-  ): Promise<{ orderId: string; key: string }> => {
+    data: { stream: string ; code?: string }
+  ): Promise<{
+    status: string;
+    enrollment: any;
+    message: string; orderId: string; key: string 
+}> => {
     const res = await axios.post(
       `${API_BASE_URL}/pack365/create-order`,
       data,
@@ -519,6 +522,9 @@ export const pack365Api = {
       }
     );
     return {
+      status: res.data.status || 'success',
+      enrollment: res.data.enrollment || null,
+      message: res.data.message || 'Order created successfully',
       orderId: res.data.orderId,
       key: res.data.key
     };
@@ -567,7 +573,7 @@ export const pack365Api = {
       
       // Try the primary pack365 enrollments endpoint first
       try {
-        const res = await axios.get(`${API_BASE_URL}/pack365/myenrollments`, {
+        const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Pack365 enrollments response:', res.data);
@@ -961,13 +967,10 @@ export const courseApi = {
     return res.data;
   },
 
-  // ✅ Get All Courses (requires authentication)
-  getAllCourses: async (): Promise<any[]> => {
-    const token = localStorage.getItem('token');
-    const res = await axios.get(`${API_BASE_URL}/courses`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
-    return res.data.courses || res.data;
+  // ✅ Get All Courses (public endpoint)
+  getAllCourses: async (): Promise<any> => {
+    const response = await axios.get(`${API_BASE_URL}/courses`);
+    return response.data;
   },
 
   // ✅ Get Course by ID (Public/Student)

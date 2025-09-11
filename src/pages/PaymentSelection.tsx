@@ -1,16 +1,36 @@
-
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CreditCard, Gift } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { CreditCard, ArrowLeft } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+
+// IMPROVED: Add an interface for the location state for better type safety.
+interface LocationState {
+  streamName?: string;
+  courseId?: string;
+  courseName?: string;
+  fromStream?: boolean;
+  fromCourse?: boolean;
+  streamPrice?: number;
+  coursesCount?: number;
+  coursePrice?: number;
+}
 
 const PaymentSelection = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount, coursePrice } = location.state || {};
+  const { 
+    streamName, 
+    courseId, 
+    courseName, 
+    fromStream, 
+    fromCourse, 
+    streamPrice, 
+    coursesCount, 
+    coursePrice 
+  }: LocationState = location.state || {};
 
   const handleRazorpayPayment = () => {
     navigate('/razorpay-payment', { 
@@ -18,107 +38,74 @@ const PaymentSelection = () => {
     });
   };
 
-  const handleCouponCode = () => {
-    navigate('/Coupon-code', { 
-      state: { streamName, courseId, courseName, fromStream, fromCourse, streamPrice, coursesCount, coursePrice } 
-    });
-  };
+  // REMOVED: The handleCouponCode function is no longer needed.
 
-  // Calculate GST for display - use coursePrice for individual courses
-  const basePrice = fromCourse ? (coursePrice || streamPrice || 999) : (streamPrice || 365);
+  const basePrice = fromCourse ? (coursePrice || 0) : (streamPrice || 0);
   const gst = Math.round(basePrice * 0.18);
   const totalPrice = basePrice + gst;
+  const purchaseTitle = fromStream ? `${streamName} Bundle` : courseName;
 
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-12">
-              <h1 className="text-4xl font-extrabold text-gray-900 mb-3">
-                Select Your Payment Option
-              </h1>
-              <p className="text-lg text-gray-700 mb-2">
-                {fromStream 
-                  ? `You're enrolling in the ${streamName} Bundle` 
-                  : `You're enrolling in ${courseName}`}
-              </p>
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 max-w-md mx-auto">
-                <div className="text-sm text-gray-600 space-y-1">
-                  <div className="flex justify-between">
-                    <span>Base Price:</span>
-                    <span>₹{basePrice}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>GST (18%):</span>
-                    <span>₹{gst}</span>
-                  </div>
-                  <div className="border-t border-blue-300 pt-1 mt-2">
-                    <div className="flex justify-between font-semibold text-blue-700">
-                      <span>Total Amount:</span>
-                      <span>₹{totalPrice}</span>
-                    </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center py-12 px-4">
+        <div className="w-full max-w-lg">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-800">
+              Complete Your Enrollment
+            </h1>
+            <p className="text-gray-600 mt-2">
+              You're one step away from starting your journey.
+            </p>
+          </div>
+
+          {/* IMPROVED: A single, unified payment card */}
+          <Card 
+            className="shadow-lg border-gray-200 w-full"
+          >
+            <CardHeader className="bg-gray-50/50 p-6">
+              <CardTitle className="text-xl text-gray-900">Order Summary</CardTitle>
+              <CardDescription>{purchaseTitle}</CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-6">
+              <div className="space-y-4 text-gray-700">
+                <div className="flex justify-between">
+                  <span>Base Price:</span>
+                  <span className="font-medium">₹{basePrice.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST (18%):</span>
+                  <span className="font-medium">₹{gst.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <div className="flex justify-between font-bold text-lg text-gray-900">
+                    <span>Total Amount:</span>
+                    <span>₹{totalPrice.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </div>
-            </div>
+            </CardContent>
 
-            <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Razorpay Option */}
-              <Card 
-                onClick={handleRazorpayPayment}
-                className="cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] border border-blue-200"
+            <CardFooter className="flex flex-col gap-4 p-6 bg-gray-50/50">
+              <Button 
+                onClick={handleRazorpayPayment} 
+                className="w-full text-lg py-6 bg-blue-600 hover:bg-blue-700"
               >
-                <CardHeader className="text-center">
-                  <div className="mx-auto mb-4 p-4 rounded-full bg-gradient-to-tr from-blue-400 to-blue-600 text-white shadow-md">
-                    <CreditCard className="h-8 w-8" />
-                  </div>
-                  <CardTitle className="text-2xl font-semibold text-blue-700">Pay with Razorpay</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center px-6 pb-6">
-                  <p className="text-gray-600 mb-4">
-                    Use UPI, card, or net banking with secure Razorpay integration.
-                  </p>
-                  <div className="text-lg font-semibold text-blue-600 mb-4">
-                    Total: ₹{totalPrice}
-                  </div>
-                  <Button className="w-full text-lg py-2">Proceed to Payment</Button>
-                </CardContent>
-              </Card>
-
-              {/* Coupon Option */}
-              <Card 
-                onClick={handleCouponCode}
-                className="cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] border border-green-200"
-              >
-                <CardHeader className="text-center">
-                  <div className="mx-auto mb-4 p-4 rounded-full bg-gradient-to-tr from-green-400 to-green-600 text-white shadow-md">
-                    <Gift className="h-8 w-8" />
-                  </div>
-                  <CardTitle className="text-2xl font-semibold text-green-700">Have a Coupon?</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center px-6 pb-6">
-                  <p className="text-gray-600 mb-6">
-                    Enter a valid coupon code for instant enrollment.
-                  </p>
-                  <Button variant="outline" className="w-full text-lg py-2 border-green-500 text-green-700 hover:bg-green-100">
-                    Use Coupon Code
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="text-center mt-10">
+                <CreditCard className="mr-2 h-5 w-5" />
+                Proceed to Payment
+              </Button>
               <Button 
                 variant="ghost" 
                 onClick={() => navigate(-1)}
-                className="text-gray-500 hover:text-gray-900 text-base"
+                className="text-gray-600 hover:text-gray-900"
               >
-                ← Go Back
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Go Back
               </Button>
-            </div>
-          </div>
+            </CardFooter>
+          </Card>
+
         </div>
       </div>
       <Footer />

@@ -117,11 +117,12 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   };
 
   const handleEnrollNow = () => {
-    navigate('/payment-selection', { 
+    navigate('/razorpay-payment', { 
       state: { 
         streamName: selectedStream?.name, 
         fromStream: true, 
-        streamPrice: selectedStream?.price 
+        streamPrice: selectedStream?.price,
+        coursesCount: selectedStream?.courses?.length || 3
       } 
     });
   };
