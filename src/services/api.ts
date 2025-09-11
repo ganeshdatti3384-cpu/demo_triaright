@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
+import { AxiosResponse } from 'axios';
 import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload, UpdateEnrollmentCodeInput } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
@@ -967,12 +968,9 @@ export const courseApi = {
   },
 
   // ✅ Get All Courses (requires authentication)
-  getAllCourses: async (): Promise<any[]> => {
-    const token = localStorage.getItem('token');
-    const res = await axios.get(`${API_BASE_URL}/courses`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
-    return res.data.courses || res.data;
+  getAllCourses: async (): Promise<AxiosResponse> => {
+    const response = await axios.get(`${API_BASE_URL}/courses`);
+    return response;
   },
 
   // ✅ Get Course by ID (Public/Student)

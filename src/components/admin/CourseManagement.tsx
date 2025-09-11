@@ -450,20 +450,14 @@ const CourseManagement = () => {
         return;
       }
 
-      const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5003/api';
-      const response = await fetch(`${API_BASE_URL}/courses`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await courseApi.getAllCourses();
 
-      if (!response.ok) {
+      if (!response.status || response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await response.courses;
+      console.log(data);
       setCourses(data.courses || []);
     } catch (error) {
       console.error('Error fetching courses:', error);
