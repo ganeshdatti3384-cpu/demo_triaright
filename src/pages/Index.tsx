@@ -92,7 +92,7 @@ const Index = () => {
           
           <div className="text-center mt-12 space-y-4">
             {/* Test Payment Button */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 max-w-md mx-auto">
+            {/* <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 max-w-md mx-auto">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Test Payment System</h3>
               <p className="text-sm text-gray-600 mb-4">Try our payment flow with a sample course</p>
               <Button 
@@ -102,7 +102,7 @@ const Index = () => {
                 Test Paid Course Payment
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            </div>
+            </div> */}
             
             <Button 
               onClick={() => setShowSuccessStories(true)}

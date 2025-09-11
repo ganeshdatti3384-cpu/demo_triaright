@@ -16,8 +16,8 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   const courseTypes = [
-    { name: 'Live Courses', description: 'Interactive real-time learning', path: '/courses/live' },
-    { name: 'Recorded Courses', description: 'Learn at your own pace', path: '/courses/recorded' },
+    { name: 'Live Courses', description: 'Interactive real-time learning', path: '/live-courses' },
+    { name: 'Recorded Courses', description: 'Learn at your own pace', path: '/recorded-courses' },
     ...(user?.role === 'student' || user?.role === 'jobseeker'
       ? [{ name: 'Pack365', description: 'Complete annual learning program', path: '/pack365' }]
       : []),
