@@ -575,7 +575,7 @@ export const pack365Api = {
       
       // Try the primary pack365 enrollments endpoint first
       try {
-        const res = await axios.get(`${API_BASE_URL}/pack365/myenrollments`, {
+        const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Pack365 enrollments response:', res.data);
