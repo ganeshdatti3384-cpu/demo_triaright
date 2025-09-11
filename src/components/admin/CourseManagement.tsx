@@ -439,25 +439,9 @@ const CourseManagement = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
-      if (!token) {
-        toast({
-          title: "Error",
-          description: "Authentication token not found",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const response = await courseApi.getAllCourses();
-
-      if (!response.status || response.status !== 200) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.courses;
-      console.log(data);
+      const data = await courseApi.getAllCourses();
+      console.log('Course data:', data);
       setCourses(data.courses || []);
     } catch (error) {
       console.error('Error fetching courses:', error);

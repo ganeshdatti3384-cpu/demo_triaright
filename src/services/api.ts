@@ -967,10 +967,10 @@ export const courseApi = {
     return res.data;
   },
 
-  // ✅ Get All Courses (requires authentication)
-  getAllCourses: async (): Promise<AxiosResponse> => {
+  // ✅ Get All Courses (public endpoint)
+  getAllCourses: async (): Promise<any> => {
     const response = await axios.get(`${API_BASE_URL}/courses`);
-    return response;
+    return response.data;
   },
 
   // ✅ Get Course by ID (Public/Student)
