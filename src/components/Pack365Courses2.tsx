@@ -57,7 +57,7 @@ const Pack365Courses2 = () => {
       return;
     }
 
-    navigate('/payment-selection', {
+    navigate('/razorpay-payment', {
       state: {
         streamName,
         fromStream: true,

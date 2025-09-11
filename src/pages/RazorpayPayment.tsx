@@ -229,7 +229,7 @@ const RazorpayPayment = () => {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-16">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-4">
         <div className="container mx-auto px-4">
            {fromCourse && courseId ? (
             // Individual course payment

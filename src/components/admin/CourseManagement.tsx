@@ -442,7 +442,7 @@ const CourseManagement = () => {
       
       const data = await courseApi.getAllCourses();
       console.log('Course data:', data);
-      setCourses(data.courses || []);
+      setCourses(data);
     } catch (error) {
       console.error('Error fetching courses:', error);
       toast({

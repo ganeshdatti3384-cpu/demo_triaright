@@ -101,10 +101,10 @@ const Pack365PaymentInterface = ({
       }
 
       const discount = result.couponDetails?.discount || 0;
-      const basePrice = streamPrice || 999;
+      const basePrice = streamPrice ;
       const discountedPrice = Math.max(0, basePrice - discount);
       const gst = Math.round(discountedPrice * 0.18);
-      const finalAmount = discountedPrice + gst;
+      const finalAmount = discountedPrice ;
 
       setPaymentCalculation({
         baseAmount: basePrice,
@@ -161,7 +161,6 @@ const Pack365PaymentInterface = ({
           description: 'Please validate the coupon before making payment.',
           variant: 'destructive',
         });
-        setIsProcessingPayment(false);
         return;
       }
 
