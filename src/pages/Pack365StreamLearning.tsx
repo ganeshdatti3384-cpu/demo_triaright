@@ -138,7 +138,7 @@ const Pack365StreamLearning = () => {
         const response = await pack365Api.getMyEnrollments(token);
         
         if (response.success && response.enrollments) {
-          const streamEnrollments = response.enrollments as StreamEnrollment[];
+          const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
           const currentEnrollment = streamEnrollments.find(
             (e) => e.stream.toLowerCase() === stream?.toLowerCase()
           );

@@ -35,7 +35,7 @@ const Pack365Payment = () => {
       }
 
       try {
-        const courseResponse = await pack365Api.getCourseById(courseId, token);
+        const courseResponse = await pack365Api.getCourseById(courseId);
         if (courseResponse.success && courseResponse.data) {
           setCourse(courseResponse.data);
         } else {

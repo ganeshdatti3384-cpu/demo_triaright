@@ -41,20 +41,18 @@ const CourseLearning = () => {
       }
       console.log( 'Course data:', courseResponse);
       
-      // Transform curriculum to topics format for the learning interface
-      const transformedCourse = {
-        ...courseResponse,
-        topics: courseResponse.curriculum?.flatMap((curriculumItem: any) => 
-          curriculumItem.subtopics?.map((subtopic: any) => ({
-            name: subtopic.name,
-            link: subtopic.link,
-            duration: subtopic.duration,
-            videoUrl: subtopic.link
-          })) || []
-        ) || []
+      // Use the course data directly with topics
+      const courseData = {
+        ...courseResponse.data,
+        topics: courseResponse.data.topics?.map((topic: any) => ({
+          name: topic.name,
+          link: topic.link,
+          duration: topic.duration,
+          videoUrl: topic.link
+        })) || []
       };
       
-      setCourse(transformedCourse);
+      setCourse(courseData);
       
     } catch (error: any) {
       console.error('Error fetching course data:', error);
