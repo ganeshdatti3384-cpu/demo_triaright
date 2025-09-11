@@ -659,7 +659,7 @@ const StudentDashboard = () => {
                               </div>
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {enrolledCourses.map((enrollment, index) => (
+                                {pack365Enrollments.map((enrollment, index) => (
                                   <Card key={index} className="border-2 hover:border-blue-200 transition-colors">
                                     <CardHeader>
                                       <div className="flex items-center justify-between">
@@ -676,26 +676,26 @@ const StudentDashboard = () => {
                                       <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div>
                                           <div className="flex items-center text-gray-500 mb-1">
-                                            <BookOpen className="h-3 w-3 mr-1" />
-                                            <span>Courses</span>
+                                            <IndianRupee className="h-3 w-3 mr-1" />
+                                            <span>Amount Paid</span>
                                           </div>
-                                          <p className="font-semibold">{enrollment.coursesCount}</p>
+                                          <p className="font-semibold">₹{enrollment.amountPaid || 0}</p>
                                         </div>
                                         <div>
                                           <div className="flex items-center text-gray-500 mb-1">
-                                            <Target className="h-3 w-3 mr-1" />
-                                            <span>Topics</span>
+                                            <Calendar className="h-3 w-3 mr-1" />
+                                            <span>Status</span>
                                           </div>
-                                          <p className="font-semibold">{enrollment.totalTopics}</p>
+                                          <p className="font-semibold text-xs capitalize">{enrollment.status || 'Active'}</p>
                                         </div>
                                       </div>
 
                                       <div>
                                         <div className="flex justify-between items-center mb-2">
                                           <span className="text-sm font-medium">Progress</span>
-                                          <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage)}%</span>
+                                          <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage || 0)}%</span>
                                         </div>
-                                        <Progress value={enrollment.totalWatchedPercentage} className="h-2" />
+                                        <Progress value={enrollment.totalWatchedPercentage || 0} className="h-2" />
                                       </div>
 
                                       <div className="flex items-center justify-between text-xs text-gray-500">
