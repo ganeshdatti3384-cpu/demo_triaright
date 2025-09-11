@@ -165,6 +165,12 @@ const Pack365PaymentInterface = ({
         return;
       }
 
+      // If final amount is 0, handle free enrollment
+      if (paymentCalculation.finalAmount === 0) {
+        await handleFreeEnrollment();
+        return;
+      }
+
       await Pack365PaymentService.processPayment(
         {
           streamName,
@@ -397,12 +403,9 @@ const Pack365PaymentInterface = ({
                   <>
                     <IndianRupee className="h-5 w-5 mr-2" />
                     {paymentCalculation.finalAmount === 0 ? (
-                      <>
-                        Pay ₹0 Securely
-                        {()=>handleFreeEnrollment()} {/* Trigger handleFreeEnrollment when finalAmount is 0 */}
-                      </>
+                      'Enroll for Free'
                     ) : (
-                      <>Pay ₹{paymentCalculation.finalAmount} Securely</>
+                      `Pay ₹${paymentCalculation.finalAmount} Securely`
                     )}
                   </>
                 )}

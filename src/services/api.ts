@@ -524,6 +524,9 @@ export const pack365Api = {
       }
     );
     return {
+      status: res.data.status || 'success',
+      enrollment: res.data.enrollment || null,
+      message: res.data.message || 'Order created successfully',
       orderId: res.data.orderId,
       key: res.data.key
     };
