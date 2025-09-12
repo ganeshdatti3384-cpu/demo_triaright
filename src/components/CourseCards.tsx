@@ -18,8 +18,8 @@ interface Course {
   stream: string;
   providerName: string;
   courseLanguage: string;
-  certificationProvided: 'yes' | 'no';
-  curriculum: Array<{
+  certificationProvided: string;
+  curriculum?: Array<{
     topicName: string;
     topicCount: number;
     subtopics: Array<{
@@ -34,216 +34,224 @@ interface Course {
   hasFinalExam: boolean;
 }
 
+interface CourseCardsProps {
+  courses?: Course[];
+  type?: string;
+}
+
 interface ApiResponse {
   courses: Course[];
 }
 
-const CourseDisplayApp = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
+const CourseCards = ({ courses: propCourses = [], type = "recorded" }: CourseCardsProps) => {
+  const [courses, setCourses] = useState<Course[]>(propCourses);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchCourses();
-  }, []);
+    if (propCourses && propCourses.length > 0) {
+      setCourses(propCourses);
+      setLoading(false);
+    } else {
+      fetchCourses();
+    }
+  }, [propCourses]);
 
   const fetchCourses = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('https://triaright.com/api/courses/');
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
+      const response = await fetch('https://triaright.com/api/courses');
       const data: ApiResponse = await response.json();
-      setCourses(data.courses || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch courses');
-      console.error('Error fetching courses:', err);
+      
+      if (data && data.courses) {
+        setCourses(data.courses);
+      } else {
+        throw new Error('No courses data received');
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      setError('Failed to load courses. Please try again later.');
+      
+      // Fallback data for development
+      setCourses([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEnrollClick = (course: Course ) => {
-    // Mock enrollment logic - replace with your actual navigation/enrollment logic
+  const handleCourseClick = (course: Course) => {
     if (course.courseType === 'paid') {
-     navigate('/payment-selection', { state: { courseId: course._id } });
+      navigate(`/course-payment/${course.courseId}`, { 
+        state: { course } 
+      });
     } else {
-       navigate(`/course-enrollment/${course._id}`);
+      navigate(`/course-enrollment/${course.courseId}`, { 
+        state: { course } 
+      });
     }
   };
 
-  const getTotalTopics = (curriculum: Course['curriculum']) => {
-    return curriculum.reduce((total, topic) => total + topic.subtopics.length, 0);
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
+
+  const getStreamBadgeColor = (stream: string) => {
+    const colors: { [key: string]: string } = {
+      'it': 'bg-blue-100 text-blue-800',
+      'nonit': 'bg-green-100 text-green-800',
+      'finance': 'bg-purple-100 text-purple-800',
+      'management': 'bg-orange-100 text-orange-800',
+      'pharmaceuticals': 'bg-pink-100 text-pink-800',
+      'carrerability': 'bg-indigo-100 text-indigo-800',
+    };
+    return colors[stream.toLowerCase()] || 'bg-gray-100 text-gray-800';
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading courses...</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, index) => (
+          <Card key={index} className="animate-pulse">
+            <div className="aspect-video bg-gray-200 rounded-t-lg"></div>
+            <CardContent className="p-6">
+              <div className="h-4 bg-gray-200 rounded mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded mb-4"></div>
+              <div className="flex justify-between items-center">
+                <div className="h-6 bg-gray-200 rounded w-16"></div>
+                <div className="h-8 bg-gray-200 rounded w-20"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 mb-4">Error loading courses: {error}</p>
-          <Button onClick={fetchCourses} variant="outline">
-            Try Again
-          </Button>
-        </div>
+      <div className="text-center py-12">
+        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Courses</h3>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <Button onClick={fetchCourses} variant="outline">
+          <Loader2 className="h-4 w-4 mr-2" />
+          Try Again
+        </Button>
       </div>
     );
   }
 
-  if (courses.length === 0) {
+  if (!courses || courses.length === 0) {
     return (
       <div className="text-center py-12">
-        <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available</h3>
-        <p className="text-gray-600">Check back later for new courses.</p>
+        <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Courses Available</h3>
+        <p className="text-gray-600 mb-4">There are no courses available at the moment.</p>
+        <Button onClick={fetchCourses} variant="outline">
+          Refresh
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Available Courses</h1>
-        <p className="text-gray-600">Discover and enroll in our comprehensive course catalog</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map((course) => (
-          <Card key={course._id} className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-            <div className="relative">
-              <img 
-                src={course.courseImageLink} 
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {courses.map((course) => (
+        <Card 
+          key={course._id} 
+          className="overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
+          onClick={() => handleCourseClick(course)}
+        >
+          <div className="aspect-video relative overflow-hidden">
+            {course.courseImageLink ? (
+              <img
+                src={course.courseImageLink}
                 alt={course.courseName}
-                className="w-full h-48 object-cover"
+                className="w-full h-full object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = '/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png';
+                  target.src = 'https://via.placeholder.com/400x225/f3f4f6/9ca3af?text=Course+Image';
                 }}
               />
-              <div className="absolute top-4 right-4">
-                {course.courseType === 'paid' ? (
-                  <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                    ₹{course.price}
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="bg-green-500 text-white">
-                    FREE
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                <BookOpen className="h-12 w-12 text-gray-400" />
+              </div>
+            )}
+            <div className="absolute top-3 left-3">
+              <Badge className={getStreamBadgeColor(course.stream)}>
+                {course.stream.toUpperCase()}
+              </Badge>
+            </div>
+            <div className="absolute top-3 right-3">
+              <Badge variant={course.courseType === 'paid' ? 'default' : 'secondary'}>
+                {course.courseType === 'paid' ? `₹${course.price}` : 'FREE'}
+              </Badge>
+            </div>
+          </div>
+
+          <CardContent className="p-6">
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-semibold text-lg text-gray-900 line-clamp-2 leading-tight">
+                  {course.courseName}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                  {course.courseDescription}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 mr-1" />
+                    <span>{formatDuration(course.totalDuration)}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Users className="h-4 w-4 mr-1" />
+                    <span>{course.instructorName}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center text-gray-600">
+                  <span className="font-medium">{course.providerName}</span>
+                  <span className="mx-2">•</span>
+                  <span>{course.courseLanguage}</span>
+                </div>
+                {course.certificationProvided === 'yes' && (
+                  <Badge variant="outline" className="text-xs">
+                    Certificate
                   </Badge>
                 )}
               </div>
-              <div className="absolute top-4 left-4">
-                <Badge variant="outline" className="bg-white/90 text-gray-700">
-                  {course.stream.toUpperCase()}
-                </Badge>
+
+              <div className="pt-2">
+                <Button 
+                  className="w-full" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCourseClick(course);
+                  }}
+                >
+                  {course.courseType === 'paid' ? 'Enroll Now' : 'Start Learning'}
+                </Button>
               </div>
             </div>
-            
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between mb-2">
-                <Badge variant="outline" className="capitalize">
-                  {course.courseLanguage}
-                </Badge>
-                <div className="flex items-center space-x-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-sm font-medium">4.5</span>
-                </div>
-              </div>
-              <CardTitle className="text-xl mb-2 line-clamp-2">{course.courseName}</CardTitle>
-              <p className="text-gray-600 text-sm line-clamp-3">{course.courseDescription}</p>
-            </CardHeader>
-            
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <BookOpen className="h-4 w-4" />
-                      <span className="truncate">{course.instructorName}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-4 w-4" />
-                      <span>{course.totalDuration} min</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <Users className="h-4 w-4" />
-                      <span>{Math.floor(Math.random() * 1000) + 100} enrolled</span>
-                    </div>
-                    {course.certificationProvided === 'yes' && (
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600">
-                        Certificate
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-1">
-                    {course.curriculum.slice(0, 3).map((topic) => (
-                      <Badge key={topic._id} variant="outline" className="text-xs">
-                        {topic.topicName}
-                      </Badge>
-                    ))}
-                    {course.curriculum.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{course.curriculum.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="text-xs text-gray-500">
-                    {getTotalTopics(course.curriculum)} lessons • {course.curriculum.length} modules
-                    {course.hasFinalExam && ' • Final Exam'}
-                  </div>
-                </div>
-                
-                <Button 
-                  onClick={() => handleEnrollClick(course)}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
-                >
-                  {course.courseType === 'paid' ? `Enroll Now - ₹${course.price}` : 'Join Free'}
-                </Button>
-
-                {course.demoVideoLink && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => window.open(course.demoVideoLink, '_blank')}
-                  >
-                    Watch Demo
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="mt-12 text-center">
-        <p className="text-gray-500 text-sm">
-          Showing {courses.length} course{courses.length !== 1 ? 's' : ''} • 
-          Powered by {courses[0]?.providerName || 'TraiRight'}
-        </p>
-      </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 };
 
-export default CourseDisplayApp;
+export default CourseCards;

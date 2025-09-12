@@ -968,9 +968,9 @@ export const courseApi = {
   },
 
   // ✅ Get All Courses (public endpoint)
-  getAllCourses: async (): Promise<Course> => {
+  getAllCourses: async (): Promise<{ courses: any[] }> => {
     const response = await axios.get(`${API_BASE_URL}/courses`);
-    return response.data.courses;
+    return response.data;
   },
 
   // ✅ Get Course by ID (Public/Student)

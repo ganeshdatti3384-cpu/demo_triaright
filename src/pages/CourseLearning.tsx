@@ -35,21 +35,25 @@ const CourseLearning = () => {
       setLoading(true);
       
       // Fetch course details
-      const courseResponse = await pack365Api.getCourseById(id);
-      if (!courseResponse.success) {
+      const courseResponse = await courseApi.getCourseById(id);
+      if (!courseResponse.course) {
         throw new Error('Course not found');
       }
-      console.log( 'Course data:', courseResponse);
+      console.log('Course data:', courseResponse);
       
-      // Use the course data directly with topics
-      const courseData = {
-        ...courseResponse.data,
-        topics: courseResponse.data.topics?.map((topic: any) => ({
-          name: topic.name,
-          link: topic.link,
-          duration: topic.duration,
-          videoUrl: topic.link
+      // Transform curriculum to topics format for learning interface
+      const topics = courseResponse.course.curriculum?.flatMap((curriculumItem: any) => 
+        curriculumItem.subtopics?.map((subtopic: any) => ({
+          name: subtopic.name,
+          link: subtopic.link,
+          duration: subtopic.duration,
+          videoUrl: subtopic.link
         })) || []
+      ) || [];
+
+      const courseData = {
+        ...courseResponse.course,
+        topics
       };
       
       setCourse(courseData);

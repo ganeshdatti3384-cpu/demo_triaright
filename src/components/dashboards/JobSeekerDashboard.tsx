@@ -103,7 +103,7 @@ const JobSeekerDashboard = () => {
     try {
       setLoadingCourses(true);
       const courses = await courseApi.getAllCourses();
-      setAvailableCourses(courses);
+      setAvailableCourses(courses.courses || []);
     } catch (error) {
       console.error('Error loading courses:', error);
     } finally {

@@ -79,7 +79,7 @@ const StudentDashboard = () => {
       console.log('🆓 Free courses data:', freeCoursesData);
       console.log('💰 Paid courses data:', paidCoursesData);
       
-      setAllCourses(allCoursesData || []);
+      setAllCourses(allCoursesData.courses || []);
       setFreeCourses(freeCoursesData || []);
       setPaidCourses(paidCoursesData || []);
       
@@ -514,7 +514,7 @@ const StudentDashboard = () => {
                            </Button>
                          </div>
                        ) : filteredFreeCourses.length > 0 ? (
-                         <CourseCards courses={filteredFreeCourses} type="recorded" />
+                         <CourseCards courses={filteredFreeCourses as any} type="recorded" />
                        ) : (
                          <div className="text-center py-8">
                            <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -540,7 +540,7 @@ const StudentDashboard = () => {
                            </Button>
                          </div>
                        ) : filteredPaidCourses.length > 0 ? (
-                         <CourseCards courses={filteredPaidCourses} type="recorded" />
+                         <CourseCards courses={filteredPaidCourses as any} type="recorded" />
                        ) : (
                          <div className="text-center py-8">
                            <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
