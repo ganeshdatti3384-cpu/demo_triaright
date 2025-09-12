@@ -1,217 +1,135 @@
-
-import React, { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { courseApi } from '@/services/api';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import Footer from '@/components/Footer';
+import { Clock, Star } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import AuthModal from '@/components/AuthModal';
-import { useNavigate } from 'react-router-dom';
-import { Clock, Users, Star, Code, Database, Calculator, TrendingUp, Briefcase } from 'lucide-react';
+
+// 1. IMPROVED: Updated interface to match the actual API response data.
+interface Course {
+  _id: string;
+  courseName: string;
+  courseDescription: string;
+  price: number;
+  courseImageLink: string;
+  totalDuration: number;
+}
+
+// Reusable skeleton card for a better loading experience
+const SkeletonCard = () => (
+  <Card className="animate-pulse">
+    <div className="w-full h-40 bg-gray-200 rounded-t-lg"></div>
+    <CardHeader>
+      <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+    </CardHeader>
+    <CardContent>
+      <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+    </CardContent>
+    <CardFooter>
+      <div className="h-10 bg-gray-200 rounded w-full"></div>
+    </CardFooter>
+  </Card>
+);
 
 const RecordedCourses = () => {
   const navigate = useNavigate();
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
-    setAuthModal({ isOpen: true, type, userType });
-  };
+  useEffect(() => {
+    const fetchAllCourses = async () => {
+      try {
+        setLoading(true);
+        const response = await courseApi.getAllCourses();
 
-  const handleCloseAuth = () => {
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-  };
+        // 4. FIXED: Correctly access the nested 'courses' array from the response.
+        const coursesData = response.courses;
+        if (Array.isArray(coursesData)) {
+          setCourses(coursesData);
+        } else {
+          throw new Error("Received invalid data format from the server.");
+        }
 
-  const handleAuthSuccess = (userRole: string, userName: string) => {
-    console.log(`User ${userName} logged in as ${userRole}`);
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-    // You can add additional logic here like redirecting or updating user state
-  };
+      } catch (err: any) {
+        console.error("Error fetching all courses:", err);
+        setError("Could not load courses at this time. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const courses = [
-  {
-    id: 'web-development',
-    title: 'Web Development',
-    description: 'Master HTML, CSS, JavaScript, React and build modern web applications',
-    duration: '12 weeks',
-    students: '2,500+',
-    rating: 4.8,
-    color: 'bg-blue-500',
-    icon: Code,
-    price: "₹2,999",
-    originalPrice: "₹4,999",
-    lessons: 45,
-    level: "Beginner to Advanced"
-  },
-  {
-    id: 'data-science',
-    title: 'Data Science',
-    description: 'Learn Python, Machine Learning, Statistics and Data Analysis',
-    duration: '16 weeks',
-    students: '1,800+',
-    rating: 4.9,
-    color: 'bg-orange-500',
-    icon: Database,
-    price: "₹2,499",
-    originalPrice: "₹3,999",
-    lessons: 38,
-    level: "Beginner"
-  },
-  {
-    id: 3,
-    title: 'Aptitude Training',
-    description: 'Quantitative aptitude, logical reasoning, and verbal ability',
-    duration: '8 weeks',
-    students: '3,200+',
-    rating: 4.7,
-    color: 'bg-green-500',
-    icon: Calculator,
-    price: "₹1,999",
-    originalPrice: "₹2,999",
-    lessons: 30,
-    level: "Beginner to Intermediate"
-  },
-  {
-    id: 4,
-    title: 'Business Analytics',
-    description: 'Excel, Power BI, Tableau and business intelligence tools',
-    duration: '10 weeks',
-    students: '1,500+',
-    rating: 4.6,
-    color: 'bg-purple-500',
-    icon: TrendingUp,
-    price: "₹3,499",
-    originalPrice: "₹5,499",
-    lessons: 55,
-    level: "Beginner to Advanced"
-  },
-  {
-    id: 5,
-    title: 'Soft Skills',
-    description: 'Communication, leadership and professional development',
-    duration: '6 weeks',
-    students: '4,000+',
-    rating: 4.8,
-    color: 'bg-pink-500',
-    icon: Users,
-    price: "₹2,299",
-    originalPrice: "₹3,499",
-    lessons: 35,
-    level: "Beginner"
-  },
-  {
-    id: 6,
-    title: 'Job Readiness',
-    description: 'Resume building, interview preparation and placement support',
-    duration: '4 weeks',
-    students: '2,800+',
-    rating: 4.9,
-    color: 'bg-indigo-500',
-    icon: Briefcase,
-    price: "₹3,299",
-    originalPrice: "₹4,799",
-    lessons: 42,
-    level: "Intermediate"
+    fetchAllCourses();
+  }, []);
+
+  // 5. IMPROVED: Render UI based on the state (Loading, Error, or Success)
+  if (loading) {
+    return (
+        <div className="container mx-auto py-8">
+            <h1 className="text-3xl font-bold mb-6">Course Catalog</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+        </div>
+    );
   }
-];
 
-  const handleCourseClick = (courseId: string) => {
-    navigate(`/courses/recorded/${courseId}`);
-  };
+  if (error) {
+    return <div className="text-center p-10 text-red-600 bg-red-50 rounded-lg">Error: {error}</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar />
-      
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Recorded Courses</h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Learn at your own pace with our comprehensive recorded courses. Access lifetime content and build your skills with industry-expert instructors.
-            </p>
-          </div>
+    <><Navbar />
+    <div className="bg-gray-50 min-h-screen">
+      <div className="container mx-auto py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-extrabold text-gray-900">Explore Our Courses</h1>
+          <p className="text-lg text-gray-600 mt-2">Find the perfect course to advance your skills and career.</p>
         </div>
-      </div>
-
-      {/* Courses Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {courses.map((course) => (
-           <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleCourseClick(String(course.id))}>
-  <div className="relative flex items-center justify-center h-48">
-    <div className={`h-24 w-24 ${course.color} rounded-full flex items-center justify-center`}>
-      <course.icon className="h-12 w-12 text-white" />
-    </div>
-    <div className="absolute top-4 right-4">
-      <Badge variant="secondary" className="bg-white/90">
-        {course.level}
-      </Badge>
-    </div>
-  </div>
-
-  <CardHeader>
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        <CardTitle className="text-lg mb-2">{course.title}</CardTitle>
-        <CardDescription className="text-sm">{course.description}</CardDescription>
-      </div>
-    </div>
-
-    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-4">
-      <div className="flex items-center">
-        <Clock className="h-4 w-4 mr-1" />
-        {course.duration}
-      </div>
-      <div className="flex items-center">
-        <Users className="h-4 w-4 mr-1" />
-        {course.students}
-      </div>
-      <div className="flex items-center">
-        <Star className="h-4 w-4 mr-1 fill-yellow-400 text-yellow-400" />
-        {course.rating}
-      </div>
-    </div>
-  </CardHeader>
-
-  <CardContent>
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center space-x-2">
-        <span className="text-2xl font-bold text-brand-primary">{course.price}</span>
-        <span className="text-lg text-gray-500 line-through">{course.originalPrice}</span>
-      </div>
-      <div className="text-sm text-gray-600">
-        {course.lessons} lessons
-      </div>
-    </div>
-  </CardContent>
-
-  <CardFooter>
-    <Button 
-      onClick={(e) => {
-        e.stopPropagation();
-        handleCourseClick(String(course.id));
-      }}
-      className="w-full bg-brand-primary hover:bg-blue-700 text-white"
-    >
-      View Details
-    </Button>
-  </CardFooter>
-</Card>
-
+            <Card key={course._id} className="flex flex-col overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300">
+              <div className="w-full h-48 overflow-hidden">
+                <img
+                  src={course.courseImageLink || 'https://placehold.co/600x400/e2e8f0/e2e8f0?text=.'}
+                  alt={course.courseName}
+                  className="w-full h-full object-cover" />
+              </div>
+              <CardHeader>
+                <CardTitle className="text-xl h-14 line-clamp-2">{course.courseName}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <p className="text-gray-600 mb-4 h-20 line-clamp-3">{course.courseDescription}</p>
+                <div className="flex items-center text-sm text-gray-500">
+                  <Clock className="h-4 w-4 mr-1.5" />
+                  <span>{course.totalDuration} minutes total</span>
+                </div>
+              </CardContent>
+              <CardFooter className="bg-gray-50/50 p-4">
+                {/* IMPROVED: Link to payment selection with correct state for enrollment */}
+                <Link
+                  to="/payment-selection"
+                  state={{
+                    courseId: course._id,
+                    courseName: course.courseName,
+                    coursePrice: course.price,
+                    fromCourse: true
+                  }}
+                  className="w-full"
+                >
+                  <Button className="w-full text-lg">
+                    {course.price > 0 ? `Enroll for ₹${course.price}` : 'Enroll for Free'}
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
           ))}
         </div>
       </div>
-
-      <AuthModal
-        isOpen={authModal.isOpen}
-        onClose={handleCloseAuth}
-        type={authModal.type}
-        userType={authModal.userType}
-        onAuthSuccess={handleAuthSuccess}
-      />
-      <Footer />
-    </div>
+    </div></>
   );
 };
 

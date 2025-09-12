@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, User, Lock, Eye as EyeIcon, EyeOff, GraduationCap } from 'lucide-react';
 import { authApi, RegisterPayload } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { UserRow } from '@/components/UserRow'; // Import the new component
 
 // Registration validation schema - same as Register.tsx
 const registrationSchema = z.object({
@@ -68,7 +69,7 @@ interface College {
 
 const UserManagement = () => {
   const { toast } = useToast();
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('all');
@@ -143,7 +144,7 @@ const UserManagement = () => {
       const response = await authApi.getAllUsers(token);
       console.log('Users response:', response);
 
-      if (response.success && response.users) {
+      if (response.success || response.users) {
         setUsers(response.users);
         toast({
           title: "Success",
@@ -167,6 +168,7 @@ const UserManagement = () => {
       setLoading(false);
     }
   };
+
 
   // Handle registration - same API call as Register.tsx
   const handleRegister = async (formData: RegistrationFormData) => {
@@ -239,20 +241,38 @@ const UserManagement = () => {
       fetchUsers();
     }
   };
-
+  const userList = users;
   // Fixed filtered users logic
-  const filteredUsers = users.filter(user => {
-    const search = searchTerm.toLowerCase();
-    const matchesSearch = 
-      (user.firstName?.toLowerCase() || "").includes(search) ||
-      (user.lastName?.toLowerCase() || "").includes(search) ||
-      (user.email?.toLowerCase() || "").includes(search) ||
-      (user.phoneNumber?.toLowerCase() || "").includes(search);
-    
-    const matchesRole = selectedRoleFilter === 'all' || user.role === selectedRoleFilter;
-    
-    return matchesSearch && matchesRole;
-  });
+const filteredUsers = userList.filter(user => {
+  // Ensure we have a valid user object to work with
+  if (!user) return false;
+  
+  // --- 1. Role Filtering (Case-Insensitive) ---
+  const matchesRole = selectedRoleFilter === 'all' || 
+                      (user.role && user.role.toLowerCase() === selectedRoleFilter.toLowerCase());
+
+  // If the role doesn't match, we can stop right away.
+  if (!matchesRole) return false;
+
+  // --- 2. Search Term Filtering ---
+  const search = searchTerm.toLowerCase().trim();
+  
+  // If there's no search term, the user is a match.
+  if (!search) return true;
+
+  // Create a list of fields to search within
+  const searchableFields = [
+    user.firstName,
+    user.lastName,
+    user.email,
+    user.phoneNumber
+  ];
+
+  // Check if at least one of the fields contains the search term
+  return searchableFields.some(field => 
+    field && field.toLowerCase().includes(search)
+  );
+});
 
   // Bulk upload functionality
   const downloadSampleExcel = () => {
@@ -711,66 +731,54 @@ const UserManagement = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-  {loading ? (
-    <div className="text-center py-8">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-      <p className="mt-2 text-gray-600">Loading users...</p>
-    </div>
-  ) : filteredUsers.length === 0 ? (
-    <div className="text-center py-8">
-      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-      <p className="text-gray-500">No users found</p>
-    </div>
-  ) : (
-    <div className="space-y-4">
-      {filteredUsers.map((user) => (
-        <div
-          key={user._id || user.id}
-          className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <User className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="font-medium">
-                {user.firstName} {user.lastName}
-              </p>
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                <span className="flex items-center">
-                  <Mail className="h-3 w-3 mr-1" />
-                  {user.email}
-                </span>
-                <span className="flex items-center">
-                  <Phone className="h-3 w-3 mr-1" />
-                  {user.phoneNumber}
-                </span>
-              </div>
-              {user.address && (
-                <div className="flex items-center text-sm text-gray-500 mt-1">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  {user.address}
+          {loading ? (
+            // IMPROVED: Skeleton loader for a better UX
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 border rounded-lg animate-pulse">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                    <div>
+                      <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-32"></div>
+                    </div>
+                  </div>
+                  <div className="h-6 bg-gray-200 rounded w-20"></div>
                 </div>
-              )}
+              ))}
             </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Badge variant="default">{user.role}</Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleDeleteUser(user._id || user.id)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</CardContent>
-
+          ) : filteredUsers.length === 0 ? (
+            // IMPROVED: More contextual empty state
+            <div className="text-center py-12">
+              <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-800">No Users Found</h3>
+              <p className="text-gray-500">Try adjusting your search or role filter.</p>
+            </div>
+          ) : (
+            // IMPROVED: Using a table for better data presentation
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 text-xs text-gray-600 uppercase">
+                  <tr>
+                    <th className="p-4 font-semibold">User</th>
+                    <th className="p-4 font-semibold">Contact</th>
+                    <th className="p-4 font-semibold">Role</th>
+                    <th className="p-4 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <UserRow
+                      key={user.id}
+                      user={user}
+                      onDelete={handleDeleteUser} // Pass the delete handler
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
       </Card>
     </div>
   );
