@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, BookOpen, Users, Star, Loader2, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Course {
   _id: string;
@@ -41,6 +42,7 @@ const CourseDisplayApp = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCourses();
@@ -67,14 +69,12 @@ const CourseDisplayApp = () => {
     }
   };
 
-  const handleEnrollClick = (course: Course) => {
+  const handleEnrollClick = (course: Course ) => {
     // Mock enrollment logic - replace with your actual navigation/enrollment logic
     if (course.courseType === 'paid') {
-      alert(`Enrolling in paid course: ${course.courseName} for ₹${course.price}`);
-      // navigate('/payment-selection', { state: { courseId: course._id, ... } });
+     navigate('/payment-selection', { state: { courseId: course._id } });
     } else {
-      alert(`Enrolling in free course: ${course.courseName}`);
-      // navigate(`/course-enrollment/${course._id}`);
+       navigate(`/course-enrollment/${course._id}`);
     }
   };
 

@@ -175,18 +175,18 @@ const StudentDashboard = () => {
     
     if (typeof enrollment.courseId === 'string') {
       courseId = enrollment.courseId;
-    } else if (enrollment.courseId && typeof enrollment.courseId === 'object' && '_id' in enrollment.courseId) {
+    } else if (enrollment.courseId && typeof enrollment.courseId === 'object' && 'courseId' in enrollment.courseId) {
       courseId = (enrollment.courseId as any)._id;
     } else {
       courseId = enrollment._id || '';
     }
     
     console.log('📋 Course ID extracted:', courseId);
-    console.log('🎯 Navigation path:', `/course-learning/${courseId}`);
+    console.log('🎯 Navigation path:', `/learning/${courseId}`);
 
     if (courseId) {
       console.log('✅ Navigating to course learning page...');
-      navigate(`/course-learning/${courseId}`);
+      navigate(`/learning/${courseId}`);
     } else {
       console.error('❌ No valid course ID found in enrollment:', enrollment);
       toast({

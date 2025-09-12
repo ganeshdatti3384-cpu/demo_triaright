@@ -52,6 +52,8 @@ import JobSeekerProfilePage from '@/components/profile/JobSeekerProfilePage';
 import EmployerProfilePage from '@/components/profile/EmployerProfilePage';
 import Pack365Dashboard from '@/components/Pack365Dashboard';
 import Pack365StreamLearning from '@/pages/Pack365StreamLearning';
+import LearningInterface from './components/CourseLearningInterface2';
+import Learning from './pages/CourseLearning2';
 
 const queryClient = new QueryClient();
 
@@ -120,6 +122,7 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+         
           <Route
             path="/Coupon-code"
             element={
@@ -252,6 +255,14 @@ const App = () => {
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <CourseLearning />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/learning/:id"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <Learning />
               </ProtectedRoute>
             }
           />
