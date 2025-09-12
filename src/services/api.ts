@@ -1125,6 +1125,121 @@ export const courseApi = {
   },
 };
 
+
+export const jobsApi = {
+  getAllJobs: () => {
+    return axios.get(`${API_BASE_URL}/jobs`);
+  },
+
+  getJobById: (jobId: string) => {
+    return axios.get(`${API_BASE_URL}/jobs/${jobId}`);
+  },
+
+  createJob: (jobData: object) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.post(`${API_BASE_URL}/jobs`, jobData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  updateJob: (jobId: string, jobData: object) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.put(`${API_BASE_URL}/jobs/${jobId}`, jobData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  deleteJob: (jobId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.delete(`${API_BASE_URL}/jobs/${jobId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  updateJobStatus: (jobId: string, statusData: { status: 'Open' | 'Closed' | 'On Hold' }) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.patch(`${API_BASE_URL}/jobs/${jobId}/status`, statusData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  updateJobDeadline: (jobId: string, deadlineData: { applicationDeadline: string }) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.patch(`${API_BASE_URL}/jobs/${jobId}/deadline`, deadlineData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  applyToJob: (jobId: string, formData: FormData) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.post(`${API_BASE_URL}/jobs/job-applications/${jobId}/apply`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  getApplicationsForJob: (jobId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.get(`${API_BASE_URL}/jobs/job-applications/${jobId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  getMyApplications: () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.get(`${API_BASE_URL}/jobs/job-applications/user/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  withdrawApplication: (jobId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.delete(`${API_BASE_URL}/jobs/job-applications/${jobId}/withdraw`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  updateApplicationStatus: (applicationId: string, statusData: { status: 'Applied' | 'Reviewed' | 'Shortlisted' | 'Rejected' | 'Hired' }) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("Authentication token is missing.");
+    }
+    return axios.put(`${API_BASE_URL}/jobs/job-applications/${applicationId}/status`, statusData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+};
+
+
 export type { 
   Pack365Course, 
   RegisterPayload, 
