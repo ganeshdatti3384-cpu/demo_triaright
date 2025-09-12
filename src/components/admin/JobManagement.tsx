@@ -32,7 +32,13 @@ interface Job {
 }
 
 interface JobApplication {
-  // ... (interface remains the same)
+  _id: string;
+  jobId: string;
+  jobTitle: string;
+  applicantName: string;
+  applicantEmail: string;
+  createdAt: string;
+  status: 'Applied' | 'Reviewed' | 'Shortlisted' | 'Rejected' | 'Hired';
 }
 
 // --- Helper Functions ---
@@ -85,7 +91,8 @@ const JobManagement = () => {
     try {
       // FIXED: The API call was missing. This now correctly fetches jobs.
       const response = await jobsApi.getAllJobs();
-      setJobs(response.data || []);
+      setJobs(response.data);
+      console.log(jobs)
     } catch (error) {
       console.error("Failed to fetch jobs:", error);
       toast({ title: "Error", description: "Could not fetch jobs.", variant: "destructive" });
@@ -294,19 +301,102 @@ const JobManagement = () => {
         </TabsContent>
 
         <TabsContent value="applications">
-          {/* ... application management UI ... */}
+            <p className="p-4">Application management can be connected here.</p>
         </TabsContent>
       </Tabs>
       
-      {/* --- Dialogs --- */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        {/* ... Dialog for Add/Edit Job ... */}
+       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingJob ? 'Edit Job' : 'Post New Job'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <Label>Job Title *</Label>
+                      <Input value={jobForm.title} onChange={(e) => setJobForm(prev => ({ ...prev, title: e.target.value }))} />
+                  </div>
+                  <div>
+                      <Label>Company *</Label>
+                      <Input value={jobForm.companyName} onChange={(e) => setJobForm(prev => ({ ...prev, companyName: e.target.value }))} />
+                  </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <Label>Location</Label>
+                      <Input value={jobForm.location} onChange={(e) => setJobForm(prev => ({ ...prev, location: e.target.value }))} />
+                  </div>
+                  <div>
+                      <Label>Type</Label>
+                      <select value={jobForm.jobType} onChange={(e) => setJobForm(prev => ({ ...prev, jobType: e.target.value as Job['jobType'] }))} className="w-full p-2 border rounded">
+                          <option value="Full-Time">Full-Time</option>
+                          <option value="Part-Time">Part-Time</option>
+                          <option value="Contract">Contract</option>
+                          <option value="Internship">Internship</option>
+                      </select>
+                  </div>
+              </div>
+               <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label>Salary Minimum</Label>
+                        <Input type="number" value={jobForm.salaryMin} onChange={(e) => setJobForm(prev => ({ ...prev, salaryMin: e.target.value }))} />
+                    </div>
+                    <div>
+                        <Label>Salary Maximum</Label>
+                        <Input type="number" value={jobForm.salaryMax} onChange={(e) => setJobForm(prev => ({ ...prev, salaryMax: e.target.value }))} />
+                    </div>
+                </div>
+              <div>
+                  <Label>Job Description</Label>
+                  <Textarea value={jobForm.description} onChange={(e) => setJobForm(prev => ({ ...prev, description: e.target.value }))} rows={4} />
+              </div>
+              <div>
+                  <Label>Skills (comma-separated)</Label>
+                  <Input value={jobForm.skills} onChange={(e) => setJobForm(prev => ({ ...prev, skills: e.target.value }))} />
+              </div>
+              <Button onClick={handleFormSubmit} className="w-full">
+                {editingJob ? 'Save Changes' : 'Post Job'}
+              </Button>
+          </div>
+        </DialogContent>
       </Dialog>
+      
+      {/* View Job Details Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        {/* ... Dialog for Job Details ... */}
+          <DialogContent className="max-w-2xl">
+              <DialogHeader><DialogTitle>Job Details</DialogTitle></DialogHeader>
+              {selectedJob && (
+                  <div className="space-y-4 py-4">
+                    <h3 className="text-xl font-semibold">{selectedJob.title}</h3>
+                    <p>{selectedJob.companyName} • {selectedJob.location}</p>
+                    <p>{selectedJob.description}</p>
+                    <div>
+                      <Label>Skills</Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {selectedJob.skills.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
+                      </div>
+                    </div>
+                  </div>
+              )}
+          </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-        {/* ... AlertDialog for Delete Confirmation ... */}
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the job posting for "{jobToDelete?.title}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteJob} className="bg-destructive hover:bg-destructive/90">
+                Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </div>
   );
