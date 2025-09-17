@@ -258,7 +258,7 @@ const RazorpayPayment = () => {
             <Pack365PaymentInterface
               streamName={streamName}
               coursesCount={coursesCount || 3}
-              onPaymentSuccess={handlePaymentSuccess}
+              // onPaymentSuccess={handlePaymentSuccess}
               onBack={handleBack}
               streamPrice={streamPrice}
             />

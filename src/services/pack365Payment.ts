@@ -1,10 +1,8 @@
-
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { pack365Api } from '@/services/api';
 
 declare global {
   interface Window {
@@ -103,15 +101,15 @@ export class Pack365PaymentService {
     
     const normalized = streamName.toLowerCase();
     
-    if (normalized.includes('it')) return 'it';
-    if (normalized.includes('finance')) return 'finance';
-    if (normalized.includes('marketing')) return 'marketing';
-    if (normalized.includes('hr')) return 'hr';
-    if (normalized.includes('pharma')) return 'pharma';
-    if (normalized.includes('non')) return 'non-it';
+    if (normalized.includes('it')) return 'IT';
+    if (normalized.includes('finance')) return 'FINANCE';
+    if (normalized.includes('marketing')) return 'mMARKETING';
+    if (normalized.includes('hr')) return 'HR';
+    if (normalized.includes('pharma')) return 'PHARMA';
+    if (normalized.includes('non')) return 'NON-IT';
     
     // Default fallback
-    return 'it';
+    return 'IT';
   }
 
   static async createOrder(options: PaymentOptions): Promise<OrderResponse> {
@@ -127,47 +125,63 @@ export class Pack365PaymentService {
       const normalizedStream = this.normalizeStreamName(options.streamName);
       console.log('Normalized stream name:', options.streamName, '->', normalizedStream);
 
-      // Try to use the pack365Api createOrder method first
-      try {
-        const result = await pack365Api.createOrder(token, { stream: normalizedStream });
-        console.log('Pack365 order created successfully:', result);
-        
-        // Transform the response to match expected format
-        return {
-          orderId: result.orderId,
-          amount: options.amount || 999,
-          baseAmount: options.amount || 999,
-          discount: 0,
-          gst: Math.round((options.amount || 999) * 0.18),
-          coursesCount: 3, // Default value
-          stream: normalizedStream
-        };
-      } catch (apiError: any) {
-        console.log('Pack365 API failed, creating mock order for development:', apiError.message);
-        
-        // Fallback: Create a mock order for development/testing
-        const mockOrderId = `mock_order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const baseAmount = options.amount || 999;
-        const gst = Math.round(baseAmount * 0.18);
-        
-        console.log('Created mock order:', mockOrderId);
-        
-        return {
-          orderId: mockOrderId,
-          amount: baseAmount + gst,
-          baseAmount: baseAmount,
-          discount: 0,
-          gst: gst,
-          coursesCount: 3,
-          stream: normalizedStream
-        };
+      const requestData: any = {
+        stream: normalizedStream
+      };
+
+      // Add coupon code if provided
+      if (options.couponCode) {
+        requestData.code = options.couponCode;
       }
+      console.log("Sending createOrder request with data:",requestData);
+      const response = await axios.post(
+        `${API_BASE_URL}/pack365/create-order`,
+        requestData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Order created successfully:', response.data);
+      
+      // Handle free enrollment case (when total amount is 0)
+      if (response.data.success && response.data.enrollmentId) {
+        // This means user was enrolled directly with free coupon
+        throw new Error('FREE_ENROLLMENT');
+      }
+
+      // For paid orders, extract the order details
+      const orderData = response.data;
+      
+      return {
+        orderId: orderData.orderId,
+        amount: orderData.totalAmount || orderData.amount,
+        baseAmount: orderData.baseAmount,
+        discount: orderData.discount || 0,
+        gst: orderData.gst,
+        coursesCount: orderData.coursesCount,
+        stream: normalizedStream
+      };
+
     } catch (error: any) {
       console.error('Error creating order:', error);
-      console.error('Request was for stream:', options.streamName);
-      console.error('Normalized to:', this.normalizeStreamName(options.streamName));
       
-      throw new Error('Unable to create payment order. Please try again later.');
+      // Handle free enrollment case
+      if (error.message === 'FREE_ENROLLMENT') {
+        throw error;
+      }
+      
+      if (error.response) {
+        const errorMessage = error.response.data?.error || error.response.data?.message || 'Failed to create order';
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      } else {
+        throw new Error(error.message || 'Unable to create payment order. Please try again later.');
+      }
     }
   }
 
@@ -178,13 +192,14 @@ export class Pack365PaymentService {
   ): Promise<void> {
     try {
       console.log('Starting payment process...');
+      
+      const orderDetails = await this.createOrder(options);
+      console.log('Order created:', orderDetails);
+
       const isScriptLoaded = await this.loadRazorpayScript();
       if (!isScriptLoaded) {
         throw new Error('Failed to load Razorpay payment gateway. Please check your internet connection and try again.');
       }
-
-      const orderDetails = await this.createOrder(options);
-      console.log('Order created:', orderDetails);
 
       const currentUser = localStorage.getItem('currentUser');
       const user = currentUser ? JSON.parse(currentUser) : null;
@@ -248,6 +263,20 @@ export class Pack365PaymentService {
 
     } catch (error: any) {
       console.error('Error processing payment:', error);
+      
+      // Handle free enrollment case
+      if (error.message === 'FREE_ENROLLMENT') {
+        console.log('Free enrollment detected, redirecting to success page');
+        if (onSuccess) {
+          onSuccess({
+            razorpay_payment_id: 'FREE_COUPON',
+            razorpay_order_id: 'FREE_ENROLLMENT',
+            razorpay_signature: 'FREE_ENROLLMENT'
+          });
+        }
+        return;
+      }
+      
       if (onError) {
         onError(error);
       }
@@ -261,9 +290,9 @@ export class Pack365PaymentService {
     navigate?: ReturnType<typeof useNavigate>
   ): Promise<PaymentVerificationResponse> {
     try {
-      // Check if this is a mock order (for development)
-      if (response.razorpay_order_id.startsWith('mock_order_')) {
-        console.log('Mock payment verification - automatically successful');
+      // Handle free enrollment case
+      if (response.razorpay_order_id === 'FREE_ENROLLMENT') {
+        console.log('Free enrollment - automatically successful');
         
         if (navigate) {
           navigate('/payment-success');
@@ -271,9 +300,9 @@ export class Pack365PaymentService {
         
         return {
           success: true,
-          message: 'Mock payment successful',
+          message: 'Free enrollment successful',
           enrollment: {
-            mockEnrollment: true,
+            freeEnrollment: true,
             stream: stream,
             enrollmentDate: new Date().toISOString()
           }
@@ -286,11 +315,16 @@ export class Pack365PaymentService {
         razorpay_signature: response.razorpay_signature,
       };
 
-      console.log(requestData);
+      console.log('Verifying payment with data:', requestData);
 
       const verificationResponse = await axios.post(
         `${API_BASE_URL}/pack365/payment/verify`,
         requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
 
       console.log('Payment verification response:', verificationResponse.data);

@@ -41,7 +41,7 @@ const normalizeStreamName = (streamName: string): string => {
 interface Pack365PaymentInterfaceProps {
   streamName: string;
   coursesCount: number;
-  onPaymentSuccess: (response: any) => void;
+  onPaymentSuccess?: (response: any) => void;
   onBack: () => void;
   streamPrice?: number;
 }

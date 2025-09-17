@@ -7,31 +7,31 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.
 const PRODUCTION_API_URL = 'https://triaright.com/api';
 
 // Add request interceptor for better error handling
-axios.interceptors.request.use(
-  (config) => {
-    console.log(`Making API request to: ${config.baseURL || ''}${config.url}`);
-    return config;
-  },
-  (error) => {
-    console.error('Request error:', error);
-    return Promise.reject(error);
-  }
-);
+// axios.interceptors.request.use(
+//   (config) => {
+//     console.log(`Making API request to: ${config.baseURL || ''}${config.url}`);
+//     return config;
+//   },
+//   (error) => {
+//     console.error('Request error:', error);
+//     return Promise.reject(error);
+//   }
+// );
 
-// Add response interceptor for better error handling
-axios.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('API Error:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      message: error.message,
-      data: error.response?.data
-    });
-    return Promise.reject(error);
-  }
-);
+// // Add response interceptor for better error handling
+// axios.interceptors.response.use(
+//   (response) => response,
+//   (error) => {
+//     console.error('API Error:', {
+//       url: error.config?.url,
+//       method: error.config?.method,
+//       status: error.response?.status,
+//       message: error.message,
+//       data: error.response?.data
+//     });
+//     return Promise.reject(error);
+//   }
+// );
 
 const toFormData = (data: Record<string, any>): FormData => {
   const formData = new FormData();
@@ -514,6 +514,7 @@ export const pack365Api = {
     enrollment: any;
     message: string; orderId: string; key: string 
 }> => {
+  console.log("Sending createOrder request with data:", data);
     const res = await axios.post(
       `${API_BASE_URL}/pack365/create-order`,
       data,
@@ -540,7 +541,8 @@ export const pack365Api = {
 ): Promise<{ success: boolean; message: string; enrollment: EnhancedPack365Enrollment }> => {
   console.log("Verifying payment with:", data, token);
   const res = await axios.post(
-    `${API_BASE_URL}/pack365/verify-payment`,
+   
+    `${API_BASE_URL}/pack365/payment/verify`,
     data,
     {
       headers: {
