@@ -771,6 +771,7 @@ const filteredUsers = userList.filter(user => {
                     <UserRow
                       key={user.id}
                       user={user}
+                      onEdit={(userId) => console.log('Edit user:', userId)} // Add edit handler
                       onDelete={handleDeleteUser} // Pass the delete handler
                     />
                   ))}

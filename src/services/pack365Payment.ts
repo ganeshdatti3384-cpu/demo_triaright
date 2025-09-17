@@ -221,16 +221,9 @@ export class Pack365PaymentService {
         },
         handler: async (response: RazorpayResponse) => {
           console.log('Payment successful:', response);
-          try {
-            const verificationResult = await this.verifyPayment(response, orderDetails.stream, options.couponCode);
-            if (onSuccess) {
-              onSuccess(response);
-            }
-          } catch (error) {
-            console.error('Payment verification failed:', error);
-            if (onError) {
-              onError(error);
-            }
+          // Don't verify here - let the calling component handle verification
+          if (onSuccess) {
+            onSuccess(response);
           }
         },
         modal: {
