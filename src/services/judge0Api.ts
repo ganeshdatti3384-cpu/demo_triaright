@@ -31,7 +31,7 @@ class Judge0Service {
   private getApiKey(): string {
     // In a real Supabase environment, this would come from edge functions
     // For now, we'll use a placeholder that should be replaced with actual API key
-    return process.env.RAPIDAPI_KEY || 'your-rapidapi-key-here';
+    return import.meta.env.RAPIDAPI_KEY || 'your-rapidapi-key-here';
   }
 
   async getLanguages(): Promise<Judge0Language[]> {
