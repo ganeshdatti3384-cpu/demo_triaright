@@ -131,7 +131,7 @@ const CodeCompiler = () => {
       if (!result.stdout && !result.stderr && !result.compile_output) {
         outputText += 'No output generated.';
       }
-
+      console.log(outputText)
       setOutput(outputText);
 
       if (result.status.description === 'Accepted') {
