@@ -35,7 +35,15 @@ const Navbar = () => {
 
   const trainingTypes = [
     { name: 'CRT Training', description: 'Campus Recruitment Training', path: '#' },
-    { name: 'Technical Training', description: 'Skill-specific programs', path: '#' },
+    { name: 'Pack365', description: 'Premium Learning Programs', path: '/pack365' },
+  ];
+
+  // Define navigation menus that should be visible to all users
+  const navigationMenus = [
+    { label: 'Courses', items: courseTypes },
+    { label: 'Jobs', items: jobTypes },
+    { label: 'Internships', items: internshipTypes },
+    { label: 'Training', items: trainingTypes }
   ];
 
   const handleRegisterClick = () => {
@@ -96,16 +104,10 @@ const Navbar = () => {
             </button>
           </div>
 
-          {/* Desktop Navigation */}
-          {!isAuthenticated && (
+          {/* Desktop Navigation - ALWAYS VISIBLE */}
           <div className="hidden md:flex items-center space-x-8">
-            {/* Menu Dropdowns */}
-            {[
-              { label: 'Courses', items: courseTypes },
-              { label: 'Jobs', items: jobTypes },
-              { label: 'Internships', items: internshipTypes },
-              { label: 'Training', items: trainingTypes }
-            ].map((menu) => (
+            {/* Menu Dropdowns - Show for all users */}
+            {navigationMenus.map((menu) => (
               <DropdownMenu key={menu.label}>
                 <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
                   <span>{menu.label}</span>
@@ -128,7 +130,6 @@ const Navbar = () => {
               </DropdownMenu>
             ))}
           </div>
-        )}
 
           {/* Desktop Auth/Profile Buttons */}
           <div className="hidden md:flex items-center space-x-4">
@@ -147,6 +148,13 @@ const Navbar = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-40 bg-white border shadow-lg">
+                      <DropdownMenuItem
+                        className="cursor-pointer flex items-center space-x-2"
+                        onClick={handleDashboardClick}
+                      >
+                        <LayoutDashboard className="h-4 w-4 text-gray-600" />
+                        <span>Dashboard</span>
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         className="cursor-pointer flex items-center space-x-2"
                         onClick={handleProfileClick}
@@ -216,11 +224,10 @@ const Navbar = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-200 py-4">
             <div className="space-y-4">
-              {[{ title: 'Courses', items: courseTypes },
-                { title: 'Jobs', items: jobTypes },
-                { title: 'Internships', items: internshipTypes }].map((section) => (
-                <div className="space-y-2" key={section.title}>
-                  <h3 className="font-semibold text-gray-900">{section.title}</h3>
+              {/* Show all navigation menus for mobile */}
+              {navigationMenus.map((section) => (
+                <div className="space-y-2" key={section.label}>
+                  <h3 className="font-semibold text-gray-900">{section.label}</h3>
                   {section.items.map((item) => (
                     <div
                       key={item.name}
