@@ -27,16 +27,29 @@ interface Internship {
   applicationDeadline: string;
   openings: number;
   createdAt: string;
+  description?: string;
+  duration?: string;
+  qualification?: string;
+  experienceRequired?: string;
+  skills?: string[];
+  perks?: string[];
+  certificateProvided?: boolean;
+  letterOfRecommendation?: boolean;
+  payFrequency?: string;
+  currency?: string;
 }
 
 const InternshipsManagement = () => {
   const [internships, setInternships] = useState<Internship[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingInternship, setEditingInternship] = useState<Internship | null>(null);
   const { toast } = useToast();
 
   const [newInternship, setNewInternship] = useState({
@@ -301,6 +314,115 @@ const InternshipsManagement = () => {
     }
   };
 
+  const updateInternship = async () => {
+    if (!editingInternship) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: 'Error',
+        description: 'No authentication token found. Please login again.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      
+      // Prepare update data
+      const updateData = {
+        title: editingInternship.title,
+        description: editingInternship.description,
+        companyName: editingInternship.companyName,
+        location: editingInternship.location,
+        internshipType: editingInternship.internshipType,
+        category: editingInternship.category,
+        duration: editingInternship.duration,
+        applicationDeadline: editingInternship.applicationDeadline,
+        mode: editingInternship.mode,
+        stipendAmount: editingInternship.stipendAmount,
+        qualification: editingInternship.qualification,
+        experienceRequired: editingInternship.experienceRequired,
+        skills: editingInternship.skills || [],
+        openings: editingInternship.openings,
+        perks: editingInternship.perks || [],
+        certificateProvided: editingInternship.certificateProvided,
+        letterOfRecommendation: editingInternship.letterOfRecommendation,
+        status: editingInternship.status,
+        payFrequency: editingInternship.payFrequency,
+      };
+
+      console.log('Updating internship:', editingInternship._id);
+      console.log('Update data:', updateData);
+
+      const response = await fetch(`${API_BASE_URL}/api/internships/${editingInternship._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      console.log('Update response status:', response.status);
+      
+      const responseText = await response.text();
+      console.log('Update response text:', responseText);
+
+      let responseData;
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {};
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', responseText);
+        responseData = { message: responseText };
+      }
+
+      if (response.ok) {
+        console.log('Internship updated successfully:', responseData);
+        
+        toast({
+          title: 'Success',
+          description: responseData.message || 'Internship updated successfully',
+        });
+        
+        setIsEditDialogOpen(false);
+        setEditingInternship(null);
+        
+        // Refresh the list
+        fetchInternships();
+      } else {
+        console.error('Update error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData
+        });
+        
+        let errorMessage = `Failed to update internship: ${response.status} ${response.statusText}`;
+        if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        }
+
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive'
+        });
+      }
+    } catch (error: any) {
+      console.error('Network error updating internship:', error);
+      toast({
+        title: 'Network Error',
+        description: `Failed to update internship: ${error.message}`,
+        variant: 'destructive'
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const deleteInternship = async (id: string) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -352,14 +474,27 @@ const InternshipsManagement = () => {
     }
   };
 
-  const handleSkillsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const skillsArray = e.target.value.split(',').map(skill => skill.trim()).filter(skill => skill);
-    setNewInternship({...newInternship, skills: skillsArray});
+  const handleEditClick = (internship: Internship) => {
+    setEditingInternship({ ...internship });
+    setIsEditDialogOpen(true);
   };
 
-  const handlePerksChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSkillsChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
+    const skillsArray = e.target.value.split(',').map(skill => skill.trim()).filter(skill => skill);
+    if (isEdit && editingInternship) {
+      setEditingInternship({ ...editingInternship, skills: skillsArray });
+    } else {
+      setNewInternship({...newInternship, skills: skillsArray});
+    }
+  };
+
+  const handlePerksChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
     const perksArray = e.target.value.split(',').map(perk => perk.trim()).filter(perk => perk);
-    setNewInternship({...newInternship, perks: perksArray});
+    if (isEdit && editingInternship) {
+      setEditingInternship({ ...editingInternship, perks: perksArray });
+    } else {
+      setNewInternship({...newInternship, perks: perksArray});
+    }
   };
 
   const filteredInternships = internships.filter(internship => {
@@ -717,6 +852,298 @@ const InternshipsManagement = () => {
         </div>
       </div>
 
+      {/* Edit Internship Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Internship</DialogTitle>
+            <DialogDescription>
+              Update the internship details below.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingInternship && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Basic Information */}
+              <div className="space-y-3">
+                <h3 className="font-semibold">Basic Information</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-title">Title *</Label>
+                  <Input
+                    id="edit-title"
+                    value={editingInternship.title}
+                    onChange={(e) => setEditingInternship({...editingInternship, title: e.target.value})}
+                    placeholder="Internship Title"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-companyName">Company Name *</Label>
+                  <Input
+                    id="edit-companyName"
+                    value={editingInternship.companyName}
+                    onChange={(e) => setEditingInternship({...editingInternship, companyName: e.target.value})}
+                    placeholder="Company Name"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-location">Location</Label>
+                  <Input
+                    id="edit-location"
+                    value={editingInternship.location}
+                    onChange={(e) => setEditingInternship({...editingInternship, location: e.target.value})}
+                    placeholder="Location"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-internshipType">Internship Type</Label>
+                  <Select
+                    value={editingInternship.internshipType}
+                    onValueChange={(value: 'Remote' | 'On-Site' | 'Hybrid') => 
+                      setEditingInternship({...editingInternship, internshipType: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Remote">Remote</SelectItem>
+                      <SelectItem value="On-Site">On-Site</SelectItem>
+                      <SelectItem value="Hybrid">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-category">Category</Label>
+                  <Input
+                    id="edit-category"
+                    value={editingInternship.category || ''}
+                    onChange={(e) => setEditingInternship({...editingInternship, category: e.target.value})}
+                    placeholder="e.g., Web Development, Data Science"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-duration">Duration Type</Label>
+                  <Select
+                    value={editingInternship.duration || 'Shortterm'}
+                    onValueChange={(value: 'Shortterm' | 'Longterm' | 'others') => 
+                      setEditingInternship({...editingInternship, duration: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Shortterm">Short Term</SelectItem>
+                      <SelectItem value="Longterm">Long Term</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="space-y-3">
+                <h3 className="font-semibold">Details</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-mode">Mode</Label>
+                  <Select
+                    value={editingInternship.mode}
+                    onValueChange={(value: 'Unpaid' | 'Paid' | 'FeeBased') => 
+                      setEditingInternship({...editingInternship, mode: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Unpaid">Unpaid</SelectItem>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                      <SelectItem value="FeeBased">Fee Based</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {editingInternship.mode === 'Paid' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-stipendAmount">Stipend Amount (INR)</Label>
+                    <Input
+                      id="edit-stipendAmount"
+                      type="number"
+                      value={editingInternship.stipendAmount || 0}
+                      onChange={(e) => setEditingInternship({...editingInternship, stipendAmount: Number(e.target.value)})}
+                      placeholder="Stipend Amount"
+                      min="0"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-payFrequency">Pay Frequency</Label>
+                  <Select
+                    value={editingInternship.payFrequency || 'None'}
+                    onValueChange={(value: 'One-Time' | 'Monthly' | 'Weekly' | 'None') => 
+                      setEditingInternship({...editingInternship, payFrequency: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="One-Time">One Time</SelectItem>
+                      <SelectItem value="Monthly">Monthly</SelectItem>
+                      <SelectItem value="Weekly">Weekly</SelectItem>
+                      <SelectItem value="None">None</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-openings">Openings</Label>
+                  <Input
+                    id="edit-openings"
+                    type="number"
+                    value={editingInternship.openings}
+                    onChange={(e) => setEditingInternship({...editingInternship, openings: Number(e.target.value)})}
+                    placeholder="Number of openings"
+                    min="1"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-applicationDeadline">Application Deadline *</Label>
+                  <Input
+                    id="edit-applicationDeadline"
+                    type="date"
+                    value={editingInternship.applicationDeadline.split('T')[0]}
+                    onChange={(e) => setEditingInternship({...editingInternship, applicationDeadline: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Status</Label>
+                  <Select
+                    value={editingInternship.status}
+                    onValueChange={(value: 'Open' | 'Closed' | 'On Hold') => 
+                      setEditingInternship({...editingInternship, status: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Open">Open</SelectItem>
+                      <SelectItem value="Closed">Closed</SelectItem>
+                      <SelectItem value="On Hold">On Hold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="edit-description">Description *</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editingInternship.description || ''}
+                  onChange={(e) => setEditingInternship({...editingInternship, description: e.target.value})}
+                  placeholder="Detailed description of the internship, responsibilities, requirements, etc."
+                  rows={4}
+                  required
+                />
+              </div>
+
+              {/* Skills and Perks */}
+              <div className="space-y-3">
+                <h3 className="font-semibold">Requirements</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-skills">Required Skills (comma separated)</Label>
+                  <Input
+                    id="edit-skills"
+                    value={(editingInternship.skills || []).join(', ')}
+                    onChange={(e) => handleSkillsChange(e, true)}
+                    placeholder="React, Node.js, JavaScript, ..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-qualification">Qualification</Label>
+                  <Input
+                    id="edit-qualification"
+                    value={editingInternship.qualification || ''}
+                    onChange={(e) => setEditingInternship({...editingInternship, qualification: e.target.value})}
+                    placeholder="e.g., Any Graduate, B.Tech, etc."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-experience">Experience Required</Label>
+                  <Input
+                    id="edit-experience"
+                    value={editingInternship.experienceRequired || ''}
+                    onChange={(e) => setEditingInternship({...editingInternship, experienceRequired: e.target.value})}
+                    placeholder="e.g., 0-1 years, 1-2 years"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold">Benefits</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-perks">Perks (comma separated)</Label>
+                  <Input
+                    id="edit-perks"
+                    value={(editingInternship.perks || []).join(', ')}
+                    onChange={(e) => handlePerksChange(e, true)}
+                    placeholder="Flexible hours, Certificate, Letter of recommendation, ..."
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={editingInternship.certificateProvided || false}
+                    onCheckedChange={(checked) => 
+                      setEditingInternship({...editingInternship, certificateProvided: checked})
+                    }
+                  />
+                  <Label>Certificate Provided</Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={editingInternship.letterOfRecommendation || false}
+                    onCheckedChange={(checked) => 
+                      setEditingInternship({...editingInternship, letterOfRecommendation: checked})
+                    }
+                  />
+                  <Label>Letter of Recommendation</Label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={updateInternship} disabled={updating}>
+              {updating ? 'Updating...' : 'Update Internship'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Filters and Search */}
       <Card>
         <CardContent className="pt-6">
@@ -825,7 +1252,11 @@ const InternshipsManagement = () => {
                           <Button variant="outline" size="sm">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditClick(internship)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button 
