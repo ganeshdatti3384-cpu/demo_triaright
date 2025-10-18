@@ -1,4 +1,4 @@
-// Index.tsx (updated with Pack365 section)
+// Index.tsx (updated - removed ImageSlider and all Internships sections)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,7 +8,6 @@ import FeaturesSection from '../components/FeaturesSection';
 import AboutSection from '../components/AboutSection';
 import PartnersSection from '../components/PartnersSection';
 import Footer from '../components/Footer';
-import ImageSlider from '../components/ImageSlider';
 import CourseCards from '../components/CourseCards';
 import SuccessStories from '../components/SuccessStories';
 import Pack365Courses from '../components/Pack365Courses';
@@ -19,95 +18,6 @@ import { ArrowRight } from 'lucide-react';
 
 // Import CubeAnimation component
 import CubeAnimation from '../components/CubeAnimation';
-
-// ----- ADD THIS IMPORT -----
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
-
-// ------- All Internships Data --------
-const internships = [
-  {
-    id: 1,
-    role: "Software Development Intern",
-    company: "Tech Innovators",
-    duration: "6 months",
-    technologies: ["Java", "Spring Boot", "MySQL"],
-    category: "IT",
-    feeType: "Stipend",
-    stipend: "₹15,000/month",
-    location: "Hyderabad",
-    description: "Work on enterprise applications and learn full-stack development.",
-    requirements: "Computer Science background, Java knowledge",
-  },
-  {
-    id: 2,
-    role: "Frontend Development Intern",
-    company: "Web Solutions Inc",
-    duration: "3 months",
-    technologies: ["React", "TypeScript", "CSS"],
-    category: "IT",
-    feeType: "Stipend",
-    stipend: "₹12,000/month",
-    location: "Bangalore",
-    description: "Build modern user interfaces using React and TypeScript.",
-    requirements: "JavaScript, HTML, CSS knowledge",
-  },
-  {
-    id: 3,
-    role: "Data Science Intern",
-    company: "Data Analytics Corp",
-    duration: "4 months",
-    technologies: ["Python", "Pandas", "Machine Learning"],
-    category: "Data Science",
-    feeType: "Stipend",
-    stipend: "₹18,000/month",
-    location: "Remote",
-    description: "Work on data analysis and machine learning projects.",
-    requirements: "Python, Statistics knowledge",
-  },
-  {
-    id: 4,
-    role: "Mobile App Development Intern",
-    company: "App Creators",
-    duration: "5 months",
-    technologies: ["React Native", "Firebase", "JavaScript"],
-    category: "IT",
-    feeType: "Stipend",
-    stipend: "₹14,000/month",
-    location: "Chennai",
-    description: "Develop cross-platform mobile applications.",
-    requirements: "JavaScript, React knowledge preferred",
-  },
-  {
-    id: 5,
-    role: "Digital Marketing Intern",
-    company: "Marketing Pro",
-    duration: "3 months",
-    technologies: ["SEO", "Social Media", "Google Analytics"],
-    category: "Marketing",
-    feeType: "Stipend",
-    stipend: "₹10,000/month",
-    location: "Delhi",
-    description: "Learn and implement digital marketing strategies.",
-    requirements: "Good communication skills",
-  }
-];
-
-// ------ Slider (carousel) settings ------
-const sliderSettings = {
-  dots: true,
-  infinite: true,
-  speed: 600,
-  slidesToShow: 3,
-  slidesToScroll: 1,
-  autoplay: true,
-  autoplaySpeed: 2500,
-  responsive: [
-    { breakpoint: 1024, settings: { slidesToShow: 2 } },
-    { breakpoint: 600, settings: { slidesToShow: 1 } }
-  ]
-};
 
 // Data for cube animations
 const coursesCubeData = [
@@ -183,7 +93,6 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Navbar />
       <Hero onOpenAuth={openLoginDialog} />
-      <ImageSlider />
 
       {/* --- Cube Animation Sections --- */}
       
@@ -280,58 +189,6 @@ const Index = () => {
             loading={loading} 
             error={error} 
           />
-        </div>
-      </section>
-
-      {/* --- Internships (Grid) Section --- */}
-      <section className="py-16 bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Latest Internships</h2>
-            <p className="text-lg text-gray-600">Find internship opportunities tailored for you!</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-            {internships.map((intern) => (
-              <div key={intern.id} className="bg-white rounded-lg shadow-lg p-6 flex flex-col">
-                <h3 className="text-xl font-semibold text-blue-800 mb-2">{intern.role}</h3>
-                <p className="text-gray-700 font-medium mb-1">{intern.company} — {intern.location}</p>
-                <p className="text-gray-500 font-semibold mb-1">
-                  {intern.duration} | {intern.category} | {intern.feeType}
-                  {intern.stipend ? ` (${intern.stipend})` : ''}
-                </p>
-                <p className="text-gray-600 mb-2">{intern.description}</p>
-                <p className="text-sm text-gray-600 mb-1"><strong>Technologies:</strong> {intern.technologies.join(', ')}</p>
-                <p className="text-sm text-gray-600 mb-1"><strong>Requirements:</strong> {intern.requirements}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* --- Internships Carousel (Pack365 style) --- */}
-      <section className="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Internships - Moving Cards (Pack365 Style)</h2>
-            <p className="text-lg text-gray-600">Scroll to explore internships just like Pack365 bundles</p>
-          </div>
-          <Slider {...sliderSettings}>
-            {internships.map((intern) => (
-              <div key={intern.id} className="px-4">
-                <div className="bg-white rounded-lg shadow-lg p-6 flex flex-col transition-transform duration-300 hover:scale-105">
-                  <h3 className="text-xl font-semibold text-blue-800 mb-2">{intern.role}</h3>
-                  <p className="text-gray-700 font-medium mb-1">{intern.company} — {intern.location}</p>
-                  <p className="text-gray-500 font-semibold mb-1">
-                    {intern.duration} | {intern.category} | {intern.feeType}
-                    {intern.stipend ? ` (${intern.stipend})` : ''}
-                  </p>
-                  <p className="text-gray-600 mb-2">{intern.description}</p>
-                  <p className="text-sm text-gray-600 mb-1"><strong>Technologies:</strong> {intern.technologies.join(', ')}</p>
-                  <p className="text-sm text-gray-600 mb-1"><strong>Requirements:</strong> {intern.requirements}</p>
-                </div>
-              </div>
-            ))}
-          </Slider>
         </div>
       </section>
 
