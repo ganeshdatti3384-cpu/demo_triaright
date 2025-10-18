@@ -1,4 +1,4 @@
-// Index.tsx (updated with ServicesOverview component)
+// Index.tsx (updated - Services moved after Partners)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,7 +12,7 @@ import CourseCards from '../components/CourseCards';
 import SuccessStories from '../components/SuccessStories';
 import Pack365Courses from '../components/Pack365Courses';
 import RecordedCoursesList, { Course } from '../components/RecordedCoursesList';
-import ServicesOverview from '../components/ServicesOverview'; // New import
+import ServicesOverview from '../components/ServicesOverview'; 
 import { courseApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
@@ -94,9 +94,6 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Navbar />
       <Hero onOpenAuth={openLoginDialog} />
-
-      {/* --- Services Overview Section --- */}
-      <ServicesOverview />
 
       {/* --- Cube Animation Sections --- */}
       
@@ -199,6 +196,10 @@ const Index = () => {
       <FeaturesSection />
       <AboutSection />
       <PartnersSection />
+
+      {/* --- Services Overview Section (Moved after Partners) --- */}
+      <ServicesOverview />
+
       <Footer />
     </div>
   );
