@@ -63,6 +63,9 @@ const InternshipsManagement = () => {
     currency: 'INR' as const
   });
 
+  // Get base URL from environment or use relative path
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
   useEffect(() => {
     fetchInternships();
   }, []);
@@ -72,7 +75,7 @@ const InternshipsManagement = () => {
     if (!token) {
       toast({
         title: 'Error',
-        description: 'No authentication token found',
+        description: 'No authentication token found. Please login again.',
         variant: 'destructive'
       });
       return;
@@ -80,32 +83,49 @@ const InternshipsManagement = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/internships', {
+      console.log('Fetching internships from:', `${API_BASE_URL}/api/internships`);
+      
+      const response = await fetch(`${API_BASE_URL}/api/internships`, {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
       });
 
       console.log('Fetch response status:', response.status);
+      console.log('Fetch response headers:', response.headers);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched internships:', data);
+        console.log('Fetched internships data:', data);
         setInternships(data);
       } else {
         const errorText = await response.text();
-        console.error('Fetch error:', errorText);
-        toast({
-          title: 'Error',
-          description: `Failed to load internships: ${response.status} ${response.statusText}`,
-          variant: 'destructive'
+        console.error('Fetch error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
         });
+        
+        if (response.status === 401) {
+          toast({
+            title: 'Authentication Error',
+            description: 'Please login again',
+            variant: 'destructive'
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: `Failed to load internships: ${response.status} ${response.statusText}`,
+            variant: 'destructive'
+          });
+        }
       }
-    } catch (error) {
-      console.error('Error fetching internships:', error);
+    } catch (error: any) {
+      console.error('Network error fetching internships:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load internships',
+        title: 'Network Error',
+        description: 'Failed to connect to server. Please check your connection.',
         variant: 'destructive'
       });
     } finally {
@@ -118,17 +138,35 @@ const InternshipsManagement = () => {
     if (!token) {
       toast({
         title: 'Error',
-        description: 'No authentication token found',
+        description: 'No authentication token found. Please login again.',
         variant: 'destructive'
       });
       return;
     }
 
-    // Validation
-    if (!newInternship.title || !newInternship.companyName || !newInternship.description) {
+    // Enhanced validation
+    if (!newInternship.title.trim()) {
       toast({
         title: 'Error',
-        description: 'Please fill in all required fields',
+        description: 'Internship title is required',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!newInternship.companyName.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Company name is required',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!newInternship.description.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Description is required',
         variant: 'destructive'
       });
       return;
@@ -139,14 +177,14 @@ const InternshipsManagement = () => {
       
       // Prepare the data according to your backend schema
       const internshipData = {
-        title: newInternship.title,
-        description: newInternship.description,
-        companyName: newInternship.companyName,
-        location: newInternship.location,
+        title: newInternship.title.trim(),
+        description: newInternship.description.trim(),
+        companyName: newInternship.companyName.trim(),
+        location: newInternship.location.trim(),
         internshipType: newInternship.internshipType,
-        category: newInternship.category,
+        category: newInternship.category.trim(),
         duration: newInternship.duration,
-        startDate: newInternship.startDate,
+        startDate: newInternship.startDate || undefined,
         applicationDeadline: newInternship.applicationDeadline,
         mode: newInternship.mode,
         stipendAmount: newInternship.mode === 'Paid' ? newInternship.stipendAmount : 0,
@@ -155,7 +193,7 @@ const InternshipsManagement = () => {
         qualification: newInternship.qualification,
         experienceRequired: newInternship.experienceRequired,
         skills: newInternship.skills,
-        openings: newInternship.openings,
+        openings: Number(newInternship.openings) || 1,
         perks: newInternship.perks,
         certificateProvided: newInternship.certificateProvided,
         letterOfRecommendation: newInternship.letterOfRecommendation,
@@ -163,8 +201,9 @@ const InternshipsManagement = () => {
       };
 
       console.log('Sending internship data:', internshipData);
+      console.log('API URL:', `${API_BASE_URL}/api/internships`);
 
-      const response = await fetch('/api/internships', {
+      const response = await fetch(`${API_BASE_URL}/api/internships`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -174,14 +213,25 @@ const InternshipsManagement = () => {
       });
 
       console.log('Create response status:', response.status);
+      console.log('Create response headers:', response.headers);
       
+      const responseText = await response.text();
+      console.log('Create response text:', responseText);
+
+      let responseData;
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {};
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', responseText);
+        responseData = { message: responseText };
+      }
+
       if (response.ok) {
-        const createdInternship = await response.json();
-        console.log('Created internship:', createdInternship);
+        console.log('Internship created successfully:', responseData);
         
         toast({
           title: 'Success',
-          description: 'Internship created successfully',
+          description: responseData.message || 'Internship created successfully',
         });
         
         setIsCreateDialogOpen(false);
@@ -213,18 +263,29 @@ const InternshipsManagement = () => {
         // Refresh the list
         fetchInternships();
       } else {
-        const errorText = await response.text();
-        console.error('Create error response:', errorText);
+        console.error('Create error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData
+        });
+        
+        let errorMessage = `Failed to create internship: ${response.status} ${response.statusText}`;
+        if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        }
+
         toast({
           title: 'Error',
-          description: `Failed to create internship: ${response.status} ${response.statusText}`,
+          description: errorMessage,
           variant: 'destructive'
         });
       }
     } catch (error: any) {
-      console.error('Error creating internship:', error);
+      console.error('Network error creating internship:', error);
       toast({
-        title: 'Error',
+        title: 'Network Error',
         description: `Failed to create internship: ${error.message}`,
         variant: 'destructive'
       });
@@ -235,15 +296,29 @@ const InternshipsManagement = () => {
 
   const deleteInternship = async (id: string) => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      toast({
+        title: 'Error',
+        description: 'No authentication token found',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this internship?')) {
+      return;
+    }
 
     try {
-      const response = await fetch(`/api/internships/${id}`, {
+      console.log('Deleting internship:', id);
+      const response = await fetch(`${API_BASE_URL}/api/internships/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+
+      console.log('Delete response status:', response.status);
 
       if (response.ok) {
         toast({
@@ -324,308 +399,315 @@ const InternshipsManagement = () => {
           <h2 className="text-2xl font-bold">Internships Management</h2>
           <p className="text-gray-500">Manage and monitor all internship listings</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Internship
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Internship</DialogTitle>
-              <DialogDescription>
-                Fill in the details to create a new internship listing.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Basic Information */}
-              <div className="space-y-3">
-                <h3 className="font-semibold">Basic Information</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    value={newInternship.title}
-                    onChange={(e) => setNewInternship({...newInternship, title: e.target.value})}
-                    placeholder="Internship Title"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Company Name *</Label>
-                  <Input
-                    id="companyName"
-                    value={newInternship.companyName}
-                    onChange={(e) => setNewInternship({...newInternship, companyName: e.target.value})}
-                    placeholder="Company Name"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={newInternship.location}
-                    onChange={(e) => setNewInternship({...newInternship, location: e.target.value})}
-                    placeholder="Location"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="internshipType">Internship Type</Label>
-                  <Select
-                    value={newInternship.internshipType}
-                    onValueChange={(value: 'Remote' | 'On-Site' | 'Hybrid') => 
-                      setNewInternship({...newInternship, internshipType: value})
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Remote">Remote</SelectItem>
-                      <SelectItem value="On-Site">On-Site</SelectItem>
-                      <SelectItem value="Hybrid">Hybrid</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Input
-                    id="category"
-                    value={newInternship.category}
-                    onChange={(e) => setNewInternship({...newInternship, category: e.target.value})}
-                    placeholder="e.g., Web Development, Data Science"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duration Type</Label>
-                  <Select
-                    value={newInternship.duration}
-                    onValueChange={(value: 'Shortterm' | 'Longterm' | 'others') => 
-                      setNewInternship({...newInternship, duration: value})
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Shortterm">Short Term</SelectItem>
-                      <SelectItem value="Longterm">Long Term</SelectItem>
-                      <SelectItem value="others">Others</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Details */}
-              <div className="space-y-3">
-                <h3 className="font-semibold">Details</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="mode">Mode</Label>
-                  <Select
-                    value={newInternship.mode}
-                    onValueChange={(value: 'Unpaid' | 'Paid' | 'FeeBased') => 
-                      setNewInternship({...newInternship, mode: value})
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Unpaid">Unpaid</SelectItem>
-                      <SelectItem value="Paid">Paid</SelectItem>
-                      <SelectItem value="FeeBased">Fee Based</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {newInternship.mode === 'Paid' && (
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={fetchInternships} disabled={loading}>
+            Refresh
+          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Internship
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create New Internship</DialogTitle>
+                <DialogDescription>
+                  Fill in the details to create a new internship listing. Fields marked with * are required.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Basic Information */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Basic Information</h3>
+                  
                   <div className="space-y-2">
-                    <Label htmlFor="stipendAmount">Stipend Amount</Label>
+                    <Label htmlFor="title">Title *</Label>
                     <Input
-                      id="stipendAmount"
-                      type="number"
-                      value={newInternship.stipendAmount}
-                      onChange={(e) => setNewInternship({...newInternship, stipendAmount: Number(e.target.value)})}
-                      placeholder="Stipend Amount"
+                      id="title"
+                      value={newInternship.title}
+                      onChange={(e) => setNewInternship({...newInternship, title: e.target.value})}
+                      placeholder="Internship Title"
+                      required
                     />
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="payFrequency">Pay Frequency</Label>
-                  <Select
-                    value={newInternship.payFrequency}
-                    onValueChange={(value: 'One-Time' | 'Monthly' | 'Weekly' | 'None') => 
-                      setNewInternship({...newInternship, payFrequency: value})
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="One-Time">One Time</SelectItem>
-                      <SelectItem value="Monthly">Monthly</SelectItem>
-                      <SelectItem value="Weekly">Weekly</SelectItem>
-                      <SelectItem value="None">None</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Company Name *</Label>
+                    <Input
+                      id="companyName"
+                      value={newInternship.companyName}
+                      onChange={(e) => setNewInternship({...newInternship, companyName: e.target.value})}
+                      placeholder="Company Name"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
+                    <Input
+                      id="location"
+                      value={newInternship.location}
+                      onChange={(e) => setNewInternship({...newInternship, location: e.target.value})}
+                      placeholder="Location"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="internshipType">Internship Type</Label>
+                    <Select
+                      value={newInternship.internshipType}
+                      onValueChange={(value: 'Remote' | 'On-Site' | 'Hybrid') => 
+                        setNewInternship({...newInternship, internshipType: value})
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Remote">Remote</SelectItem>
+                        <SelectItem value="On-Site">On-Site</SelectItem>
+                        <SelectItem value="Hybrid">Hybrid</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Input
+                      id="category"
+                      value={newInternship.category}
+                      onChange={(e) => setNewInternship({...newInternship, category: e.target.value})}
+                      placeholder="e.g., Web Development, Data Science"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="duration">Duration Type</Label>
+                    <Select
+                      value={newInternship.duration}
+                      onValueChange={(value: 'Shortterm' | 'Longterm' | 'others') => 
+                        setNewInternship({...newInternship, duration: value})
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Shortterm">Short Term</SelectItem>
+                        <SelectItem value="Longterm">Long Term</SelectItem>
+                        <SelectItem value="others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="openings">Openings</Label>
-                  <Input
-                    id="openings"
-                    type="number"
-                    value={newInternship.openings}
-                    onChange={(e) => setNewInternship({...newInternship, openings: Number(e.target.value)})}
-                    placeholder="Number of openings"
-                    min="1"
+                {/* Details */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Details</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="mode">Mode</Label>
+                    <Select
+                      value={newInternship.mode}
+                      onValueChange={(value: 'Unpaid' | 'Paid' | 'FeeBased') => 
+                        setNewInternship({...newInternship, mode: value})
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Unpaid">Unpaid</SelectItem>
+                        <SelectItem value="Paid">Paid</SelectItem>
+                        <SelectItem value="FeeBased">Fee Based</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {newInternship.mode === 'Paid' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="stipendAmount">Stipend Amount (INR)</Label>
+                      <Input
+                        id="stipendAmount"
+                        type="number"
+                        value={newInternship.stipendAmount}
+                        onChange={(e) => setNewInternship({...newInternship, stipendAmount: Number(e.target.value)})}
+                        placeholder="Stipend Amount"
+                        min="0"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payFrequency">Pay Frequency</Label>
+                    <Select
+                      value={newInternship.payFrequency}
+                      onValueChange={(value: 'One-Time' | 'Monthly' | 'Weekly' | 'None') => 
+                        setNewInternship({...newInternship, payFrequency: value})
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="One-Time">One Time</SelectItem>
+                        <SelectItem value="Monthly">Monthly</SelectItem>
+                        <SelectItem value="Weekly">Weekly</SelectItem>
+                        <SelectItem value="None">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="openings">Openings</Label>
+                    <Input
+                      id="openings"
+                      type="number"
+                      value={newInternship.openings}
+                      onChange={(e) => setNewInternship({...newInternship, openings: Number(e.target.value)})}
+                      placeholder="Number of openings"
+                      min="1"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="applicationDeadline">Application Deadline *</Label>
+                    <Input
+                      id="applicationDeadline"
+                      type="date"
+                      value={newInternship.applicationDeadline}
+                      onChange={(e) => setNewInternship({...newInternship, applicationDeadline: e.target.value})}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={newInternship.startDate}
+                      onChange={(e) => setNewInternship({...newInternship, startDate: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="description">Description *</Label>
+                  <Textarea
+                    id="description"
+                    value={newInternship.description}
+                    onChange={(e) => setNewInternship({...newInternship, description: e.target.value})}
+                    placeholder="Detailed description of the internship, responsibilities, requirements, etc."
+                    rows={4}
+                    required
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="applicationDeadline">Application Deadline</Label>
-                  <Input
-                    id="applicationDeadline"
-                    type="date"
-                    value={newInternship.applicationDeadline}
-                    onChange={(e) => setNewInternship({...newInternship, applicationDeadline: e.target.value})}
-                  />
+                {/* Skills and Perks */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Requirements</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="skills">Required Skills (comma separated)</Label>
+                    <Input
+                      id="skills"
+                      value={newInternship.skills.join(', ')}
+                      onChange={handleSkillsChange}
+                      placeholder="React, Node.js, JavaScript, ..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="qualification">Qualification</Label>
+                    <Input
+                      id="qualification"
+                      value={newInternship.qualification}
+                      onChange={(e) => setNewInternship({...newInternship, qualification: e.target.value})}
+                      placeholder="e.g., Any Graduate, B.Tech, etc."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="experience">Experience Required</Label>
+                    <Input
+                      id="experience"
+                      value={newInternship.experienceRequired}
+                      onChange={(e) => setNewInternship({...newInternship, experienceRequired: e.target.value})}
+                      placeholder="e.g., 0-1 years, 1-2 years"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={newInternship.startDate}
-                    onChange={(e) => setNewInternship({...newInternship, startDate: e.target.value})}
-                  />
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Benefits</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="perks">Perks (comma separated)</Label>
+                    <Input
+                      id="perks"
+                      value={newInternship.perks.join(', ')}
+                      onChange={handlePerksChange}
+                      placeholder="Flexible hours, Certificate, Letter of recommendation, ..."
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={newInternship.certificateProvided}
+                      onCheckedChange={(checked) => 
+                        setNewInternship({...newInternship, certificateProvided: checked})
+                      }
+                    />
+                    <Label>Certificate Provided</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={newInternship.letterOfRecommendation}
+                      onCheckedChange={(checked) => 
+                        setNewInternship({...newInternship, letterOfRecommendation: checked})
+                      }
+                    />
+                    <Label>Letter of Recommendation</Label>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select
+                      value={newInternship.status}
+                      onValueChange={(value: 'Open' | 'Closed' | 'On Hold') => 
+                        setNewInternship({...newInternship, status: value})
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Open">Open</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
+                        <SelectItem value="On Hold">On Hold</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
-              {/* Description */}
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="description">Description *</Label>
-                <Textarea
-                  id="description"
-                  value={newInternship.description}
-                  onChange={(e) => setNewInternship({...newInternship, description: e.target.value})}
-                  placeholder="Detailed description of the internship, responsibilities, requirements, etc."
-                  rows={4}
-                  required
-                />
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={createInternship} disabled={creating}>
+                  {creating ? 'Creating...' : 'Create Internship'}
+                </Button>
               </div>
-
-              {/* Skills and Perks */}
-              <div className="space-y-3">
-                <h3 className="font-semibold">Requirements</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="skills">Required Skills (comma separated)</Label>
-                  <Input
-                    id="skills"
-                    value={newInternship.skills.join(', ')}
-                    onChange={handleSkillsChange}
-                    placeholder="React, Node.js, JavaScript, ..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="qualification">Qualification</Label>
-                  <Input
-                    id="qualification"
-                    value={newInternship.qualification}
-                    onChange={(e) => setNewInternship({...newInternship, qualification: e.target.value})}
-                    placeholder="e.g., Any Graduate, B.Tech, etc."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="experience">Experience Required</Label>
-                  <Input
-                    id="experience"
-                    value={newInternship.experienceRequired}
-                    onChange={(e) => setNewInternship({...newInternship, experienceRequired: e.target.value})}
-                    placeholder="e.g., 0-1 years, 1-2 years"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="font-semibold">Benefits</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="perks">Perks (comma separated)</Label>
-                  <Input
-                    id="perks"
-                    value={newInternship.perks.join(', ')}
-                    onChange={handlePerksChange}
-                    placeholder="Flexible hours, Certificate, Letter of recommendation, ..."
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={newInternship.certificateProvided}
-                    onCheckedChange={(checked) => 
-                      setNewInternship({...newInternship, certificateProvided: checked})
-                    }
-                  />
-                  <Label>Certificate Provided</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={newInternship.letterOfRecommendation}
-                    onCheckedChange={(checked) => 
-                      setNewInternship({...newInternship, letterOfRecommendation: checked})
-                    }
-                  />
-                  <Label>Letter of Recommendation</Label>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={newInternship.status}
-                    onValueChange={(value: 'Open' | 'Closed' | 'On Hold') => 
-                      setNewInternship({...newInternship, status: value})
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Open">Open</SelectItem>
-                      <SelectItem value="Closed">Closed</SelectItem>
-                      <SelectItem value="On Hold">On Hold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={createInternship} disabled={creating}>
-                {creating ? 'Creating...' : 'Create Internship'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filters and Search */}
@@ -636,7 +718,7 @@ const InternshipsManagement = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                 <Input
-                  placeholder="Search internships..."
+                  placeholder="Search internships by title or company..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -678,6 +760,7 @@ const InternshipsManagement = () => {
           <CardTitle>Internships List</CardTitle>
           <CardDescription>
             {filteredInternships.length} internship(s) found
+            {loading && ' - Loading...'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -686,85 +769,79 @@ const InternshipsManagement = () => {
               <p>Loading internships...</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Mode</TableHead>
-                  <TableHead>Stipend</TableHead>
-                  <TableHead>Openings</TableHead>
-                  <TableHead>Deadline</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInternships.map((internship) => (
-                  <TableRow key={internship._id}>
-                    <TableCell className="font-medium">{internship.title}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-gray-500" />
-                        {internship.companyName}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-500" />
-                        {internship.location}
-                      </div>
-                    </TableCell>
-                    <TableCell>{internship.internshipType}</TableCell>
-                    <TableCell>{getModeBadge(internship.mode)}</TableCell>
-                    <TableCell>
-                      {internship.mode === 'Paid' && internship.stipendAmount ? (
-                        <div className="flex items-center gap-1">
-                          <IndianRupee className="h-3 w-3" />
-                          {internship.stipendAmount.toLocaleString()}
-                        </div>
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell>{internship.openings}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-500" />
-                        {new Date(internship.applicationDeadline).toLocaleDateString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(internship.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => deleteInternship(internship._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredInternships.length === 0 && (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                      No internships found
-                    </TableCell>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Mode</TableHead>
+                    <TableHead>Stipend</TableHead>
+                    <TableHead>Openings</TableHead>
+                    <TableHead>Deadline</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredInternships.map((internship) => (
+                    <TableRow key={internship._id}>
+                      <TableCell className="font-medium">{internship.title}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-gray-500" />
+                          {internship.companyName}
+                        </div>
+                      </TableCell>
+                      <TableCell>{internship.location}</TableCell>
+                      <TableCell>{internship.internshipType}</TableCell>
+                      <TableCell>{getModeBadge(internship.mode)}</TableCell>
+                      <TableCell>
+                        {internship.mode === 'Paid' && internship.stipendAmount ? (
+                          <div className="flex items-center gap-1">
+                            <IndianRupee className="h-3 w-3" />
+                            {internship.stipendAmount.toLocaleString()}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
+                      <TableCell>{internship.openings}</TableCell>
+                      <TableCell>
+                        {new Date(internship.applicationDeadline).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(internship.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => deleteInternship(internship._id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredInternships.length === 0 && !loading && (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                        {internships.length === 0 ? 'No internships found. Create your first internship!' : 'No internships match your search criteria.'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
