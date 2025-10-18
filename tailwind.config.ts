@@ -1,4 +1,4 @@
-
+// tailwind.config.ts
 import type { Config } from "tailwindcss";
 
 export default {
@@ -93,14 +93,45 @@ export default {
 				'fade-in': {
 					'0%': { opacity: '0', transform: 'translateY(20px)' },
 					'100%': { opacity: '1', transform: 'translateY(0)' }
+				},
+				// Cube animation keyframes
+				'rotate-cube': {
+					'0%': { transform: 'rotateX(-20deg) rotateY(0deg)' },
+					'100%': { transform: 'rotateX(-20deg) rotateY(360deg)' },
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0) rotate(0deg)' },
+					'50%': { transform: 'translateY(-20px) rotate(5deg)' },
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'scroll': 'scroll 30s linear infinite',
-				'fade-in': 'fade-in 0.6s ease-out'
-			}
+				'fade-in': 'fade-in 0.6s ease-out',
+				// Cube animations
+				'rotate-cube': 'rotate-cube 20s infinite linear',
+				'float-1': 'float 6s infinite ease-in-out',
+				'float-2': 'float 7s infinite ease-in-out -2s',
+				'float-3': 'float 8s infinite ease-in-out -4s',
+			},
+			// 3D transform utilities
+			transformStyle: {
+				'preserve-3d': 'preserve-3d',
+			},
+			perspective: {
+				'1000': '1000px',
+			},
+			translate: {
+				'z-20': '20px',
+			},
+			rotate: {
+				'y-180': '180deg',
+				'y-90': '90deg',
+				'y-270': '270deg',
+				'x-90': '90deg',
+				'x-270': '270deg',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
