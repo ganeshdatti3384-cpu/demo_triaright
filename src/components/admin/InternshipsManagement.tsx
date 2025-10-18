@@ -93,7 +93,6 @@ const InternshipsManagement = () => {
       });
 
       console.log('Fetch response status:', response.status);
-      console.log('Fetch response headers:', response.headers);
       
       if (response.ok) {
         const data = await response.json();
@@ -172,6 +171,15 @@ const InternshipsManagement = () => {
       return;
     }
 
+    if (!newInternship.applicationDeadline) {
+      toast({
+        title: 'Error',
+        description: 'Application deadline is required',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     try {
       setCreating(true);
       
@@ -213,7 +221,6 @@ const InternshipsManagement = () => {
       });
 
       console.log('Create response status:', response.status);
-      console.log('Create response headers:', response.headers);
       
       const responseText = await response.text();
       console.log('Create response text:', responseText);
