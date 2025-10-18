@@ -21,7 +21,7 @@ interface Internship {
   location: string;
   internshipType: 'Remote' | 'On-Site' | 'Hybrid';
   category: string;
-  mode: 'Free' | 'Paid' | 'Pay-to-Work';
+  mode: 'Unpaid' | 'Paid' | 'FeeBased';
   stipendAmount?: number;
   status: 'Open' | 'Closed' | 'On Hold';
   applicationDeadline: string;
@@ -46,9 +46,9 @@ const InternshipsManagement = () => {
     internshipType: 'Remote' as const,
     category: '',
     description: '',
-    mode: 'Free' as const,
+    mode: 'Unpaid' as const,
     stipendAmount: 0,
-    duration: '3 Months',
+    duration: 'Shortterm' as const,
     startDate: '',
     applicationDeadline: '',
     qualification: 'Any Graduate',
@@ -59,7 +59,7 @@ const InternshipsManagement = () => {
     certificateProvided: true,
     letterOfRecommendation: false,
     status: 'Open' as const,
-    payFrequency: 'Monthly' as const,
+    payFrequency: 'None' as const,
     currency: 'INR' as const
   });
 
@@ -193,9 +193,9 @@ const InternshipsManagement = () => {
           internshipType: 'Remote',
           category: '',
           description: '',
-          mode: 'Free',
+          mode: 'Unpaid',
           stipendAmount: 0,
-          duration: '3 Months',
+          duration: 'Shortterm',
           startDate: '',
           applicationDeadline: '',
           qualification: 'Any Graduate',
@@ -206,7 +206,7 @@ const InternshipsManagement = () => {
           certificateProvided: true,
           letterOfRecommendation: false,
           status: 'Open',
-          payFrequency: 'Monthly',
+          payFrequency: 'None',
           currency: 'INR'
         });
         
@@ -305,9 +305,9 @@ const InternshipsManagement = () => {
 
   const getModeBadge = (mode: string) => {
     const variants = {
-      'Free': 'default',
+      'Unpaid': 'default',
       'Paid': 'default',
-      'Pay-to-Work': 'destructive'
+      'FeeBased': 'destructive'
     } as const;
 
     return (
@@ -404,6 +404,25 @@ const InternshipsManagement = () => {
                     placeholder="e.g., Web Development, Data Science"
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="duration">Duration Type</Label>
+                  <Select
+                    value={newInternship.duration}
+                    onValueChange={(value: 'Shortterm' | 'Longterm' | 'others') => 
+                      setNewInternship({...newInternship, duration: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Shortterm">Short Term</SelectItem>
+                      <SelectItem value="Longterm">Long Term</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Details */}
@@ -414,7 +433,7 @@ const InternshipsManagement = () => {
                   <Label htmlFor="mode">Mode</Label>
                   <Select
                     value={newInternship.mode}
-                    onValueChange={(value: 'Free' | 'Paid' | 'Pay-to-Work') => 
+                    onValueChange={(value: 'Unpaid' | 'Paid' | 'FeeBased') => 
                       setNewInternship({...newInternship, mode: value})
                     }
                   >
@@ -422,9 +441,9 @@ const InternshipsManagement = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Free">Free</SelectItem>
+                      <SelectItem value="Unpaid">Unpaid</SelectItem>
                       <SelectItem value="Paid">Paid</SelectItem>
-                      <SelectItem value="Pay-to-Work">Pay-to-Work</SelectItem>
+                      <SelectItem value="FeeBased">Fee Based</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -441,6 +460,26 @@ const InternshipsManagement = () => {
                     />
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="payFrequency">Pay Frequency</Label>
+                  <Select
+                    value={newInternship.payFrequency}
+                    onValueChange={(value: 'One-Time' | 'Monthly' | 'Weekly' | 'None') => 
+                      setNewInternship({...newInternship, payFrequency: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="One-Time">One Time</SelectItem>
+                      <SelectItem value="Monthly">Monthly</SelectItem>
+                      <SelectItem value="Weekly">Weekly</SelectItem>
+                      <SelectItem value="None">None</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="openings">Openings</Label>
@@ -518,13 +557,13 @@ const InternshipsManagement = () => {
                     id="experience"
                     value={newInternship.experienceRequired}
                     onChange={(e) => setNewInternship({...newInternship, experienceRequired: e.target.value})}
-                    placeholder="e.g., 0-1 years, Fresher, etc."
+                    placeholder="e.g., 0-1 years, 1-2 years"
                   />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h3 className="font-semibold">Perks & Benefits</h3>
+                <h3 className="font-semibold">Benefits</h3>
                 
                 <div className="space-y-2">
                   <Label htmlFor="perks">Perks (comma separated)</Label>
@@ -532,26 +571,47 @@ const InternshipsManagement = () => {
                     id="perks"
                     value={newInternship.perks.join(', ')}
                     onChange={handlePerksChange}
-                    placeholder="Certificate, LOR, Flexible hours, ..."
+                    placeholder="Flexible hours, Certificate, Letter of recommendation, ..."
                   />
                 </div>
 
                 <div className="flex items-center space-x-2">
                   <Switch
-                    id="certificate"
                     checked={newInternship.certificateProvided}
-                    onCheckedChange={(checked) => setNewInternship({...newInternship, certificateProvided: checked})}
+                    onCheckedChange={(checked) => 
+                      setNewInternship({...newInternship, certificateProvided: checked})
+                    }
                   />
-                  <Label htmlFor="certificate">Certificate Provided</Label>
+                  <Label>Certificate Provided</Label>
                 </div>
 
                 <div className="flex items-center space-x-2">
                   <Switch
-                    id="lor"
                     checked={newInternship.letterOfRecommendation}
-                    onCheckedChange={(checked) => setNewInternship({...newInternship, letterOfRecommendation: checked})}
+                    onCheckedChange={(checked) => 
+                      setNewInternship({...newInternship, letterOfRecommendation: checked})
+                    }
                   />
-                  <Label htmlFor="lor">Letter of Recommendation</Label>
+                  <Label>Letter of Recommendation</Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={newInternship.status}
+                    onValueChange={(value: 'Open' | 'Closed' | 'On Hold') => 
+                      setNewInternship({...newInternship, status: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Open">Open</SelectItem>
+                      <SelectItem value="Closed">Closed</SelectItem>
+                      <SelectItem value="On Hold">On Hold</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -568,30 +628,24 @@ const InternshipsManagement = () => {
         </Dialog>
       </div>
 
+      {/* Filters and Search */}
       <Card>
-        <CardHeader>
-          <CardTitle>All Internships</CardTitle>
-          <CardDescription>
-            Manage existing internships and their status
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                 <Input
                   placeholder="Search internships..."
-                  className="pl-8"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
                 />
               </div>
             </div>
             <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px]">
-                  <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -601,6 +655,7 @@ const InternshipsManagement = () => {
                   <SelectItem value="On Hold">On Hold</SelectItem>
                 </SelectContent>
               </Select>
+              
               <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Type" />
@@ -614,21 +669,36 @@ const InternshipsManagement = () => {
               </Select>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
+      {/* Internships Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Internships List</CardTitle>
+          <CardDescription>
+            {filteredInternships.length} internship(s) found
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           {loading ? (
-            <div className="text-center py-8">Loading internships...</div>
+            <div className="text-center py-8">
+              <p>Loading internships...</p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
                   <TableHead>Company</TableHead>
+                  <TableHead>Location</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Mode</TableHead>
+                  <TableHead>Stipend</TableHead>
                   <TableHead>Openings</TableHead>
                   <TableHead>Deadline</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -636,36 +706,39 @@ const InternshipsManagement = () => {
                   <TableRow key={internship._id}>
                     <TableCell className="font-medium">{internship.title}</TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2">
                         <Building2 className="h-4 w-4 text-gray-500" />
-                        <span>{internship.companyName}</span>
+                        {internship.companyName}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-gray-500" />
-                        <span>{internship.internshipType}</span>
+                        {internship.location}
                       </div>
                     </TableCell>
+                    <TableCell>{internship.internshipType}</TableCell>
+                    <TableCell>{getModeBadge(internship.mode)}</TableCell>
                     <TableCell>
-                      {getModeBadge(internship.mode)}
-                      {internship.mode === 'Paid' && internship.stipendAmount && (
-                        <div className="flex items-center text-sm text-green-600 mt-1">
+                      {internship.mode === 'Paid' && internship.stipendAmount ? (
+                        <div className="flex items-center gap-1">
                           <IndianRupee className="h-3 w-3" />
                           {internship.stipendAmount.toLocaleString()}
                         </div>
+                      ) : (
+                        '-'
                       )}
                     </TableCell>
                     <TableCell>{internship.openings}</TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-500" />
-                        <span>{new Date(internship.applicationDeadline).toLocaleDateString()}</span>
+                        {new Date(internship.applicationDeadline).toLocaleDateString()}
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(internship.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
+                    <TableCell>
+                      <div className="flex gap-2">
                         <Button variant="outline" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -673,7 +746,7 @@ const InternshipsManagement = () => {
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
-                          variant="destructive" 
+                          variant="outline" 
                           size="sm"
                           onClick={() => deleteInternship(internship._id)}
                         >
@@ -685,8 +758,8 @@ const InternshipsManagement = () => {
                 ))}
                 {filteredInternships.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                      {internships.length === 0 ? 'No internships found' : 'No internships matching your criteria'}
+                    <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                      No internships found
                     </TableCell>
                   </TableRow>
                 )}
