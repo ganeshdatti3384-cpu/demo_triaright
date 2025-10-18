@@ -59,11 +59,7 @@ const Navbar = () => {
   };
 
   const handleLogoClick = () => {
-    if (isAuthenticated && user?.role) {
-      navigate(`/${user.role}`);
-    } else {
-      navigate('/');
-    }
+    navigate('/');
   };
 
   const handleDashboardClick = () => {
