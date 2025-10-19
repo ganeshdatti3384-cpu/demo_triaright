@@ -23,15 +23,9 @@ const Navbar = () => {
       : []),
   ];
 
-  const trainingTypes = [
-    { name: 'CRT Training', description: 'Campus Recruitment Training', path: '#' },
-    { name: 'Pack365', description: 'Premium Learning Programs', path: '/pack365' },
-  ];
-
   // Define navigation menus that should be visible to all users
   const navigationMenus = [
-    { label: 'Courses', items: courseTypes },
-    { label: 'Training', items: trainingTypes }
+    { label: 'Courses', items: courseTypes }
   ];
 
   const handleRegisterClick = () => {
@@ -85,6 +79,12 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   };
 
+  // Direct navigation to Pack365 page
+  const handlePack365Click = () => {
+    navigate('/pack365');
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <nav className="bg-white/90 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -102,31 +102,29 @@ const Navbar = () => {
 
           {/* Desktop Navigation - ALWAYS VISIBLE */}
           <div className="hidden md:flex items-center space-x-8">
-            {/* Menu Dropdowns - Show for all users */}
-            {navigationMenus.map((menu) => (
-              <DropdownMenu key={menu.label}>
-                <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
-                  <span>{menu.label}</span>
-                  <ChevronDown className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-white border shadow-lg">
-                  {menu.items.map((item) => (
-                    <DropdownMenuItem
-                      key={item.name}
-                      className="p-3 cursor-pointer"
-                      onClick={() => handleMenuItemClick(item.path)}
-                    >
-                      <div>
-                        <div className="font-medium">{item.name}</div>
-                        <div className="text-sm text-gray-500">{item.description}</div>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ))}
+            {/* Courses Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
+                <span>Courses</span>
+                <ChevronDown className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 bg-white border shadow-lg">
+                {courseTypes.map((item) => (
+                  <DropdownMenuItem
+                    key={item.name}
+                    className="p-3 cursor-pointer"
+                    onClick={() => handleMenuItemClick(item.path)}
+                  >
+                    <div>
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-sm text-gray-500">{item.description}</div>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-            {/* Direct Internships Link (Single link without icon) */}
+            {/* Direct Internships Link */}
             <Button
               variant="ghost"
               onClick={handleInternshipsClick}
@@ -135,13 +133,22 @@ const Navbar = () => {
               Internships
             </Button>
 
-            {/* Direct Jobs Link (Single link without icon) */}
+            {/* Direct Jobs Link */}
             <Button
               variant="ghost"
               onClick={handleJobsClick}
               className="text-gray-700 hover:text-brand-primary transition-colors"
             >
               Jobs
+            </Button>
+
+            {/* Direct Pack365 Link */}
+            <Button
+              variant="ghost"
+              onClick={handlePack365Click}
+              className="text-gray-700 hover:text-brand-primary transition-colors"
+            >
+              Pack365
             </Button>
           </div>
 
@@ -238,41 +245,40 @@ const Navbar = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-200 py-4">
             <div className="space-y-4">
-              {/* Show all navigation menus for mobile */}
-              {navigationMenus.map((section) => (
-                <div className="space-y-2" key={section.label}>
-                  <h3 className="font-semibold text-gray-900">{section.label}</h3>
-                  {section.items.map((item) => (
-                    <div
-                      key={item.name}
-                      className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
-                      onClick={() => handleMenuItemClick(item.path)}
-                    >
-                      {item.name}
-                    </div>
-                  ))}
-                </div>
-              ))}
-
-              {/* Direct Internships Link - Mobile */}
+              {/* Courses Section */}
               <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900">Internships</h3>
+                <h3 className="font-semibold text-gray-900">Courses</h3>
+                {courseTypes.map((item) => (
+                  <div
+                    key={item.name}
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
+                    onClick={() => handleMenuItemClick(item.path)}
+                  >
+                    {item.name}
+                  </div>
+                ))}
+              </div>
+
+              {/* Direct Links Section */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900">Quick Links</h3>
                 <div
                   className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
                   onClick={handleInternshipsClick}
                 >
-                  Browse All Internships
+                  Internships
                 </div>
-              </div>
-
-              {/* Direct Jobs Link - Mobile */}
-              <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900">Jobs</h3>
                 <div
                   className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
                   onClick={handleJobsClick}
                 >
-                  Job Assistance
+                  Jobs
+                </div>
+                <div
+                  className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
+                  onClick={handlePack365Click}
+                >
+                  Pack365
                 </div>
               </div>
 
