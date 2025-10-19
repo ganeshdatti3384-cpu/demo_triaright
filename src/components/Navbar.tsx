@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -29,8 +29,11 @@ const Navbar = () => {
   ];
 
   const internshipTypes = [
-    { name: 'Online Internships', description: 'Remote opportunities', path: '/internships/online' },
-    { name: 'Offline Internships', description: 'On-site experiences', path: '/internships/offline' },
+    { name: 'All Internships', description: 'Browse all opportunities', path: '/internships' },
+    { name: 'Paid Internships', description: 'Earn while you learn', path: '/internships?tab=paid' },
+    { name: 'Free Internships', description: 'Gain valuable experience', path: '/internships?tab=free' },
+    { name: 'Remote Internships', description: 'Work from anywhere', path: '/internships?tab=remote' },
+    { name: 'AP Internships', description: 'Andhra Pradesh opportunities', path: '/internships?tab=ap' },
   ];
 
   const trainingTypes = [
@@ -85,6 +88,12 @@ const Navbar = () => {
     return `Welcome, ${name}!`;
   };
 
+  // Direct navigation to internships page
+  const handleInternshipsClick = () => {
+    navigate('/internships');
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <nav className="bg-white/90 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -125,6 +134,16 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ))}
+
+            {/* Direct Internships Link (Additional) */}
+            <Button
+              variant="ghost"
+              onClick={handleInternshipsClick}
+              className="flex items-center space-x-2 text-gray-700 hover:text-brand-primary transition-colors"
+            >
+              <Briefcase className="h-4 w-4" />
+              <span>Internships</span>
+            </Button>
           </div>
 
           {/* Desktop Auth/Profile Buttons */}
@@ -235,6 +254,18 @@ const Navbar = () => {
                   ))}
                 </div>
               ))}
+
+              {/* Direct Internships Link - Mobile */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900">Quick Links</h3>
+                <div
+                  className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary flex items-center space-x-2"
+                  onClick={handleInternshipsClick}
+                >
+                  <Briefcase className="h-4 w-4" />
+                  <span>Browse Internships</span>
+                </div>
+              </div>
 
               {/* Dashboard Link - Mobile */}
               {isAuthenticated && (
