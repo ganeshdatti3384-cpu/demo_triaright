@@ -54,6 +54,8 @@ import Pack365Dashboard from '@/components/Pack365Dashboard';
 import Pack365StreamLearning from '@/pages/Pack365StreamLearning';
 import LearningInterface from './components/CourseLearningInterface2';
 import Learning from './pages/CourseLearning2';
+import InternshipsPage from './components/internships/InternshipsPage';
+import InternshipDetailsPage from './components/internships/InternshipDetailsPage';
 
 const queryClient = new QueryClient();
 
@@ -103,6 +105,8 @@ const App = () => {
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
           <Route path="/pack365-stream/:streamName" element={<Pack365BundleDetail />} />
+          <Route path="/internships" element={<InternshipsPage />} />
+         <Route path="/internships/:id" element={<InternshipDetailsPage />} />
           
           {/* Protected Payment Routes */}
           <Route
