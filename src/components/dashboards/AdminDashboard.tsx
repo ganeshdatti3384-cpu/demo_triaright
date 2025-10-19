@@ -14,7 +14,6 @@ import JobManagement from '../admin/JobManagement';
 import Pack365Management from '../admin/Pack365Management';
 import PaymentAnalytics from '../admin/PaymentAnalytics';
 import CollegeManagement from '../admin/CollegeManagement';
-import InternshipsManagement from '../admin/InternshipsManagement';
 import Navbar from '../Navbar';
 import { collegeApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -35,15 +34,13 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     activeStudents: 8967,
     registeredEmployers: 456,
     liveCourses: 89,
-    completedPlacements: 1234,
-    activeInternships: 67
+    completedPlacements: 1234
   };
 
   const recentActivity = [
     { id: 1, action: 'New employer registration', entity: 'TechStart Inc', time: '2 hours ago' },
     { id: 2, action: 'Course completion', entity: 'React Fundamentals', time: '4 hours ago' },
     { id: 3, action: 'Job posting created', entity: 'Senior Developer Role', time: '6 hours ago' },
-    { id: 4, action: 'Internship application', entity: 'Web Development Intern', time: '1 hour ago' },
   ];
 
   useEffect(() => {
@@ -128,11 +125,10 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-10">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
-            <TabsTrigger value="internships">Internships</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
@@ -142,7 +138,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -184,17 +180,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                 <CardContent>
                   <div className="text-2xl font-bold">{platformStats.liveCourses}</div>
                   <p className="text-xs text-muted-foreground">Active programs</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Internships</CardTitle>
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{platformStats.activeInternships}</div>
-                  <p className="text-xs text-muted-foreground">Currently available</p>
                 </CardContent>
               </Card>
 
@@ -263,10 +248,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
           <TabsContent value="courses" className="space-y-6">
             <CourseManagement />
-          </TabsContent>
-
-          <TabsContent value="internships" className="space-y-6">
-            <InternshipsManagement />
           </TabsContent>
 
           <TabsContent value="pack365" className="space-y-6">
@@ -396,28 +377,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                     <CardContent>
                       <div className="h-48 bg-gray-100 rounded flex items-center justify-center">
                         <p className="text-gray-500">Engagement metrics chart</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Internship Applications</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-48 bg-gray-100 rounded flex items-center justify-center">
-                        <p className="text-gray-500">Internship applications trend</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Revenue Analytics</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-48 bg-gray-100 rounded flex items-center justify-center">
-                        <p className="text-gray-500">Revenue breakdown chart</p>
                       </div>
                     </CardContent>
                   </Card>
