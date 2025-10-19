@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth'; // Fixed import path
 import ApplyInternshipDialog from './ApplyInternshipDialog';
 
 interface Internship {
