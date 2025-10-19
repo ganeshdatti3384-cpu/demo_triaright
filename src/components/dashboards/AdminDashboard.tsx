@@ -14,7 +14,7 @@ import JobManagement from '../admin/JobManagement';
 import Pack365Management from '../admin/Pack365Management';
 import PaymentAnalytics from '../admin/PaymentAnalytics';
 import CollegeManagement from '../admin/CollegeManagement';
-import InternshipManagement from '../admin/InternshipManagement';
+import InternshipManagement from '../admin/InternshipsManagement';
 import ApplicationManagement from '../admin/ApplicationManagement';
 import Navbar from '../Navbar';
 import { collegeApi } from '@/services/api';
