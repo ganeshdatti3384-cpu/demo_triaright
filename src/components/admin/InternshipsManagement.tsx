@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Eye, Building2, MapPin, Calendar, IndianRupee } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Building2, MapPin, Calendar, IndianRupee, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Internship {
@@ -63,7 +63,11 @@ const InternshipManagement = () => {
   const [apInternships, setApInternships] = useState<APInternship[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const [showAPCreateDialog, setShowAPCreateDialog] = useState(false);
+  const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null);
+  const [selectedAPInternship, setSelectedAPInternship] = useState<APInternship | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -175,6 +179,8 @@ const InternshipManagement = () => {
         body: JSON.stringify(formData)
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         toast({
           title: 'Success',
@@ -200,13 +206,51 @@ const InternshipManagement = () => {
         });
         fetchInternships();
       } else {
-        throw new Error('Failed to create internship');
+        throw new Error(data.message || 'Failed to create internship');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating internship:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create internship',
+        description: error.message || 'Failed to create internship',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const updateInternship = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedInternship) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`/api/internships/${selectedInternship._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Success',
+          description: 'Internship updated successfully'
+        });
+        setShowEditDialog(false);
+        setSelectedInternship(null);
+        fetchInternships();
+      } else {
+        throw new Error('Failed to update internship');
+      }
+    } catch (error) {
+      console.error('Error updating internship:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update internship',
         variant: 'destructive'
       });
     }
@@ -257,11 +301,11 @@ const InternshipManagement = () => {
       } else {
         throw new Error(data.message || 'Failed to create AP internship');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating AP internship:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create AP internship',
+        description: error.message || 'Failed to create AP internship',
         variant: 'destructive'
       });
     }
@@ -306,45 +350,36 @@ const InternshipManagement = () => {
     }
   };
 
-  const updateInternshipStatus = async (id: string, status: string, isAP: boolean = false) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+  const handleEdit = (internship: Internship) => {
+    setSelectedInternship(internship);
+    setFormData({
+      title: internship.title,
+      description: internship.description,
+      companyName: internship.companyName,
+      location: internship.location,
+      internshipType: internship.internshipType,
+      category: internship.category,
+      duration: internship.duration,
+      startDate: internship.startDate.split('T')[0],
+      applicationDeadline: internship.applicationDeadline.split('T')[0],
+      mode: internship.mode,
+      stipendAmount: internship.stipendAmount || 0,
+      currency: internship.currency,
+      qualification: internship.qualification,
+      openings: internship.openings,
+      status: internship.status
+    });
+    setShowEditDialog(true);
+  };
 
-    try {
-      const endpoint = isAP
-        ? `/api/internships/ap-internships/${id}/status`
-        : `/api/internships/${id}`;
+  const handleView = (internship: Internship) => {
+    setSelectedInternship(internship);
+    setShowViewDialog(true);
+  };
 
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
-      });
-
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Internship status updated successfully'
-        });
-        if (isAP) {
-          fetchAPInternships();
-        } else {
-          fetchInternships();
-        }
-      } else {
-        throw new Error('Failed to update internship status');
-      }
-    } catch (error) {
-      console.error('Error updating internship status:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update internship status',
-        variant: 'destructive'
-      });
-    }
+  const handleViewAP = (internship: APInternship) => {
+    setSelectedAPInternship(internship);
+    setShowViewDialog(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -398,7 +433,7 @@ const InternshipManagement = () => {
               <form onSubmit={createInternship} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Title</label>
+                    <label className="text-sm font-medium">Title *</label>
                     <Input
                       value={formData.title}
                       onChange={(e) => setFormData({...formData, title: e.target.value})}
@@ -406,7 +441,7 @@ const InternshipManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Company Name</label>
+                    <label className="text-sm font-medium">Company Name *</label>
                     <Input
                       value={formData.companyName}
                       onChange={(e) => setFormData({...formData, companyName: e.target.value})}
@@ -416,17 +451,18 @@ const InternshipManagement = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
+                  <label className="text-sm font-medium">Description *</label>
                   <Textarea
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                     required
+                    rows={4}
                   />
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Location</label>
+                    <label className="text-sm font-medium">Location *</label>
                     <Input
                       value={formData.location}
                       onChange={(e) => setFormData({...formData, location: e.target.value})}
@@ -434,7 +470,7 @@ const InternshipManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Internship Type</label>
+                    <label className="text-sm font-medium">Internship Type *</label>
                     <Select
                       value={formData.internshipType}
                       onValueChange={(value: 'Remote' | 'On-Site' | 'Hybrid') => 
@@ -452,7 +488,7 @@ const InternshipManagement = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Category</label>
+                    <label className="text-sm font-medium">Category *</label>
                     <Input
                       value={formData.category}
                       onChange={(e) => setFormData({...formData, category: e.target.value})}
@@ -463,7 +499,7 @@ const InternshipManagement = () => {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Duration</label>
+                    <label className="text-sm font-medium">Duration *</label>
                     <Input
                       value={formData.duration}
                       onChange={(e) => setFormData({...formData, duration: e.target.value})}
@@ -480,7 +516,7 @@ const InternshipManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Application Deadline</label>
+                    <label className="text-sm font-medium">Application Deadline *</label>
                     <Input
                       type="date"
                       value={formData.applicationDeadline}
@@ -492,7 +528,7 @@ const InternshipManagement = () => {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Mode</label>
+                    <label className="text-sm font-medium">Mode *</label>
                     <Select
                       value={formData.mode}
                       onValueChange={(value: 'Unpaid' | 'Paid' | 'FeeBased') => 
@@ -512,22 +548,24 @@ const InternshipManagement = () => {
                   {formData.mode !== 'Unpaid' && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {formData.mode === 'Paid' ? 'Stipend Amount' : 'Fee Amount'}
+                        {formData.mode === 'Paid' ? 'Stipend Amount' : 'Fee Amount'} *
                       </label>
                       <Input
                         type="number"
                         value={formData.stipendAmount}
                         onChange={(e) => setFormData({...formData, stipendAmount: Number(e.target.value)})}
+                        required
                       />
                     </div>
                   )}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Openings</label>
+                    <label className="text-sm font-medium">Openings *</label>
                     <Input
                       type="number"
                       value={formData.openings}
                       onChange={(e) => setFormData({...formData, openings: Number(e.target.value)})}
                       required
+                      min="1"
                     />
                   </div>
                 </div>
@@ -565,7 +603,7 @@ const InternshipManagement = () => {
               <form onSubmit={createAPInternship} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Title</label>
+                    <label className="text-sm font-medium">Title *</label>
                     <Input
                       value={apFormData.title}
                       onChange={(e) => setApFormData({...apFormData, title: e.target.value})}
@@ -573,7 +611,7 @@ const InternshipManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Company Name</label>
+                    <label className="text-sm font-medium">Company Name *</label>
                     <Input
                       value={apFormData.companyName}
                       onChange={(e) => setApFormData({...apFormData, companyName: e.target.value})}
@@ -583,11 +621,12 @@ const InternshipManagement = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
+                  <label className="text-sm font-medium">Description *</label>
                   <Textarea
                     value={apFormData.description}
                     onChange={(e) => setApFormData({...apFormData, description: e.target.value})}
                     required
+                    rows={4}
                   />
                 </div>
 
@@ -597,7 +636,7 @@ const InternshipManagement = () => {
                     <Input value="Andhra Pradesh" disabled />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Internship Type</label>
+                    <label className="text-sm font-medium">Internship Type *</label>
                     <Select
                       value={apFormData.internshipType}
                       onValueChange={(value: 'Online' | 'Offline') => 
@@ -614,7 +653,7 @@ const InternshipManagement = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Term</label>
+                    <label className="text-sm font-medium">Term *</label>
                     <Select
                       value={apFormData.term}
                       onValueChange={(value: 'Shortterm' | 'Longterm') => 
@@ -634,7 +673,7 @@ const InternshipManagement = () => {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Duration</label>
+                    <label className="text-sm font-medium">Duration *</label>
                     <Input
                       value={apFormData.duration}
                       onChange={(e) => setApFormData({...apFormData, duration: e.target.value})}
@@ -651,7 +690,7 @@ const InternshipManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Application Deadline</label>
+                    <label className="text-sm font-medium">Application Deadline *</label>
                     <Input
                       type="date"
                       value={apFormData.applicationDeadline}
@@ -663,7 +702,7 @@ const InternshipManagement = () => {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Mode</label>
+                    <label className="text-sm font-medium">Mode *</label>
                     <Select
                       value={apFormData.mode}
                       onValueChange={(value: 'Free' | 'Paid') => 
@@ -681,28 +720,30 @@ const InternshipManagement = () => {
                   </div>
                   {apFormData.mode === 'Paid' && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Amount</label>
+                      <label className="text-sm font-medium">Amount *</label>
                       <Input
                         type="number"
                         value={apFormData.Amount}
                         onChange={(e) => setApFormData({...apFormData, Amount: Number(e.target.value)})}
+                        required
                       />
                     </div>
                   )}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Openings</label>
+                    <label className="text-sm font-medium">Openings *</label>
                     <Input
                       type="number"
                       value={apFormData.openings}
                       onChange={(e) => setApFormData({...apFormData, openings: Number(e.target.value)})}
                       required
+                      min="1"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Stream</label>
+                    <label className="text-sm font-medium">Stream *</label>
                     <Input
                       value={apFormData.stream}
                       onChange={(e) => setApFormData({...apFormData, stream: e.target.value})}
@@ -773,10 +814,18 @@ const InternshipManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleView(internship)}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEdit(internship)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button 
@@ -843,7 +892,11 @@ const InternshipManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleViewAP(internship)}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm">
@@ -873,6 +926,328 @@ const InternshipManagement = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Internship</DialogTitle>
+            <DialogDescription>
+              Update the details for this internship opportunity.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedInternship && (
+            <form onSubmit={updateInternship} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Title *</label>
+                  <Input
+                    value={formData.title}
+                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Company Name *</label>
+                  <Input
+                    value={formData.companyName}
+                    onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description *</label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  required
+                  rows={4}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Location *</label>
+                  <Input
+                    value={formData.location}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Internship Type *</label>
+                  <Select
+                    value={formData.internshipType}
+                    onValueChange={(value: 'Remote' | 'On-Site' | 'Hybrid') => 
+                      setFormData({...formData, internshipType: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Remote">Remote</SelectItem>
+                      <SelectItem value="On-Site">On-Site</SelectItem>
+                      <SelectItem value="Hybrid">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Category *</label>
+                  <Input
+                    value={formData.category}
+                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Duration *</label>
+                  <Input
+                    value={formData.duration}
+                    onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                    placeholder="e.g., 3 Months"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Date</label>
+                  <Input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Application Deadline *</label>
+                  <Input
+                    type="date"
+                    value={formData.applicationDeadline}
+                    onChange={(e) => setFormData({...formData, applicationDeadline: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Mode *</label>
+                  <Select
+                    value={formData.mode}
+                    onValueChange={(value: 'Unpaid' | 'Paid' | 'FeeBased') => 
+                      setFormData({...formData, mode: value})
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Unpaid">Unpaid</SelectItem>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                      <SelectItem value="FeeBased">Fee Based</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {formData.mode !== 'Unpaid' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      {formData.mode === 'Paid' ? 'Stipend Amount' : 'Fee Amount'} *
+                    </label>
+                    <Input
+                      type="number"
+                      value={formData.stipendAmount}
+                      onChange={(e) => setFormData({...formData, stipendAmount: Number(e.target.value)})}
+                      required
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Openings *</label>
+                  <Input
+                    type="number"
+                    value={formData.openings}
+                    onChange={(e) => setFormData({...formData, openings: Number(e.target.value)})}
+                    required
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Qualification</label>
+                <Input
+                  value={formData.qualification}
+                  onChange={(e) => setFormData({...formData, qualification: e.target.value})}
+                  placeholder="e.g., Any Graduate, B.Tech CSE"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: 'Open' | 'Closed' | 'On Hold') => 
+                    setFormData({...formData, status: value})
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Open">Open</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                    <SelectItem value="On Hold">On Hold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DialogFooter>
+                <Button type="submit">Update Internship</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedInternship ? selectedInternship.title : selectedAPInternship?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Internship Details
+            </DialogDescription>
+          </DialogHeader>
+          {selectedInternship && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Company</h4>
+                  <p className="text-sm text-gray-600">{selectedInternship.companyName}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Location</h4>
+                  <p className="text-sm text-gray-600">{selectedInternship.location}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold">Description</h4>
+                <p className="text-sm text-gray-600 mt-1">{selectedInternship.description}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <h4 className="font-semibold">Type</h4>
+                  <p className="text-sm text-gray-600">{selectedInternship.internshipType}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Duration</h4>
+                  <p className="text-sm text-gray-600">{selectedInternship.duration}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Mode</h4>
+                  <p className="text-sm text-gray-600">{selectedInternship.mode}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Start Date</h4>
+                  <p className="text-sm text-gray-600">
+                    {new Date(selectedInternship.startDate).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Deadline</h4>
+                  <p className="text-sm text-gray-600">
+                    {new Date(selectedInternship.applicationDeadline).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Openings</h4>
+                  <p className="text-sm text-gray-600">{selectedInternship.openings}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Status</h4>
+                  <p className="text-sm text-gray-600">{selectedInternship.status}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          {selectedAPInternship && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Company</h4>
+                  <p className="text-sm text-gray-600">{selectedAPInternship.companyName}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Location</h4>
+                  <p className="text-sm text-gray-600">{selectedAPInternship.location}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold">Description</h4>
+                <p className="text-sm text-gray-600 mt-1">{selectedAPInternship.description}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <h4 className="font-semibold">Type</h4>
+                  <p className="text-sm text-gray-600">{selectedAPInternship.internshipType}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Term</h4>
+                  <p className="text-sm text-gray-600">{selectedAPInternship.term}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Mode</h4>
+                  <p className="text-sm text-gray-600">{selectedAPInternship.mode}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Stream</h4>
+                  <p className="text-sm text-gray-600">{selectedAPInternship.stream}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Duration</h4>
+                  <p className="text-sm text-gray-600">{selectedAPInternship.duration}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Start Date</h4>
+                  <p className="text-sm text-gray-600">
+                    {new Date(selectedAPInternship.startDate).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Deadline</h4>
+                  <p className="text-sm text-gray-600">
+                    {new Date(selectedAPInternship.applicationDeadline).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Openings</h4>
+                  <p className="text-sm text-gray-600">{selectedAPInternship.openings}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Status</h4>
+                  <p className="text-sm text-gray-600">{selectedAPInternship.status}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
