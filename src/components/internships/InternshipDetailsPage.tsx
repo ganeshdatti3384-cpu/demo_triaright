@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Building2, MapPin, Calendar, Clock, Users, IndianRupee, BookOpen, Award, FileText, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth'; // Fixed import path
 import ApplyInternshipDialog from './ApplyInternshipDialog';
 
 const InternshipDetailsPage = () => {
