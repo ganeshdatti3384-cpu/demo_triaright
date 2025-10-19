@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -56,6 +56,11 @@ const Navbar = () => {
     }
   };
 
+  const handleAdminDashboardClick = () => {
+    navigate('/admin');
+    setIsMobileMenuOpen(false);
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -84,6 +89,9 @@ const Navbar = () => {
     navigate('/pack365');
     setIsMobileMenuOpen(false);
   };
+
+  // Check if user is admin or super-admin
+  const isAdminUser = user?.role === 'admin' || user?.role === 'superadmin';
 
   return (
     <nav className="bg-white/90 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
@@ -193,11 +201,16 @@ const Navbar = () => {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
-                  /* Welcome message and logout button for admin/super-admin */
+                  /* Admin Dashboard link for admin/super-admin */
                   <div className="flex items-center space-x-4">
-                    <span className="text-sm font-medium text-gray-700">
-                      {getWelcomeMessage()}
-                    </span>
+                    <Button
+                      onClick={handleAdminDashboardClick}
+                      variant="outline"
+                      className="flex items-center space-x-2 border-brand-primary text-brand-primary hover:bg-blue-50"
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span>Admin Dashboard</span>
+                    </Button>
                     <Button
                       onClick={handleLogout}
                       variant="outline"
@@ -310,6 +323,17 @@ const Navbar = () => {
                           className="border-brand-primary text-brand-primary"
                         >
                           Profile
+                        </Button>
+                      )}
+                      {(user.role === 'admin' || user.role === 'superadmin') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAdminDashboardClick}
+                          className="border-brand-primary text-brand-primary flex items-center space-x-2"
+                        >
+                          <Settings className="h-4 w-4" />
+                          <span>Admin Dashboard</span>
                         </Button>
                       )}
                       <Button
