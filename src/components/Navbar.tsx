@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard, Briefcase } from 'lucide-react';
+import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -23,19 +23,6 @@ const Navbar = () => {
       : []),
   ];
 
-  const jobTypes = [
-    { name: 'Job Assurance', description: 'Guaranteed placement programs', path: '/jobs/assurance' },
-    { name: 'Job Assistance', description: 'Career support and guidance', path: '/jobs/assistance' },
-  ];
-
-  const internshipTypes = [
-    { name: 'All Internships', description: 'Browse all opportunities', path: '/internships' },
-    { name: 'Paid Internships', description: 'Earn while you learn', path: '/internships?tab=paid' },
-    { name: 'Free Internships', description: 'Gain valuable experience', path: '/internships?tab=free' },
-    { name: 'Remote Internships', description: 'Work from anywhere', path: '/internships?tab=remote' },
-    { name: 'AP Internships', description: 'Andhra Pradesh opportunities', path: '/internships?tab=ap' },
-  ];
-
   const trainingTypes = [
     { name: 'CRT Training', description: 'Campus Recruitment Training', path: '#' },
     { name: 'Pack365', description: 'Premium Learning Programs', path: '/pack365' },
@@ -44,8 +31,6 @@ const Navbar = () => {
   // Define navigation menus that should be visible to all users
   const navigationMenus = [
     { label: 'Courses', items: courseTypes },
-    { label: 'Jobs', items: jobTypes },
-    { label: 'Internships', items: internshipTypes },
     { label: 'Training', items: trainingTypes }
   ];
 
@@ -94,6 +79,12 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   };
 
+  // Direct navigation to jobs assistance page
+  const handleJobsClick = () => {
+    navigate('/jobs/assistance');
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <nav className="bg-white/90 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -135,14 +126,22 @@ const Navbar = () => {
               </DropdownMenu>
             ))}
 
-            {/* Direct Internships Link (Additional) */}
+            {/* Direct Internships Link (Single link without icon) */}
             <Button
               variant="ghost"
               onClick={handleInternshipsClick}
-              className="flex items-center space-x-2 text-gray-700 hover:text-brand-primary transition-colors"
+              className="text-gray-700 hover:text-brand-primary transition-colors"
             >
-              <Briefcase className="h-4 w-4" />
-              <span>Internships</span>
+              Internships
+            </Button>
+
+            {/* Direct Jobs Link (Single link without icon) */}
+            <Button
+              variant="ghost"
+              onClick={handleJobsClick}
+              className="text-gray-700 hover:text-brand-primary transition-colors"
+            >
+              Jobs
             </Button>
           </div>
 
@@ -257,13 +256,23 @@ const Navbar = () => {
 
               {/* Direct Internships Link - Mobile */}
               <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900">Quick Links</h3>
+                <h3 className="font-semibold text-gray-900">Internships</h3>
                 <div
-                  className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary flex items-center space-x-2"
+                  className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
                   onClick={handleInternshipsClick}
                 >
-                  <Briefcase className="h-4 w-4" />
-                  <span>Browse Internships</span>
+                  Browse All Internships
+                </div>
+              </div>
+
+              {/* Direct Jobs Link - Mobile */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900">Jobs</h3>
+                <div
+                  className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
+                  onClick={handleJobsClick}
+                >
+                  Job Assistance
                 </div>
               </div>
 
