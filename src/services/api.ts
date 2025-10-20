@@ -932,136 +932,75 @@ export const courseApi = {
   // ✅ Create Course (Admin only)
   createCourse: async (
     token: string,
-    formData: FormData
+    data: FormData
   ): Promise<{ success: boolean; course: any; message: string }> => {
-    try {
-      console.log('Making course creation request to:', `${API_BASE_URL}/courses/postcourse`);
-      
-      const response = await axios.post(`${API_BASE_URL}/courses/postcourse`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // Don't set Content-Type for FormData - browser will set it with boundary
-        },
-      });
-      
-      console.log('Course creation response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Course creation API error:', error);
-      console.error('Error response:', error.response?.data);
-      throw error;
-    }
+    const res = await axios.post(`${API_BASE_URL}/courses/postcourse`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
   },
 
-  // ✅ Update Course (Admin/SuperAdmin only)
+  // ✅ Update Course (SuperAdmin only)
   updateCourse: async (
     token: string,
     courseId: string,
-    formData: FormData
+    data: FormData
   ): Promise<{ success: boolean; course: any; message: string }> => {
-    try {
-      console.log('Making course update request to:', `${API_BASE_URL}/courses/${courseId}`);
-      
-      const response = await axios.put(`${API_BASE_URL}/courses/${courseId}`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // Don't set Content-Type for FormData - browser will set it with boundary
-        },
-      });
-      
-      console.log('Course update response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Course update API error:', error);
-      console.error('Error response:', error.response?.data);
-      throw error;
-    }
+    const res = await axios.put(`${API_BASE_URL}/courses/${courseId}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
   },
 
-  // ✅ Delete Course (Admin/SuperAdmin only)
+  // ✅ Delete Course (SuperAdmin only)
   deleteCourse: async (
     token: string,
     courseId: string
   ): Promise<{ success: boolean; message: string }> => {
-    try {
-      console.log('Making course deletion request to:', `${API_BASE_URL}/courses/${courseId}`);
-      
-      const response = await axios.delete(`${API_BASE_URL}/courses/${courseId}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      });
-      
-      console.log('Course deletion response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Course deletion API error:', error);
-      console.error('Error response:', error.response?.data);
-      throw error;
-    }
+    const res = await axios.delete(`${API_BASE_URL}/courses/${courseId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
   },
 
   // ✅ Get All Courses (public endpoint)
   getAllCourses: async (): Promise<{ courses: any[] }> => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/courses`);
-      console.log('Get all courses response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Get all courses API error:', error);
-      throw error;
-    }
+    const response = await axios.get(`${API_BASE_URL}/courses`);
+    return response.data;
   },
 
   // ✅ Get Course by ID (Public/Student)
   getCourseById: async (
     id: string
   ): Promise<{ success: boolean; course: any }> => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/courses/${id}`);
-      console.log('Get course by ID response:', response.data);
-      return { success: true, course: response.data.course };
-    } catch (error: any) {
-      console.error('Get course by ID API error:', error);
-      throw error;
-    }
+    const res = await axios.get(`${API_BASE_URL}/courses/${id}`);
+    return { success: true, course: res.data.course };
   },
 
   // ✅ Get Free Courses (requires authentication)
   getFreeCourses: async (): Promise<any[]> => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/courses`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      
-      const allCourses = response.data.courses || response.data;
-      const freeCourses = allCourses.filter((course: any) => course.courseType === 'unpaid');
-      console.log('Free courses:', freeCourses);
-      return freeCourses;
-    } catch (error: any) {
-      console.error('Get free courses API error:', error);
-      throw error;
-    }
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE_URL}/courses`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    const allCourses = res.data.courses || res.data;
+    return allCourses.filter((course: any) => course.courseType === 'unpaid');
   },
 
   // ✅ Get Paid Courses (requires authentication)
   getPaidCourses: async (): Promise<any[]> => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/courses`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      
-      const allCourses = response.data.courses || response.data;
-      const paidCourses = allCourses.filter((course: any) => course.courseType === 'paid');
-      console.log('Paid courses:', paidCourses);
-      return paidCourses;
-    } catch (error: any) {
-      console.error('Get paid courses API error:', error);
-      throw error;
-    }
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE_URL}/courses`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    const allCourses = res.data.courses || res.data;
+    return allCourses.filter((course: any) => course.courseType === 'paid');
   },
 
   // ✅ Enroll in Free Course
@@ -1069,26 +1008,19 @@ export const courseApi = {
     token: string,
     courseId: string
   ): Promise<{ success: boolean; message: string; enrollment: any }> => {
-    try {
-      console.log('Making free enrollment request for course:', courseId);
-      
-      const response = await axios.post(`${API_BASE_URL}/courses/enrollments/free`, 
-        { courseId }, 
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      
-      console.log('Free enrollment response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Free enrollment API error:', error);
-      console.error('Error response:', error.response?.data);
-      throw error;
-    }
+    const res = await axios.post(`${API_BASE_URL}/courses/enrollments/free`, 
+      { courseId }, 
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    return res.data;
   },
 
   // ✅ Create Razorpay Order for Paid Course
+  // api.ts
+
+// ...
   createOrder: async (
     token: string,
     courseId: string
@@ -1097,22 +1029,23 @@ export const courseApi = {
       console.log('Making order creation request to:', `${API_BASE_URL}/courses/enrollments/order`);
       console.log('Request payload:', { courseId });
       
-      const response = await axios.post(`${API_BASE_URL}/courses/enrollments/order`, 
+      const res = await axios.post(`${API_BASE_URL}/courses/enrollments/order`, 
         { courseId }, 
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
       
-      console.log('Order creation response:', response.data);
-      return response.data;
+      console.log('Order creation response:', res.data);
+      return res.data;
     } catch (error: any) {
       console.error('Order creation API error:', error);
       console.error('Error response:', error.response?.data);
+      // Re-throw the error so the UI can handle it properly
       throw error;
     }
   },
-
+// ...
   // ✅ Verify Payment and Enroll
   verifyPaymentAndEnroll: async (
     token: string,
@@ -1123,32 +1056,26 @@ export const courseApi = {
     }
   ): Promise<{ success: boolean; message: string; enrollment: any }> => {
     try {
-      console.log('Making payment verification request');
-      
-      const response = await axios.post(`${API_BASE_URL}/courses/enrollments/verify-payment`, 
+      const res = await axios.post(`${API_BASE_URL}/courses/enrollments/verify-payment`, 
         paymentData,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      
-      console.log('Payment verification response:', response.data);
-      return response.data;
+      return res.data;
     } catch (error: any) {
-      console.error('Payment verification API error:', error);
-      
       // If local dev server doesn't have the endpoint, try production
       if (error.response?.status === 404 && API_BASE_URL.includes('localhost')) {
         console.log('Local verify endpoint not found, trying production URL');
         
         try {
-          const response = await axios.post(`${PRODUCTION_API_URL}/courses/enrollments/verify-payment`, 
+          const res = await axios.post(`${PRODUCTION_API_URL}/courses/enrollments/verify-payment`, 
             paymentData,
             {
               headers: { Authorization: `Bearer ${token}` }
             }
           );
-          return response.data;
+          return res.data;
         } catch (prodError: any) {
           console.error('Production verify API also failed:', prodError);
           throw prodError;
@@ -1169,41 +1096,23 @@ export const courseApi = {
       watchedDuration: number;
     }
   ): Promise<{ success: boolean; message: string; topicProgress: any; totalWatchedDuration: number }> => {
-    try {
-      console.log('Making topic progress update request');
-      
-      const response = await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, 
-        progressData, 
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      
-      console.log('Topic progress update response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Topic progress update API error:', error);
-      throw error;
-    }
+    const res = await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, 
+      progressData, 
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    return res.data;
   },
 
   // ✅ Get user's course enrollments
   getMyEnrollments: async (
     token: string
   ): Promise<{ success: boolean; enrollments: any[] }> => {
-    try {
-      console.log('Making get enrollments request');
-      
-      const response = await axios.get(`${API_BASE_URL}/courses/enrollment/allcourses`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      console.log('Get enrollments response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Get enrollments API error:', error);
-      throw error;
-    }
+    const res = await axios.get(`${API_BASE_URL}/courses/enrollment/allcourses`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
   },
 
   // ✅ Check enrollment status for a course
@@ -1211,19 +1120,10 @@ export const courseApi = {
     token: string,
     courseId: string
   ): Promise<{ success: boolean; isEnrolled: boolean; enrollment?: any }> => {
-    try {
-      console.log('Making enrollment status check request for course:', courseId);
-      
-      const response = await axios.get(`${API_BASE_URL}/courses/enrollment-status/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      console.log('Enrollment status response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Enrollment status API error:', error);
-      throw error;
-    }
+    const res = await axios.get(`${API_BASE_URL}/courses/enrollment-status/${courseId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
   },
 };
 
