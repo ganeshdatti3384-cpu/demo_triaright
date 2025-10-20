@@ -11,7 +11,29 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Upload, FileSpreadsheet, X } from 'lucide-react';
 import { courseApi } from '@/services/api';
-import { EnhancedCourse } from '@/types/api';
+
+// Enhanced Course interface with _id
+interface EnhancedCourse {
+  _id?: string;
+  courseId?: string;
+  courseName: string;
+  courseDescription: string;
+  instructorName: string;
+  totalDuration: number;
+  courseType: 'paid' | 'unpaid';
+  price: number;
+  stream: 'it' | 'nonit' | 'finance' | 'management' | 'pharmaceuticals' | 'carrerability';
+  providerName: 'triaright' | 'etv' | 'kalasalingan' | 'instructor';
+  courseLanguage: string;
+  certificationProvided: 'yes' | 'no';
+  additionalInformation: string;
+  demoVideoLink: string;
+  curriculum: any[];
+  hasFinalExam: boolean;
+  courseImageLink?: string;
+  curriculumDocLink?: string;
+  finalExamExcelLink?: string;
+}
 
 interface SubTopicForm {
   name: string;
@@ -486,6 +508,20 @@ const CourseManagement = () => {
     });
   };
 
+  // Debug helper function
+  const debugFormData = (formData: any, files: any) => {
+    console.log('Form Data:', formData);
+    console.log('Files:', {
+      courseImage: files.courseImage?.name,
+      curriculumDoc: files.curriculumDoc?.name,
+      finalExamExcel: files.finalExamExcel?.name,
+      topicExams: Object.keys(files.topicExams).map(key => ({
+        topic: key,
+        file: files.topicExams[key]?.name
+      }))
+    });
+  };
+
   const handleAddCourse = async () => {
     // Validation
     if (!formData.courseName || !formData.instructorName || !formData.demoVideoLink) {
@@ -589,6 +625,9 @@ const CourseManagement = () => {
         return;
       }
 
+      // Debug logging
+      debugFormData(formData, files);
+
       // Create FormData with all required fields matching backend expectations
       const formDataToSend = new FormData();
       
@@ -625,13 +664,18 @@ const CourseManagement = () => {
       // Add topic-wise exam files with correct field names
       formData.curriculum.forEach(topic => {
         if (topic.topicName && files.topicExams[topic.topicName]) {
+          // Use the exact field name format expected by backend: `topicExam_${topicName}`
           formDataToSend.append(`topicExam_${topic.topicName}`, files.topicExams[topic.topicName]!);
         }
       });
 
+      console.log('Sending course data...');
+      
       const response = await courseApi.createCourse(token, formDataToSend);
       
-      if (response.success) {
+      console.log('Course creation response:', response);
+      
+      if (response.success || response.message?.includes('created')) {
         await fetchCourses(); // Refresh courses list
         resetForm();
         setIsAddDialogOpen(false);
@@ -642,15 +686,16 @@ const CourseManagement = () => {
       } else {
         toast({
           title: "Error",
-          description: response.message || "Failed to create course",
+          description: response.message || response.error || "Failed to create course",
           variant: "destructive"
         });
       }
     } catch (error: any) {
       console.error('Error creating course:', error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to create course";
       toast({
         title: "Error",
-        description: error.response?.data?.message || error.message || "Failed to create course",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -836,7 +881,8 @@ const CourseManagement = () => {
     setSelectedCourseForExam(courseId);
     setIsExamUploadOpen(true);
   };
-const handleAddSubtopic = (topicIndex: number) => {
+
+  const handleAddSubtopic = (topicIndex: number) => {
     const updated = [...formData.curriculum];
     updated[topicIndex].subtopics.push({ name: '', link: '', duration: 0 });
     setFormData(prev => ({ ...prev, curriculum: updated }));
@@ -942,12 +988,12 @@ const handleAddSubtopic = (topicIndex: number) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (
-          <Card key={course.courseId}>
+          <Card key={course._id}>
             <CardHeader>
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg">{course.courseName}</CardTitle>
                 <div className="flex space-x-1">
-                  <Button variant="outline" size="sm" onClick={() => openExamUpload(course.courseId!)}>
+                  <Button variant="outline" size="sm" onClick={() => openExamUpload(course._id!)}>
                     <Upload className="h-4 w-4" />
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
@@ -969,7 +1015,7 @@ const handleAddSubtopic = (topicIndex: number) => {
                   </Badge>
                   <Badge variant="outline">{course.providerName}</Badge>
                   <Badge variant={course.courseType === 'paid' ? 'destructive' : 'secondary'}>
-                    {course.courseType === 'paid' ? `$${course.price}` : 'FREE'}
+                    {course.courseType === 'paid' ? `₹${course.price}` : 'FREE'}
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">{course.courseDescription}</p>
