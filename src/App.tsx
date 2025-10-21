@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -56,6 +55,7 @@ import LearningInterface from './components/CourseLearningInterface2';
 import Learning from './pages/CourseLearning2';
 import InternshipsPage from './components/internships/InternshipsPage';
 import InternshipDetailsPage from './components/internships/InternshipDetailsPage';
+import JobsPage from './pages/JobsPage'; // Add this import
 
 const queryClient = new QueryClient();
 
@@ -88,8 +88,12 @@ const App = () => {
           <Route path="/recorded-courses" element={<RecordedCourses />} />
           <Route path="/pack365" element={<Pack365 />} />
           <Route path="/pack365/bundle/:streamName" element={<Pack365BundleDetail />} />
-          <Route path="/jobs/assurance" element={<JobAssurance />} />
+          
+          {/* Jobs Routes */}
+          <Route path="/jobs" element={<JobsPage />} />
           <Route path="/jobs/assistance" element={<JobAssistance />} />
+          <Route path="/jobs/assurance" element={<JobAssurance />} />
+          
           <Route path="/internships/online" element={<OnlineInternships />} />
           <Route path="/internships/offline" element={<OfflineInternships />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
@@ -105,8 +109,10 @@ const App = () => {
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
           <Route path="/pack365-stream/:streamName" element={<Pack365BundleDetail />} />
+          
+          {/* Internship Routes */}
           <Route path="/internships" element={<InternshipsPage />} />
-         <Route path="/internships/:id" element={<InternshipDetailsPage />} />
+          <Route path="/internships/:id" element={<InternshipDetailsPage />} />
           
           {/* Protected Payment Routes */}
           <Route
