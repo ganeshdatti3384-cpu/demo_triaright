@@ -168,13 +168,8 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
 
       const token = localStorage.getItem('token');
       
-      // IMPROVED: Better AP internship detection
-      const isAPInternship = 
-        internship.internshipId?.startsWith('APINT') || 
-        internship.location === 'Andhra Pradesh' ||
-        internship.stream !== undefined || // AP internships have 'stream' field
-        internship.term !== undefined; // AP internships have 'term' field
-
+      // Use the correct API endpoint for AP internships
+      const isAPInternship = internship.internshipId?.startsWith('APINT') || internship.location === 'Andhra Pradesh';
       const endpoint = isAPInternship 
         ? `/api/internships/ap-internshipsapplication/${internship._id}/apply`
         : `/api/internships/applications/apply`;
@@ -189,20 +184,19 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
 
       const data = await response.json();
 
-      // FIX: Handle both response formats
-      if (response.ok && (data.success || data.applicationId)) {
+      if (data.success) {
         if (data.requiresPayment) {
           // Handle payment flow for paid internships
           await handleRazorpayPayment(data.paymentDetails, data.applicationId);
         } else {
           toast({
             title: 'Application Submitted',
-            description: data.message || 'Your internship application has been submitted successfully!'
+            description: 'Your internship application has been submitted successfully!'
           });
           onSuccess();
         }
       } else {
-        throw new Error(data.message || data.error || 'Failed to submit application');
+        throw new Error(data.message || 'Failed to submit application');
       }
     } catch (error: any) {
       console.error('Application error:', error);
