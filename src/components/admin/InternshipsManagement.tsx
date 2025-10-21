@@ -164,73 +164,94 @@ const InternshipManagement = () => {
     }
   };
 
-  // Add form validation
-  const validateForm = () => {
-    const errors: string[] = [];
+  const validateFormData = () => {
+    const required = ['title', 'description', 'companyName', 'location', 'duration', 'applicationDeadline'];
+    const missing = required.filter(field => !formData[field as keyof typeof formData]);
     
-    if (!formData.title?.trim()) errors.push('Title is required');
-    if (!formData.companyName?.trim()) errors.push('Company name is required');
-    if (!formData.description?.trim()) errors.push('Description is required');
-    if (!formData.location?.trim()) errors.push('Location is required');
-    if (!formData.duration?.trim()) errors.push('Duration is required');
-    if (!formData.applicationDeadline) errors.push('Application deadline is required');
-    
-    if (formData.mode !== 'Unpaid' && (!formData.stipendAmount || formData.stipendAmount <= 0)) {
-      errors.push('Valid stipend amount is required for paid/fee-based internships');
+    if (missing.length > 0) {
+      toast({
+        title: 'Missing Fields',
+        description: `Please fill in: ${missing.join(', ')}`,
+        variant: 'destructive'
+      });
+      return false;
     }
-    
-    if (!formData.openings || formData.openings < 1) {
-      errors.push('Openings must be at least 1');
-    }
-    
-    return errors;
+    return true;
   };
 
   const createInternship = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate form before submission
-    const errors = validateForm();
-    if (errors.length > 0) {
-      toast({
-        title: 'Validation Error',
-        description: errors.join(', '),
-        variant: 'destructive'
-      });
-      return;
-    }
-
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    if (!validateFormData()) return;
+
     try {
+      // Prepare complete internship data with all required fields
+      const internshipData = {
+        title: formData.title,
+        description: formData.description,
+        companyName: formData.companyName,
+        location: formData.location,
+        internshipType: formData.internshipType,
+        category: formData.category,
+        duration: formData.duration,
+        startDate: formData.startDate,
+        applicationDeadline: formData.applicationDeadline,
+        mode: formData.mode,
+        stipendAmount: formData.stipendAmount,
+        currency: formData.currency,
+        qualification: formData.qualification,
+        openings: formData.openings,
+        status: formData.status,
+        skills: [],
+        perks: [],
+        certificateProvided: true,
+        letterOfRecommendation: false,
+        experienceRequired: ""
+      };
+
+      console.log('Sending internship data:', internshipData);
+
       const response = await fetch('/api/internships', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(internshipData)
       });
 
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
 
-      // Handle both response formats
       if (response.ok) {
-        // Check for success flag OR just rely on HTTP status
-        if (data.success !== false) {
-          toast({
-            title: 'Success',
-            description: data.message || 'Internship created successfully'
-          });
-          setShowCreateDialog(false);
-          resetForm();
-          fetchInternships();
-        } else {
-          throw new Error(data.message || data.error || 'Failed to create internship');
-        }
+        toast({
+          title: 'Success',
+          description: 'Internship created successfully'
+        });
+        setShowCreateDialog(false);
+        setFormData({
+          title: '',
+          description: '',
+          companyName: '',
+          location: '',
+          internshipType: 'Remote',
+          category: '',
+          duration: '',
+          startDate: '',
+          applicationDeadline: '',
+          mode: 'Unpaid',
+          stipendAmount: 0,
+          currency: 'INR',
+          qualification: '',
+          openings: 1,
+          status: 'Open'
+        });
+        fetchInternships();
       } else {
-        throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
+        throw new Error(data.message || data.error || 'Failed to create internship');
       }
     } catch (error: any) {
       console.error('Error creating internship:', error);
@@ -242,26 +263,6 @@ const InternshipManagement = () => {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      companyName: '',
-      location: '',
-      internshipType: 'Remote',
-      category: '',
-      duration: '',
-      startDate: '',
-      applicationDeadline: '',
-      mode: 'Unpaid',
-      stipendAmount: 0,
-      currency: 'INR',
-      qualification: '',
-      openings: 1,
-      status: 'Open'
-    });
-  };
-
   const updateInternship = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedInternship) return;
@@ -270,13 +271,36 @@ const InternshipManagement = () => {
     if (!token) return;
 
     try {
+      const internshipData = {
+        title: formData.title,
+        description: formData.description,
+        companyName: formData.companyName,
+        location: formData.location,
+        internshipType: formData.internshipType,
+        category: formData.category,
+        duration: formData.duration,
+        startDate: formData.startDate,
+        applicationDeadline: formData.applicationDeadline,
+        mode: formData.mode,
+        stipendAmount: formData.stipendAmount,
+        currency: formData.currency,
+        qualification: formData.qualification,
+        openings: formData.openings,
+        status: formData.status,
+        skills: [],
+        perks: [],
+        certificateProvided: true,
+        letterOfRecommendation: false,
+        experienceRequired: ""
+      };
+
       const response = await fetch(`/api/internships/${selectedInternship._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(internshipData)
       });
 
       if (response.ok) {
@@ -288,7 +312,8 @@ const InternshipManagement = () => {
         setSelectedInternship(null);
         fetchInternships();
       } else {
-        throw new Error('Failed to update internship');
+        const data = await response.json();
+        throw new Error(data.message || data.error || 'Failed to update internship');
       }
     } catch (error) {
       console.error('Error updating internship:', error);
@@ -543,13 +568,20 @@ const InternshipManagement = () => {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Duration *</label>
-                    <Input
+                    <label className="text-sm font-medium">Duration Type *</label>
+                    <Select
                       value={formData.duration}
-                      onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                      placeholder="e.g., 3 Months"
-                      required
-                    />
+                      onValueChange={(value: string) => setFormData({...formData, duration: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select duration type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Shortterm">Short Term</SelectItem>
+                        <SelectItem value="Longterm">Long Term</SelectItem>
+                        <SelectItem value="others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Start Date</label>
@@ -1050,13 +1082,20 @@ const InternshipManagement = () => {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Duration *</label>
-                  <Input
+                  <label className="text-sm font-medium">Duration Type *</label>
+                  <Select
                     value={formData.duration}
-                    onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                    placeholder="e.g., 3 Months"
-                    required
-                  />
+                    onValueChange={(value: string) => setFormData({...formData, duration: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select duration type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Shortterm">Short Term</SelectItem>
+                      <SelectItem value="Longterm">Long Term</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Start Date</label>
@@ -1183,7 +1222,7 @@ const InternshipManagement = () => {
               <div>
                 <h4 className="font-semibold">Description</h4>
                 <p className="text-sm text-gray-600 mt-1">{selectedInternship.description}</p>
-                </div>
+              </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <h4 className="font-semibold">Type</h4>
