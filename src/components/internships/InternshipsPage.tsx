@@ -8,10 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth'; // Fixed import path
 import ApplyInternshipDialog from './ApplyInternshipDialog';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar'; // Import Navbar
+import Footer from '@/components/Footer'; // Import Footer
 
 interface Internship {
   _id: string;
@@ -134,17 +134,10 @@ const InternshipsPage = () => {
                            internship.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            internship.description.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesType = filters.type === 'all' || 
-                         internship.internshipType.toLowerCase() === filters.type;
-      const matchesMode = filters.mode === 'all' || 
-                         internship.mode.toLowerCase() === filters.mode;
-      
-      // FIX: Safe location check for regular internships
-      const matchesLocation = filters.location === 'all' || 
-                             (internship.location && internship.location.toLowerCase().includes(filters.location));
-      
-      const matchesCategory = filters.category === 'all' || 
-                             (internship.category && internship.category.toLowerCase().includes(filters.category));
+      const matchesType = filters.type === 'all' || internship.internshipType.toLowerCase() === filters.type;
+      const matchesMode = filters.mode === 'all' || internship.mode.toLowerCase() === filters.mode;
+      const matchesLocation = filters.location === 'all' || internship.location.toLowerCase().includes(filters.location);
+      const matchesCategory = filters.category === 'all' || internship.category?.toLowerCase().includes(filters.category);
 
       return matchesSearch && matchesType && matchesMode && matchesLocation && matchesCategory;
     });
@@ -154,10 +147,8 @@ const InternshipsPage = () => {
                            internship.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            internship.description.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesType = filters.type === 'all' || 
-                         internship.internshipType.toLowerCase() === filters.type;
-      const matchesMode = filters.mode === 'all' || 
-                         internship.mode.toLowerCase() === filters.mode;
+      const matchesType = filters.type === 'all' || internship.internshipType.toLowerCase() === filters.type;
+      const matchesMode = filters.mode === 'all' || internship.mode.toLowerCase() === filters.mode;
 
       return matchesSearch && matchesType && matchesMode;
     });
@@ -173,7 +164,7 @@ const InternshipsPage = () => {
       filteredRegular = filteredRegular.filter(internship => internship.internshipType === 'Remote');
       filteredAP = filteredAP.filter(internship => internship.internshipType === 'Online');
     } else if (activeTab === 'ap') {
-      filteredRegular = []; // Show only AP internships in AP tab
+      filteredRegular = [];
     }
 
     setFilteredInternships(filteredRegular);
