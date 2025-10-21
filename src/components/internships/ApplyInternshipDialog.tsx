@@ -5,10 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, Building2, MapPin, Calendar, Clock, Upload } from 'lucide-react';
+import { IndianRupee, Building2, MapPin, Calendar, Clock, Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 interface ApplyInternshipDialogProps {
   internship: any;
@@ -36,12 +41,90 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'resume' | 'coverLetter') => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: 'File too large',
+          description: 'File size should be less than 5MB',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate file type
+      const allowedTypes = ['.pdf', '.doc', '.docx'];
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      if (!allowedTypes.includes(fileExtension || '')) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please upload PDF, DOC, or DOCX files only',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       if (type === 'resume') {
         setResumeFile(file);
       } else {
         setCoverLetterFile(file);
       }
     }
+  };
+
+  const handleRazorpayPayment = async (paymentData: any, applicationId: string) => {
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      amount: paymentData.amount * 100, // Convert to paise
+      currency: paymentData.currency,
+      name: internship.companyName,
+      description: `Payment for ${internship.title}`,
+      order_id: paymentData.orderId,
+      handler: async (response: any) => {
+        try {
+          // Verify payment
+          const verifyResponse = await fetch('/api/internships/ap-internshipsapplication/verify-payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+
+          const verifyData = await verifyResponse.json();
+
+          if (verifyData.success) {
+            toast({
+              title: 'Application Submitted',
+              description: 'Your internship application has been submitted successfully!'
+            });
+            onSuccess();
+          } else {
+            throw new Error(verifyData.message || 'Payment verification failed');
+          }
+        } catch (error: any) {
+          toast({
+            title: 'Payment Failed',
+            description: error.message || 'Payment verification failed',
+            variant: 'destructive'
+          });
+        }
+      },
+      prefill: {
+        name: formData.name,
+        email: formData.email,
+        contact: formData.phone
+      },
+      theme: {
+        color: '#4F46E5'
+      }
+    };
+
+    const razorpay = new window.Razorpay(options);
+    razorpay.open();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,10 +143,22 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
 
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('internshipId', internship._id);
-      formDataToSend.append('applicantDetails', JSON.stringify(formData));
-      formDataToSend.append('portfolioLink', formData.portfolioLink);
       
+      // Add applicant details as JSON string
+      const applicantDetails = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        college: formData.college,
+        qualification: formData.qualification
+      };
+      formDataToSend.append('applicantDetails', JSON.stringify(applicantDetails));
+      
+      if (formData.portfolioLink) {
+        formDataToSend.append('portfolioLink', formData.portfolioLink);
+      }
+      
+      // Add files
       if (resumeFile) {
         formDataToSend.append('resume', resumeFile);
       }
@@ -72,7 +167,19 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/internships/applications/apply', {
+      
+      // IMPROVED: Better AP internship detection
+      const isAPInternship = 
+        internship.internshipId?.startsWith('APINT') || 
+        internship.location === 'Andhra Pradesh' ||
+        internship.stream !== undefined || // AP internships have 'stream' field
+        internship.term !== undefined; // AP internships have 'term' field
+
+      const endpoint = isAPInternship 
+        ? `/api/internships/ap-internshipsapplication/${internship._id}/apply`
+        : `/api/internships/applications/apply`;
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -82,21 +189,23 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
 
       const data = await response.json();
 
-      if (data.success) {
+      // FIX: Handle both response formats
+      if (response.ok && (data.success || data.applicationId)) {
         if (data.requiresPayment) {
-          // Handle payment flow
-          handlePayment(data.paymentDetails, data.applicationId);
+          // Handle payment flow for paid internships
+          await handleRazorpayPayment(data.paymentDetails, data.applicationId);
         } else {
           toast({
             title: 'Application Submitted',
-            description: 'Your internship application has been submitted successfully!'
+            description: data.message || 'Your internship application has been submitted successfully!'
           });
           onSuccess();
         }
       } else {
-        throw new Error(data.message);
+        throw new Error(data.message || data.error || 'Failed to submit application');
       }
     } catch (error: any) {
+      console.error('Application error:', error);
       toast({
         title: 'Application Failed',
         description: error.message || 'Failed to submit application',
@@ -105,15 +214,6 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
     } finally {
       setLoading(false);
     }
-  };
-
-  const handlePayment = (paymentDetails: any, applicationId: string) => {
-    // Implement Razorpay payment integration
-    toast({
-      title: 'Payment Required',
-      description: 'Redirecting to payment gateway...'
-    });
-    // Add Razorpay integration here
   };
 
   if (!internship) return null;
@@ -290,10 +390,11 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {loading ? 'Submitting...' : 'Submit Application'}
             </Button>
           </DialogFooter>
