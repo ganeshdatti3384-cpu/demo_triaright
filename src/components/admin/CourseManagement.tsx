@@ -486,6 +486,13 @@ const CourseManagement = () => {
     });
   };
 
+  // Calculate total duration from curriculum
+  const calculateTotalDuration = (curriculum: TopicForm[]) => {
+    return curriculum.reduce((total, topic) => {
+      return total + topic.subtopics.reduce((sum, sub) => sum + sub.duration, 0);
+    }, 0);
+  };
+
   const handleAddCourse = async () => {
     // Validation
     if (!formData.courseName || !formData.instructorName || !formData.demoVideoLink) {
@@ -589,6 +596,9 @@ const CourseManagement = () => {
         return;
       }
 
+      // Calculate total duration
+      const totalDuration = calculateTotalDuration(formData.curriculum);
+
       // Create FormData with all required fields matching backend expectations
       const formDataToSend = new FormData();
       
@@ -605,8 +615,9 @@ const CourseManagement = () => {
       formDataToSend.append('certificationProvided', formData.certificationProvided);
       formDataToSend.append('additionalInformation', formData.additionalInformation);
       formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
+      formDataToSend.append('totalDuration', totalDuration.toString());
       
-      // Add curriculum as JSON string
+      // Add curriculum as JSON string - FIXED: Use proper field name
       formDataToSend.append('curriculum', JSON.stringify(formData.curriculum));
       
       // Add required files
@@ -622,12 +633,23 @@ const CourseManagement = () => {
         formDataToSend.append('finalExamExcel', files.finalExamExcel);
       }
       
-      // Add topic-wise exam files with correct field names
+      // Add topic-wise exam files with correct field names - FIXED: Use backend expected format
       formData.curriculum.forEach(topic => {
         if (topic.topicName && files.topicExams[topic.topicName]) {
-          formDataToSend.append(`topicExam_${topic.topicName}`, files.topicExams[topic.topicName]!);
+          // Backend expects field name like: topicExam_OOP Concepts
+          const fieldName = `topicExam_${topic.topicName}`;
+          formDataToSend.append(fieldName, files.topicExams[topic.topicName]!);
         }
       });
+
+      console.log('Sending form data with fields:');
+      for (let [key, value] of formDataToSend.entries()) {
+        if (value instanceof File) {
+          console.log(`${key}: File - ${value.name}`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
+      }
 
       const response = await courseApi.createCourse(token, formDataToSend);
       
@@ -680,15 +702,38 @@ const CourseManagement = () => {
         return;
       }
 
+      // Calculate total duration
+      const totalDuration = calculateTotalDuration(formData.curriculum);
+
       // Create FormData for multipart/form-data request
       const formDataToSend = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'curriculum') {
-          formDataToSend.append(key, JSON.stringify(value));
-        } else {
-          formDataToSend.append(key, value.toString());
-        }
-      });
+      
+      // Add all form fields
+      formDataToSend.append('courseName', formData.courseName);
+      formDataToSend.append('courseDescription', formData.courseDescription);
+      formDataToSend.append('instructorName', formData.instructorName);
+      formDataToSend.append('demoVideoLink', formData.demoVideoLink);
+      formDataToSend.append('courseType', formData.courseType);
+      formDataToSend.append('price', formData.price.toString());
+      formDataToSend.append('stream', formData.stream);
+      formDataToSend.append('providerName', formData.providerName);
+      formDataToSend.append('courseLanguage', formData.courseLanguage);
+      formDataToSend.append('certificationProvided', formData.certificationProvided);
+      formDataToSend.append('additionalInformation', formData.additionalInformation);
+      formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
+      formDataToSend.append('totalDuration', totalDuration.toString());
+      
+      // Add curriculum as JSON string
+      formDataToSend.append('curriculum', JSON.stringify(formData.curriculum));
+
+      // Add files if they exist
+      if (files.courseImage) {
+        formDataToSend.append('courseImage', files.courseImage);
+      }
+      
+      if (files.curriculumDoc) {
+        formDataToSend.append('curriculumDoc', files.curriculumDoc);
+      }
 
       const response = await courseApi.updateCourse(token, editingCourse._id!, formDataToSend);
       
@@ -836,7 +881,8 @@ const CourseManagement = () => {
     setSelectedCourseForExam(courseId);
     setIsExamUploadOpen(true);
   };
-const handleAddSubtopic = (topicIndex: number) => {
+
+  const handleAddSubtopic = (topicIndex: number) => {
     const updated = [...formData.curriculum];
     updated[topicIndex].subtopics.push({ name: '', link: '', duration: 0 });
     setFormData(prev => ({ ...prev, curriculum: updated }));
@@ -931,8 +977,8 @@ const handleAddSubtopic = (topicIndex: number) => {
                 handleAddTopic={handleAddTopic}
                 handleAddSubtopic={handleAddSubtopic}
                 handleRemoveTopic={handleRemoveTopic}
-                onSubmit={handleAddCourse} 
-                submitText="Add Course"
+                onSubmit={handleAddCourse}
+                submitText="Create Course"
                 loading={loading}
               />
             </DialogContent>
@@ -940,61 +986,57 @@ const handleAddSubtopic = (topicIndex: number) => {
         </div>
       </div>
 
+      {/* Courses List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (
-          <Card key={course.courseId}>
-            <CardHeader>
+          <Card key={course._id} className="relative">
+            <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg">{course.courseName}</CardTitle>
-                <div className="flex space-x-1">
-                  <Button variant="outline" size="sm" onClick={() => openExamUpload(course.courseId!)}>
-                    <Upload className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(course)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Badge variant={course.courseType === 'paid' ? 'default' : 'secondary'}>
+                  {course.courseType === 'paid' ? `₹${course.price}` : 'Free'}
+                </Badge>
               </div>
+              <p className="text-sm text-gray-600">by {course.instructorName}</p>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">Instructor: {course.instructorName}</p>
-                <p className="text-sm text-gray-600">Duration: {course.totalDuration} minutes</p>
-                <div className="flex items-center space-x-2">
-                  <Badge variant={course.stream === 'it' ? 'default' : 'secondary'}>
-                    {course.stream.toUpperCase()}
-                  </Badge>
-                  <Badge variant="outline">{course.providerName}</Badge>
-                  <Badge variant={course.courseType === 'paid' ? 'destructive' : 'secondary'}>
-                    {course.courseType === 'paid' ? `$${course.price}` : 'FREE'}
-                  </Badge>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">{course.courseDescription}</p>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span>Stream: {course.stream}</span>
+                <span>Duration: {course.totalDuration} min</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Provider: {course.providerName}</span>
+                <span>Language: {course.courseLanguage}</span>
+              </div>
+              <div className="flex space-x-2 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openEditDialog(course)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openExamUpload(course._id!)}
+                >
+                  <Upload className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => openDeleteDialog(course)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {loading && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-gray-500">Loading courses...</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {!loading && courses.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-gray-500">No courses added yet. Click "Add Course" to get started.</p>
-          </CardContent>
-        </Card>
-      )}
-
+      {/* Edit Course Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -1010,13 +1052,32 @@ const handleAddSubtopic = (topicIndex: number) => {
             handleAddTopic={handleAddTopic}
             handleAddSubtopic={handleAddSubtopic}
             handleRemoveTopic={handleRemoveTopic}
-            onSubmit={handleEditCourse} 
+            onSubmit={handleEditCourse}
             submitText="Update Course"
             loading={loading}
           />
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the course "{courseToDelete?.courseName}" and all its associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCourseToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCourse} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Exam Upload Dialog */}
       <Dialog open={isExamUploadOpen} onOpenChange={setIsExamUploadOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1024,43 +1085,20 @@ const handleAddSubtopic = (topicIndex: number) => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="exam-excel-file">Select Excel File with Questions</Label>
+              <Label htmlFor="exam-file">Select Excel File</Label>
               <Input
-                id="exam-excel-file"
+                id="exam-file"
                 type="file"
                 accept=".xlsx,.xls"
                 onChange={handleExamUpload}
               />
             </div>
             <p className="text-sm text-gray-600">
-              Excel should contain columns: Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Explanation
+              Upload an Excel file with exam questions for the selected course.
             </p>
           </div>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Course</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{courseToDelete?.courseName}"? This action cannot be undone.
-              All enrolled students, course content, and exam data will be permanently removed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setIsDeleteDialogOpen(false);
-              setCourseToDelete(null);
-            }}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCourse} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete Course
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
