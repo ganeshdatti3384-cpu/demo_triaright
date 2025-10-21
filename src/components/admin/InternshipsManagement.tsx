@@ -164,8 +164,42 @@ const InternshipManagement = () => {
     }
   };
 
+  // Add form validation
+  const validateForm = () => {
+    const errors: string[] = [];
+    
+    if (!formData.title?.trim()) errors.push('Title is required');
+    if (!formData.companyName?.trim()) errors.push('Company name is required');
+    if (!formData.description?.trim()) errors.push('Description is required');
+    if (!formData.location?.trim()) errors.push('Location is required');
+    if (!formData.duration?.trim()) errors.push('Duration is required');
+    if (!formData.applicationDeadline) errors.push('Application deadline is required');
+    
+    if (formData.mode !== 'Unpaid' && (!formData.stipendAmount || formData.stipendAmount <= 0)) {
+      errors.push('Valid stipend amount is required for paid/fee-based internships');
+    }
+    
+    if (!formData.openings || formData.openings < 1) {
+      errors.push('Openings must be at least 1');
+    }
+    
+    return errors;
+  };
+
   const createInternship = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form before submission
+    const errors = validateForm();
+    if (errors.length > 0) {
+      toast({
+        title: 'Validation Error',
+        description: errors.join(', '),
+        variant: 'destructive'
+      });
+      return;
+    }
+
     const token = localStorage.getItem('token');
     if (!token) return;
 
@@ -181,32 +215,22 @@ const InternshipManagement = () => {
 
       const data = await response.json();
 
+      // Handle both response formats
       if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Internship created successfully'
-        });
-        setShowCreateDialog(false);
-        setFormData({
-          title: '',
-          description: '',
-          companyName: '',
-          location: '',
-          internshipType: 'Remote',
-          category: '',
-          duration: '',
-          startDate: '',
-          applicationDeadline: '',
-          mode: 'Unpaid',
-          stipendAmount: 0,
-          currency: 'INR',
-          qualification: '',
-          openings: 1,
-          status: 'Open'
-        });
-        fetchInternships();
+        // Check for success flag OR just rely on HTTP status
+        if (data.success !== false) {
+          toast({
+            title: 'Success',
+            description: data.message || 'Internship created successfully'
+          });
+          setShowCreateDialog(false);
+          resetForm();
+          fetchInternships();
+        } else {
+          throw new Error(data.message || data.error || 'Failed to create internship');
+        }
       } else {
-        throw new Error(data.message || 'Failed to create internship');
+        throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
       }
     } catch (error: any) {
       console.error('Error creating internship:', error);
@@ -216,6 +240,26 @@ const InternshipManagement = () => {
         variant: 'destructive'
       });
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      companyName: '',
+      location: '',
+      internshipType: 'Remote',
+      category: '',
+      duration: '',
+      startDate: '',
+      applicationDeadline: '',
+      mode: 'Unpaid',
+      stipendAmount: 0,
+      currency: 'INR',
+      qualification: '',
+      openings: 1,
+      status: 'Open'
+    });
   };
 
   const updateInternship = async (e: React.FormEvent) => {
@@ -1139,7 +1183,7 @@ const InternshipManagement = () => {
               <div>
                 <h4 className="font-semibold">Description</h4>
                 <p className="text-sm text-gray-600 mt-1">{selectedInternship.description}</p>
-              </div>
+                </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <h4 className="font-semibold">Type</h4>
