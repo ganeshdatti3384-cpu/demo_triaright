@@ -129,6 +129,7 @@ const JobManagement = () => {
   };
 
   const handleFormSubmit = async () => {
+    console.log("Button clicked! Job form:", jobForm); // <--- DEBUG LINE
     if (editingJob) {
       await handleUpdateJob();
     } else {
