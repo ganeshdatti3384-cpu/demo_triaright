@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, MapPin, Briefcase, DollarSign, Clock } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { jobsApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar'; 
@@ -34,6 +37,15 @@ const JobsPage = () => {
     jobType: '',
     location: ''
   });
+  const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [applicationForm, setApplicationForm] = useState({
+    applicantName: '',
+    email: '',
+    phone: '',
+    coverLetter: ''
+  });
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   const fetchJobs = async () => {
@@ -100,11 +112,54 @@ const JobsPage = () => {
   };
 
   const handleApplyNow = (job: Job) => {
-    // You can implement application logic here
-    toast({
-      title: "Application Started",
-      description: `Applying for ${job.title} at ${job.companyName}`,
-    });
+    setSelectedJob(job);
+    setIsApplyDialogOpen(true);
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!selectedJob) return;
+
+    if (!applicationForm.applicantName || !applicationForm.email || !applicationForm.phone || !resumeFile) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please fill all required fields and upload a resume.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('applicantName', applicationForm.applicantName);
+      formData.append('email', applicationForm.email);
+      formData.append('phone', applicationForm.phone);
+      formData.append('coverLetter', applicationForm.coverLetter);
+      formData.append('resume', resumeFile);
+
+      // You'll need to implement this API call in your jobsApi service
+      await jobsApi.applyToJob(selectedJob._id, formData);
+      
+      toast({
+        title: "Application Submitted",
+        description: `Your application for ${selectedJob.title} has been submitted successfully.`,
+      });
+      
+      setIsApplyDialogOpen(false);
+      setApplicationForm({
+        applicantName: '',
+        email: '',
+        phone: '',
+        coverLetter: ''
+      });
+      setResumeFile(null);
+    } catch (error) {
+      console.error("Failed to apply for job:", error);
+      toast({ 
+        title: "Error", 
+        description: "Could not submit application. Please try again.", 
+        variant: "destructive" 
+      });
+    }
   };
 
   const handleSaveJob = (job: Job) => {
@@ -312,6 +367,74 @@ const JobsPage = () => {
           </Tabs>
         </div>
       </div>
+
+      {/* Application Dialog */}
+      <Dialog open={isApplyDialogOpen} onOpenChange={setIsApplyDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Apply for {selectedJob?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Full Name *</Label>
+                <Input
+                  value={applicationForm.applicantName}
+                  onChange={(e) => setApplicationForm(prev => ({ ...prev, applicantName: e.target.value }))}
+                  placeholder="Enter your full name"
+                />
+              </div>
+              <div>
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={applicationForm.email}
+                  onChange={(e) => setApplicationForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Enter your email"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label>Phone Number *</Label>
+              <Input
+                value={applicationForm.phone}
+                onChange={(e) => setApplicationForm(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="Enter your phone number"
+              />
+            </div>
+            
+            <div>
+              <Label>Cover Letter</Label>
+              <Textarea
+                value={applicationForm.coverLetter}
+                onChange={(e) => setApplicationForm(prev => ({ ...prev, coverLetter: e.target.value }))}
+                placeholder="Write a cover letter (optional)"
+                rows={4}
+              />
+            </div>
+            
+            <div>
+              <Label>Resume *</Label>
+              <Input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setResumeFile(file);
+                  }
+                }}
+              />
+              <p className="text-sm text-gray-500 mt-1">Accepted formats: PDF, DOC, DOCX</p>
+            </div>
+            
+            <Button onClick={handleSubmitApplication} className="w-full">
+              Submit Application
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Footer */}
       <Footer />
