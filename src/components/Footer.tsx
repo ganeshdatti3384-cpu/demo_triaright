@@ -8,6 +8,7 @@ import {
   Twitter,
   Instagram,
   Linkedin,
+  Youtube,
   Mail,
   Phone,
   MapPin,
@@ -62,10 +63,11 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { icon: Facebook, href: '#', label: 'Facebook' },
-    { icon: Twitter, href: '#', label: 'Twitter' },
-    { icon: Instagram, href: '#', label: 'Instagram' },
-    { icon: Linkedin, href: '#', label: 'LinkedIn' },
+    { icon: Facebook, href: 'https://www.facebook.com/people/Tria-Right/100090272642962/', label: 'Facebook' },
+    { icon: Twitter, href: 'https://x.com/triaright', label: 'Twitter' },
+    { icon: Instagram, href: 'https://www.instagram.com/triaright/?hl=en', label: 'Instagram' },
+    { icon: Linkedin, href: 'https://www.linkedin.com/company/triaright/', label: 'LinkedIn' },
+    { icon: Youtube, href: 'https://www.youtube.com/@TriarightSolutionsLLP', label: 'YouTube' },
   ];
 
   return (
@@ -127,6 +129,8 @@ const Footer = () => {
               <a
                 key={idx}
                 href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-brand-primary transition-colors"
                 aria-label={social.label}
               >
@@ -135,7 +139,7 @@ const Footer = () => {
             ))}
           </div>
           <div className="flex space-x-4">
-            <a href="#privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Polic</a>
+            <a href="#privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a>
             <a href="#terms" className="text-gray-400 hover:text-white transition-colors">Terms</a>
             <a href="#cookies" className="text-gray-400 hover:text-white transition-colors">Cookies</a>
           </div>
