@@ -17,7 +17,7 @@ import CollegeManagement from '../admin/CollegeManagement';
 import InternshipManagement from '../admin/InternshipsManagement';
 import ApplicationManagement from '../admin/ApplicationManagement';
 import Navbar from '../Navbar';
-import { jobsApi } from "@/services/api";
+import { collegeApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface AdminDashboardProps {
