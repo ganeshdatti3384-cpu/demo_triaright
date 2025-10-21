@@ -26,7 +26,6 @@ interface Job {
   skills: string[];
   createdAt: string;
   status: 'Open' | 'Closed' | 'On Hold';
-  applicationDeadline?: string;
 }
 
 const JobsPage = () => {
@@ -113,21 +112,6 @@ const JobsPage = () => {
   };
 
   const handleApplyNow = (job: Job) => {
-    // Check if job has a deadline and if it's passed
-    if (job.applicationDeadline) {
-      const deadline = new Date(job.applicationDeadline);
-      const now = new Date();
-      
-      if (deadline < now) {
-        toast({
-          title: "Application Closed",
-          description: "The application deadline for this job has passed.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    
     setSelectedJob(job);
     setIsApplyDialogOpen(true);
   };
@@ -135,24 +119,10 @@ const JobsPage = () => {
   const handleSubmitApplication = async () => {
     if (!selectedJob) return;
 
-    console.log('=== Starting Job Application ===');
-    console.log('Job ID:', selectedJob._id);
-    console.log('User Token:', localStorage.getItem('token'));
-
-    // Basic validation
-    if (!applicationForm.applicantName?.trim() || !applicationForm.email?.trim() || !applicationForm.phone?.trim()) {
+    if (!applicationForm.applicantName || !applicationForm.email || !applicationForm.phone || !resumeFile) {
       toast({ 
         title: "Validation Error", 
-        description: "Please fill all required fields (Name, Email, Phone).", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    if (!resumeFile) {
-      toast({ 
-        title: "Validation Error", 
-        description: "Please upload your resume.", 
+        description: "Please fill all required fields and upload a resume.", 
         variant: "destructive" 
       });
       return;
@@ -160,42 +130,14 @@ const JobsPage = () => {
 
     try {
       const formData = new FormData();
-      
-      // Try different field name combinations that backend might expect
-      formData.append('applicantName', applicationForm.applicantName.trim());
-      formData.append('email', applicationForm.email.trim());
-      formData.append('phone', applicationForm.phone.trim());
-      
-      // Also try alternative field names
-      formData.append('name', applicationForm.applicantName.trim());
-      formData.append('applicantEmail', applicationForm.email.trim());
-      formData.append('phoneNumber', applicationForm.phone.trim());
-      
-      // Append resume file
+      formData.append('applicantName', applicationForm.applicantName);
+      formData.append('email', applicationForm.email);
+      formData.append('phone', applicationForm.phone);
+      formData.append('coverLetter', applicationForm.coverLetter);
       formData.append('resume', resumeFile);
-      formData.append('resumeFile', resumeFile); // Alternative field name
-      
-      // Append cover letter if provided
-      if (applicationForm.coverLetter?.trim()) {
-        formData.append('coverLetter', applicationForm.coverLetter.trim());
-        formData.append('coverLetterText', applicationForm.coverLetter.trim()); // Alternative
-      }
 
-      // Debug: Log all FormData entries
-      console.log('FormData entries:');
-      for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(key, value.name, value.type, value.size);
-        } else {
-          console.log(key, value);
-        }
-      }
-
-      console.log('Sending application request...');
-      
-      const response = await jobsApi.applyToJob(selectedJob._id, formData);
-      
-      console.log('Application successful:', response.data);
+      // You'll need to implement this API call in your jobsApi service
+      await jobsApi.applyToJob(selectedJob._id, formData);
       
       toast({
         title: "Application Submitted",
@@ -210,31 +152,11 @@ const JobsPage = () => {
         coverLetter: ''
       });
       setResumeFile(null);
-      
-    } catch (error: any) {
-      console.error('=== APPLICATION ERROR DETAILS ===');
-      console.error('Error:', error);
-      console.error('Status:', error.response?.status);
-      console.error('Headers:', error.response?.headers);
-      console.error('Data:', error.response?.data);
-      console.error('================================');
-      
-      let errorMessage = "Could not submit application. Please try again.";
-      
-      if (error.response?.data) {
-        // Try to extract error message from response
-        if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        }
-      }
-      
+    } catch (error) {
+      console.error("Failed to apply for job:", error);
       toast({ 
-        title: "Application Failed", 
-        description: errorMessage, 
+        title: "Error", 
+        description: "Could not submit application. Please try again.", 
         variant: "destructive" 
       });
     }
@@ -347,27 +269,9 @@ const JobsPage = () => {
                                 </h3>
                                 <p className="text-lg text-gray-700 mb-2">{job.companyName}</p>
                               </div>
-                              <div className="flex flex-col items-end gap-2">
-                                <Badge className={getJobTypeColor(job.jobType)}>
-                                  {job.jobType}
-                                </Badge>
-                                {/* Show deadline status */}
-                                {job.applicationDeadline && (
-                                  <Badge 
-                                    variant={
-                                      new Date(job.applicationDeadline) < new Date() 
-                                        ? "destructive" 
-                                        : "outline"
-                                    }
-                                    className="text-xs"
-                                  >
-                                    {new Date(job.applicationDeadline) < new Date() 
-                                      ? "Expired" 
-                                      : `Apply by ${new Date(job.applicationDeadline).toLocaleDateString()}`
-                                    }
-                                  </Badge>
-                                )}
-                              </div>
+                              <Badge className={getJobTypeColor(job.jobType)}>
+                                {job.jobType}
+                              </Badge>
                             </div>
                             
                             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
@@ -407,12 +311,8 @@ const JobsPage = () => {
                             <Button 
                               className="bg-brand-primary hover:bg-blue-700"
                               onClick={() => handleApplyNow(job)}
-                              disabled={job.applicationDeadline && new Date(job.applicationDeadline) < new Date()}
                             >
-                              {job.applicationDeadline && new Date(job.applicationDeadline) < new Date() 
-                                ? "Expired" 
-                                : "Apply Now"
-                              }
+                              Apply Now
                             </Button>
                             <Button 
                               variant="outline"
@@ -482,7 +382,6 @@ const JobsPage = () => {
                   value={applicationForm.applicantName}
                   onChange={(e) => setApplicationForm(prev => ({ ...prev, applicantName: e.target.value }))}
                   placeholder="Enter your full name"
-                  required
                 />
               </div>
               <div>
@@ -492,7 +391,6 @@ const JobsPage = () => {
                   value={applicationForm.email}
                   onChange={(e) => setApplicationForm(prev => ({ ...prev, email: e.target.value }))}
                   placeholder="Enter your email"
-                  required
                 />
               </div>
             </div>
@@ -503,7 +401,6 @@ const JobsPage = () => {
                 value={applicationForm.phone}
                 onChange={(e) => setApplicationForm(prev => ({ ...prev, phone: e.target.value }))}
                 placeholder="Enter your phone number"
-                required
               />
             </div>
             
@@ -521,26 +418,15 @@ const JobsPage = () => {
               <Label>Resume *</Label>
               <Input
                 type="file"
-                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.doc,.docx"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
                     setResumeFile(file);
-                    console.log('File selected:', file.name, file.type, file.size);
-                  } else {
-                    setResumeFile(null);
                   }
                 }}
-                required
               />
-              <p className="text-sm text-gray-500 mt-1">
-                Accepted formats: PDF, DOC, DOCX (Max: 5MB)
-              </p>
-              {resumeFile && (
-                <p className="text-sm text-green-600 mt-1">
-                  Selected: {resumeFile.name}
-                </p>
-              )}
+              <p className="text-sm text-gray-500 mt-1">Accepted formats: PDF, DOC, DOCX</p>
             </div>
             
             <Button onClick={handleSubmitApplication} className="w-full">
