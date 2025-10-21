@@ -1,3 +1,4 @@
+// In Navbar.tsx, replace the Jobs button with this dropdown
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -6,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard, Settings } from 'lucide-react';
+import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard, Settings, Briefcase, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -23,9 +24,20 @@ const Navbar = () => {
       : []),
   ];
 
-  // Define navigation menus that should be visible to all users
-  const navigationMenus = [
-    { label: 'Courses', items: courseTypes }
+  // Jobs dropdown items
+  const jobsItems = [
+    { 
+      name: 'Browse Jobs', 
+      description: 'Find opportunities', 
+      path: '/jobs',
+      icon: Briefcase
+    },
+    { 
+      name: 'Job Assistance', 
+      description: 'Career support', 
+      path: '/jobs/assistance',
+      icon: Users
+    }
   ];
 
   const handleRegisterClick = () => {
@@ -78,12 +90,6 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   };
 
-  // Direct navigation to jobs assistance page
-  const handleJobsClick = () => {
-    navigate('/jobs/assistance');
-    setIsMobileMenuOpen(false);
-  };
-
   // Direct navigation to Pack365 page
   const handlePack365Click = () => {
     navigate('/pack365');
@@ -132,6 +138,31 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Jobs Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
+                <span>Jobs</span>
+                <ChevronDown className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48 bg-white border shadow-lg">
+                {jobsItems.map((item) => (
+                  <DropdownMenuItem
+                    key={item.name}
+                    className="p-3 cursor-pointer"
+                    onClick={() => handleMenuItemClick(item.path)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <item.icon className="h-4 w-4 text-gray-600" />
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-sm text-gray-500">{item.description}</div>
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Direct Internships Link */}
             <Button
               variant="ghost"
@@ -139,15 +170,6 @@ const Navbar = () => {
               className="text-gray-700 hover:text-brand-primary transition-colors"
             >
               Internships
-            </Button>
-
-            {/* Direct Jobs Link */}
-            <Button
-              variant="ghost"
-              onClick={handleJobsClick}
-              className="text-gray-700 hover:text-brand-primary transition-colors"
-            >
-              Jobs
             </Button>
 
             {/* Direct Pack365 Link */}
@@ -272,6 +294,21 @@ const Navbar = () => {
                 ))}
               </div>
 
+              {/* Jobs Section */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900">Jobs</h3>
+                {jobsItems.map((item) => (
+                  <div
+                    key={item.name}
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary flex items-center space-x-2"
+                    onClick={() => handleMenuItemClick(item.path)}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.name}</span>
+                  </div>
+                ))}
+              </div>
+
               {/* Direct Links Section */}
               <div className="space-y-2">
                 <h3 className="font-semibold text-gray-900">Quick Links</h3>
@@ -280,12 +317,6 @@ const Navbar = () => {
                   onClick={handleInternshipsClick}
                 >
                   Internships
-                </div>
-                <div
-                  className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
-                  onClick={handleJobsClick}
-                >
-                  Jobs
                 </div>
                 <div
                   className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
