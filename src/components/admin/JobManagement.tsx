@@ -29,6 +29,12 @@ interface Job {
   skills: string[];
   createdAt: string;
   status: 'Open' | 'Closed' | 'On Hold';
+  experienceRequired?: string;
+  openings?: number;
+  qualification?: string;
+  Jobmode?: 'Remote' | 'On-Site' | 'Hybrid';
+  applicationDeadline?: string;
+  perks?: string[];
 }
 
 interface JobApplication {
@@ -82,17 +88,21 @@ const JobManagement = () => {
     salaryMin: '',
     salaryMax: '',
     description: '',
-    skills: ''
+    skills: '',
+    experienceRequired: '',
+    openings: '',
+    qualification: '',
+    Jobmode: 'Remote' as 'Remote' | 'On-Site' | 'Hybrid',
+    applicationDeadline: '',
+    perks: ''
   });
 
   // ✅ Fetch jobs from the API using jobsApi
   const fetchJobs = async () => {
     setLoading(true);
     try {
-      // FIXED: The API call was missing. This now correctly fetches jobs.
       const response = await jobsApi.getAllJobs();
       setJobs(response.data);
-      console.log(jobs)
     } catch (error) {
       console.error("Failed to fetch jobs:", error);
       toast({ title: "Error", description: "Could not fetch jobs.", variant: "destructive" });
@@ -104,7 +114,7 @@ const JobManagement = () => {
   useEffect(() => {
     fetchJobs();
   }, []);
-  
+
   const resetForm = () => {
     setEditingJob(null);
     setJobForm({
@@ -115,7 +125,13 @@ const JobManagement = () => {
       salaryMin: '',
       salaryMax: '',
       description: '',
-      skills: ''
+      skills: '',
+      experienceRequired: '',
+      openings: '',
+      qualification: '',
+      Jobmode: 'Remote',
+      applicationDeadline: '',
+      perks: ''
     });
   };
 
@@ -128,15 +144,30 @@ const JobManagement = () => {
   };
 
   const handleCreateJob = async () => {
-    if (!jobForm.title || !jobForm.companyName) {
-      toast({ title: "Validation Error", description: "Title and Company Name are required.", variant: "destructive" });
+    if (!jobForm.title || !jobForm.companyName || !jobForm.description || !jobForm.location) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Title, Company Name, Description, and Location are required.", 
+        variant: "destructive" 
+      });
       return;
     }
+
     const newJobPayload = {
-      ...jobForm,
+      title: jobForm.title,
+      companyName: jobForm.companyName,
+      location: jobForm.location,
+      jobType: jobForm.jobType,
+      Jobmode: jobForm.Jobmode,
+      description: jobForm.description,
       skills: jobForm.skills.split(',').map(s => s.trim()).filter(Boolean),
-      salaryMin: Number(jobForm.salaryMin) || undefined,
-      salaryMax: Number(jobForm.salaryMax) || undefined,
+      salaryMin: jobForm.salaryMin ? Number(jobForm.salaryMin) : undefined,
+      salaryMax: jobForm.salaryMax ? Number(jobForm.salaryMax) : undefined,
+      experienceRequired: jobForm.experienceRequired || undefined,
+      openings: jobForm.openings ? Number(jobForm.openings) : undefined,
+      qualification: jobForm.qualification || undefined,
+      applicationDeadline: jobForm.applicationDeadline || undefined,
+      perks: jobForm.perks.split(',').map(s => s.trim()).filter(Boolean),
     };
 
     try {
@@ -147,7 +178,11 @@ const JobManagement = () => {
       resetForm();
     } catch (error) {
       console.error("Failed to create job:", error);
-      toast({ title: "Error", description: "Failed to post job.", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: "Failed to post job. Please check all required fields.", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -161,18 +196,35 @@ const JobManagement = () => {
       salaryMin: job.salaryMin?.toString() || '',
       salaryMax: job.salaryMax?.toString() || '',
       description: job.description,
-      skills: job.skills.join(', ')
+      skills: job.skills.join(', '),
+      experienceRequired: job.experienceRequired || '',
+      openings: job.openings?.toString() || '',
+      qualification: job.qualification || '',
+      Jobmode: job.Jobmode || 'Remote',
+      applicationDeadline: job.applicationDeadline ? new Date(job.applicationDeadline).toISOString().slice(0, 16) : '',
+      perks: job.perks?.join(', ') || ''
     });
     setIsFormOpen(true);
   };
 
   const handleUpdateJob = async () => {
     if (!editingJob) return;
+    
     const updatedJobPayload = {
-      ...jobForm,
+      title: jobForm.title,
+      companyName: jobForm.companyName,
+      location: jobForm.location,
+      jobType: jobForm.jobType,
+      Jobmode: jobForm.Jobmode,
+      description: jobForm.description,
       skills: jobForm.skills.split(',').map(s => s.trim()).filter(Boolean),
-      salaryMin: Number(jobForm.salaryMin) || undefined,
-      salaryMax: Number(jobForm.salaryMax) || undefined,
+      salaryMin: jobForm.salaryMin ? Number(jobForm.salaryMin) : undefined,
+      salaryMax: jobForm.salaryMax ? Number(jobForm.salaryMax) : undefined,
+      experienceRequired: jobForm.experienceRequired || undefined,
+      openings: jobForm.openings ? Number(jobForm.openings) : undefined,
+      qualification: jobForm.qualification || undefined,
+      applicationDeadline: jobForm.applicationDeadline || undefined,
+      perks: jobForm.perks.split(',').map(s => s.trim()).filter(Boolean),
     };
 
     try {
@@ -305,58 +357,151 @@ const JobManagement = () => {
         </TabsContent>
       </Tabs>
       
-       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingJob ? 'Edit Job' : 'Post New Job'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                  <div>
-                      <Label>Job Title *</Label>
-                      <Input value={jobForm.title} onChange={(e) => setJobForm(prev => ({ ...prev, title: e.target.value }))} />
-                  </div>
-                  <div>
-                      <Label>Company *</Label>
-                      <Input value={jobForm.companyName} onChange={(e) => setJobForm(prev => ({ ...prev, companyName: e.target.value }))} />
-                  </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                  <div>
-                      <Label>Location</Label>
-                      <Input value={jobForm.location} onChange={(e) => setJobForm(prev => ({ ...prev, location: e.target.value }))} />
-                  </div>
-                  <div>
-                      <Label>Type</Label>
-                      <select value={jobForm.jobType} onChange={(e) => setJobForm(prev => ({ ...prev, jobType: e.target.value as Job['jobType'] }))} className="w-full p-2 border rounded">
-                          <option value="Full-Time">Full-Time</option>
-                          <option value="Part-Time">Part-Time</option>
-                          <option value="Contract">Contract</option>
-                          <option value="Internship">Internship</option>
-                      </select>
-                  </div>
-              </div>
-               <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <Label>Salary Minimum</Label>
-                        <Input type="number" value={jobForm.salaryMin} onChange={(e) => setJobForm(prev => ({ ...prev, salaryMin: e.target.value }))} />
-                    </div>
-                    <div>
-                        <Label>Salary Maximum</Label>
-                        <Input type="number" value={jobForm.salaryMax} onChange={(e) => setJobForm(prev => ({ ...prev, salaryMax: e.target.value }))} />
-                    </div>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                  <Label>Job Description</Label>
-                  <Textarea value={jobForm.description} onChange={(e) => setJobForm(prev => ({ ...prev, description: e.target.value }))} rows={4} />
+                <Label>Job Title *</Label>
+                <Input 
+                  value={jobForm.title} 
+                  onChange={(e) => setJobForm(prev => ({ ...prev, title: e.target.value }))} 
+                />
               </div>
               <div>
-                  <Label>Skills (comma-separated)</Label>
-                  <Input value={jobForm.skills} onChange={(e) => setJobForm(prev => ({ ...prev, skills: e.target.value }))} />
+                <Label>Company *</Label>
+                <Input 
+                  value={jobForm.companyName} 
+                  onChange={(e) => setJobForm(prev => ({ ...prev, companyName: e.target.value }))} 
+                />
               </div>
-              <Button onClick={handleFormSubmit} className="w-full">
-                {editingJob ? 'Save Changes' : 'Post Job'}
-              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Location *</Label>
+                <Input 
+                  value={jobForm.location} 
+                  onChange={(e) => setJobForm(prev => ({ ...prev, location: e.target.value }))} 
+                />
+              </div>
+              <div>
+                <Label>Job Type *</Label>
+                <select 
+                  value={jobForm.jobType} 
+                  onChange={(e) => setJobForm(prev => ({ ...prev, jobType: e.target.value as Job['jobType'] }))} 
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="Full-Time">Full-Time</option>
+                  <option value="Part-Time">Part-Time</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Internship">Internship</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Job Mode</Label>
+                <select 
+                  value={jobForm.Jobmode} 
+                  onChange={(e) => setJobForm(prev => ({ ...prev, Jobmode: e.target.value as 'Remote' | 'On-Site' | 'Hybrid' }))} 
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="Remote">Remote</option>
+                  <option value="On-Site">On-Site</option>
+                  <option value="Hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div>
+                <Label>Openings</Label>
+                <Input 
+                  type="number" 
+                  value={jobForm.openings} 
+                  onChange={(e) => setJobForm(prev => ({ ...prev, openings: e.target.value }))} 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Salary Minimum</Label>
+                <Input 
+                  type="number" 
+                  value={jobForm.salaryMin} 
+                  onChange={(e) => setJobForm(prev => ({ ...prev, salaryMin: e.target.value }))} 
+                />
+              </div>
+              <div>
+                <Label>Salary Maximum</Label>
+                <Input 
+                  type="number" 
+                  value={jobForm.salaryMax} 
+                  onChange={(e) => setJobForm(prev => ({ ...prev, salaryMax: e.target.value }))} 
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Experience Required</Label>
+              <Input 
+                value={jobForm.experienceRequired} 
+                onChange={(e) => setJobForm(prev => ({ ...prev, experienceRequired: e.target.value }))} 
+                placeholder="e.g., 2+ years in React"
+              />
+            </div>
+
+            <div>
+              <Label>Qualification</Label>
+              <Input 
+                value={jobForm.qualification} 
+                onChange={(e) => setJobForm(prev => ({ ...prev, qualification: e.target.value }))} 
+                placeholder="e.g., B.Tech in Computer Science"
+              />
+            </div>
+
+            <div>
+              <Label>Application Deadline</Label>
+              <Input 
+                type="datetime-local" 
+                value={jobForm.applicationDeadline} 
+                onChange={(e) => setJobForm(prev => ({ ...prev, applicationDeadline: e.target.value }))} 
+              />
+            </div>
+
+            <div>
+              <Label>Job Description *</Label>
+              <Textarea 
+                value={jobForm.description} 
+                onChange={(e) => setJobForm(prev => ({ ...prev, description: e.target.value }))} 
+                rows={4} 
+              />
+            </div>
+
+            <div>
+              <Label>Skills (comma-separated)</Label>
+              <Input 
+                value={jobForm.skills} 
+                onChange={(e) => setJobForm(prev => ({ ...prev, skills: e.target.value }))} 
+                placeholder="e.g., JavaScript, React, Node.js"
+              />
+            </div>
+
+            <div>
+              <Label>Perks (comma-separated)</Label>
+              <Input 
+                value={jobForm.perks} 
+                onChange={(e) => setJobForm(prev => ({ ...prev, perks: e.target.value }))} 
+                placeholder="e.g., Health Insurance, Flexible Hours, Work From Home"
+              />
+            </div>
+
+            <Button onClick={handleFormSubmit} className="w-full">
+              {editingJob ? 'Save Changes' : 'Post Job'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -376,6 +521,26 @@ const JobManagement = () => {
                         {selectedJob.skills.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
                       </div>
                     </div>
+                    {selectedJob.experienceRequired && (
+                      <div>
+                        <Label>Experience Required</Label>
+                        <p>{selectedJob.experienceRequired}</p>
+                      </div>
+                    )}
+                    {selectedJob.qualification && (
+                      <div>
+                        <Label>Qualification</Label>
+                        <p>{selectedJob.qualification}</p>
+                      </div>
+                    )}
+                    {selectedJob.perks && selectedJob.perks.length > 0 && (
+                      <div>
+                        <Label>Perks</Label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {selectedJob.perks.map(perk => <Badge key={perk} variant="outline">{perk}</Badge>)}
+                        </div>
+                      </div>
+                    )}
                   </div>
               )}
           </DialogContent>
@@ -403,4 +568,3 @@ const JobManagement = () => {
 };
 
 export default JobManagement;
-
