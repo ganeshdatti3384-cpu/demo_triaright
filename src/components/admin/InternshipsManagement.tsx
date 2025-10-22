@@ -75,7 +75,7 @@ const InternshipManagement = () => {
     location: '',
     internshipType: 'Remote' as const,
     category: '',
-    duration: 'Shortterm' as const,
+    duration: '',
     startDate: '',
     applicationDeadline: '',
     mode: 'Unpaid' as const,
@@ -187,7 +187,7 @@ const InternshipManagement = () => {
     if (!validateFormData()) return;
 
     try {
-      // FIXED: Proper data structure for regular internships
+      // Prepare complete internship data with all required fields
       const internshipData = {
         title: formData.title,
         description: formData.description,
@@ -195,11 +195,11 @@ const InternshipManagement = () => {
         location: formData.location,
         internshipType: formData.internshipType,
         category: formData.category,
-        duration: formData.duration, // This should be the enum value
-        startDate: formData.startDate || undefined,
+        duration: formData.duration,
+        startDate: formData.startDate,
         applicationDeadline: formData.applicationDeadline,
         mode: formData.mode,
-        stipendAmount: formData.mode !== 'Unpaid' ? formData.stipendAmount : 0,
+        stipendAmount: formData.stipendAmount,
         currency: formData.currency,
         qualification: formData.qualification,
         openings: formData.openings,
@@ -239,7 +239,7 @@ const InternshipManagement = () => {
           location: '',
           internshipType: 'Remote',
           category: '',
-          duration: 'Shortterm',
+          duration: '',
           startDate: '',
           applicationDeadline: '',
           mode: 'Unpaid',
@@ -279,10 +279,10 @@ const InternshipManagement = () => {
         internshipType: formData.internshipType,
         category: formData.category,
         duration: formData.duration,
-        startDate: formData.startDate || undefined,
+        startDate: formData.startDate,
         applicationDeadline: formData.applicationDeadline,
         mode: formData.mode,
-        stipendAmount: formData.mode !== 'Unpaid' ? formData.stipendAmount : 0,
+        stipendAmount: formData.stipendAmount,
         currency: formData.currency,
         qualification: formData.qualification,
         openings: formData.openings,
@@ -571,9 +571,7 @@ const InternshipManagement = () => {
                     <label className="text-sm font-medium">Duration Type *</label>
                     <Select
                       value={formData.duration}
-                      onValueChange={(value: 'Shortterm' | 'Longterm' | 'others') => 
-                        setFormData({...formData, duration: value})
-                      }
+                      onValueChange={(value: string) => setFormData({...formData, duration: value})}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select duration type" />
@@ -1087,9 +1085,7 @@ const InternshipManagement = () => {
                   <label className="text-sm font-medium">Duration Type *</label>
                   <Select
                     value={formData.duration}
-                    onValueChange={(value: 'Shortterm' | 'Longterm' | 'others') => 
-                      setFormData({...formData, duration: value})
-                    }
+                    onValueChange={(value: string) => setFormData({...formData, duration: value})}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select duration type" />
