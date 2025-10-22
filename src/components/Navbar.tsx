@@ -99,6 +99,9 @@ const Navbar = () => {
   // Check if user is admin or super-admin
   const isAdminUser = user?.role === 'admin' || user?.role === 'superadmin';
 
+  // Check if user is student - hide all nav links for students
+  const isStudent = user?.role === 'student';
+
   return (
     <nav className="bg-white/90 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -114,80 +117,97 @@ const Navbar = () => {
             </button>
           </div>
 
-          {/* Desktop Navigation - ALWAYS VISIBLE */}
-          <div className="hidden md:flex items-center space-x-8">
-            {/* Courses Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
-                <span>Courses</span>
-                <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-white border shadow-lg">
-                {courseTypes.map((item) => (
-                  <DropdownMenuItem
-                    key={item.name}
-                    className="p-3 cursor-pointer"
-                    onClick={() => handleMenuItemClick(item.path)}
-                  >
-                    <div>
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-sm text-gray-500">{item.description}</div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Jobs Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
-                <span>Jobs</span>
-                <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48 bg-white border shadow-lg">
-                {jobsItems.map((item) => (
-                  <DropdownMenuItem
-                    key={item.name}
-                    className="p-3 cursor-pointer"
-                    onClick={() => handleMenuItemClick(item.path)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <item.icon className="h-4 w-4 text-gray-600" />
+          {/* Desktop Navigation - HIDDEN FOR STUDENTS */}
+          {!isStudent && (
+            <div className="hidden md:flex items-center space-x-8">
+              {/* Courses Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
+                  <span>Courses</span>
+                  <ChevronDown className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-white border shadow-lg">
+                  {courseTypes.map((item) => (
+                    <DropdownMenuItem
+                      key={item.name}
+                      className="p-3 cursor-pointer"
+                      onClick={() => handleMenuItemClick(item.path)}
+                    >
                       <div>
                         <div className="font-medium">{item.name}</div>
                         <div className="text-sm text-gray-500">{item.description}</div>
                       </div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            {/* Direct Internships Link */}
-            <Button
-              variant="ghost"
-              onClick={handleInternshipsClick}
-              className="text-gray-700 hover:text-brand-primary transition-colors"
-            >
-              Internships
-            </Button>
+              {/* Jobs Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
+                  <span>Jobs</span>
+                  <ChevronDown className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48 bg-white border shadow-lg">
+                  {jobsItems.map((item) => (
+                    <DropdownMenuItem
+                      key={item.name}
+                      className="p-3 cursor-pointer"
+                      onClick={() => handleMenuItemClick(item.path)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <item.icon className="h-4 w-4 text-gray-600" />
+                        <div>
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-sm text-gray-500">{item.description}</div>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            {/* Direct Pack365 Link */}
-            <Button
-              variant="ghost"
-              onClick={handlePack365Click}
-              className="text-gray-700 hover:text-brand-primary transition-colors"
-            >
-              Pack365
-            </Button>
-          </div>
+              {/* Direct Internships Link */}
+              <Button
+                variant="ghost"
+                onClick={handleInternshipsClick}
+                className="text-gray-700 hover:text-brand-primary transition-colors"
+              >
+                Internships
+              </Button>
+
+              {/* Direct Pack365 Link */}
+              <Button
+                variant="ghost"
+                onClick={handlePack365Click}
+                className="text-gray-700 hover:text-brand-primary transition-colors"
+              >
+                Pack365
+              </Button>
+            </div>
+          )}
 
           {/* Desktop Auth/Profile Buttons */}
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated && user ? (
               <>
-                {/* Welcome message for students, job seekers, employees, employers */}
-                {['student', 'jobseeker', 'employee', 'employer'].includes(user.role) ? (
+                {/* For students - only show welcome message and logout */}
+                {isStudent ? (
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm font-medium text-gray-700">
+                      {getWelcomeMessage()}
+                    </span>
+                    <Button
+                      onClick={handleLogout}
+                      variant="outline"
+                      className="flex items-center space-x-2 border-red-500 text-red-600 hover:bg-red-50"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Logout</span>
+                    </Button>
+                  </div>
+                ) : /* Welcome message for job seekers, employees, employers */
+                ['jobseeker', 'employee', 'employer'].includes(user.role) ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="flex items-center space-x-2">
@@ -264,20 +284,39 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
-          </div>
+          {/* Mobile menu button - HIDDEN FOR STUDENTS */}
+          {!isStudent && (
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              >
+                {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </Button>
+            </div>
+          )}
+
+          {/* For students on mobile - show logout button */}
+          {isStudent && (
+            <div className="md:hidden flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-700">
+                {getWelcomeMessage()}
+              </span>
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-2 border-red-500 text-red-600 hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
+        {/* Mobile Navigation - HIDDEN FOR STUDENTS */}
+        {!isStudent && isMobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-200 py-4">
             <div className="space-y-4">
               {/* Courses Section */}
