@@ -107,7 +107,7 @@ const Navbar = () => {
           <div className="flex-shrink-0">
             <button onClick={handleLogoClick} className="flex items-center hover:opacity-80 transition-opacity">
               <img
-                src="/lovable-uploads/cdf8ab47-8b3d-4445-820a-e1e1baca31e0.png"
+                src="/lovable-uploads/LOGO.png"
                 alt="TriaRight - The New Era Of Learning"
                 className="h-10 w-auto"
               />
