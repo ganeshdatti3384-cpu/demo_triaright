@@ -8,37 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { 
-  BookOpen, 
-  Trophy, 
-  Users, 
-  Clock, 
-  Star, 
-  Play, 
-  Code, 
-  FolderOpen, 
-  Settings, 
-  User, 
-  Calendar, 
-  Bell, 
-  Award, 
-  CheckCircle, 
-  Briefcase, 
-  GraduationCap, 
-  PenTool, 
-  FileText, 
-  Filter, 
-  Search, 
-  Calculator, 
-  MapPin, 
-  Target, 
-  TrendingUp, 
-  AlertCircle, 
-  IndianRupee, 
-  PlayCircle,
-  Zap,
-  Building
-} from 'lucide-react';
+import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search, Calculator, MapPin, Target, TrendingUp, AlertCircle, IndianRupee, PlayCircle, Zap, Building } from 'lucide-react';
 import Navbar from '../Navbar';
 import Pack365Card from '../Pack365Card';
 import CodeCompiler from '../CodeCompiler';
@@ -71,7 +41,6 @@ const StudentDashboard = () => {
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     const fetchEnrollments = async () => {
@@ -157,7 +126,6 @@ const StudentDashboard = () => {
       setMyEnrollments([]);
     }
   };
-
   const loadPack365Enrollments = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -197,6 +165,8 @@ const StudentDashboard = () => {
       setLoadingEnrollments(false);
     }
   };
+
+
 
   const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
     console.log('🚀 Continue Learning clicked, enrollment:', enrollment);
@@ -240,6 +210,7 @@ const StudentDashboard = () => {
     navigate(`/pack365-stream/${stream}`);
   };
 
+
   // Filter courses based on stream and search term
   const filteredFreeCourses = freeCourses.filter(course => {
     const matchesFilter = courseFilter === 'all' || course.stream.toLowerCase() === courseFilter.toLowerCase();
@@ -260,7 +231,6 @@ const StudentDashboard = () => {
     // Navigate to course enrollment page
     navigate(`/course-enrollment/${courseId}`);
   };
-
   const pack365Stats = {
     totalStreams: pack365Enrollments.length,
     totalCourses: pack365Enrollments.length, // Each enrollment represents one course/stream
@@ -336,7 +306,7 @@ const StudentDashboard = () => {
             })}
           </div>
 
-          <Tabs defaultValue="overview" className="space-y-6" onValueChange={setActiveTab}>
+          <Tabs defaultValue="overview" className="space-y-6">
             <TabsList className="grid w-full grid-cols-11 bg-white">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="courses">Courses</TabsTrigger>
@@ -759,6 +729,7 @@ const StudentDashboard = () => {
               </Card>
             </TabsContent>
 
+              
             <TabsContent value="jobs" className="space-y-6">
               <Tabs defaultValue="job-assurance" className="space-y-4">
                 <TabsList className="bg-white">
@@ -857,187 +828,177 @@ const StudentDashboard = () => {
                       <div className="bg-white/20 rounded-xl p-6 max-w-xl mx-auto">
                         <div className="text-4xl font-bold mb-2">₹500 Only</div>
                         <div className="text-lg mb-2">Lifetime Access</div>
-                        <p className="text-green-100">One-time payment for unlimited job assistance</p>
+                        <p className="text-green-100">One-time investment for lifetime career support!</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <Card className="text-center p-6">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <PenTool className="h-6 w-6 text-green-600" />
-                      </div>
-                      <h3 className="font-semibold mb-2">Resume Building</h3>
-                      <p className="text-gray-600 text-sm">Professional resume creation and optimization</p>
-                    </Card>
-
-                    <Card className="text-center p-6">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Users className="h-6 w-6 text-green-600" />
-                      </div>
-                      <h3 className="font-semibold mb-2">Interview Preparation</h3>
-                      <p className="text-gray-600 text-sm">Mock interviews and feedback sessions</p>
-                    </Card>
-
-                    <Card className="text-center p-6">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Briefcase className="h-6 w-6 text-green-600" />
-                      </div>
-                      <h3 className="font-semibold mb-2">Job Matching</h3>
-                      <p className="text-gray-600 text-sm">Personalized job recommendations</p>
-                    </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      { icon: Bell, title: "Real-time updates on job opportunities", description: "Get instant notifications about new job openings that match your profile" },
+                      { icon: Target, title: "Customized preparation guidance", description: "Personalized interview preparation and skill development recommendations" },
+                      { icon: Trophy, title: "Insider tips to stand out from competition", description: "Learn industry secrets and strategies to make your application stand out" },
+                      { icon: Bell, title: "Direct notifications about openings", description: "Be the first to know about exclusive job opportunities from our partner companies" }
+                    ].map((benefit, index) => (
+                      <Card key={index} className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+                        <CardHeader>
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-green-100 p-3 rounded-lg">
+                              <benefit.icon className="h-5 w-5 text-green-600" />
+                            </div>
+                            <CardTitle className="text-sm">{benefit.title}</CardTitle>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-gray-600 text-sm">{benefit.description}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Job Assistance Features</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                          <div className="flex items-start space-x-3">
-                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                            <div>
-                              <h4 className="font-semibold">Professional Resume Review</h4>
-                              <p className="text-sm text-gray-600">Get your resume reviewed by industry experts</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start space-x-3">
-                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                            <div>
-                              <h4 className="font-semibold">LinkedIn Profile Optimization</h4>
-                              <p className="text-sm text-gray-600">Make your profile stand out to recruiters</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start space-x-3">
-                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                            <div>
-                              <h4 className="font-semibold">Cover Letter Writing</h4>
-                              <p className="text-sm text-gray-600">Custom cover letters for job applications</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="space-y-4">
-                          <div className="flex items-start space-x-3">
-                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                            <div>
-                              <h4 className="font-semibold">Mock Interviews</h4>
-                              <p className="text-sm text-gray-600">Practice with real interview questions</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start space-x-3">
-                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                            <div>
-                              <h4 className="font-semibold">Job Search Strategy</h4>
-                              <p className="text-sm text-gray-600">Personalized job hunting plan</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start space-x-3">
-                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                            <div>
-                              <h4 className="font-semibold">Career Counseling</h4>
-                              <p className="text-sm text-gray-600">Guidance on career path and growth</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="text-center">
-                    <Button size="lg" className="bg-green-600 hover:bg-green-700 px-8">
-                      Get Job Assistance - ₹500 Only
+                  <div className="text-center mt-8">
+                    <Button onClick={() => navigate('/job-assistance')} size="lg" className="bg-green-600 hover:bg-green-700 font-semibold px-8 py-3">
+                      Get Started Now - ₹500 Only!
                     </Button>
-                    <p className="text-gray-600 mt-2 text-sm">One-time payment • Lifetime access • Money-back guarantee</p>
                   </div>
                 </TabsContent>
               </Tabs>
             </TabsContent>
 
             <TabsContent value="internships" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Internship Opportunities</CardTitle>
-                  <CardDescription>Gain real-world experience with our internship programs</CardDescription>
-                </CardHeader>
-                <CardContent>
+              <Tabs defaultValue="online" className="space-y-4">
+                <TabsList className="bg-white">
+                  <TabsTrigger value="online">Online Internships</TabsTrigger>
+                  <TabsTrigger value="offline">Offline Internships</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="online" className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((item) => (
-                      <Card key={item} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                              {item === 1 ? 'Tech' : item === 2 ? 'Business' : 'Marketing'}
-                            </Badge>
-                            <span className="text-sm text-gray-500">2 months</span>
-                          </div>
-                          <h3 className="font-semibold mb-2">
-                            {item === 1 ? 'Web Development Intern' : item === 2 ? 'Business Analyst Intern' : 'Digital Marketing Intern'}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-4">
-                            {item === 1 
-                              ? 'Build real-world web applications' 
-                              : item === 2 
-                              ? 'Analyze business processes and requirements'
-                              : 'Create and manage digital marketing campaigns'
-                            }
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-1 text-sm text-gray-500">
-                              <MapPin className="h-4 w-4" />
-                              <span>Remote</span>
+                    {[
+                      { id: 1, role: "Frontend Developer Intern", company: "TechStart Solutions", duration: "3 months", technologies: ["React", "JavaScript", "CSS"], category: "IT", feeType: "Stipend", stipend: "₹8,000/month", description: "Work on modern web applications using React and contribute to real projects." },
+                      { id: 2, role: "Digital Marketing Intern", company: "Creative Agency", duration: "2 months", technologies: ["Google Ads", "SEO", "Social Media"], category: "Marketing", feeType: "Unpaid", stipend: null, description: "Learn digital marketing strategies and campaign management." },
+                      { id: 3, role: "Data Science Intern", company: "Analytics Pro", duration: "4 months", technologies: ["Python", "Machine Learning", "SQL"], category: "IT", feeType: "Stipend", stipend: "₹12,000/month", description: "Work with real datasets and build predictive models." }
+                    ].map((internship) => (
+                      <Card key={internship.id} className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-sm mb-2">{internship.role}</CardTitle>
+                              <p className="text-blue-600 font-medium text-sm">{internship.company}</p>
                             </div>
-                            <Button size="sm" variant="outline">
-                              Apply Now
-                            </Button>
+                            <Badge variant={internship.feeType === 'Unpaid' ? 'secondary' : 'default'} className="text-xs">
+                              {internship.feeType}
+                            </Badge>
                           </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <p className="text-gray-600 text-xs">{internship.description}</p>
+                          <div className="flex items-center space-x-3 text-xs text-gray-600">
+                            <div className="flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {internship.duration}
+                            </div>
+                            <div className="flex items-center">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              Remote
+                            </div>
+                          </div>
+                          {internship.stipend && (
+                            <div className="flex items-center text-green-600 font-medium text-sm">
+                              <IndianRupee className="h-3 w-3 mr-1" />
+                              {internship.stipend}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {internship.technologies.slice(0, 3).map((tech, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">{tech}</Badge>
+                            ))}
+                          </div>
+                          <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-xs">Apply Now</Button>
                         </CardContent>
                       </Card>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
+                </TabsContent>
+
+                <TabsContent value="offline" className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[
+                      { id: 1, role: "Software Development Intern", company: "Tech Innovators", duration: "6 months", technologies: ["Java", "Spring Boot", "MySQL"], category: "IT", feeType: "Stipend", stipend: "₹15,000/month", location: "Hyderabad", description: "Work on enterprise applications and learn full-stack development." },
+                      { id: 2, role: "Marketing Assistant", company: "Brand Builders", duration: "3 months", technologies: ["Market Research", "Content Creation", "Analytics"], category: "Marketing", feeType: "Paid", stipend: "₹8,000/month", location: "Mumbai", description: "Support marketing campaigns and learn brand management." },
+                      { id: 3, role: "Business Operations Intern", company: "StartupHub", duration: "4 months", technologies: ["Process Optimization", "Data Analysis", "CRM"], category: "Business", feeType: "Stipend", stipend: "₹12,000/month", location: "Bangalore", description: "Learn business operations in a fast-paced startup environment." }
+                    ].map((internship) => (
+                      <Card key={internship.id} className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-sm mb-2">{internship.role}</CardTitle>
+                              <p className="text-blue-600 font-medium text-sm">{internship.company}</p>
+                            </div>
+                            <Badge variant={internship.feeType === 'Unpaid' ? 'secondary' : 'default'} className="text-xs">
+                              {internship.feeType}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <p className="text-gray-600 text-xs">{internship.description}</p>
+                          <div className="flex items-center space-x-3 text-xs text-gray-600">
+                            <div className="flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {internship.duration}
+                            </div>
+                            <div className="flex items-center">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {internship.location}
+                            </div>
+                          </div>
+                          {internship.stipend && (
+                            <div className="flex items-center text-green-600 font-medium text-sm">
+                              <IndianRupee className="h-3 w-3 mr-1" />
+                              {internship.stipend}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {internship.technologies.slice(0, 3).map((tech, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">{tech}</Badge>
+                            ))}
+                          </div>
+                          <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-xs">Apply Now</Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
             <TabsContent value="trainings" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Professional Trainings</CardTitle>
-                  <CardDescription>Enhance your skills with specialized training programs</CardDescription>
+                  <CardTitle className="flex items-center">
+                    <GraduationCap className="h-5 w-5 mr-2 text-blue-600" />
+                    Training Programs
+                  </CardTitle>
+                  <CardDescription>CRT and Technical Training</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((item) => (
-                      <Card key={item} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <Badge variant="outline" className="bg-green-50 text-green-700">
-                              {item === 1 ? 'Technical' : item === 2 ? 'Soft Skills' : 'Certification'}
-                            </Badge>
-                            <span className="text-sm text-gray-500">4 weeks</span>
-                          </div>
-                          <h3 className="font-semibold mb-2">
-                            {item === 1 ? 'React Masterclass' : item === 2 ? 'Leadership Training' : 'Project Management'}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-4">
-                            {item === 1 
-                              ? 'Master React with hooks, context, and more' 
-                              : item === 2 
-                              ? 'Develop essential leadership and communication skills'
-                              : 'Learn project management methodologies and tools'
-                            }
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm font-medium text-blue-600">
-                              {item === 1 ? '₹2,999' : item === 2 ? '₹1,999' : '₹3,499'}
-                            </div>
-                            <Button size="sm">
-                              Enroll Now
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card className="border-blue-200">
+                      <CardContent className="p-6 text-center">
+                        <PenTool className="h-12 w-12 text-blue-400 mx-auto mb-4" />
+                        <h3 className="font-semibold mb-2">CRT Training</h3>
+                        <p className="text-sm text-gray-600 mb-4">Campus Recruitment Training</p>
+                        <Button className="bg-blue-600 hover:bg-blue-700">Start Training</Button>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-blue-200">
+                      <CardContent className="p-6 text-center">
+                        <Code className="h-12 w-12 text-blue-400 mx-auto mb-4" />
+                        <h3 className="font-semibold mb-2">Technical Training</h3>
+                        <p className="text-sm text-gray-600 mb-4">Advanced technical skills</p>
+                        <Button className="bg-blue-600 hover:bg-blue-700">Explore</Button>
+                      </CardContent>
+                    </Card>
                   </div>
                 </CardContent>
               </Card>
@@ -1046,90 +1007,180 @@ const StudentDashboard = () => {
             <TabsContent value="exams" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Practice Exams</CardTitle>
-                  <CardDescription>Test your knowledge with practice exams</CardDescription>
+                  <CardTitle className="flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                    My Exams
+                  </CardTitle>
+                  <CardDescription>Track your exam progress and results</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((item) => (
-                      <Card key={item} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                              {item === 1 ? 'Technical' : item === 2 ? 'Aptitude' : 'Domain'}
-                            </Badge>
-                            <span className="text-sm text-gray-500">60 mins</span>
-                          </div>
-                          <h3 className="font-semibold mb-2">
-                            {item === 1 ? 'JavaScript Fundamentals' : item === 2 ? 'Quantitative Aptitude' : 'Business Analysis'}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-4">
-                            {item === 1 
-                              ? 'Test your JavaScript knowledge' 
-                              : item === 2 
-                              ? 'Practice quantitative reasoning'
-                              : 'Domain knowledge assessment'
-                            }
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm text-gray-500">
-                              {item === 1 ? '30 questions' : item === 2 ? '25 questions' : '20 questions'}
+                  <div className="space-y-4">
+                    {/* Quick Actions */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <Button 
+                        onClick={() => navigate('/exams')} 
+                        className="bg-blue-600 hover:bg-blue-700 flex items-center"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        View Available Exams
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          // This could navigate to exam history or results
+                          toast({
+                            title: "Feature Coming Soon",
+                            description: "Exam history will be available soon.",
+                          });
+                        }}
+                      >
+                        <Award className="h-4 w-4 mr-2" />
+                        Exam Results
+                      </Button>
+                    </div>
+
+                    {/* Exam Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                      <Card className="bg-blue-50 border-blue-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <BookOpen className="h-8 w-8 text-blue-600" />
+                            <div>
+                              <p className="text-sm font-medium text-blue-800">Available Exams</p>
+                              <p className="text-2xl font-bold text-blue-900">
+                                {pack365Enrollments?.filter(e => e.totalWatchedPercentage >= 80).length || 0}
+                              </p>
                             </div>
-                            <Button size="sm" variant="outline">
-                              Start Exam
-                            </Button>
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
+
+                      <Card className="bg-green-50 border-green-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle className="h-8 w-8 text-green-600" />
+                            <div>
+                              <p className="text-sm font-medium text-green-800">Exams Passed</p>
+                              <p className="text-2xl font-bold text-green-900">
+                                {pack365Enrollments?.filter(e => e.isExamCompleted && e.examScore >= 50).length || 0}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-orange-50 border-orange-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-8 w-8 text-orange-600" />
+                            <div>
+                              <p className="text-sm font-medium text-orange-800">Pending Exams</p>
+                              <p className="text-2xl font-bold text-orange-900">
+                                {pack365Enrollments?.filter(e => e.totalWatchedPercentage >= 80 && !e.isExamCompleted).length || 0}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Recent Exam Progress */}
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold mb-4">Course Progress for Exams</h3>
+                      <div className="space-y-3">
+                        {pack365Enrollments && pack365Enrollments.length > 0 ? (
+                          pack365Enrollments.slice(0, 3).map((enrollment) => (
+                            <div key={enrollment.courseId} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div className="flex-1">
+                                <h4 className="font-medium">{enrollment.courseName}</h4>
+                                <p className="text-sm text-gray-500">Stream: {enrollment.stream}</p>
+                                <div className="flex items-center space-x-2 mt-2">
+                                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-blue-600 h-2 rounded-full" 
+                                      style={{ width: `${enrollment.totalWatchedPercentage}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-sm text-gray-600">{enrollment.totalWatchedPercentage}%</span>
+                                </div>
+                              </div>
+                              <div className="ml-4 flex flex-col space-y-2">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => navigate(`/pack365-stream/${enrollment.stream}`)}
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                  <BookOpen className="h-3 w-3 mr-1" />
+                                  Browse Courses
+                                </Button>
+                                {enrollment.totalWatchedPercentage >= 80 ? (
+                                  enrollment.isExamCompleted ? (
+                                    <Badge variant="default" className="bg-green-500">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Completed
+                                    </Badge>
+                                  ) : (
+                                    <Button size="sm" variant="outline" onClick={() => navigate('/exams')}>
+                                      Take Exam
+                                    </Button>
+                                  )
+                                ) : (
+                                  <Badge variant="secondary">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {Math.max(0, 80 - enrollment.totalWatchedPercentage)}% to unlock
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-8">
+                            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-gray-500 mb-4">No course enrollments found.</p>
+                            <p className="text-sm text-gray-400">Enroll in Pack365 courses to access exams.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="compiler" className="space-y-6">
-              <CodeCompiler />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Code className="h-5 w-5" />
+                    <span>Code Compiler</span>
+                  </CardTitle>
+                  <CardDescription>Practice coding with our online compiler</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <CodeCompiler />
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="projects" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Project Portfolio</CardTitle>
-                  <CardDescription>Build and showcase your projects</CardDescription>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FolderOpen className="h-5 w-5" />
+                    <span>My Projects</span>
+                  </CardTitle>
+                  <CardDescription>Manage your coding projects and assignments</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((item) => (
-                      <Card key={item} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700">
-                              {item === 1 ? 'Web App' : item === 2 ? 'Mobile' : 'API'}
-                            </Badge>
-                            <span className="text-sm text-gray-500">Beginner</span>
-                          </div>
-                          <h3 className="font-semibold mb-2">
-                            {item === 1 ? 'E-commerce Website' : item === 2 ? 'Task Manager App' : 'REST API Service'}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-4">
-                            {item === 1 
-                              ? 'Build a complete online store' 
-                              : item === 2 
-                              ? 'Create a productivity application'
-                              : 'Develop a backend API service'
-                            }
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm text-gray-500">
-                              {item === 1 ? '4 weeks' : item === 2 ? '2 weeks' : '3 weeks'}
-                            </div>
-                            <Button size="sm" variant="outline">
-                              Start Project
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    <Card className="border-dashed border-2 border-gray-300">
+                      <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+                        <FolderOpen className="h-12 w-12 text-gray-400 mb-4" />
+                        <h3 className="font-semibold text-gray-900 mb-2">Create New Project</h3>
+                        <p className="text-sm text-gray-500 mb-4">Start a new coding project</p>
+                        <Button>Create Project</Button>
+                      </CardContent>
+                    </Card>
                   </div>
                 </CardContent>
               </Card>
@@ -1140,7 +1191,9 @@ const StudentDashboard = () => {
             </TabsContent>
 
             <TabsContent value="profile" className="space-y-6">
-              <EnhancedProfile />
+              <div className="bg-white rounded-lg">
+                <EnhancedProfile />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
