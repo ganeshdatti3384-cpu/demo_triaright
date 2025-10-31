@@ -270,7 +270,7 @@ const StudentDashboard = () => {
     }
   ];
 
-  // Menu items for the sidebar - expanded to include all features
+  // Updated menu items without the removed sections
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: User },
     { id: 'courses', label: 'Courses', icon: BookOpen },
@@ -282,12 +282,6 @@ const StudentDashboard = () => {
     { id: 'compiler', label: 'Compiler', icon: Code },
     { id: 'projects', label: 'Projects', icon: FolderOpen },
     { id: 'profile', label: 'Profile', icon: User },
-    { id: 'payment', label: 'Payment Info', icon: CreditCard },
-    { id: 'registration', label: 'Registration', icon: FileCheck },
-    { id: 'drop-semester', label: 'Drop Semester', icon: TrendingUp },
-    { id: 'result', label: 'Result', icon: Award },
-    { id: 'notice', label: 'Notice', icon: BellRing },
-    { id: 'schedule', label: 'Schedule', icon: CalendarDays },
   ];
 
   // Render content based on active tab
@@ -1311,7 +1305,6 @@ const StudentDashboard = () => {
           </div>
         );
 
-      // Add cases for other menu items (payment, registration, etc.)
       default:
         return (
           <div className="text-center py-12">
