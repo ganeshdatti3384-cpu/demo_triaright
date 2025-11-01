@@ -23,9 +23,7 @@ import {
   DollarSign,
   Calendar,
   FileText,
-  Bookmark,
-  Certificate,
-  FolderOpen
+  Bookmark
 } from 'lucide-react';
 import CourseManagement from '../admin/CourseManagement';
 import UserManagement from '../admin/UserManagement';
@@ -65,12 +63,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     totalInternships: internshipStats.totalInternships,
     activeInternships: internshipStats.activeInternships
   };
-
-  const quickActions = [
-    { id: 1, name: 'Rename Last Course', icon: FileText, description: 'Update course names' },
-    { id: 2, name: 'Browse New Courses', icon: FolderOpen, description: 'Explore course catalog' },
-    { id: 3, name: 'View Certificates', icon: Certificate, description: 'Manage certificates' }
-  ];
 
   const dailyNotices = [
     { id: 1, title: 'Prelim Payment Due', content: 'Sorem ipsum dolor sit amet, consectetur adipiscing elit.', time: '2 hours ago' },
@@ -334,92 +326,13 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </div>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Quick Actions Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Jump back into your administration</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {quickActions.map((action) => (
-                    <Button
-                      key={action.id}
-                      variant="outline"
-                      className="h-20 flex flex-col items-center justify-center p-4"
-                    >
-                      <action.icon className="h-6 w-6 mb-2" />
-                      <span className="text-sm text-center">{action.name}</span>
-                    </Button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Finance Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Finance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="font-medium">Total Payable</span>
-                      <span className="text-lg font-bold">$ 10,000</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="font-medium">Total Paid</span>
-                      <span className="text-lg font-bold">$ 5,000</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="font-medium">Others</span>
-                      <span className="text-lg font-bold">$ 300</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Enrolled Courses Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Platform Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
-                      <BookOpen className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-500">Manage platform courses</p>
-                      <Button className="mt-3" onClick={() => setActiveTab('courses')}>
-                        View Courses
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Recent Activity Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
-                    <BarChart3 className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500">No recent activity</p>
-                    <p className="text-sm text-gray-400 mt-1">Start managing your platform today!</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="bg-blue-50 border-blue-200">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-blue-600">Students</p>
+                      <p className="text-sm font-medium text-blue-600">Number Students</p>
                       <p className="text-2xl font-bold">{platformStats.activeStudents.toLocaleString()}</p>
                     </div>
                     <Users className="h-8 w-8 text-blue-600" />
@@ -450,16 +363,52 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   </div>
                 </CardContent>
               </Card>
+            </div>
 
-              <Card className="bg-orange-50 border-orange-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-orange-600">Internships</p>
-                      <p className="text-2xl font-bold">{platformStats.totalInternships}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Platform Statistics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Platform Statistics</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[
+                    { label: 'Total Users', value: platformStats.totalUsers, icon: Users },
+                    { label: 'Registered Employers', value: platformStats.registeredEmployers, icon: Briefcase },
+                    { label: 'Total Internships', value: platformStats.totalInternships, icon: BriefcaseIcon },
+                    { label: 'Active Internships', value: platformStats.activeInternships, icon: BarChart3 }
+                  ].map((stat, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <stat.icon className="h-5 w-5 text-gray-500" />
+                        <span className="font-medium">{stat.label}</span>
+                      </div>
+                      <Badge variant="secondary">{stat.value.toLocaleString()}</Badge>
                     </div>
-                    <BriefcaseIcon className="h-8 w-8 text-orange-600" />
-                  </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Daily Notices */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daily Notices</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {dailyNotices.map((notice) => (
+                    <div key={notice.id} className="p-3 border rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm">{notice.title}</h4>
+                          <p className="text-sm text-gray-600 mt-1">{notice.content}</p>
+                        </div>
+                        <span className="text-xs text-gray-400 ml-2">{notice.time}</span>
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="ghost" className="w-full">
+                    See more
+                  </Button>
                 </CardContent>
               </Card>
             </div>
