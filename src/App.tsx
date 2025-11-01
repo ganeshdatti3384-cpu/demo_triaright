@@ -53,9 +53,10 @@ import Pack365Dashboard from '@/components/Pack365Dashboard';
 import Pack365StreamLearning from '@/pages/Pack365StreamLearning';
 import LearningInterface from './components/CourseLearningInterface2';
 import Learning from './pages/CourseLearning2';
-import InternshipsPage from './components/internships/InternshipsPage';
 import InternshipDetailsPage from './components/internships/InternshipDetailsPage';
-import JobsPage from './pages/JobsPage'; // Add this import
+import RegularInternshipsPage from './components/internships/RegularInternshipsPage';
+import APExclusiveInternshipsPage from './components/internships/APExclusiveInternshipsPage';
+import JobsPage from './pages/JobsPage';
 
 const queryClient = new QueryClient();
 
@@ -94,8 +95,13 @@ const App = () => {
           <Route path="/jobs/assistance" element={<JobAssistance />} />
           <Route path="/jobs/assurance" element={<JobAssurance />} />
           
+          {/* Internship Routes */}
+          <Route path="/internships/regular" element={<RegularInternshipsPage />} />
+          <Route path="/internships/ap-exclusive" element={<APExclusiveInternshipsPage />} />
           <Route path="/internships/online" element={<OnlineInternships />} />
           <Route path="/internships/offline" element={<OfflineInternships />} />
+          <Route path="/internships/:id" element={<InternshipDetailsPage />} />
+          
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
@@ -109,10 +115,6 @@ const App = () => {
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
           <Route path="/pack365-stream/:streamName" element={<Pack365BundleDetail />} />
-          
-          {/* Internship Routes */}
-          <Route path="/internships" element={<InternshipsPage />} />
-          <Route path="/internships/:id" element={<InternshipDetailsPage />} />
           
           {/* Protected Payment Routes */}
           <Route
