@@ -23,7 +23,9 @@ import {
   DollarSign,
   Calendar,
   FileText,
-  Bookmark
+  Bookmark,
+  MessageSquare,
+  User
 } from 'lucide-react';
 import CourseManagement from '../admin/CourseManagement';
 import UserManagement from '../admin/UserManagement';
@@ -32,6 +34,8 @@ import Pack365Management from '../admin/Pack365Management';
 import CollegeManagement from '../admin/CollegeManagement';
 import InternshipManagement from '../admin/InternshipsManagement';
 import ApplicationManagement from '../admin/ApplicationManagement';
+import FeedbackManagement from '../admin/FeedbackManagement';
+import PlacementManagement from '../admin/PlacementManagement';
 import Navbar from '../Navbar';
 import { collegeApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -220,6 +224,8 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             { value: 'pack365', label: 'Pack365' },
             { value: 'jobs', label: 'Jobs' },
             { value: 'colleges', label: 'Colleges' },
+            { value: 'placements', label: 'Placements' },
+            { value: 'feedbacks', label: 'Feedbacks' },
             { value: 'college-requests', label: 'Requests' }
           ].map((tab) => (
             <Button
@@ -294,7 +300,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           {/* Desktop Tabs */}
-          <TabsList className="hidden lg:grid w-full grid-cols-9 gap-1 mb-6">
+          <TabsList className="hidden lg:grid w-full grid-cols-11 gap-1 mb-6">
             <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
             <TabsTrigger value="users" className="text-xs">Users</TabsTrigger>
             <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
@@ -303,6 +309,8 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             <TabsTrigger value="pack365" className="text-xs">Pack365</TabsTrigger>
             <TabsTrigger value="jobs" className="text-xs">Jobs</TabsTrigger>
             <TabsTrigger value="colleges" className="text-xs">Colleges</TabsTrigger>
+            <TabsTrigger value="placements" className="text-xs">Placements</TabsTrigger>
+            <TabsTrigger value="feedbacks" className="text-xs">Feedbacks</TabsTrigger>
             <TabsTrigger value="college-requests" className="text-xs">Requests</TabsTrigger>
           </TabsList>
 
@@ -321,6 +329,8 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               <option value="pack365">Pack365</option>
               <option value="jobs">Jobs</option>
               <option value="colleges">Colleges</option>
+              <option value="placements">Placements</option>
+              <option value="feedbacks">Feedbacks</option>
               <option value="college-requests">Requests</option>
             </select>
           </div>
@@ -440,6 +450,14 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
           <TabsContent value="colleges" className="space-y-6">
             <CollegeManagement />
+          </TabsContent>
+
+          <TabsContent value="placements" className="space-y-6">
+            <PlacementManagement />
+          </TabsContent>
+
+          <TabsContent value="feedbacks" className="space-y-6">
+            <FeedbackManagement />
           </TabsContent>
 
           <TabsContent value="college-requests" className="space-y-6">
