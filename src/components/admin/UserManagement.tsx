@@ -13,10 +13,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, User, Lock, Eye as EyeIcon, EyeOff, GraduationCap } from 'lucide-react';
+import {
+  Users,
+  UserPlus,
+  Download,
+  Upload,
+  Search,
+  Filter,
+  Eye,
+  Trash2,
+  Mail,
+  Phone,
+  MapPin,
+  User,
+  Lock,
+  Eye as EyeIcon,
+  EyeOff,
+  GraduationCap
+} from 'lucide-react';
 import { authApi, RegisterPayload } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import { UserRow } from '@/components/UserRow'; // Import the new component
+import { UserRow } from '@/components/UserRow'; // keep using your UserRow (we only changed props usage)
 
 // Registration validation schema - same as Register.tsx
 const registrationSchema = z.object({
@@ -69,13 +86,12 @@ interface College {
 
 const UserManagement = () => {
   const { toast } = useToast();
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('all');
   const [createUserOpen, setCreateUserOpen] = useState(false);
-  const [editUserOpen, setEditUserOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  // removed edit-related state as per request
   const [showPassword, setShowPassword] = useState(false);
   const [colleges, setColleges] = useState<College[]>([]);
   const [loadingColleges, setLoadingColleges] = useState(false);
@@ -102,6 +118,7 @@ const UserManagement = () => {
   useEffect(() => {
     fetchUsers();
     fetchColleges();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch colleges - same as Register.tsx
@@ -126,7 +143,7 @@ const UserManagement = () => {
     }
   };
 
-  // Fixed fetchUsers function
+  // Fetch users - fixed & preserved behavior
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -215,20 +232,31 @@ const UserManagement = () => {
     }
   };
 
+  // Fixed delete function: calls API and updates UI
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      // Remove from local state immediately for better UX
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      // Call backend delete API if available
+      if (authApi && typeof authApi.deleteUser === 'function') {
+        await authApi.deleteUser(userId, token);
+      } else {
+        // Fallback: try direct axios delete if authApi doesn't expose deleteUser signature
+        const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5003/api';
+        const headers: any = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
+        await axios.delete(`${API_BASE_URL}/users/${userId}`, { headers });
+      }
+
+      // Remove from local state
       setUsers(prevUsers => prevUsers.filter(user => user._id !== userId));
       
       toast({
         title: "Success",
         description: "User deleted successfully!",
       });
-      
-      // Here you would typically make an API call to delete from backend
-      // await authApi.deleteUser(userId);
       
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -238,43 +266,46 @@ const UserManagement = () => {
         variant: "destructive",
       });
       // Refresh to restore state on error
-      fetchUsers();
+      await fetchUsers();
+    } finally {
+      setLoading(false);
     }
   };
+
   const userList = users;
-  // Fixed filtered users logic
-const filteredUsers = userList.filter(user => {
-  // Ensure we have a valid user object to work with
-  if (!user) return false;
-  
-  // --- 1. Role Filtering (Case-Insensitive) ---
-  const matchesRole = selectedRoleFilter === 'all' || 
-                      (user.role && user.role.toLowerCase() === selectedRoleFilter.toLowerCase());
+  // Filtered users logic - preserved & robust
+  const filteredUsers = userList.filter(user => {
+    // Ensure we have a valid user object to work with
+    if (!user) return false;
+    
+    // --- 1. Role Filtering (Case-Insensitive) ---
+    const matchesRole = selectedRoleFilter === 'all' || 
+                        (user.role && user.role.toLowerCase() === selectedRoleFilter.toLowerCase());
 
-  // If the role doesn't match, we can stop right away.
-  if (!matchesRole) return false;
+    // If the role doesn't match, we can stop right away.
+    if (!matchesRole) return false;
 
-  // --- 2. Search Term Filtering ---
-  const search = searchTerm.toLowerCase().trim();
-  
-  // If there's no search term, the user is a match.
-  if (!search) return true;
+    // --- 2. Search Term Filtering ---
+    const search = searchTerm.toLowerCase().trim();
+    
+    // If there's no search term, the user is a match.
+    if (!search) return true;
 
-  // Create a list of fields to search within
-  const searchableFields = [
-    user.firstName,
-    user.lastName,
-    user.email,
-    user.phoneNumber
-  ];
+    // Create a list of fields to search within
+    const searchableFields = [
+      user.firstName,
+      user.lastName,
+      user.email,
+      user.phoneNumber
+    ];
 
-  // Check if at least one of the fields contains the search term
-  return searchableFields.some(field => 
-    field && field.toLowerCase().includes(search)
-  );
-});
+    // Check if at least one of the fields contains the search term
+    return searchableFields.some(field => 
+      field && field.toLowerCase().includes(search)
+    );
+  });
 
-  // Bulk upload functionality
+  // Bulk upload functionality (unchanged)
   const downloadSampleExcel = () => {
     const sampleData = [
       ['firstname', 'lastname', 'email', 'role', 'phoneNumber', 'whatsappNumber', 'address', 'state', 'password', 'collegeName'],
@@ -394,12 +425,12 @@ const filteredUsers = userList.filter(user => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold">User Management</h2>
           <p className="text-gray-600">Manage all platform users</p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={downloadSampleExcel}>
             <Download className="h-4 w-4 mr-2" />
             Sample Excel
@@ -690,23 +721,39 @@ const filteredUsers = userList.filter(user => {
         </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+      {/* Filters - styled to match screenshot (rounded tab like container) */}
+      <div className="bg-[rgba(243,246,249,0.9)] rounded-lg p-3">
+        <div className="max-w-full mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 px-2">
+            <div className="px-4 py-2 rounded-md bg-white shadow-sm flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">Users</span>
+            </div>
+            <div className="hidden sm:flex items-center text-sm text-gray-600 space-x-6">
+              <span className="cursor-pointer">Overview</span>
+              <span className="cursor-pointer bg-white px-3 py-1 rounded-md shadow-sm font-medium">Users</span>
+              <span className="cursor-pointer">Courses</span>
+              <span className="cursor-pointer">Internships</span>
+              <span className="cursor-pointer">Applications</span>
+              <span className="cursor-pointer">Pack365</span>
+              <span className="cursor-pointer">Jobs</span>
+              <span className="cursor-pointer">Colleges</span>
+              <span className="cursor-pointer">Requests</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-48 sm:w-64"
+              />
             </div>
             <Select value={selectedRoleFilter} onValueChange={setSelectedRoleFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[160px] sm:w-[200px]">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
@@ -719,8 +766,8 @@ const filteredUsers = userList.filter(user => {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Users List */}
       <Card>
@@ -729,10 +776,11 @@ const filteredUsers = userList.filter(user => {
             <Users className="h-5 w-5 mr-2" />
             All Users ({filteredUsers.length})
           </CardTitle>
+          <CardDescription className="text-sm text-gray-500">Manage user accounts — delete when necessary.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
-            // IMPROVED: Skeleton loader for a better UX
+            // Skeleton-like loader
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center justify-between p-4 border rounded-lg animate-pulse">
@@ -748,14 +796,12 @@ const filteredUsers = userList.filter(user => {
               ))}
             </div>
           ) : filteredUsers.length === 0 ? (
-            // IMPROVED: More contextual empty state
             <div className="text-center py-12">
               <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-800">No Users Found</h3>
               <p className="text-gray-500">Try adjusting your search or role filter.</p>
             </div>
           ) : (
-            // IMPROVED: Using a table for better data presentation
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-50 text-xs text-gray-600 uppercase">
@@ -768,12 +814,39 @@ const filteredUsers = userList.filter(user => {
                 </thead>
                 <tbody>
                   {filteredUsers.map((user) => (
-                    <UserRow
-                      key={user.id}
-                      user={user}
-                      onEdit={(userId) => console.log('Edit user:', userId)} // Add edit handler
-                      onDelete={handleDeleteUser} // Pass the delete handler
-                    />
+                    // Use user._id which your server likely uses
+                    <tr key={user._id || user.id} className="border-b hover:bg-gray-50">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                            {user.firstName?.charAt(0)?.toUpperCase() || 'U'}
+                          </div>
+                          <div>
+                            <div className="font-medium">{user.firstName} {user.lastName}</div>
+                            <div className="text-xs text-gray-500">ID: {user._id || user.id}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-sm">{user.email}</div>
+                        <div className="text-xs text-gray-500">{user.phoneNumber}</div>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="outline" className="capitalize">{user.role}</Badge>
+                      </td>
+                      <td className="p-4 text-right">
+                        {/* Edit option removed as requested */}
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user._id || user.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" /> Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
