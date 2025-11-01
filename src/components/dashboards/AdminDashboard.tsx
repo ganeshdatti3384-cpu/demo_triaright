@@ -292,273 +292,241 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar Menu */}
-          <div className="lg:col-span-1">
-            <Card className="bg-white shadow-sm">
-              <CardContent className="p-4">
-                <div className="space-y-1">
-                  <div className="p-3 text-sm text-gray-500 border-b">
-                    September 4, 2023
-                  </div>
-                  
-                  <div className="space-y-1 mt-4">
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider px-3 py-2">
-                      Dashboard
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {/* Desktop Tabs */}
+          <TabsList className="hidden lg:grid w-full grid-cols-9 gap-1 mb-6">
+            <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
+            <TabsTrigger value="users" className="text-xs">Users</TabsTrigger>
+            <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
+            <TabsTrigger value="internships" className="text-xs">Internships</TabsTrigger>
+            <TabsTrigger value="applications" className="text-xs">Applications</TabsTrigger>
+            <TabsTrigger value="pack365" className="text-xs">Pack365</TabsTrigger>
+            <TabsTrigger value="jobs" className="text-xs">Jobs</TabsTrigger>
+            <TabsTrigger value="colleges" className="text-xs">Colleges</TabsTrigger>
+            <TabsTrigger value="college-requests" className="text-xs">Requests</TabsTrigger>
+          </TabsList>
+
+          {/* Mobile Tab Selector */}
+          <div className="lg:hidden mb-6">
+            <select 
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg bg-white"
+            >
+              <option value="overview">Overview</option>
+              <option value="users">Users</option>
+              <option value="courses">Courses</option>
+              <option value="internships">Internships</option>
+              <option value="applications">Applications</option>
+              <option value="pack365">Pack365</option>
+              <option value="jobs">Jobs</option>
+              <option value="colleges">Colleges</option>
+              <option value="college-requests">Requests</option>
+            </select>
+          </div>
+
+          <TabsContent value="overview" className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-600">Number Students</p>
+                      <p className="text-2xl font-bold">{platformStats.activeStudents.toLocaleString()}</p>
                     </div>
-                    {[
-                      { value: 'overview', label: 'Overview', icon: BarChart3 },
-                      { value: 'users', label: 'Users', icon: Users },
-                      { value: 'courses', label: 'Courses', icon: BookOpen },
-                      { value: 'internships', label: 'Internships', icon: Briefcase },
-                      { value: 'applications', label: 'Applications', icon: FileText },
-                      { value: 'pack365', label: 'Pack365', icon: Package },
-                      { value: 'jobs', label: 'Jobs', icon: BriefcaseIcon },
-                      { value: 'colleges', label: 'Colleges', icon: Building2 },
-                      { value: 'college-requests', label: 'Requests', icon: Settings }
-                    ].map((tab) => (
-                      <button
-                        key={tab.value}
-                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                          activeTab === tab.value 
-                            ? 'bg-blue-50 text-blue-600 font-medium' 
-                            : 'text-gray-700 hover:bg-gray-50'
-                        }`}
-                        onClick={() => setActiveTab(tab.value)}
-                      >
-                        <tab.icon className="h-4 w-4" />
-                        <span>{tab.label}</span>
-                      </button>
-                    ))}
+                    <Users className="h-8 w-8 text-blue-600" />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
 
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="bg-blue-50 border-blue-200">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-blue-600">Number Students</p>
-                          <p className="text-2xl font-bold">{platformStats.activeStudents.toLocaleString()}</p>
-                        </div>
-                        <Users className="h-8 w-8 text-blue-600" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-green-50 border-green-200">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-green-600">Colleges</p>
-                          <p className="text-2xl font-bold">45</p>
-                        </div>
-                        <Building2 className="h-8 w-8 text-green-600" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-purple-50 border-purple-200">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-purple-600">Courses</p>
-                          <p className="text-2xl font-bold">{platformStats.liveCourses}</p>
-                        </div>
-                        <BookOpen className="h-8 w-8 text-purple-600" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Platform Statistics */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Platform Statistics</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {[
-                        { label: 'Total Users', value: platformStats.totalUsers, icon: Users },
-                        { label: 'Registered Employers', value: platformStats.registeredEmployers, icon: Briefcase },
-                        { label: 'Total Internships', value: platformStats.totalInternships, icon: BriefcaseIcon },
-                        { label: 'Active Internships', value: platformStats.activeInternships, icon: BarChart3 }
-                      ].map((stat, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <stat.icon className="h-5 w-5 text-gray-500" />
-                            <span className="font-medium">{stat.label}</span>
-                          </div>
-                          <Badge variant="secondary">{stat.value.toLocaleString()}</Badge>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-
-                  {/* Daily Notices */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Daily Notices</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {dailyNotices.map((notice) => (
-                        <div key={notice.id} className="p-3 border rounded-lg">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-sm">{notice.title}</h4>
-                              <p className="text-sm text-gray-600 mt-1">{notice.content}</p>
-                            </div>
-                            <span className="text-xs text-gray-400 ml-2">{notice.time}</span>
-                          </div>
-                        </div>
-                      ))}
-                      <Button variant="ghost" className="w-full">
-                        See more
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'users' && (
-              <div className="space-y-6">
-                <UserManagement />
-              </div>
-            )}
-
-            {activeTab === 'courses' && (
-              <div className="space-y-6">
-                <CourseManagement />
-              </div>
-            )}
-
-            {activeTab === 'internships' && (
-              <div className="space-y-6">
-                <InternshipManagement />
-              </div>
-            )}
-
-            {activeTab === 'applications' && (
-              <div className="space-y-6">
-                <ApplicationManagement />
-              </div>
-            )}
-
-            {activeTab === 'pack365' && (
-              <div className="space-y-6">
-                <Pack365Management />
-              </div>
-            )}
-
-            {activeTab === 'jobs' && (
-              <div className="space-y-6">
-                <JobManagement />
-              </div>
-            )}
-
-            {activeTab === 'colleges' && (
-              <div className="space-y-6">
-                <CollegeManagement />
-              </div>
-            )}
-
-            {activeTab === 'college-requests' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">College Service Requests</h2>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline">{collegeRequests.length} Total Requests</Badge>
-                    <Button onClick={fetchCollegeRequests} disabled={loading}>
-                      {loading ? 'Loading...' : 'Refresh'}
-                    </Button>
+              <Card className="bg-green-50 border-green-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-600">Colleges</p>
+                      <p className="text-2xl font-bold">45</p>
+                    </div>
+                    <Building2 className="h-8 w-8 text-green-600" />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                <div className="space-y-4">
-                  {collegeRequests.map((request) => (
-                    <Card key={request._id}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Building2 className="h-5 w-5 text-blue-600" />
-                              <h3 className="font-semibold text-lg">{request.institutionName}</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                              <div>
-                                <p><span className="font-medium">Contact:</span> {request.contactPerson}</p>
-                                <p><span className="font-medium">Email:</span> {request.email}</p>
-                                <p><span className="font-medium">Phone:</span> {request.phoneNumber}</p>
-                              </div>
-                              <div>
-                                <p><span className="font-medium">Expected Students:</span> {request.expectedStudents}</p>
-                                <p><span className="font-medium">Preferred Date:</span> {request.preferredDate}</p>
-                                <p><span className="font-medium">Requested by:</span> {request.requestedBy}</p>
-                              </div>
-                            </div>
-                            <div className="mt-3">
-                              <p className="text-sm"><span className="font-medium">Service Category:</span> {request.serviceCategory?.join(', ') || 'Not specified'}</p>
-                              <p className="text-sm"><span className="font-medium">Description:</span> {request.serviceDescription}</p>
-                              {request.additionalRequirements && (
-                                <p className="text-sm"><span className="font-medium">Additional Requirements:</span> {request.additionalRequirements}</p>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-400 mt-2">
-                              Requested on: {new Date(request.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end space-y-2 ml-4">
-                            <Badge
-                              variant={
-                                request.status === 'Accepted' ? 'default' :
-                                request.status === 'Rejected' ? 'destructive' : 'outline'
-                              }
-                            >
-                              {request.status}
-                            </Badge>
-                            {request.status === 'Pending' && (
-                              <div className="flex space-x-2">
-                                <Button 
-                                  variant="destructive" 
-                                  size="sm"
-                                  onClick={() => handleRejectRequest(request._id)}
-                                >
-                                  Reject
-                                </Button>
-                                <Button 
-                                  size="sm"
-                                  onClick={() => handleAcceptRequest(request._id)}
-                                >
-                                  Accept
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+              <Card className="bg-purple-50 border-purple-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-purple-600">Courses</p>
+                      <p className="text-2xl font-bold">{platformStats.liveCourses}</p>
+                    </div>
+                    <BookOpen className="h-8 w-8 text-purple-600" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Platform Statistics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Platform Statistics</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[
+                    { label: 'Total Users', value: platformStats.totalUsers, icon: Users },
+                    { label: 'Registered Employers', value: platformStats.registeredEmployers, icon: Briefcase },
+                    { label: 'Total Internships', value: platformStats.totalInternships, icon: BriefcaseIcon },
+                    { label: 'Active Internships', value: platformStats.activeInternships, icon: BarChart3 }
+                  ].map((stat, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <stat.icon className="h-5 w-5 text-gray-500" />
+                        <span className="font-medium">{stat.label}</span>
+                      </div>
+                      <Badge variant="secondary">{stat.value.toLocaleString()}</Badge>
+                    </div>
                   ))}
-                  {collegeRequests.length === 0 && !loading && (
-                    <Card>
-                      <CardContent className="pt-6">
-                        <p className="text-center text-gray-500">No college service requests found</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                </CardContent>
+              </Card>
+
+              {/* Daily Notices */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daily Notices</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {dailyNotices.map((notice) => (
+                    <div key={notice.id} className="p-3 border rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm">{notice.title}</h4>
+                          <p className="text-sm text-gray-600 mt-1">{notice.content}</p>
+                        </div>
+                        <span className="text-xs text-gray-400 ml-2">{notice.time}</span>
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="ghost" className="w-full">
+                    See more
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-6">
+            <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="courses" className="space-y-6">
+            <CourseManagement />
+          </TabsContent>
+
+          <TabsContent value="internships" className="space-y-6">
+            <InternshipManagement />
+          </TabsContent>
+
+          <TabsContent value="applications" className="space-y-6">
+            <ApplicationManagement />
+          </TabsContent>
+
+          <TabsContent value="pack365" className="space-y-6">
+            <Pack365Management />
+          </TabsContent>
+
+          <TabsContent value="jobs" className="space-y-6">
+            <JobManagement />
+          </TabsContent>
+
+          <TabsContent value="colleges" className="space-y-6">
+            <CollegeManagement />
+          </TabsContent>
+
+          <TabsContent value="college-requests" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">College Service Requests</h2>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline">{collegeRequests.length} Total Requests</Badge>
+                <Button onClick={fetchCollegeRequests} disabled={loading}>
+                  {loading ? 'Loading...' : 'Refresh'}
+                </Button>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+
+            <div className="space-y-4">
+              {collegeRequests.map((request) => (
+                <Card key={request._id}>
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Building2 className="h-5 w-5 text-blue-600" />
+                          <h3 className="font-semibold text-lg">{request.institutionName}</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div>
+                            <p><span className="font-medium">Contact:</span> {request.contactPerson}</p>
+                            <p><span className="font-medium">Email:</span> {request.email}</p>
+                            <p><span className="font-medium">Phone:</span> {request.phoneNumber}</p>
+                          </div>
+                          <div>
+                            <p><span className="font-medium">Expected Students:</span> {request.expectedStudents}</p>
+                            <p><span className="font-medium">Preferred Date:</span> {request.preferredDate}</p>
+                            <p><span className="font-medium">Requested by:</span> {request.requestedBy}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-sm"><span className="font-medium">Service Category:</span> {request.serviceCategory?.join(', ') || 'Not specified'}</p>
+                          <p className="text-sm"><span className="font-medium">Description:</span> {request.serviceDescription}</p>
+                          {request.additionalRequirements && (
+                            <p className="text-sm"><span className="font-medium">Additional Requirements:</span> {request.additionalRequirements}</p>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">
+                          Requested on: {new Date(request.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end space-y-2 ml-4">
+                        <Badge
+                          variant={
+                            request.status === 'Accepted' ? 'default' :
+                            request.status === 'Rejected' ? 'destructive' : 'outline'
+                          }
+                        >
+                          {request.status}
+                        </Badge>
+                        {request.status === 'Pending' && (
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleRejectRequest(request._id)}
+                            >
+                              Reject
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => handleAcceptRequest(request._id)}
+                            >
+                              Accept
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {collegeRequests.length === 0 && !loading && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-center text-gray-500">No college service requests found</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
