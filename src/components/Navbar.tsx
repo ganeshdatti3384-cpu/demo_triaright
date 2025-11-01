@@ -40,9 +40,20 @@ const Navbar = () => {
     }
   ];
 
-  // Internships dropdown items - EMPTY ARRAY
+  // Internships dropdown items - Only Regular Internships and AP Exclusive
   const internshipsItems = [
-    // All internship items have been removed as requested
+    { 
+      name: 'Regular Internships', 
+      description: 'Open to all students', 
+      path: '/internships/regular',
+      icon: Users
+    },
+    { 
+      name: 'AP Exclusive', 
+      description: 'For Andhra Pradesh students', 
+      path: '/internships/ap-exclusive',
+      icon: Star
+    }
   ];
 
   const handleRegisterClick = () => {
@@ -166,7 +177,7 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Internships Dropdown - NOW EMPTY */}
+              {/* Internships Dropdown - Only Regular Internships and AP Exclusive */}
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
                   <span>Internships</span>
@@ -363,7 +374,7 @@ const Navbar = () => {
                 ))}
               </div>
 
-              {/* Internships Section - NOW EMPTY */}
+              {/* Internships Section - Only Regular Internships and AP Exclusive */}
               <div className="space-y-2">
                 <h3 className="font-semibold text-gray-900">Internships</h3>
                 {internshipsItems.map((item) => (
