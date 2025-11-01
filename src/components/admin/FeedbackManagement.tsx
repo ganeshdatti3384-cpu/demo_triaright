@@ -38,6 +38,11 @@ const FeedbackManagement = () => {
   });
   const { toast } = useToast();
 
+  // Get auth token
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
   useEffect(() => {
     fetchFeedbacks();
   }, []);
@@ -45,7 +50,13 @@ const FeedbackManagement = () => {
   const fetchFeedbacks = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/feedbacks');
+      const token = getAuthToken();
+      const response = await fetch('/api/users/feedbacks', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -79,16 +90,18 @@ const FeedbackManagement = () => {
 
     try {
       setSubmitting(true);
+      const token = getAuthToken();
       
       const url = editingFeedback 
-        ? `/api/feedbacks/${editingFeedback._id}`
-        : '/api/feedbacks';
+        ? `/api/users/feedbacks/${editingFeedback._id}`
+        : '/api/users/feedbacks';
       
       const method = editingFeedback ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
         method,
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -141,8 +154,12 @@ const FeedbackManagement = () => {
     }
 
     try {
-      const response = await fetch(`/api/feedbacks/${id}`, {
+      const token = getAuthToken();
+      const response = await fetch(`/api/users/feedbacks/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
