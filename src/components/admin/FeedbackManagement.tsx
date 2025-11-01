@@ -12,7 +12,8 @@ import {
   User, 
   MessageSquare,
   Plus,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,6 +28,7 @@ interface Feedback {
 const FeedbackManagement = () => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingFeedback, setEditingFeedback] = useState<Feedback | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -44,13 +46,13 @@ const FeedbackManagement = () => {
     try {
       setLoading(true);
       const response = await fetch('/api/feedbacks');
-      const data = await response.json();
       
-      if (response.ok) {
-        setFeedbacks(data);
-      } else {
-        throw new Error(data.message);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
+      const data = await response.json();
+      setFeedbacks(data);
     } catch (error) {
       console.error('Error fetching feedbacks:', error);
       toast({
@@ -66,7 +68,7 @@ const FeedbackManagement = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.feedback) {
+    if (!formData.name.trim() || !formData.feedback.trim()) {
       toast({
         title: 'Error',
         description: 'Name and feedback are required',
@@ -76,6 +78,8 @@ const FeedbackManagement = () => {
     }
 
     try {
+      setSubmitting(true);
+      
       const url = editingFeedback 
         ? `/api/feedbacks/${editingFeedback._id}`
         : '/api/feedbacks';
@@ -87,30 +91,38 @@ const FeedbackManagement = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          feedback: formData.feedback.trim()
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save feedback');
+      }
 
       const data = await response.json();
 
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: editingFeedback ? 'Feedback updated successfully' : 'Feedback created successfully',
-        });
-        setShowForm(false);
-        setEditingFeedback(null);
-        setFormData({ name: '', feedback: '' });
-        fetchFeedbacks();
-      } else {
-        throw new Error(data.message);
-      }
-    } catch (error) {
+      toast({
+        title: 'Success',
+        description: editingFeedback ? 'Feedback updated successfully' : 'Feedback created successfully',
+      });
+      
+      setShowForm(false);
+      setEditingFeedback(null);
+      setFormData({ name: '', feedback: '' });
+      fetchFeedbacks();
+      
+    } catch (error: any) {
       console.error('Error saving feedback:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save feedback',
+        description: error.message || 'Failed to save feedback',
         variant: 'destructive'
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -133,21 +145,21 @@ const FeedbackManagement = () => {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Feedback deleted successfully',
-        });
-        fetchFeedbacks();
-      } else {
-        const data = await response.json();
-        throw new Error(data.message);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete feedback');
       }
-    } catch (error) {
+
+      toast({
+        title: 'Success',
+        description: 'Feedback deleted successfully',
+      });
+      fetchFeedbacks();
+    } catch (error: any) {
       console.error('Error deleting feedback:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete feedback',
+        description: error.message || 'Failed to delete feedback',
         variant: 'destructive'
       });
     }
@@ -158,6 +170,12 @@ const FeedbackManagement = () => {
     feedback.feedback.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingFeedback(null);
+    setFormData({ name: '', feedback: '' });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -167,8 +185,7 @@ const FeedbackManagement = () => {
           <p className="text-gray-600">Manage user feedback and testimonials</p>
         </div>
         <Button onClick={() => {
-          setEditingFeedback(null);
-          setFormData({ name: '', feedback: '' });
+          resetForm();
           setShowForm(true);
         }}>
           <Plus className="h-4 w-4 mr-2" />
@@ -199,11 +216,8 @@ const FeedbackManagement = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingFeedback(null);
-                    setFormData({ name: '', feedback: '' });
-                  }}
+                  onClick={resetForm}
+                  disabled={submitting}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -218,6 +232,7 @@ const FeedbackManagement = () => {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter name"
                     required
+                    disabled={submitting}
                   />
                 </div>
                 <div>
@@ -228,21 +243,20 @@ const FeedbackManagement = () => {
                     placeholder="Enter feedback"
                     rows={4}
                     required
+                    disabled={submitting}
                   />
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingFeedback(null);
-                      setFormData({ name: '', feedback: '' });
-                    }}
+                    onClick={resetForm}
+                    disabled={submitting}
                   >
                     Cancel
                   </Button>
-                  <Button type="submit">
+                  <Button type="submit" disabled={submitting}>
+                    {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     {editingFeedback ? 'Update' : 'Create'} Feedback
                   </Button>
                 </div>
@@ -254,7 +268,10 @@ const FeedbackManagement = () => {
 
       {/* Feedbacks List */}
       {loading ? (
-        <div className="text-center py-8">Loading feedbacks...</div>
+        <div className="text-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+          <p>Loading feedbacks...</p>
+        </div>
       ) : (
         <div className="grid gap-4">
           {filteredFeedbacks.map((feedback) => (
