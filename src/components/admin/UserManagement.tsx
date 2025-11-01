@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, User, Lock, Eye as EyeIcon, EyeOff, GraduationCap, XCircle } from 'lucide-react';
+import { Users, UserPlus, Download, Upload, Search, Filter, Eye, Edit, Trash2, Mail, Phone, MapPin, User, Lock, Eye as EyeIcon, EyeOff, GraduationCap } from 'lucide-react';
 import { authApi, RegisterPayload } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { UserRow } from '@/components/UserRow'; // Import the new component
@@ -67,31 +67,15 @@ interface College {
   state: string;
 }
 
-// Minimal type for a user, as the full type is not provided
-interface UserData {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-    whatsappNumber: string;
-    address: string;
-    state: string;
-    role: 'trainer' | 'jobseeker' | 'student' | 'employer' | 'college' | 'admin';
-    collegeName?: string;
-    collegeCode?: string;
-    // Add other properties that are used in UserRow
-}
-
 const UserManagement = () => {
   const { toast } = useToast();
-  const [users, setUsers] = useState<UserData[]>([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('all');
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [editUserOpen, setEditUserOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [colleges, setColleges] = useState<College[]>([]);
   const [loadingColleges, setLoadingColleges] = useState(false);
@@ -109,18 +93,7 @@ const UserManagement = () => {
   const { register, handleSubmit, setValue, control, watch, formState: { errors }, reset } = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
-      acceptTerms: false,
-      // Default other fields to empty string or appropriate value to avoid uncontrolled/controlled component warning
-      firstName: '',
-      lastName: '',
-      email: '',
-      phoneNumber: '',
-      whatsappNumber: '',
-      password: '',
-      confirmPassword: '',
-      address: '',
-      state: '',
-      role: 'student', // Provide a default role
+      acceptTerms: false
     }
   });
 
@@ -168,13 +141,11 @@ const UserManagement = () => {
         return;
       }
 
-      // NOTE: Assuming authApi.getAllUsers is defined in '@/services/api' and works as intended
       const response = await authApi.getAllUsers(token);
       console.log('Users response:', response);
 
       if (response.success || response.users) {
-        // Cast to UserData[] for type safety, assuming the API returns a compatible structure
-        setUsers(response.users as UserData[]); 
+        setUsers(response.users);
         toast({
           title: "Success",
           description: `Loaded ${response.users.length} users successfully`,
@@ -210,15 +181,14 @@ const UserManagement = () => {
         phoneNumber: formData.phoneNumber,
         whatsappNumber: formData.whatsappNumber,
         address: formData.address,
-        // state: formData.state, // State is often added to the user object, but RegisterPayload might not include it based on the current structure
-        role: formData.role === 'trainer' ? 'admin' : formData.role, // Assuming 'trainer' role maps to 'admin' on registration
+        // state: formData.state,
+        role: formData.role === 'trainer' ? 'admin' : formData.role,
         password: formData.password,
         ...(formData.role === 'student' && formData.collegeName && { collegeName: formData.collegeName }),
         ...(formData.role === 'college' && formData.collegeCode && { collegeCode: formData.collegeCode })
       };
       
-      // NOTE: Assuming authApi.register is defined in '@/services/api' and works as intended
-      const response = await authApi.register(registerPayload); 
+      const response = await authApi.register(registerPayload);
       
       // Show success toast
       toast({ 
@@ -245,40 +215,10 @@ const UserManagement = () => {
     }
   };
 
-  const handleEditUser = (user: UserData) => {
-    // Logic to open the edit dialog and populate the form
-    setSelectedUser(user);
-    // You would typically use react-hook-form's `reset` or `setValue` to populate the edit form
-    // reset(user); // or a similar mechanism for a dedicated edit form
-    setEditUserOpen(true);
-    // NOTE: An 'EditUserDialog' component would be needed here, or you'd reuse the existing dialog with conditional logic.
-    // Since the prompt is about completing the UserManagement, I will skip the full edit form implementation for brevity.
-    toast({
-      title: "Info",
-      description: `Opening edit form for user: ${user.firstName} ${user.lastName}`,
-    });
-  };
-
-  const handleSaveEdit = async (editedData: any) => {
-      // NOTE: Placeholder for edit logic
-      setEditUserOpen(false);
-      toast({
-          title: "Update Success",
-          description: "User details updated successfully (Placeholder)",
-      });
-      await fetchUsers();
-  }
-
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      // API call to delete from backend
-      // NOTE: This call is commented out as the API function `deleteUser` is not provided, 
-      // but it's the correct place for it.
-      // const token = localStorage.getItem('token');
-      // await authApi.deleteUser(userId, token); 
-
       // Remove from local state immediately for better UX
       setUsers(prevUsers => prevUsers.filter(user => user._id !== userId));
       
@@ -286,6 +226,9 @@ const UserManagement = () => {
         title: "Success",
         description: "User deleted successfully!",
       });
+      
+      // Here you would typically make an API call to delete from backend
+      // await authApi.deleteUser(userId);
       
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -298,20 +241,15 @@ const UserManagement = () => {
       fetchUsers();
     }
   };
-  
+  const userList = users;
   // Fixed filtered users logic
-const filteredUsers = users.filter(user => {
+const filteredUsers = userList.filter(user => {
   // Ensure we have a valid user object to work with
   if (!user) return false;
   
   // --- 1. Role Filtering (Case-Insensitive) ---
-  const userRole = (user.role || '').toLowerCase();
-  const filterRole = selectedRoleFilter.toLowerCase();
-
-  // If the user's role is 'admin', it should be treated as 'trainer' if the filter is set to 'trainer'
-  const effectiveUserRole = userRole === 'admin' ? 'trainer' : userRole; 
-
-  const matchesRole = filterRole === 'all' || effectiveUserRole === filterRole;
+  const matchesRole = selectedRoleFilter === 'all' || 
+                      (user.role && user.role.toLowerCase() === selectedRoleFilter.toLowerCase());
 
   // If the role doesn't match, we can stop right away.
   if (!matchesRole) return false;
@@ -339,10 +277,10 @@ const filteredUsers = users.filter(user => {
   // Bulk upload functionality
   const downloadSampleExcel = () => {
     const sampleData = [
-      ['firstname', 'lastname', 'email', 'role', 'phoneNumber', 'whatsappNumber', 'address', 'state', 'password', 'collegeName', 'collegeCode'],
-      ['John', 'Doe', 'john@example.com', 'student', '9876543210', '9876543210', '123 Main St', 'Andhra Pradesh', 'password123', 'ABC College', ''],
-      ['Jane', 'Smith', 'jane@example.com', 'jobseeker', '9876543211', '9876543211', '456 Business Ave', 'Telangana', 'password123', '', ''],
-      ['Mark', 'Johnson', 'mark@example.com', 'college', '9876543212', '9876543212', '789 College St', 'Karnataka', 'password123', '', 'COLL001']
+      ['firstname', 'lastname', 'email', 'role', 'phoneNumber', 'whatsappNumber', 'address', 'state', 'password', 'collegeName'],
+      ['John', 'Doe', 'john@example.com', 'student', '9876543210', '9876543210', '123 Main St', 'Andhra Pradesh', 'password123', 'ABC College'],
+      ['Jane', 'Smith', 'jane@example.com', 'jobseeker', '9876543211', '9876543211', '456 Business Ave', 'Telangana', 'password123', ''],
+      ['Mark', 'Johnson', 'mark@example.com', 'college', '9876543212', '9876543212', '789 College St', 'Karnataka', 'password123', '']
     ];
     
     const csvContent = sampleData.map(row => row.join(',')).join('\n');
@@ -749,29 +687,6 @@ const filteredUsers = users.filter(user => {
               </form>
             </DialogContent>
           </Dialog>
-          {/* Edit User Dialog (Placeholder) */}
-          {/* A proper Edit Dialog component would be needed here, which would accept selectedUser and handleSaveEdit */}
-          {selectedUser && (
-              <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
-                  <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                          <DialogTitle>Edit User</DialogTitle>
-                          <DialogDescription>
-                              Make changes to {selectedUser.firstName}'s profile here.
-                          </DialogDescription>
-                      </DialogHeader>
-                      <p className="text-sm text-gray-500">Edit form UI not implemented in this snippet.</p>
-                      <DialogFooter>
-                          <Button onClick={() => setEditUserOpen(false)} variant="outline">
-                              Close
-                          </Button>
-                          <Button onClick={() => handleSaveEdit(selectedUser)} disabled={loading}>
-                              Save changes
-                          </Button>
-                      </DialogFooter>
-                  </DialogContent>
-              </Dialog>
-          )}
         </div>
       </div>
 
@@ -783,7 +698,7 @@ const filteredUsers = users.filter(user => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search users by name, email, or phone..."
+                  placeholder="Search users..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -792,7 +707,6 @@ const filteredUsers = users.filter(user => {
             </div>
             <Select value={selectedRoleFilter} onValueChange={setSelectedRoleFilter}>
               <SelectTrigger className="w-[180px]">
-                <Filter className="h-4 w-4 mr-2 text-gray-400" />
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
@@ -800,7 +714,7 @@ const filteredUsers = users.filter(user => {
                 <SelectItem value="student">Students</SelectItem>
                 <SelectItem value="jobseeker">Job Seekers</SelectItem>
                 <SelectItem value="employer">Employers</SelectItem>
-                <SelectItem value="trainer">Trainers/Admins</SelectItem>
+                <SelectItem value="trainer">Trainers</SelectItem>
                 <SelectItem value="college">Colleges</SelectItem>
               </SelectContent>
             </Select>
@@ -813,7 +727,7 @@ const filteredUsers = users.filter(user => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Users className="h-5 w-5 mr-2" />
-            All Users (<span className='font-mono'>{filteredUsers.length}</span>)
+            All Users ({filteredUsers.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -835,34 +749,39 @@ const filteredUsers = users.filter(user => {
             </div>
           ) : filteredUsers.length === 0 ? (
             // IMPROVED: More contextual empty state
-            <div className="text-center py-10 space-y-3 bg-gray-50 rounded-lg">
-                <XCircle className="h-8 w-8 text-gray-400 mx-auto" />
-                <h3 className="text-lg font-semibold text-gray-700">No Users Found</h3>
-                <p className="text-gray-500">
-                    Your search for "<span className="font-medium text-blue-600">{searchTerm}</span>" returned no results in the 
-                    <Badge variant="secondary" className="ml-1">{selectedRoleFilter === 'all' ? 'All Roles' : selectedRoleFilter}</Badge> category.
-                </p>
-                <Button variant="link" onClick={() => { setSearchTerm(''); setSelectedRoleFilter('all'); }}>
-                    Clear Filters
-                </Button>
+            <div className="text-center py-12">
+              <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-800">No Users Found</h3>
+              <p className="text-gray-500">Try adjusting your search or role filter.</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {filteredUsers.map((user) => (
-                // Use the imported UserRow component
-                <UserRow 
-                  key={user._id} 
-                  user={user} 
-                  onEdit={() => handleEditUser(user)} 
-                  onDelete={() => handleDeleteUser(user._id)} 
-                  // Assuming UserRow handles view/details internally or you'd pass a dedicated handler
-                />
-              ))}
+            // IMPROVED: Using a table for better data presentation
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 text-xs text-gray-600 uppercase">
+                  <tr>
+                    <th className="p-4 font-semibold">User</th>
+                    <th className="p-4 font-semibold">Contact</th>
+                    <th className="p-4 font-semibold">Role</th>
+                    <th className="p-4 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <UserRow
+                      key={user.id}
+                      user={user}
+                      onEdit={(userId) => console.log('Edit user:', userId)} // Add edit handler
+                      onDelete={handleDeleteUser} // Pass the delete handler
+                    />
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
       </Card>
-    </div> // Closing div for UserManagement
+    </div>
   );
 };
 
