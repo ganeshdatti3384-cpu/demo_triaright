@@ -4,7 +4,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Settings, Users, BookOpen, Briefcase, GraduationCap, LogOut, BarChart3, Package, Building2, BriefcaseIcon } from 'lucide-react';
+import { 
+  Settings, 
+  Users, 
+  BookOpen, 
+  Briefcase, 
+  GraduationCap, 
+  LogOut, 
+  BarChart3, 
+  Package, 
+  Building2, 
+  BriefcaseIcon,
+  Menu,
+  X,
+  Bell,
+  Search,
+  ChevronDown,
+  DollarSign,
+  Calendar,
+  FileText,
+  Bookmark
+} from 'lucide-react';
 import CourseManagement from '../admin/CourseManagement';
 import UserManagement from '../admin/UserManagement';
 import JobManagement from '../admin/JobManagement';
@@ -31,6 +51,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     pendingApplications: 0
   });
   const [loading, setLoading] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
 
   const platformStats = {
@@ -43,11 +64,30 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     activeInternships: internshipStats.activeInternships
   };
 
-  const recentActivity = [
-    { id: 1, action: 'New employer registration', entity: 'TechStart Inc', time: '2 hours ago' },
-    { id: 2, action: 'Course completion', entity: 'React Fundamentals', time: '4 hours ago' },
-    { id: 3, action: 'Job posting created', entity: 'Senior Developer Role', time: '6 hours ago' },
-    { id: 4, action: 'Internship application', entity: 'Web Development Intern', time: '1 hour ago' },
+  const quickActions = [
+    { id: 1, name: 'Payment Info', icon: DollarSign, description: 'Manage payment information' },
+    { id: 2, name: 'Registration', icon: FileText, description: 'Handle registrations' },
+    { id: 3, name: 'Courses', icon: BookOpen, description: 'Manage courses' },
+    { id: 4, name: 'Results', icon: BarChart3, description: 'View results' },
+    { id: 5, name: 'Notices', icon: Bell, description: 'Manage notices' },
+    { id: 6, name: 'Schedule', icon: Calendar, description: 'View schedule' }
+  ];
+
+  const enrolledCourses = [
+    { id: 1, name: 'Object Oriented Programming', instructor: 'Dr. Smith', progress: 75 },
+    { id: 2, name: 'Fundamentals of Database Systems', instructor: 'Prof. Johnson', progress: 60 }
+  ];
+
+  const dailyNotices = [
+    { id: 1, title: 'Prelim Payment Due', content: 'Sorem ipsum dolor sit amet, consectetur adipiscing elit.', time: '2 hours ago' },
+    { id: 2, title: 'System Maintenance', content: 'Norem ipsum dolor sit amet, consectetur adipiscing elit.', time: '5 hours ago' },
+    { id: 3, title: 'New Features', content: 'Nine vulputate libero et velit interdum, ac aliquet odio mattis.', time: '1 day ago' }
+  ];
+
+  const examSchedule = [
+    { id: 1, course: 'Object Oriented Programming', date: 'Sep 15, 2023', time: '9:00 AM', room: 'Room 301' },
+    { id: 2, course: 'Database Systems', date: 'Sep 18, 2023', time: '2:00 PM', room: 'Room 205' },
+    { id: 3, course: 'Web Development', date: 'Sep 20, 2023', time: '10:30 AM', room: 'Lab 101' }
   ];
 
   useEffect(() => {
@@ -86,7 +126,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     if (!token) return;
 
     try {
-      // Fetch regular internships
       const internshipsResponse = await fetch('/api/internships', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -94,7 +133,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       });
       const internships = await internshipsResponse.json();
 
-      // Fetch AP internships
       const apInternshipsResponse = await fetch('/api/internships/ap-internships', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -102,7 +140,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       });
       const apInternshipsData = await apInternshipsResponse.json();
 
-      // Fetch applications
       const applicationsResponse = await fetch('/api/internships/ap-internshipsapplication/applications', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -182,312 +219,407 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
   const pendingRequests = collegeRequests.filter(request => request.status === 'Pending');
 
+  // Mobile sidebar component
+  const MobileSidebar = () => (
+    <div className={`fixed inset-0 z-50 lg:hidden ${mobileMenuOpen ? 'block' : 'hidden'}`}>
+      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)} />
+      <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Admin Menu</h2>
+          <Button variant="ghost" size="sm" onClick={() => setMobileMenuOpen(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="p-4 space-y-2">
+          {[
+            { value: 'overview', label: 'Overview' },
+            { value: 'users', label: 'Users' },
+            { value: 'courses', label: 'Courses' },
+            { value: 'internships', label: 'Internships' },
+            { value: 'applications', label: 'Applications' },
+            { value: 'pack365', label: 'Pack365' },
+            { value: 'jobs', label: 'Jobs' },
+            { value: 'colleges', label: 'Colleges' },
+            { value: 'college-requests', label: 'College Requests' }
+          ].map((tab) => (
+            <Button
+              key={tab.value}
+              variant={activeTab === tab.value ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => {
+                setActiveTab(tab.value);
+                setMobileMenuOpen(false);
+              }}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-9 lg:grid-cols-9 md:grid-cols-7 sm:grid-cols-5 gap-1 overflow-x-auto">
-            <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
-            <TabsTrigger value="users" className="text-xs">Users</TabsTrigger>
-            <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
-            <TabsTrigger value="internships" className="text-xs">Internships</TabsTrigger>
-            <TabsTrigger value="applications" className="text-xs">Applications</TabsTrigger>
-            <TabsTrigger value="pack365" className="text-xs">Pack365</TabsTrigger>
-            <TabsTrigger value="jobs" className="text-xs">Jobs</TabsTrigger>
-            <TabsTrigger value="colleges" className="text-xs">Colleges</TabsTrigger>
-            <TabsTrigger value="college-requests" className="text-xs">College Requests</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{platformStats.totalUsers.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">+12% from last month</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Students</CardTitle>
-                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{platformStats.activeStudents.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">Currently enrolled</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Employers</CardTitle>
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{platformStats.registeredEmployers}</div>
-                  <p className="text-xs text-muted-foreground">Registered companies</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Live Courses</CardTitle>
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{platformStats.liveCourses}</div>
-                  <p className="text-xs text-muted-foreground">Active programs</p>
-                </CardContent>
-              </Card>
+      
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-white border-b">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center space-x-3">
+            <Button variant="ghost" size="sm" onClick={() => setMobileMenuOpen(true)}>
+              <Menu className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-semibold">Admin Dashboard</h1>
+              <p className="text-sm text-gray-500">September 4, 2023</p>
             </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="sm">
+              <Bell className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Internships</CardTitle>
-                  <BriefcaseIcon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{internshipStats.totalInternships}</div>
-                  <p className="text-xs text-muted-foreground">Regular & AP Internships</p>
-                </CardContent>
-              </Card>
+      <MobileSidebar />
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Internships</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{internshipStats.activeInternships}</div>
-                  <p className="text-xs text-muted-foreground">Currently accepting applications</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Applications</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{internshipStats.pendingApplications}</div>
-                  <p className="text-xs text-muted-foreground">Requiring review</p>
-                </CardContent>
-              </Card>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                Welcome back, {user.name}!
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Always stay updated in your admin portal
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pending Approvals</CardTitle>
-                  <CardDescription>College service requests requiring admin approval</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {pendingRequests.slice(0, 3).map((request) => (
-                      <div key={request._id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{request.institutionName}</p>
-                          <p className="text-sm text-gray-500">College Service Request - {request.serviceCategory?.join(', ') || 'General'}</p>
-                          <p className="text-xs text-gray-400">Requested on {new Date(request.createdAt).toLocaleDateString()}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline">Pending</Badge>
-                          <Button variant="outline" size="sm" onClick={() => setActiveTab('college-requests')}>Review</Button>
-                        </div>
-                      </div>
-                    ))}
-                    {pendingRequests.length === 0 && (
-                      <p className="text-center text-gray-500 py-4">No pending approvals</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Platform Activity</CardTitle>
-                  <CardDescription>Latest activities across the platform</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="text-sm font-medium">{activity.action}</p>
-                          <p className="text-sm text-gray-500">{activity.entity}</p>
-                        </div>
-                        <span className="text-xs text-gray-400">{activity.time}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Frequently used administrative tasks</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex flex-col"
-                    onClick={() => setActiveTab('internships')}
-                  >
-                    <BriefcaseIcon className="h-6 w-6 mb-2" />
-                    <span>Manage Internships</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex flex-col"
-                    onClick={() => setActiveTab('applications')}
-                  >
-                    <Users className="h-6 w-6 mb-2" />
-                    <span>Review Applications</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex flex-col"
-                    onClick={() => setActiveTab('courses')}
-                  >
-                    <BookOpen className="h-6 w-6 mb-2" />
-                    <span>Manage Courses</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex flex-col"
-                    onClick={() => setActiveTab('users')}
-                  >
-                    <Users className="h-6 w-6 mb-2" />
-                    <span>User Management</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-6">
-            <UserManagement />
-          </TabsContent>
-
-          <TabsContent value="courses" className="space-y-6">
-            <CourseManagement />
-          </TabsContent>
-
-          <TabsContent value="internships" className="space-y-6">
-            <InternshipManagement />
-          </TabsContent>
-
-          <TabsContent value="applications" className="space-y-6">
-            <ApplicationManagement />
-          </TabsContent>
-
-          <TabsContent value="pack365" className="space-y-6">
-            <Pack365Management />
-          </TabsContent>
-
-          <TabsContent value="jobs" className="space-y-6">
-            <JobManagement />
-          </TabsContent>
-
-          <TabsContent value="colleges" className="space-y-6">
-            <CollegeManagement />
-          </TabsContent>
-
-          <TabsContent value="college-requests" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">College Service Requests</h2>
-              <div className="flex items-center space-x-2">
-                <Badge variant="outline">{collegeRequests.length} Total Requests</Badge>
-                <Button onClick={fetchCollegeRequests} disabled={loading}>
-                  {loading ? 'Loading...' : 'Refresh'}
-                </Button>
+            <div className="mt-4 lg:mt-0 flex items-center space-x-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search..."
+                  className="pl-10 w-full lg:w-64"
+                />
               </div>
+              <Button variant="outline" size="sm">
+                <Bell className="h-4 w-4" />
+              </Button>
             </div>
+          </div>
+        </div>
 
-            <div className="space-y-4">
-              {collegeRequests.map((request) => (
-                <Card key={request._id}>
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Building2 className="h-5 w-5 text-blue-600" />
-                          <h3 className="font-semibold text-lg">{request.institutionName}</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Left Sidebar - Hidden on mobile, shown as dropdown */}
+          <div className="lg:col-span-1">
+            <div className="hidden lg:block space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Dashboard</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {quickActions.map((action) => (
+                    <Button
+                      key={action.id}
+                      variant="ghost"
+                      className="w-full justify-start"
+                    >
+                      <action.icon className="h-4 w-4 mr-3" />
+                      {action.name}
+                    </Button>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              {/* Desktop Tabs */}
+              <TabsList className="hidden lg:grid w-full grid-cols-9 gap-1 mb-6">
+                <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
+                <TabsTrigger value="users" className="text-xs">Users</TabsTrigger>
+                <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
+                <TabsTrigger value="internships" className="text-xs">Internships</TabsTrigger>
+                <TabsTrigger value="applications" className="text-xs">Applications</TabsTrigger>
+                <TabsTrigger value="pack365" className="text-xs">Pack365</TabsTrigger>
+                <TabsTrigger value="jobs" className="text-xs">Jobs</TabsTrigger>
+                <TabsTrigger value="colleges" className="text-xs">Colleges</TabsTrigger>
+                <TabsTrigger value="college-requests" className="text-xs">Requests</TabsTrigger>
+              </TabsList>
+
+              {/* Mobile Tab Selector */}
+              <div className="lg:hidden mb-6">
+                <select 
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-white"
+                >
+                  <option value="overview">Overview</option>
+                  <option value="users">Users</option>
+                  <option value="courses">Courses</option>
+                  <option value="internships">Internships</option>
+                  <option value="applications">Applications</option>
+                  <option value="pack365">Pack365</option>
+                  <option value="jobs">Jobs</option>
+                  <option value="colleges">Colleges</option>
+                  <option value="college-requests">College Requests</option>
+                </select>
+              </div>
+
+              <TabsContent value="overview" className="space-y-6">
+                {/* Finance Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-blue-600">Total Revenue</p>
+                          <p className="text-2xl font-bold">$ 10,000</p>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                          <div>
-                            <p><span className="font-medium">Contact:</span> {request.contactPerson}</p>
-                            <p><span className="font-medium">Email:</span> {request.email}</p>
-                            <p><span className="font-medium">Phone:</span> {request.phoneNumber}</p>
-                          </div>
-                          <div>
-                            <p><span className="font-medium">Expected Students:</span> {request.expectedStudents}</p>
-                            <p><span className="font-medium">Preferred Date:</span> {request.preferredDate}</p>
-                            <p><span className="font-medium">Requested by:</span> {request.requestedBy}</p>
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <p className="text-sm"><span className="font-medium">Service Category:</span> {request.serviceCategory?.join(', ') || 'Not specified'}</p>
-                          <p className="text-sm"><span className="font-medium">Description:</span> {request.serviceDescription}</p>
-                          {request.additionalRequirements && (
-                            <p className="text-sm"><span className="font-medium">Additional Requirements:</span> {request.additionalRequirements}</p>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-2">
-                          Requested on: {new Date(request.createdAt).toLocaleDateString()}
-                        </p>
+                        <DollarSign className="h-8 w-8 text-blue-600" />
                       </div>
-                      <div className="flex flex-col items-end space-y-2 ml-4">
-                        <Badge
-                          variant={
-                            request.status === 'Accepted' ? 'default' :
-                            request.status === 'Rejected' ? 'destructive' : 'outline'
-                          }
-                        >
-                          {request.status}
-                        </Badge>
-                        {request.status === 'Pending' && (
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="destructive" 
-                              size="sm"
-                              onClick={() => handleRejectRequest(request._id)}
-                            >
-                              Reject
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => handleAcceptRequest(request._id)}
-                            >
-                              Accept
-                            </Button>
-                          </div>
-                        )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-green-600">Active Users</p>
+                          <p className="text-2xl font-bold">$ 5,000</p>
+                        </div>
+                        <Users className="h-8 w-8 text-green-600" />
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-purple-50 border-purple-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-purple-600">Other Metrics</p>
+                          <p className="text-2xl font-bold">$ 300</p>
+                        </div>
+                        <BarChart3 className="h-8 w-8 text-purple-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Enrolled Courses */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Platform Statistics</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {[
+                        { label: 'Total Users', value: platformStats.totalUsers, icon: Users },
+                        { label: 'Active Students', value: platformStats.activeStudents, icon: GraduationCap },
+                        { label: 'Registered Employers', value: platformStats.registeredEmployers, icon: Briefcase },
+                        { label: 'Live Courses', value: platformStats.liveCourses, icon: BookOpen }
+                      ].map((stat, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <stat.icon className="h-5 w-5 text-gray-500" />
+                            <span className="font-medium">{stat.label}</span>
+                          </div>
+                          <Badge variant="secondary">{stat.value.toLocaleString()}</Badge>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  {/* Daily Notices */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Daily Notices</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {dailyNotices.map((notice) => (
+                        <div key={notice.id} className="p-3 border rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-sm">{notice.title}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{notice.content}</p>
+                            </div>
+                            <span className="text-xs text-gray-400 ml-2">{notice.time}</span>
+                          </div>
+                        </div>
+                      ))}
+                      <Button variant="ghost" className="w-full">
+                        See more
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Exam Schedule */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Activities</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {examSchedule.map((exam) => (
+                        <div key={exam.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-sm">{exam.course}</p>
+                            <p className="text-sm text-gray-500">{exam.date} at {exam.time}</p>
+                          </div>
+                          <Badge variant="outline">{exam.room}</Badge>
+                        </div>
+                      ))}
+                      <Button variant="ghost" className="w-full">
+                        See more
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-              {collegeRequests.length === 0 && !loading && (
+
+                {/* Quick Actions Grid */}
                 <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-center text-gray-500">No college service requests found</p>
+                  <CardHeader>
+                    <CardTitle>Quick Actions</CardTitle>
+                    <CardDescription>Frequently used administrative tasks</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {quickActions.map((action) => (
+                        <Button
+                          key={action.id}
+                          variant="outline"
+                          className="h-20 flex flex-col"
+                        >
+                          <action.icon className="h-6 w-6 mb-2" />
+                          <span className="text-xs">{action.name}</span>
+                        </Button>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
+              </TabsContent>
+
+              <TabsContent value="users" className="space-y-6">
+                <UserManagement />
+              </TabsContent>
+
+              <TabsContent value="courses" className="space-y-6">
+                <CourseManagement />
+              </TabsContent>
+
+              <TabsContent value="internships" className="space-y-6">
+                <InternshipManagement />
+              </TabsContent>
+
+              <TabsContent value="applications" className="space-y-6">
+                <ApplicationManagement />
+              </TabsContent>
+
+              <TabsContent value="pack365" className="space-y-6">
+                <Pack365Management />
+              </TabsContent>
+
+              <TabsContent value="jobs" className="space-y-6">
+                <JobManagement />
+              </TabsContent>
+
+              <TabsContent value="colleges" className="space-y-6">
+                <CollegeManagement />
+              </TabsContent>
+
+              <TabsContent value="college-requests" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">College Service Requests</h2>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline">{collegeRequests.length} Total Requests</Badge>
+                    <Button onClick={fetchCollegeRequests} disabled={loading}>
+                      {loading ? 'Loading...' : 'Refresh'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {collegeRequests.map((request) => (
+                    <Card key={request._id}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <Building2 className="h-5 w-5 text-blue-600" />
+                              <h3 className="font-semibold text-lg">{request.institutionName}</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                              <div>
+                                <p><span className="font-medium">Contact:</span> {request.contactPerson}</p>
+                                <p><span className="font-medium">Email:</span> {request.email}</p>
+                                <p><span className="font-medium">Phone:</span> {request.phoneNumber}</p>
+                              </div>
+                              <div>
+                                <p><span className="font-medium">Expected Students:</span> {request.expectedStudents}</p>
+                                <p><span className="font-medium">Preferred Date:</span> {request.preferredDate}</p>
+                                <p><span className="font-medium">Requested by:</span> {request.requestedBy}</p>
+                              </div>
+                            </div>
+                            <div className="mt-3">
+                              <p className="text-sm"><span className="font-medium">Service Category:</span> {request.serviceCategory?.join(', ') || 'Not specified'}</p>
+                              <p className="text-sm"><span className="font-medium">Description:</span> {request.serviceDescription}</p>
+                              {request.additionalRequirements && (
+                                <p className="text-sm"><span className="font-medium">Additional Requirements:</span> {request.additionalRequirements}</p>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">
+                              Requested on: {new Date(request.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end space-y-2 ml-4">
+                            <Badge
+                              variant={
+                                request.status === 'Accepted' ? 'default' :
+                                request.status === 'Rejected' ? 'destructive' : 'outline'
+                              }
+                            >
+                              {request.status}
+                            </Badge>
+                            {request.status === 'Pending' && (
+                              <div className="flex space-x-2">
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => handleRejectRequest(request._id)}
+                                >
+                                  Reject
+                                </Button>
+                                <Button 
+                                  size="sm"
+                                  onClick={() => handleAcceptRequest(request._id)}
+                                >
+                                  Accept
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {collegeRequests.length === 0 && !loading && (
+                    <Card>
+                      <CardContent className="pt-6">
+                        <p className="text-center text-gray-500">No college service requests found</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
       </div>
     </div>
   );
