@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/exhaustive-deps */
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +9,6 @@ import CourseManagement from '../admin/CourseManagement';
 import UserManagement from '../admin/UserManagement';
 import JobManagement from '../admin/JobManagement';
 import Pack365Management from '../admin/Pack365Management';
-import PaymentAnalytics from '../admin/PaymentAnalytics';
 import CollegeManagement from '../admin/CollegeManagement';
 import InternshipManagement from '../admin/InternshipsManagement';
 import ApplicationManagement from '../admin/ApplicationManagement';
@@ -192,7 +188,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-10 lg:grid-cols-10 md:grid-cols-8 sm:grid-cols-6 gap-1 overflow-x-auto">
+          <TabsList className="grid w-full grid-cols-9 lg:grid-cols-9 md:grid-cols-7 sm:grid-cols-5 gap-1 overflow-x-auto">
             <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
             <TabsTrigger value="users" className="text-xs">Users</TabsTrigger>
             <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
@@ -200,7 +196,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             <TabsTrigger value="applications" className="text-xs">Applications</TabsTrigger>
             <TabsTrigger value="pack365" className="text-xs">Pack365</TabsTrigger>
             <TabsTrigger value="jobs" className="text-xs">Jobs</TabsTrigger>
-            <TabsTrigger value="payments" className="text-xs">Payments</TabsTrigger>
             <TabsTrigger value="colleges" className="text-xs">Colleges</TabsTrigger>
             <TabsTrigger value="college-requests" className="text-xs">College Requests</TabsTrigger>
           </TabsList>
@@ -402,10 +397,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
           <TabsContent value="jobs" className="space-y-6">
             <JobManagement />
-          </TabsContent>
-
-          <TabsContent value="payments" className="space-y-6">
-            <PaymentAnalytics />
           </TabsContent>
 
           <TabsContent value="colleges" className="space-y-6">
