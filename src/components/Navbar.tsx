@@ -1,4 +1,4 @@
-// In Navbar.tsx, replace the Jobs button with this dropdown
+// components/Navbar.tsx
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard, Settings, Briefcase, Users } from 'lucide-react';
+import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard, Settings, Briefcase, Users, Star, MapPin, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -37,6 +37,28 @@ const Navbar = () => {
       description: 'Career support', 
       path: '/jobs/assistance',
       icon: Users
+    }
+  ];
+
+  // Internships dropdown items
+  const internshipsItems = [
+    { 
+      name: 'All Internships', 
+      description: 'Browse all opportunities', 
+      path: '/internships',
+      icon: Briefcase
+    },
+    { 
+      name: 'Regular Internships', 
+      description: 'Open to all students', 
+      path: '/internships/regular',
+      icon: Users
+    },
+    { 
+      name: 'AP Exclusive', 
+      description: 'For Andhra Pradesh students', 
+      path: '/internships/ap-exclusive',
+      icon: Star
     }
   ];
 
@@ -82,12 +104,6 @@ const Navbar = () => {
     if (!user) return '';
     const name = user.firstName || user.name || 'User';
     return `Welcome, ${name}!`;
-  };
-
-  // Direct navigation to internships page
-  const handleInternshipsClick = () => {
-    navigate('/internships');
-    setIsMobileMenuOpen(false);
   };
 
   // Direct navigation to Pack365 page
@@ -167,14 +183,30 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Direct Internships Link */}
-              <Button
-                variant="ghost"
-                onClick={handleInternshipsClick}
-                className="text-gray-700 hover:text-brand-primary transition-colors"
-              >
-                Internships
-              </Button>
+              {/* Internships Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center space-x-1 text-gray-700 hover:text-brand-primary transition-colors">
+                  <span>Internships</span>
+                  <ChevronDown className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-white border shadow-lg">
+                  {internshipsItems.map((item) => (
+                    <DropdownMenuItem
+                      key={item.name}
+                      className="p-3 cursor-pointer"
+                      onClick={() => handleMenuItemClick(item.path)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <item.icon className={`h-4 w-4 ${item.name === 'AP Exclusive' ? 'text-blue-600' : 'text-gray-600'}`} />
+                        <div>
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-sm text-gray-500">{item.description}</div>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Direct Pack365 Link */}
               <Button
@@ -348,15 +380,24 @@ const Navbar = () => {
                 ))}
               </div>
 
+              {/* Internships Section */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900">Internships</h3>
+                {internshipsItems.map((item) => (
+                  <div
+                    key={item.name}
+                    className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary flex items-center space-x-2"
+                    onClick={() => handleMenuItemClick(item.path)}
+                  >
+                    <item.icon className={`h-4 w-4 ${item.name === 'AP Exclusive' ? 'text-blue-600' : 'text-gray-600'}`} />
+                    <span>{item.name}</span>
+                  </div>
+                ))}
+              </div>
+
               {/* Direct Links Section */}
               <div className="space-y-2">
                 <h3 className="font-semibold text-gray-900">Quick Links</h3>
-                <div
-                  className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
-                  onClick={handleInternshipsClick}
-                >
-                  Internships
-                </div>
                 <div
                   className="pl-4 text-sm text-gray-600 cursor-pointer hover:text-brand-primary"
                   onClick={handlePack365Click}
