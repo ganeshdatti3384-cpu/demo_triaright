@@ -14,7 +14,8 @@ import {
   DollarSign,
   Plus,
   X,
-  Image
+  Image,
+  Loader2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,6 +33,7 @@ interface Placement {
 const PlacementManagement = () => {
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingPlacement, setEditingPlacement] = useState<Placement | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -44,6 +46,11 @@ const PlacementManagement = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const { toast } = useToast();
 
+  // Get auth token
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
   useEffect(() => {
     fetchPlacements();
   }, []);
@@ -51,14 +58,19 @@ const PlacementManagement = () => {
   const fetchPlacements = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/placements');
-      const data = await response.json();
+      const token = getAuthToken();
+      const response = await fetch('/api/users/placements', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      });
       
-      if (response.ok) {
-        setPlacements(data);
-      } else {
-        throw new Error(data.message);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
+      const data = await response.json();
+      setPlacements(data);
     } catch (error) {
       console.error('Error fetching placements:', error);
       toast({
@@ -74,7 +86,7 @@ const PlacementManagement = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.collegeName || !formData.companyName || !formData.salary) {
+    if (!formData.name.trim() || !formData.collegeName.trim() || !formData.companyName.trim() || !formData.salary.trim()) {
       toast({
         title: 'Error',
         description: 'All fields are required',
@@ -84,49 +96,60 @@ const PlacementManagement = () => {
     }
 
     try {
+      setSubmitting(true);
+      const token = getAuthToken();
+      
       const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('collegeName', formData.collegeName);
-      formDataToSend.append('companyName', formData.companyName);
-      formDataToSend.append('salary', formData.salary);
+      formDataToSend.append('name', formData.name.trim());
+      formDataToSend.append('collegeName', formData.collegeName.trim());
+      formDataToSend.append('companyName', formData.companyName.trim());
+      formDataToSend.append('salary', formData.salary.trim());
       
       if (imageFile) {
         formDataToSend.append('image', imageFile);
       }
 
       const url = editingPlacement 
-        ? `/api/placements/${editingPlacement._id}`
-        : '/api/placements';
+        ? `/api/users/placements/${editingPlacement._id}`
+        : '/api/users/placements';
       
       const method = editingPlacement ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
         method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formDataToSend,
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save placement');
+      }
+
       const data = await response.json();
 
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: editingPlacement ? 'Placement updated successfully' : 'Placement created successfully',
-        });
-        setShowForm(false);
-        setEditingPlacement(null);
-        setFormData({ name: '', collegeName: '', companyName: '', salary: '' });
-        setImageFile(null);
-        fetchPlacements();
-      } else {
-        throw new Error(data.message);
-      }
-    } catch (error) {
+      toast({
+        title: 'Success',
+        description: editingPlacement ? 'Placement updated successfully' : 'Placement created successfully',
+      });
+      
+      setShowForm(false);
+      setEditingPlacement(null);
+      setFormData({ name: '', collegeName: '', companyName: '', salary: '' });
+      setImageFile(null);
+      fetchPlacements();
+      
+    } catch (error: any) {
       console.error('Error saving placement:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save placement',
+        description: error.message || 'Failed to save placement',
         variant: 'destructive'
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -147,25 +170,29 @@ const PlacementManagement = () => {
     }
 
     try {
-      const response = await fetch(`/api/placements/${id}`, {
+      const token = getAuthToken();
+      const response = await fetch(`/api/users/placements/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Placement deleted successfully',
-        });
-        fetchPlacements();
-      } else {
-        const data = await response.json();
-        throw new Error(data.message);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete placement');
       }
-    } catch (error) {
+
+      toast({
+        title: 'Success',
+        description: 'Placement deleted successfully',
+      });
+      fetchPlacements();
+    } catch (error: any) {
       console.error('Error deleting placement:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete placement',
+        description: error.message || 'Failed to delete placement',
         variant: 'destructive'
       });
     }
@@ -183,6 +210,13 @@ const PlacementManagement = () => {
     placement.companyName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingPlacement(null);
+    setFormData({ name: '', collegeName: '', companyName: '', salary: '' });
+    setImageFile(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -192,9 +226,7 @@ const PlacementManagement = () => {
           <p className="text-gray-600">Manage student placements and achievements</p>
         </div>
         <Button onClick={() => {
-          setEditingPlacement(null);
-          setFormData({ name: '', collegeName: '', companyName: '', salary: '' });
-          setImageFile(null);
+          resetForm();
           setShowForm(true);
         }}>
           <Plus className="h-4 w-4 mr-2" />
@@ -225,12 +257,8 @@ const PlacementManagement = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingPlacement(null);
-                    setFormData({ name: '', collegeName: '', companyName: '', salary: '' });
-                    setImageFile(null);
-                  }}
+                  onClick={resetForm}
+                  disabled={submitting}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -245,6 +273,7 @@ const PlacementManagement = () => {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter student name"
                     required
+                    disabled={submitting}
                   />
                 </div>
                 <div>
@@ -254,6 +283,7 @@ const PlacementManagement = () => {
                     onChange={(e) => setFormData({ ...formData, collegeName: e.target.value })}
                     placeholder="Enter college name"
                     required
+                    disabled={submitting}
                   />
                 </div>
                 <div>
@@ -263,6 +293,7 @@ const PlacementManagement = () => {
                     onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                     placeholder="Enter company name"
                     required
+                    disabled={submitting}
                   />
                 </div>
                 <div>
@@ -272,6 +303,7 @@ const PlacementManagement = () => {
                     onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
                     placeholder="Enter salary package"
                     required
+                    disabled={submitting}
                   />
                 </div>
                 <div>
@@ -283,6 +315,7 @@ const PlacementManagement = () => {
                     accept="image/*"
                     onChange={handleImageChange}
                     className="cursor-pointer"
+                    disabled={submitting}
                   />
                   {editingPlacement?.image && !imageFile && (
                     <div className="mt-2 text-sm text-gray-600">
@@ -294,16 +327,13 @@ const PlacementManagement = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingPlacement(null);
-                      setFormData({ name: '', collegeName: '', companyName: '', salary: '' });
-                      setImageFile(null);
-                    }}
+                    onClick={resetForm}
+                    disabled={submitting}
                   >
                     Cancel
                   </Button>
-                  <Button type="submit">
+                  <Button type="submit" disabled={submitting}>
+                    {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     {editingPlacement ? 'Update' : 'Create'} Placement
                   </Button>
                 </div>
@@ -315,7 +345,10 @@ const PlacementManagement = () => {
 
       {/* Placements Grid */}
       {loading ? (
-        <div className="text-center py-8">Loading placements...</div>
+        <div className="text-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+          <p>Loading placements...</p>
+        </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredPlacements.map((placement) => (
