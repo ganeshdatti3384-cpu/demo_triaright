@@ -327,8 +327,8 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               <option value="overview">Overview</option>
               <option value="users">Users</option>
               <option value="courses">Courses</option>
-              <option value="regular-internships">Regular Internships</option>
-              <option value="ap-internships">AP Internships</option>
+              <option value="regular-internships">Internships</option>
+              <option value="ap-internships">AP Exclusive</option>
               <option value="applications">Applications</option>
               <option value="pack365">Pack365</option>
               <option value="jobs">Jobs</option>
