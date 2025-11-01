@@ -64,7 +64,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     activeInternships: internshipStats.activeInternships
   };
 
-  const quickActions = [
+  const dashboardMenu = [
     { id: 1, name: 'Payment Info', icon: DollarSign, description: 'Manage payment information' },
     { id: 2, name: 'Registration', icon: FileText, description: 'Handle registrations' },
     { id: 3, name: 'Courses', icon: BookOpen, description: 'Manage courses' },
@@ -73,21 +73,10 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     { id: 6, name: 'Schedule', icon: Calendar, description: 'View schedule' }
   ];
 
-  const enrolledCourses = [
-    { id: 1, name: 'Object Oriented Programming', instructor: 'Dr. Smith', progress: 75 },
-    { id: 2, name: 'Fundamentals of Database Systems', instructor: 'Prof. Johnson', progress: 60 }
-  ];
-
   const dailyNotices = [
     { id: 1, title: 'Prelim Payment Due', content: 'Sorem ipsum dolor sit amet, consectetur adipiscing elit.', time: '2 hours ago' },
     { id: 2, title: 'System Maintenance', content: 'Norem ipsum dolor sit amet, consectetur adipiscing elit.', time: '5 hours ago' },
     { id: 3, title: 'New Features', content: 'Nine vulputate libero et velit interdum, ac aliquet odio mattis.', time: '1 day ago' }
-  ];
-
-  const examSchedule = [
-    { id: 1, course: 'Object Oriented Programming', date: 'Sep 15, 2023', time: '9:00 AM', room: 'Room 301' },
-    { id: 2, course: 'Database Systems', date: 'Sep 18, 2023', time: '2:00 PM', room: 'Room 205' },
-    { id: 3, course: 'Web Development', date: 'Sep 20, 2023', time: '10:30 AM', room: 'Lab 101' }
   ];
 
   useEffect(() => {
@@ -240,7 +229,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             { value: 'pack365', label: 'Pack365' },
             { value: 'jobs', label: 'Jobs' },
             { value: 'colleges', label: 'Colleges' },
-            { value: 'college-requests', label: 'College Requests' }
+            { value: 'college-requests', label: 'Requests' }
           ].map((tab) => (
             <Button
               key={tab.value}
@@ -313,7 +302,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar - Hidden on mobile, shown as dropdown */}
+          {/* Left Sidebar - Dashboard Menu */}
           <div className="lg:col-span-1">
             <div className="hidden lg:block space-y-6">
               <Card>
@@ -321,14 +310,14 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   <CardTitle className="text-lg">Dashboard</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {quickActions.map((action) => (
+                  {dashboardMenu.map((item) => (
                     <Button
-                      key={action.id}
+                      key={item.id}
                       variant="ghost"
                       className="w-full justify-start"
                     >
-                      <action.icon className="h-4 w-4 mr-3" />
-                      {action.name}
+                      <item.icon className="h-4 w-4 mr-3" />
+                      {item.name}
                     </Button>
                   ))}
                 </CardContent>
@@ -367,21 +356,21 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   <option value="pack365">Pack365</option>
                   <option value="jobs">Jobs</option>
                   <option value="colleges">Colleges</option>
-                  <option value="college-requests">College Requests</option>
+                  <option value="college-requests">Requests</option>
                 </select>
               </div>
 
               <TabsContent value="overview" className="space-y-6">
-                {/* Finance Cards */}
+                {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="bg-blue-50 border-blue-200">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-blue-600">Total Revenue</p>
-                          <p className="text-2xl font-bold">$ 10,000</p>
+                          <p className="text-sm font-medium text-blue-600">Number Students</p>
+                          <p className="text-2xl font-bold">{platformStats.activeStudents.toLocaleString()}</p>
                         </div>
-                        <DollarSign className="h-8 w-8 text-blue-600" />
+                        <Users className="h-8 w-8 text-blue-600" />
                       </div>
                     </CardContent>
                   </Card>
@@ -390,10 +379,10 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-green-600">Active Users</p>
-                          <p className="text-2xl font-bold">$ 5,000</p>
+                          <p className="text-sm font-medium text-green-600">Colleges</p>
+                          <p className="text-2xl font-bold">45</p>
                         </div>
-                        <Users className="h-8 w-8 text-green-600" />
+                        <Building2 className="h-8 w-8 text-green-600" />
                       </div>
                     </CardContent>
                   </Card>
@@ -402,17 +391,17 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-purple-600">Other Metrics</p>
-                          <p className="text-2xl font-bold">$ 300</p>
+                          <p className="text-sm font-medium text-purple-600">Courses</p>
+                          <p className="text-2xl font-bold">{platformStats.liveCourses}</p>
                         </div>
-                        <BarChart3 className="h-8 w-8 text-purple-600" />
+                        <BookOpen className="h-8 w-8 text-purple-600" />
                       </div>
                     </CardContent>
                   </Card>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Enrolled Courses */}
+                  {/* Platform Statistics */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Platform Statistics</CardTitle>
@@ -420,9 +409,9 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                     <CardContent className="space-y-4">
                       {[
                         { label: 'Total Users', value: platformStats.totalUsers, icon: Users },
-                        { label: 'Active Students', value: platformStats.activeStudents, icon: GraduationCap },
                         { label: 'Registered Employers', value: platformStats.registeredEmployers, icon: Briefcase },
-                        { label: 'Live Courses', value: platformStats.liveCourses, icon: BookOpen }
+                        { label: 'Total Internships', value: platformStats.totalInternships, icon: BriefcaseIcon },
+                        { label: 'Active Internships', value: platformStats.activeInternships, icon: BarChart3 }
                       ].map((stat, index) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center space-x-3">
@@ -458,51 +447,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                     </CardContent>
                   </Card>
                 </div>
-
-                {/* Exam Schedule */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Recent Activities</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {examSchedule.map((exam) => (
-                        <div key={exam.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-sm">{exam.course}</p>
-                            <p className="text-sm text-gray-500">{exam.date} at {exam.time}</p>
-                          </div>
-                          <Badge variant="outline">{exam.room}</Badge>
-                        </div>
-                      ))}
-                      <Button variant="ghost" className="w-full">
-                        See more
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Quick Actions Grid */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Quick Actions</CardTitle>
-                    <CardDescription>Frequently used administrative tasks</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {quickActions.map((action) => (
-                        <Button
-                          key={action.id}
-                          variant="outline"
-                          className="h-20 flex flex-col"
-                        >
-                          <action.icon className="h-6 w-6 mb-2" />
-                          <span className="text-xs">{action.name}</span>
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
               </TabsContent>
 
               <TabsContent value="users" className="space-y-6">
