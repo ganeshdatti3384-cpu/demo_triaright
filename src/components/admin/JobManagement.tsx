@@ -33,7 +33,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Eye, Edit, Trash2, Briefcase, Users, Download, Mail, Phone } from "lucide-react";
-import { jobsApi } from "../../services/api";
 
 // Models/interfaces
 interface Job {
@@ -120,15 +119,27 @@ const JobManagement = () => {
   // Status update
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
+  // API base URL - adjust according to your backend
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
   // Fetch jobs
   const fetchJobs = async () => {
     setLoading(true);
     try {
-      const response = await jobsApi.getAllJobs();
-      setJobs(response.data);
+      const response = await fetch(`${API_BASE}/jobs`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch jobs');
+      
+      const data = await response.json();
+      setJobs(data);
       
       // Fetch all applications when jobs are loaded
-      await fetchAllApplications();
+      await fetchAllApplications(data);
     } catch (error) {
       console.error("Failed to fetch jobs:", error);
       toast({
@@ -145,8 +156,17 @@ const JobManagement = () => {
   const fetchJobApplications = async (jobId: string) => {
     setApplicationsLoading(true);
     try {
-      const response = await jobsApi.getJobApplications(jobId);
-      setApplications(response.data);
+      const response = await fetch(`${API_BASE}/jobs/job-applications/${jobId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch applications');
+      
+      const data = await response.json();
+      setApplications(data);
     } catch (error) {
       console.error("Failed to fetch applications:", error);
       toast({
@@ -160,24 +180,31 @@ const JobManagement = () => {
   };
 
   // Fetch all applications across all jobs
-  const fetchAllApplications = async () => {
+  const fetchAllApplications = async (jobsList: Job[] = jobs) => {
     try {
-      // Since we don't have a direct endpoint for all applications,
-      // we'll fetch applications for each job and combine them
       const allApps: JobApplication[] = [];
       
-      for (const job of jobs) {
+      for (const job of jobsList) {
         try {
-          const response = await jobsApi.getJobApplications(job.id);
-          const jobApps = response.data.map((app: JobApplication) => ({
-            ...app,
-            job: {
-              title: job.title,
-              companyName: job.companyName,
-              location: job.location
-            }
-          }));
-          allApps.push(...jobApps);
+          const response = await fetch(`${API_BASE}/jobs/job-applications/${job.id}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (response.ok) {
+            const jobApps = await response.json();
+            const appsWithJobInfo = jobApps.map((app: JobApplication) => ({
+              ...app,
+              job: {
+                title: job.title,
+                companyName: job.companyName,
+                location: job.location
+              }
+            }));
+            allApps.push(...appsWithJobInfo);
+          }
         } catch (error) {
           console.error(`Failed to fetch applications for job ${job.id}:`, error);
         }
@@ -254,7 +281,17 @@ const JobManagement = () => {
         .filter(Boolean),
     };
     try {
-      await jobsApi.createJob(newJobPayload);
+      const response = await fetch(`${API_BASE}/jobs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newJobPayload),
+      });
+
+      if (!response.ok) throw new Error('Failed to create job');
+
       toast({
         title: "Success",
         description: "Job posted successfully.",
@@ -321,7 +358,17 @@ const JobManagement = () => {
         .filter(Boolean),
     };
     try {
-      await jobsApi.updateJob(editingJob.id, updatedJobPayload);
+      const response = await fetch(`${API_BASE}/jobs/${editingJob.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedJobPayload),
+      });
+
+      if (!response.ok) throw new Error('Failed to update job');
+
       toast({
         title: "Success",
         description: "Job updated successfully.",
@@ -348,7 +395,15 @@ const JobManagement = () => {
   const handleDeleteJob = async () => {
     if (!jobToDelete) return;
     try {
-      await jobsApi.deleteJob(jobToDelete.id);
+      const response = await fetch(`${API_BASE}/jobs/${jobToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete job');
+
       toast({
         title: "Success",
         description: "Job deleted successfully.",
@@ -383,7 +438,17 @@ const JobManagement = () => {
   const updateApplicationStatus = async (applicationId: string, status: JobApplication["status"]) => {
     setUpdatingStatus(applicationId);
     try {
-      await jobsApi.updateApplicationStatus(applicationId, { status });
+      const response = await fetch(`${API_BASE}/jobs/job-applications/${applicationId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update application status');
+
       toast({
         title: "Success",
         description: "Application status updated successfully.",
