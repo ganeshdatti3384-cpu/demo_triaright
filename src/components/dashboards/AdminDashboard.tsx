@@ -34,7 +34,6 @@ import Pack365Management from '../admin/Pack365Management';
 import CollegeManagement from '../admin/CollegeManagement';
 import RegularInternshipManagement from '../admin/RegularInternshipManagement';
 import APInternshipManagement from '../admin/APInternshipManagement';
-import ApplicationManagement from '../admin/ApplicationManagement';
 import FeedbackManagement from '../admin/FeedbackManagement';
 import PlacementManagement from '../admin/PlacementManagement';
 import Navbar from '../Navbar';
@@ -222,7 +221,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             { value: 'courses', label: 'Courses' },
             { value: 'regular-internships', label: 'Internships' },
             { value: 'ap-internships', label: 'AP Exclusive' },
-            { value: 'applications', label: 'Applications' },
             { value: 'pack365', label: 'Pack365' },
             { value: 'jobs', label: 'Jobs' },
             { value: 'colleges', label: 'Colleges' },
@@ -302,13 +300,12 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           {/* Desktop Tabs */}
-          <TabsList className="hidden lg:grid w-full grid-cols-12 gap-1 mb-6">
+          <TabsList className="hidden lg:grid w-full grid-cols-11 gap-1 mb-6">
             <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
             <TabsTrigger value="users" className="text-xs">Users</TabsTrigger>
             <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
             <TabsTrigger value="regular-internships" className="text-xs">Internships</TabsTrigger>
             <TabsTrigger value="ap-internships" className="text-xs">AP Exclusive</TabsTrigger>
-            <TabsTrigger value="applications" className="text-xs">Applications</TabsTrigger>
             <TabsTrigger value="pack365" className="text-xs">Pack365</TabsTrigger>
             <TabsTrigger value="jobs" className="text-xs">Jobs</TabsTrigger>
             <TabsTrigger value="colleges" className="text-xs">Colleges</TabsTrigger>
@@ -329,7 +326,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               <option value="courses">Courses</option>
               <option value="regular-internships">Internships</option>
               <option value="ap-internships">AP Exclusive</option>
-              <option value="applications">Applications</option>
               <option value="pack365">Pack365</option>
               <option value="jobs">Jobs</option>
               <option value="colleges">Colleges</option>
@@ -442,10 +438,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
           <TabsContent value="ap-internships" className="space-y-6">
             <APInternshipManagement />
-          </TabsContent>
-
-          <TabsContent value="applications" className="space-y-6">
-            <ApplicationManagement />
           </TabsContent>
 
           <TabsContent value="pack365" className="space-y-6">
