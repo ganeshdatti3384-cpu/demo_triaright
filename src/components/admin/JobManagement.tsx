@@ -121,12 +121,21 @@ const JobManagement = () => {
   // Status update
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
-  // API base URL - adjust according to your backend
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-
+  // API Configuration - Updated for your gateway
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://triaright.com/api";
+  
   // Get auth token
   const getAuthToken = () => {
     return localStorage.getItem('token');
+  };
+
+  // API Headers
+  const getHeaders = () => {
+    const token = getAuthToken();
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
   };
 
   // Fetch jobs
@@ -134,10 +143,7 @@ const JobManagement = () => {
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/jobs`, {
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
       });
       
       if (!response.ok) throw new Error('Failed to fetch jobs');
@@ -164,10 +170,7 @@ const JobManagement = () => {
     setApplicationsLoading(true);
     try {
       const response = await fetch(`${API_BASE}/jobs/job-applications/${jobId}`, {
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
       });
       
       if (!response.ok) throw new Error('Failed to fetch applications');
@@ -194,10 +197,7 @@ const JobManagement = () => {
       for (const job of jobsList) {
         try {
           const response = await fetch(`${API_BASE}/jobs/job-applications/${job._id}`, {
-            headers: {
-              'Authorization': `Bearer ${getAuthToken()}`,
-              'Content-Type': 'application/json',
-            },
+            headers: getHeaders(),
           });
           
           if (response.ok) {
@@ -290,10 +290,7 @@ const JobManagement = () => {
     try {
       const response = await fetch(`${API_BASE}/jobs`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
         body: JSON.stringify(newJobPayload),
       });
 
@@ -367,10 +364,7 @@ const JobManagement = () => {
     try {
       const response = await fetch(`${API_BASE}/jobs/${editingJob._id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
         body: JSON.stringify(updatedJobPayload),
       });
 
@@ -404,9 +398,7 @@ const JobManagement = () => {
     try {
       const response = await fetch(`${API_BASE}/jobs/${jobToDelete._id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-        },
+        headers: getHeaders(),
       });
 
       if (!response.ok) throw new Error('Failed to delete job');
@@ -447,10 +439,7 @@ const JobManagement = () => {
     try {
       const response = await fetch(`${API_BASE}/jobs/job-applications/${applicationId}/status`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
         body: JSON.stringify({ status }),
       });
 
