@@ -8,18 +8,20 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Tag } from 'lucide-react';
 
-interface APInternship {
+interface Internship {
   _id: string;
   title: string;
   companyName: string;
-  mode: 'Free' | 'Paid';
-  amount?: number;
+  mode: 'unpaid' | 'paid' | 'feebased';
+  stipendAmount?: number;
+  currency?: string;
   stream: string;
   duration: string;
+  deadline?: string;
 }
 
 interface ApplyInternshipDialogProps {
-  internship: APInternship | null;
+  internship: Internship | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
@@ -38,6 +40,7 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
   const [couponApplied, setCouponApplied] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [finalAmount, setFinalAmount] = useState(0);
+  const [gstAmount, setGstAmount] = useState(0);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -53,6 +56,22 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
 
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Calculate amounts based on internship mode and coupon
+  useEffect(() => {
+    if (internship?.mode === 'feebased' && internship.stipendAmount) {
+      let baseAmount = internship.stipendAmount;
+      let discount = couponApplied ? discountAmount : 0;
+      let amountAfterDiscount = Math.max(0, baseAmount - discount);
+      let gst = Math.round(amountAfterDiscount * 0.18);
+      let final = amountAfterDiscount + gst;
+
+      setGstAmount(gst);
+      setFinalAmount(final);
+    } else if (internship?.mode === 'paid' && internship.stipendAmount) {
+      setFinalAmount(internship.stipendAmount);
+    }
+  }, [internship, couponApplied, discountAmount]);
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -72,7 +91,12 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
       setCouponApplied(false);
       setDiscountAmount(0);
       setApplyingWithCoupon(false);
-      setFinalAmount(internship?.amount || 0);
+      setGstAmount(0);
+      
+      // Set initial final amount
+      if (internship?.mode === 'feebased' || internship?.mode === 'paid') {
+        setFinalAmount(internship.stipendAmount || 0);
+      }
     } else {
       setFormData({
         name: '',
@@ -89,6 +113,8 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
       setCouponApplied(false);
       setDiscountAmount(0);
       setApplyingWithCoupon(false);
+      setGstAmount(0);
+      setFinalAmount(0);
     }
   }, [open, user, internship]);
 
@@ -118,7 +144,7 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
   };
 
   const handleApplyCoupon = async () => {
-    if (!couponCode.trim() || !internship || internship.mode !== 'Paid') {
+    if (!couponCode.trim() || !internship || internship.mode !== 'feebased') {
       return;
     }
 
@@ -134,7 +160,7 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
         body: JSON.stringify({
           couponCode: couponCode.toUpperCase(),
           internshipId: internship._id,
-          amount: internship.amount
+          amount: internship.stipendAmount
         })
       });
 
@@ -143,7 +169,6 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
       if (response.ok && data.valid) {
         setCouponApplied(true);
         setDiscountAmount(data.discountAmount);
-        setFinalAmount(data.finalAmount);
         toast({
           title: 'Coupon Applied!',
           description: `Discount of ₹${data.discountAmount} applied successfully`,
@@ -171,7 +196,6 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
     setCouponApplied(false);
     setCouponCode('');
     setDiscountAmount(0);
-    setFinalAmount(internship?.amount || 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -203,26 +227,31 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('internshipId', internship._id);
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('phone', formData.phone);
-      formDataToSend.append('college', formData.college || '');
-      formDataToSend.append('qualification', formData.qualification || '');
+      
+      // Prepare applicant details as JSON string
+      const applicantDetails = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        college: formData.college || '',
+        qualification: formData.qualification || ''
+      };
+      formDataToSend.append('applicantDetails', JSON.stringify(applicantDetails));
+      
       formDataToSend.append('portfolioLink', formData.portfolioLink || '');
-      formDataToSend.append('coverLetterText', formData.coverLetter || '');
       formDataToSend.append('resume', resumeFile);
       
       if (coverLetterFile) {
         formDataToSend.append('coverLetter', coverLetterFile);
       }
 
-      // Add coupon code if applied
-      if (couponApplied && couponCode) {
+      // Add coupon code if applied (only for feebased internships)
+      if (couponApplied && couponCode && internship.mode === 'feebased') {
         formDataToSend.append('couponCode', couponCode.toUpperCase());
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/internships/apinternshipapply', {
+      const response = await fetch('/api/internships/apply', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -233,49 +262,48 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Handle free internship - instant enrollment
-        if (internship.mode === 'Free') {
+        // Handle unpaid/paid internships - instant enrollment
+        if (internship.mode === 'unpaid' || internship.mode === 'paid') {
           toast({
             title: 'Application Successful!',
-            description: `You have been successfully enrolled in "${internship.title}"`,
+            description: `You have successfully applied for "${internship.title}"`,
             variant: 'default'
           });
           onSuccess();
           onOpenChange(false);
         } 
-        // Handle paid internship with coupon code enrollment
-        else if (internship.mode === 'Paid' && couponApplied) {
+        // Handle feebased internship with coupon code (free after discount)
+        else if (internship.mode === 'feebased' && data.enrollmentType === 'code') {
           toast({
             title: 'Application Successful!',
-            description: `You have been successfully enrolled in "${internship.title}" using coupon code`,
+            description: `You have successfully applied for "${internship.title}" using coupon code`,
             variant: 'default'
           });
           onSuccess();
           onOpenChange(false);
         }
-        // Handle paid internship - payment flow
-        else if (internship.mode === 'Paid' && data.razorpayOrder) {
+        // Handle feebased internship - payment flow
+        else if (internship.mode === 'feebased' && data.requiresPayment) {
           // Initialize Razorpay payment
           const options = {
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: data.razorpayOrder.amount,
-            currency: data.razorpayOrder.currency,
+            amount: data.paymentDetails.amount * 100, // Convert to paise
+            currency: data.paymentDetails.currency || 'INR',
             name: 'Triaright Education',
             description: `Internship: ${internship.title}`,
-            order_id: data.razorpayOrder.id,
+            order_id: data.paymentDetails.orderId,
             handler: async function (response: any) {
               // Verify payment on backend
-              const verifyResponse = await fetch('/api/internships/apinternshipverify-payment', {
+              const verifyResponse = await fetch('/api/internships/verify-payment', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  applicationId: data.applicationId // Pass the application ID for payment linking
+                  orderId: response.razorpay_order_id,
+                  paymentId: response.razorpay_payment_id,
+                  signature: response.razorpay_signature
                 })
               });
 
@@ -284,7 +312,7 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
               if (verifyResponse.ok && verifyData.success) {
                 toast({
                   title: 'Payment Successful!',
-                  description: `You have been successfully enrolled in "${internship.title}"`,
+                  description: `You have successfully applied for "${internship.title}"`,
                   variant: 'default'
                 });
                 onSuccess();
@@ -341,9 +369,11 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="text-xl">Apply for {internship.title}</DialogTitle>
           <DialogDescription className="text-sm">
-            {internship.mode === 'Free' 
-              ? 'This is a free internship. You will be instantly enrolled upon application.'
-              : `This is a paid internship. Amount: ₹${internship.amount}`
+            {internship.mode === 'unpaid' 
+              ? 'This is an unpaid internship. Submit your application for review.'
+              : internship.mode === 'paid'
+              ? `This is a paid internship. Stipend: ₹${internship.stipendAmount}`
+              : `This is a fee-based internship. Fee: ₹${internship.stipendAmount}`
             }
           </DialogDescription>
         </DialogHeader>
@@ -390,7 +420,7 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
               </div>
             </div>
 
-            {/* Right Column - Education & Files */}
+            {/* Right Column - Education & Documents */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Education & Documents</h3>
               
@@ -441,7 +471,7 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
             <p className="text-xs text-gray-500">Optional - You can also upload a cover letter file below</p>
           </div>
 
-          {/* File Uploads - Full width below */}
+          {/* File Uploads */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-lg font-semibold text-gray-900">Upload Documents</h3>
             
@@ -475,8 +505,8 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
             </div>
           </div>
 
-          {/* Coupon Code Section - Only for Paid Internships */}
-          {internship.mode === 'Paid' && (
+          {/* Coupon Code Section - Only for FeeBased Internships */}
+          {internship.mode === 'feebased' && (
             <div className="space-y-4 border-t pt-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Coupon Code</h3>
@@ -526,7 +556,7 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-green-800 font-medium">Coupon Applied</p>
-                      <p className="text-green-600 text-sm">Code: {couponCode}</p>
+                      <p className="text-green-600 text-sm">Code: {couponCode} • Discount: ₹{discountAmount}</p>
                     </div>
                     <Button
                       type="button"
@@ -543,6 +573,41 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
             </div>
           )}
 
+          {/* Payment Summary - Only for FeeBased Internships */}
+          {internship.mode === 'feebased' && internship.stipendAmount && (
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <h4 className="font-semibold text-gray-900 mb-3">Payment Summary</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Base Fee:</span>
+                  <span className="font-medium">₹{internship.stipendAmount}</span>
+                </div>
+                
+                {couponApplied && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Coupon Discount:</span>
+                    <span>-₹{discountAmount}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount after discount:</span>
+                  <span className="font-medium">₹{Math.max(0, internship.stipendAmount - discountAmount)}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">GST (18%):</span>
+                  <span className="font-medium">₹{gstAmount}</span>
+                </div>
+                
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-gray-800 font-semibold">Final Amount:</span>
+                  <span className="font-bold text-blue-600">₹{finalAmount}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Internship Summary */}
           <div className="bg-gray-50 rounded-lg p-4 border">
             <h4 className="font-semibold text-gray-900 mb-2">Internship Summary</h4>
@@ -553,7 +618,7 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
               </div>
               <div>
                 <span className="text-gray-600">Mode:</span>
-                <p className="font-medium">{internship.mode}</p>
+                <p className="font-medium capitalize">{internship.mode}</p>
               </div>
               <div>
                 <span className="text-gray-600">Stream:</span>
@@ -563,24 +628,10 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
                 <span className="text-gray-600">Duration:</span>
                 <p className="font-medium">{internship.duration}</p>
               </div>
-              {internship.mode === 'Paid' && internship.amount && (
-                <div className="col-span-2 space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Original Amount:</span>
-                    <span className="font-medium">₹{internship.amount}</span>
-                  </div>
-                  {couponApplied && (
-                    <>
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount:</span>
-                        <span>-₹{discountAmount}</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-1">
-                        <span className="text-gray-600 font-semibold">Final Amount:</span>
-                        <span className="font-bold text-green-600">₹{finalAmount}</span>
-                      </div>
-                    </>
-                  )}
+              {internship.mode === 'paid' && internship.stipendAmount && (
+                <div className="col-span-2">
+                  <span className="text-gray-600">Stipend Amount:</span>
+                  <p className="font-medium text-green-600">₹{internship.stipendAmount}</p>
                 </div>
               )}
             </div>
@@ -603,9 +654,9 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
                 className="sm:flex-1 bg-blue-600 hover:bg-blue-700"
               >
                 {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {internship.mode === 'Free' 
-                  ? 'Apply & Enroll Now' 
-                  : couponApplied 
+                {internship.mode === 'unpaid' || internship.mode === 'paid'
+                  ? 'Submit Application' 
+                  : internship.mode === 'feebased' && couponApplied && finalAmount === 0
                     ? 'Apply with Coupon' 
                     : 'Proceed to Payment'
                 }
