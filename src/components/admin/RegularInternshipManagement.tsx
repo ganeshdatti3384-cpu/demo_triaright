@@ -85,14 +85,14 @@ const RegularInternshipManagement = () => {
     companyName: '',
     location: '',
     internshipType: 'Remote' as const,
-    category: '',
+    category: 'Web Development', // Default value
     duration: '',
     startDate: '',
     applicationDeadline: '',
     mode: 'Unpaid' as const,
     stipendAmount: 0,
     currency: 'INR',
-    qualification: '',
+    qualification: 'Any Graduate',
     openings: 1,
     status: 'Open' as const,
     term: 'Shortterm' as const,
@@ -101,7 +101,7 @@ const RegularInternshipManagement = () => {
     perks: [] as string[],
     certificateProvided: true,
     letterOfRecommendation: false,
-    experienceRequired: ''
+    experienceRequired: 'Fresher'
   });
   
   const { toast } = useToast();
@@ -116,21 +116,30 @@ const RegularInternshipManagement = () => {
 
   const fetchInternships = async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      console.error('No token found');
+      return;
+    }
 
     try {
       setLoading(true);
-      const response = await fetch('/api/internships', {
+      // Use the exact endpoint from your network tab
+      const response = await fetch('https://triaright.com/api/Internships/', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
+      
+      console.log('Fetch internships response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('Fetched internships:', data);
+      
       if (Array.isArray(data)) {
         setInternships(data);
       } else {
@@ -160,24 +169,28 @@ const RegularInternshipManagement = () => {
     try {
       setApplicationsLoading(true);
       const url = internshipId 
-        ? `/api/internships/applications?internshipId=${internshipId}`
-        : '/api/internships/applications';
+        ? `https://triaright.com/api/Internships/applications?internshipId=${internshipId}`
+        : 'https://triaright.com/api/Internships/applications';
       
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
+      
+      console.log('Fetch applications response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('Fetched applications:', data);
+      
       if (data.success && Array.isArray(data.applications)) {
         setApplications(data.applications);
       } else if (Array.isArray(data)) {
-        // Handle case where response is directly an array
         setApplications(data);
       } else {
         console.error('Unexpected applications response format:', data);
@@ -226,6 +239,21 @@ const RegularInternshipManagement = () => {
       });
       return false;
     }
+
+    // Validate application deadline is in the future
+    if (formData.applicationDeadline) {
+      const deadline = new Date(formData.applicationDeadline);
+      const today = new Date();
+      if (deadline <= today) {
+        toast({
+          title: 'Invalid Date',
+          description: 'Application deadline must be in the future',
+          variant: 'destructive'
+        });
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -235,7 +263,7 @@ const RegularInternshipManagement = () => {
     if (!token) {
       toast({
         title: 'Error',
-        description: 'Authentication token not found',
+        description: 'Please log in to create internships',
         variant: 'destructive'
       });
       return;
@@ -244,21 +272,21 @@ const RegularInternshipManagement = () => {
     if (!validateFormData()) return;
 
     try {
-      // Prepare data according to backend schema
+      // Prepare data according to backend schema with ALL required fields
       const internshipData = {
-        title: formData.title,
-        description: formData.description,
-        companyName: formData.companyName,
-        location: formData.location,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        companyName: formData.companyName.trim(),
+        location: formData.location.trim(),
         internshipType: formData.internshipType,
-        category: formData.category,
-        duration: formData.duration,
-        startDate: formData.startDate ? new Date(formData.startDate).toISOString() : undefined,
+        category: formData.category.trim(),
+        duration: formData.duration.trim(),
+        startDate: formData.startDate ? new Date(formData.startDate).toISOString() : new Date().toISOString(),
         applicationDeadline: new Date(formData.applicationDeadline).toISOString(),
         mode: formData.mode,
-        stipendAmount: formData.stipendAmount,
+        stipendAmount: formData.mode === 'Paid' ? formData.stipendAmount : 0,
         currency: formData.currency,
-        qualification: formData.qualification,
+        qualification: formData.qualification.trim(),
         openings: formData.openings,
         status: formData.status,
         term: formData.term,
@@ -267,12 +295,14 @@ const RegularInternshipManagement = () => {
         perks: formData.perks,
         certificateProvided: formData.certificateProvided,
         letterOfRecommendation: formData.letterOfRecommendation,
-        experienceRequired: formData.experienceRequired
+        experienceRequired: formData.experienceRequired.trim()
       };
 
       console.log('Sending internship data:', internshipData);
+      console.log('Token exists:', !!token);
 
-      const response = await fetch('/api/internships', {
+      // Use the exact endpoint from your network tab with capital I
+      const response = await fetch('https://triaright.com/api/Internships/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -281,7 +311,18 @@ const RegularInternshipManagement = () => {
         body: JSON.stringify(internshipData)
       });
 
-      const data = await response.json();
+      console.log('Create internship response status:', response.status);
+      
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', responseText);
+        throw new Error('Invalid response from server');
+      }
 
       if (response.ok) {
         toast({
@@ -290,7 +331,7 @@ const RegularInternshipManagement = () => {
         });
         setShowCreateDialog(false);
         resetFormData();
-        fetchInternships();
+        fetchInternships(); // Refresh the list
       } else {
         throw new Error(data.message || data.error || `Failed to create internship: ${response.status}`);
       }
@@ -298,7 +339,7 @@ const RegularInternshipManagement = () => {
       console.error('Error creating internship:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create internship',
+        description: error.message || 'Failed to create internship. Please check console for details.',
         variant: 'destructive'
       });
     }
@@ -313,19 +354,19 @@ const RegularInternshipManagement = () => {
 
     try {
       const internshipData = {
-        title: formData.title,
-        description: formData.description,
-        companyName: formData.companyName,
-        location: formData.location,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        companyName: formData.companyName.trim(),
+        location: formData.location.trim(),
         internshipType: formData.internshipType,
-        category: formData.category,
-        duration: formData.duration,
+        category: formData.category.trim(),
+        duration: formData.duration.trim(),
         startDate: formData.startDate ? new Date(formData.startDate).toISOString() : undefined,
         applicationDeadline: new Date(formData.applicationDeadline).toISOString(),
         mode: formData.mode,
-        stipendAmount: formData.stipendAmount,
+        stipendAmount: formData.mode === 'Paid' ? formData.stipendAmount : 0,
         currency: formData.currency,
-        qualification: formData.qualification,
+        qualification: formData.qualification.trim(),
         openings: formData.openings,
         status: formData.status,
         term: formData.term,
@@ -334,12 +375,12 @@ const RegularInternshipManagement = () => {
         perks: formData.perks,
         certificateProvided: formData.certificateProvided,
         letterOfRecommendation: formData.letterOfRecommendation,
-        experienceRequired: formData.experienceRequired
+        experienceRequired: formData.experienceRequired.trim()
       };
 
       console.log('Updating internship with data:', internshipData);
 
-      const response = await fetch(`/api/internships/update/${selectedInternship._id}`, {
+      const response = await fetch(`https://triaright.com/api/Internships/update/${selectedInternship._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -347,6 +388,8 @@ const RegularInternshipManagement = () => {
         },
         body: JSON.stringify(internshipData)
       });
+
+      console.log('Update internship response status:', response.status);
 
       if (response.ok) {
         toast({
@@ -375,7 +418,7 @@ const RegularInternshipManagement = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`/api/internships/delete/${id}`, {
+      const response = await fetch(`https://triaright.com/api/Internships/delete/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -407,7 +450,7 @@ const RegularInternshipManagement = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`/api/internships/applications/${applicationId}/status`, {
+      const response = await fetch(`https://triaright.com/api/Internships/applications/${applicationId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -444,14 +487,14 @@ const RegularInternshipManagement = () => {
       companyName: internship.companyName,
       location: internship.location,
       internshipType: internship.internshipType,
-      category: internship.category || '',
+      category: internship.category || 'Web Development',
       duration: internship.duration,
       startDate: internship.startDate ? internship.startDate.split('T')[0] : '',
       applicationDeadline: internship.applicationDeadline.split('T')[0],
       mode: internship.mode,
       stipendAmount: internship.stipendAmount || 0,
       currency: internship.currency || 'INR',
-      qualification: internship.qualification,
+      qualification: internship.qualification || 'Any Graduate',
       openings: internship.openings,
       status: internship.status,
       term: internship.term || 'Shortterm',
@@ -460,7 +503,7 @@ const RegularInternshipManagement = () => {
       perks: internship.perks || [],
       certificateProvided: internship.certificateProvided !== false,
       letterOfRecommendation: internship.letterOfRecommendation || false,
-      experienceRequired: internship.experienceRequired || ''
+      experienceRequired: internship.experienceRequired || 'Fresher'
     });
     setShowEditDialog(true);
   };
@@ -483,14 +526,14 @@ const RegularInternshipManagement = () => {
       companyName: '',
       location: '',
       internshipType: 'Remote',
-      category: '',
+      category: 'Web Development',
       duration: '',
       startDate: '',
       applicationDeadline: '',
       mode: 'Unpaid',
       stipendAmount: 0,
       currency: 'INR',
-      qualification: '',
+      qualification: 'Any Graduate',
       openings: 1,
       status: 'Open',
       term: 'Shortterm',
@@ -499,7 +542,7 @@ const RegularInternshipManagement = () => {
       perks: [],
       certificateProvided: true,
       letterOfRecommendation: false,
-      experienceRequired: ''
+      experienceRequired: 'Fresher'
     });
   };
 
@@ -532,14 +575,6 @@ const RegularInternshipManagement = () => {
   };
 
   const getApplicationStatusBadge = (status: string) => {
-    const variants = {
-      Applied: 'secondary',
-      Shortlisted: 'default',
-      Selected: 'default',
-      Rejected: 'destructive',
-      Withdrawn: 'outline'
-    } as const;
-
     const colors = {
       Applied: 'bg-blue-100 text-blue-800',
       Shortlisted: 'bg-yellow-100 text-yellow-800',
@@ -570,7 +605,7 @@ const RegularInternshipManagement = () => {
             <DialogHeader>
               <DialogTitle>Create New Internship</DialogTitle>
               <DialogDescription>
-                Fill in the details for the new internship opportunity.
+                Fill in the details for the new internship opportunity. All fields marked with * are required.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={createInternship} className="space-y-4">
@@ -580,6 +615,7 @@ const RegularInternshipManagement = () => {
                   <Input
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    placeholder="e.g., Frontend Developer Intern"
                     required
                   />
                 </div>
@@ -588,6 +624,7 @@ const RegularInternshipManagement = () => {
                   <Input
                     value={formData.companyName}
                     onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                    placeholder="e.g., Tech Solutions Inc."
                     required
                   />
                 </div>
@@ -598,6 +635,7 @@ const RegularInternshipManagement = () => {
                 <Textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  placeholder="Describe the internship role, responsibilities, and learning opportunities..."
                   required
                   rows={4}
                 />
@@ -609,6 +647,7 @@ const RegularInternshipManagement = () => {
                   <Input
                     value={formData.location}
                     onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    placeholder="e.g., Remote, Hyderabad, Bangalore"
                     required
                   />
                 </div>
@@ -657,12 +696,12 @@ const RegularInternshipManagement = () => {
                   <Input
                     value={formData.duration}
                     onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                    placeholder="e.g., 3 Months"
+                    placeholder="e.g., 3 Months, 6 Months"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Mode</label>
+                  <label className="text-sm font-medium">Mode *</label>
                   <Select value={formData.mode} onValueChange={(value: any) => setFormData({...formData, mode: value})}>
                     <SelectTrigger>
                       <SelectValue />
@@ -677,13 +716,30 @@ const RegularInternshipManagement = () => {
               </div>
 
               {formData.mode === 'Paid' && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Stipend Amount (₹)</label>
-                  <Input
-                    type="number"
-                    value={formData.stipendAmount}
-                    onChange={(e) => setFormData({...formData, stipendAmount: Number(e.target.value)})}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Stipend Amount (₹)</label>
+                    <Input
+                      type="number"
+                      value={formData.stipendAmount}
+                      onChange={(e) => setFormData({...formData, stipendAmount: Number(e.target.value)})}
+                      placeholder="e.g., 5000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Pay Frequency</label>
+                    <Select value={formData.payFrequency} onValueChange={(value: any) => setFormData({...formData, payFrequency: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Monthly">Monthly</SelectItem>
+                        <SelectItem value="Weekly">Weekly</SelectItem>
+                        <SelectItem value="One-Time">One-Time</SelectItem>
+                        <SelectItem value="None">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
 
@@ -713,7 +769,7 @@ const RegularInternshipManagement = () => {
                   <Input
                     value={formData.qualification}
                     onChange={(e) => setFormData({...formData, qualification: e.target.value})}
-                    placeholder="e.g., Any Graduate"
+                    placeholder="e.g., Any Graduate, B.Tech"
                   />
                 </div>
                 <div className="space-y-2">
@@ -727,42 +783,12 @@ const RegularInternshipManagement = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Pay Frequency</label>
-                  <Select value={formData.payFrequency} onValueChange={(value: any) => setFormData({...formData, payFrequency: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="None">None</SelectItem>
-                      <SelectItem value="One-Time">One-Time</SelectItem>
-                      <SelectItem value="Monthly">Monthly</SelectItem>
-                      <SelectItem value="Weekly">Weekly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
-                  <Select value={formData.status} onValueChange={(value: any) => setFormData({...formData, status: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Open">Open</SelectItem>
-                      <SelectItem value="Closed">Closed</SelectItem>
-                      <SelectItem value="On Hold">On Hold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <label className="text-sm font-medium">Experience Required</label>
                 <Input
                   value={formData.experienceRequired}
                   onChange={(e) => setFormData({...formData, experienceRequired: e.target.value})}
-                  placeholder="e.g., 0-1 years, Fresher"
+                  placeholder="e.g., Fresher, 0-1 years"
                 />
               </div>
 
@@ -795,6 +821,7 @@ const RegularInternshipManagement = () => {
         </Dialog>
       </div>
 
+      {/* Rest of the component remains the same as previous version */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="internships">Internships</TabsTrigger>
@@ -848,13 +875,6 @@ const RegularInternshipManagement = () => {
                               onClick={() => handleViewApplications(internship)}
                             >
                               <Users className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleView(internship)}
-                            >
-                              <Eye className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="outline" 
@@ -990,7 +1010,7 @@ const RegularInternshipManagement = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Dialog */}
+      {/* Edit Dialog - Similar to Create Dialog but with update logic */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1001,6 +1021,7 @@ const RegularInternshipManagement = () => {
           </DialogHeader>
           {selectedInternship && (
             <form onSubmit={updateInternship} className="space-y-4">
+              {/* Same form fields as create dialog */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Title *</label>
@@ -1060,7 +1081,6 @@ const RegularInternshipManagement = () => {
                   <Input
                     value={formData.category}
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    placeholder="e.g., Web Development, Data Science"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1084,7 +1104,6 @@ const RegularInternshipManagement = () => {
                   <Input
                     value={formData.duration}
                     onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                    placeholder="e.g., 3 Months"
                     required
                   />
                 </div>
@@ -1104,13 +1123,29 @@ const RegularInternshipManagement = () => {
               </div>
 
               {formData.mode === 'Paid' && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Stipend Amount (₹)</label>
-                  <Input
-                    type="number"
-                    value={formData.stipendAmount}
-                    onChange={(e) => setFormData({...formData, stipendAmount: Number(e.target.value)})}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Stipend Amount (₹)</label>
+                    <Input
+                      type="number"
+                      value={formData.stipendAmount}
+                      onChange={(e) => setFormData({...formData, stipendAmount: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Pay Frequency</label>
+                    <Select value={formData.payFrequency} onValueChange={(value: any) => setFormData({...formData, payFrequency: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Monthly">Monthly</SelectItem>
+                        <SelectItem value="Weekly">Weekly</SelectItem>
+                        <SelectItem value="One-Time">One-Time</SelectItem>
+                        <SelectItem value="None">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
 
@@ -1140,7 +1175,6 @@ const RegularInternshipManagement = () => {
                   <Input
                     value={formData.qualification}
                     onChange={(e) => setFormData({...formData, qualification: e.target.value})}
-                    placeholder="e.g., Any Graduate"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1154,42 +1188,11 @@ const RegularInternshipManagement = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Pay Frequency</label>
-                  <Select value={formData.payFrequency} onValueChange={(value: any) => setFormData({...formData, payFrequency: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="None">None</SelectItem>
-                      <SelectItem value="One-Time">One-Time</SelectItem>
-                      <SelectItem value="Monthly">Monthly</SelectItem>
-                      <SelectItem value="Weekly">Weekly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
-                  <Select value={formData.status} onValueChange={(value: any) => setFormData({...formData, status: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Open">Open</SelectItem>
-                      <SelectItem value="Closed">Closed</SelectItem>
-                      <SelectItem value="On Hold">On Hold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <label className="text-sm font-medium">Experience Required</label>
                 <Input
                   value={formData.experienceRequired}
                   onChange={(e) => setFormData({...formData, experienceRequired: e.target.value})}
-                  placeholder="e.g., 0-1 years, Fresher"
                 />
               </div>
 
