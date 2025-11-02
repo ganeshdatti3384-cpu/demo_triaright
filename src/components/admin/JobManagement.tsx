@@ -129,43 +129,58 @@ const JobManagement = () => {
     return localStorage.getItem('token');
   };
 
-  // API Headers
+  // API Headers - FIXED: Added proper error handling
   const getHeaders = () => {
     const token = getAuthToken();
-    return {
-      'Authorization': `Bearer ${token}`,
+    const headers: any = {
       'Content-Type': 'application/json',
     };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
   };
 
-  // Fetch jobs
+  // Fetch jobs - FIXED: Added better error handling
   const fetchJobs = async () => {
     setLoading(true);
     try {
+      console.log("Fetching jobs from:", `${API_BASE}/jobs`);
+      
       const response = await fetch(`${API_BASE}/jobs`, {
         headers: getHeaders(),
       });
       
-      if (!response.ok) throw new Error('Failed to fetch jobs');
+      console.log("Jobs response status:", response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch jobs: ${response.status} ${response.statusText}`);
+      }
       
       const data = await response.json();
-      setJobs(data);
+      console.log("Jobs data received:", data);
+      setJobs(data || []);
       
       // Fetch all applications when jobs are loaded
-      await fetchAllApplications(data);
+      if (data && data.length > 0) {
+        await fetchAllApplications(data);
+      }
     } catch (error) {
       console.error("Failed to fetch jobs:", error);
       toast({
         title: "Error",
-        description: "Could not fetch jobs.",
+        description: "Could not fetch jobs. Please check your connection.",
         variant: "destructive",
       });
+      setJobs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch applications for a specific job
+  // Fetch applications for a specific job - FIXED: Better error handling
   const fetchJobApplications = async (jobId: string) => {
     setApplicationsLoading(true);
     try {
@@ -173,10 +188,12 @@ const JobManagement = () => {
         headers: getHeaders(),
       });
       
-      if (!response.ok) throw new Error('Failed to fetch applications');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch applications: ${response.status}`);
+      }
       
       const data = await response.json();
-      setApplications(data);
+      setApplications(data || []);
     } catch (error) {
       console.error("Failed to fetch applications:", error);
       toast({
@@ -184,15 +201,21 @@ const JobManagement = () => {
         description: "Could not fetch job applications.",
         variant: "destructive",
       });
+      setApplications([]);
     } finally {
       setApplicationsLoading(false);
     }
   };
 
-  // Fetch all applications across all jobs
+  // Fetch all applications across all jobs - FIXED: Better error handling
   const fetchAllApplications = async (jobsList: Job[] = jobs) => {
     try {
       const allApps: JobApplication[] = [];
+      
+      if (!jobsList || jobsList.length === 0) {
+        setAllApplications([]);
+        return;
+      }
       
       for (const job of jobsList) {
         try {
@@ -202,7 +225,7 @@ const JobManagement = () => {
           
           if (response.ok) {
             const jobApps = await response.json();
-            const appsWithJobInfo = jobApps.map((app: JobApplication) => ({
+            const appsWithJobInfo = (jobApps || []).map((app: JobApplication) => ({
               ...app,
               job: {
                 title: job.title,
@@ -220,6 +243,7 @@ const JobManagement = () => {
       setAllApplications(allApps);
     } catch (error) {
       console.error("Failed to fetch all applications:", error);
+      setAllApplications([]);
     }
   };
 
@@ -255,76 +279,125 @@ const JobManagement = () => {
     }
   };
 
-  // Create job handler
+  // Create job handler - FIXED: Complete rewrite with better error handling
   const handleCreateJob = async () => {
-    if (!jobForm.title || !jobForm.companyName || !jobForm.description || !jobForm.location) {
-      toast({
-        title: "Validation Error",
-        description: "Title, Company Name, Description, and Location are required.",
-        variant: "destructive",
-      });
-      return;
-    }
-    const newJobPayload = {
-      title: jobForm.title,
-      companyName: jobForm.companyName,
-      location: jobForm.location,
-      jobType: jobForm.jobType,
-      Jobmode: jobForm.Jobmode,
-      description: jobForm.description,
-      skills: jobForm.skills
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      salaryMin: jobForm.salaryMin ? Number(jobForm.salaryMin) : undefined,
-      salaryMax: jobForm.salaryMax ? Number(jobForm.salaryMax) : undefined,
-      experienceRequired: jobForm.experienceRequired || undefined,
-      openings: jobForm.openings ? Number(jobForm.openings) : undefined,
-      qualification: jobForm.qualification || undefined,
-      applicationDeadline: jobForm.applicationDeadline || undefined,
-      perks: jobForm.perks
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    };
     try {
+      // Validation
+      if (!jobForm.title?.trim() || !jobForm.companyName?.trim() || !jobForm.description?.trim() || !jobForm.location?.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Title, Company Name, Description, and Location are required.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Prepare payload - FIXED: Handle empty values properly
+      const newJobPayload: any = {
+        title: jobForm.title.trim(),
+        companyName: jobForm.companyName.trim(),
+        location: jobForm.location.trim(),
+        jobType: jobForm.jobType,
+        Jobmode: jobForm.Jobmode,
+        description: jobForm.description.trim(),
+      };
+
+      // Add optional fields only if they have values
+      if (jobForm.skills.trim()) {
+        newJobPayload.skills = jobForm.skills
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      if (jobForm.salaryMin) {
+        newJobPayload.salaryMin = Number(jobForm.salaryMin);
+      }
+
+      if (jobForm.salaryMax) {
+        newJobPayload.salaryMax = Number(jobForm.salaryMax);
+      }
+
+      if (jobForm.experienceRequired?.trim()) {
+        newJobPayload.experienceRequired = jobForm.experienceRequired.trim();
+      }
+
+      if (jobForm.openings) {
+        newJobPayload.openings = Number(jobForm.openings);
+      }
+
+      if (jobForm.qualification?.trim()) {
+        newJobPayload.qualification = jobForm.qualification.trim();
+      }
+
+      if (jobForm.applicationDeadline) {
+        newJobPayload.applicationDeadline = new Date(jobForm.applicationDeadline).toISOString();
+      }
+
+      if (jobForm.perks?.trim()) {
+        newJobPayload.perks = jobForm.perks
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      console.log("Creating job with payload:", newJobPayload);
+      console.log("URL:", `${API_BASE}/jobs`);
+      console.log("Headers:", getHeaders());
+
       const response = await fetch(`${API_BASE}/jobs`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(newJobPayload),
       });
 
-      if (!response.ok) throw new Error('Failed to create job');
+      console.log("Create job response status:", response.status);
+
+      if (!response.ok) {
+        let errorMessage = `Failed to create job: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // Ignore JSON parse error
+        }
+        throw new Error(errorMessage);
+      }
+
+      const responseData = await response.json();
+      console.log("Job created successfully:", responseData);
 
       toast({
         title: "Success",
         description: "Job posted successfully.",
       });
+      
       await fetchJobs();
       setIsFormOpen(false);
       resetForm();
-    } catch (error) {
+      
+    } catch (error: any) {
       console.error("Failed to create job:", error);
       toast({
         title: "Error",
-        description: "Failed to post job. Please check all required fields.",
+        description: error.message || "Failed to post job. Please check all required fields and try again.",
         variant: "destructive",
       });
     }
   };
 
-  // EDIT & UPDATE
+  // EDIT & UPDATE - FIXED: Better error handling
   const openEditForm = (job: Job) => {
     setEditingJob(job);
     setJobForm({
-      title: job.title,
-      companyName: job.companyName,
-      location: job.location,
-      jobType: job.jobType,
+      title: job.title || "",
+      companyName: job.companyName || "",
+      location: job.location || "",
+      jobType: job.jobType || "Full-Time",
       salaryMin: job.salaryMin?.toString() || "",
       salaryMax: job.salaryMax?.toString() || "",
-      description: job.description,
-      skills: job.skills.join(", "),
+      description: job.description || "",
+      skills: job.skills?.join(", ") || "",
       experienceRequired: job.experienceRequired || "",
       openings: job.openings?.toString() || "",
       qualification: job.qualification || "",
@@ -339,36 +412,72 @@ const JobManagement = () => {
 
   const handleUpdateJob = async () => {
     if (!editingJob) return;
-    const updatedJobPayload = {
-      title: jobForm.title,
-      companyName: jobForm.companyName,
-      location: jobForm.location,
-      jobType: jobForm.jobType,
-      Jobmode: jobForm.Jobmode,
-      description: jobForm.description,
-      skills: jobForm.skills
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      salaryMin: jobForm.salaryMin ? Number(jobForm.salaryMin) : undefined,
-      salaryMax: jobForm.salaryMax ? Number(jobForm.salaryMax) : undefined,
-      experienceRequired: jobForm.experienceRequired || undefined,
-      openings: jobForm.openings ? Number(jobForm.openings) : undefined,
-      qualification: jobForm.qualification || undefined,
-      applicationDeadline: jobForm.applicationDeadline || undefined,
-      perks: jobForm.perks
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    };
+    
     try {
+      const updatedJobPayload: any = {
+        title: jobForm.title.trim(),
+        companyName: jobForm.companyName.trim(),
+        location: jobForm.location.trim(),
+        jobType: jobForm.jobType,
+        Jobmode: jobForm.Jobmode,
+        description: jobForm.description.trim(),
+      };
+
+      // Add optional fields
+      if (jobForm.skills.trim()) {
+        updatedJobPayload.skills = jobForm.skills
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      if (jobForm.salaryMin) {
+        updatedJobPayload.salaryMin = Number(jobForm.salaryMin);
+      }
+
+      if (jobForm.salaryMax) {
+        updatedJobPayload.salaryMax = Number(jobForm.salaryMax);
+      }
+
+      if (jobForm.experienceRequired?.trim()) {
+        updatedJobPayload.experienceRequired = jobForm.experienceRequired.trim();
+      }
+
+      if (jobForm.openings) {
+        updatedJobPayload.openings = Number(jobForm.openings);
+      }
+
+      if (jobForm.qualification?.trim()) {
+        updatedJobPayload.qualification = jobForm.qualification.trim();
+      }
+
+      if (jobForm.applicationDeadline) {
+        updatedJobPayload.applicationDeadline = new Date(jobForm.applicationDeadline).toISOString();
+      }
+
+      if (jobForm.perks?.trim()) {
+        updatedJobPayload.perks = jobForm.perks
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
       const response = await fetch(`${API_BASE}/jobs/${editingJob._id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(updatedJobPayload),
       });
 
-      if (!response.ok) throw new Error('Failed to update job');
+      if (!response.ok) {
+        let errorMessage = `Failed to update job: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // Ignore JSON parse error
+        }
+        throw new Error(errorMessage);
+      }
 
       toast({
         title: "Success",
@@ -377,17 +486,17 @@ const JobManagement = () => {
       await fetchJobs();
       setIsFormOpen(false);
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update job:", error);
       toast({
         title: "Error",
-        description: "Failed to update job.",
+        description: error.message || "Failed to update job.",
         variant: "destructive",
       });
     }
   };
 
-  // DELETE
+  // DELETE - FIXED: Better error handling
   const openDeleteAlert = (job: Job) => {
     setJobToDelete(job);
     setIsDeleteAlertOpen(true);
@@ -401,7 +510,9 @@ const JobManagement = () => {
         headers: getHeaders(),
       });
 
-      if (!response.ok) throw new Error('Failed to delete job');
+      if (!response.ok) {
+        throw new Error(`Failed to delete job: ${response.status}`);
+      }
 
       toast({
         title: "Success",
@@ -410,11 +521,11 @@ const JobManagement = () => {
       await fetchJobs();
       setIsDeleteAlertOpen(false);
       setJobToDelete(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete job:", error);
       toast({
         title: "Error",
-        description: "Failed to delete job.",
+        description: error.message || "Failed to delete job.",
         variant: "destructive",
       });
     }
@@ -433,7 +544,7 @@ const JobManagement = () => {
     setIsApplicationsOpen(true);
   };
 
-  // UPDATE APPLICATION STATUS
+  // UPDATE APPLICATION STATUS - FIXED: Better error handling
   const updateApplicationStatus = async (applicationId: string, status: JobApplication["status"]) => {
     setUpdatingStatus(applicationId);
     try {
@@ -443,7 +554,9 @@ const JobManagement = () => {
         body: JSON.stringify({ status }),
       });
 
-      if (!response.ok) throw new Error('Failed to update application status');
+      if (!response.ok) {
+        throw new Error(`Failed to update application status: ${response.status}`);
+      }
 
       toast({
         title: "Success",
@@ -454,11 +567,11 @@ const JobManagement = () => {
         await fetchJobApplications(jobForApplications._id);
       }
       await fetchAllApplications();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update application status:", error);
       toast({
         title: "Error",
-        description: "Failed to update application status.",
+        description: error.message || "Failed to update application status.",
         variant: "destructive",
       });
     } finally {
@@ -468,13 +581,31 @@ const JobManagement = () => {
 
   // DOWNLOAD RESUME
   const downloadResume = (resumeUrl: string, applicantName: string) => {
-    const link = document.createElement('a');
-    link.href = resumeUrl;
-    link.download = `${applicantName.replace(/\s+/g, '_')}_Resume.pdf`;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!resumeUrl) {
+      toast({
+        title: "Error",
+        description: "Resume URL is not available.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const link = document.createElement('a');
+      link.href = resumeUrl;
+      link.download = `${applicantName.replace(/\s+/g, '_')}_Resume.pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Failed to download resume:", error);
+      toast({
+        title: "Error",
+        description: "Failed to download resume.",
+        variant: "destructive",
+      });
+    }
   };
 
   // BADGE COLORS
@@ -772,30 +903,33 @@ const JobManagement = () => {
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Job Title</Label>
+                <Label>Job Title *</Label>
                 <Input
                   value={jobForm.title}
                   onChange={(e) => setJobForm((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Enter job title"
                 />
               </div>
               <div>
-                <Label>Company</Label>
+                <Label>Company *</Label>
                 <Input
                   value={jobForm.companyName}
                   onChange={(e) => setJobForm((prev) => ({ ...prev, companyName: e.target.value }))}
+                  placeholder="Enter company name"
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Location</Label>
+                <Label>Location *</Label>
                 <Input
                   value={jobForm.location}
                   onChange={(e) => setJobForm((prev) => ({ ...prev, location: e.target.value }))}
+                  placeholder="Enter job location"
                 />
               </div>
               <div>
-                <Label>Job Type</Label>
+                <Label>Job Type *</Label>
                 <select
                   value={jobForm.jobType}
                   onChange={(e) => setJobForm((prev) => ({ ...prev, jobType: e.target.value as Job["jobType"] }))}
@@ -810,7 +944,7 @@ const JobManagement = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Job Mode</Label>
+                <Label>Job Mode *</Label>
                 <select
                   value={jobForm.Jobmode}
                   onChange={(e) =>
@@ -832,6 +966,7 @@ const JobManagement = () => {
                   type="number"
                   value={jobForm.openings}
                   onChange={(e) => setJobForm((prev) => ({ ...prev, openings: e.target.value }))}
+                  placeholder="Number of openings"
                 />
               </div>
             </div>
@@ -842,6 +977,7 @@ const JobManagement = () => {
                   type="number"
                   value={jobForm.salaryMin}
                   onChange={(e) => setJobForm((prev) => ({ ...prev, salaryMin: e.target.value }))}
+                  placeholder="Minimum salary"
                 />
               </div>
               <div>
@@ -850,6 +986,7 @@ const JobManagement = () => {
                   type="number"
                   value={jobForm.salaryMax}
                   onChange={(e) => setJobForm((prev) => ({ ...prev, salaryMax: e.target.value }))}
+                  placeholder="Maximum salary"
                 />
               </div>
             </div>
@@ -880,11 +1017,12 @@ const JobManagement = () => {
               />
             </div>
             <div>
-              <Label>Job Description</Label>
+              <Label>Job Description *</Label>
               <Textarea
                 value={jobForm.description}
                 onChange={(e) => setJobForm((prev) => ({ ...prev, description: e.target.value }))}
                 rows={4}
+                placeholder="Enter detailed job description"
               />
             </div>
             <div>
@@ -902,6 +1040,9 @@ const JobManagement = () => {
                 onChange={(e) => setJobForm((prev) => ({ ...prev, perks: e.target.value }))}
                 placeholder="e.g., Health Insurance, Flexible Hours, Work From Home"
               />
+            </div>
+            <div className="text-sm text-gray-500 mt-2">
+              * Required fields
             </div>
             <Button className="w-full" onClick={handleFormSubmit}>
               {editingJob ? "Save Changes" : "Post Job"}
@@ -924,18 +1065,18 @@ const JobManagement = () => {
               <div>
                 <Label>Skills</Label>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {selectedJob.skills.map((skill) => (
+                  {selectedJob.skills && selectedJob.skills.map((skill) => (
                     <Badge key={skill} variant="secondary">{skill}</Badge>
                   ))}
                 </div>
               </div>
               <div>
                 <Label>Experience Required</Label>
-                <p>{selectedJob.experienceRequired}</p>
+                <p>{selectedJob.experienceRequired || "Not specified"}</p>
               </div>
               <div>
                 <Label>Qualification</Label>
-                <p>{selectedJob.qualification}</p>
+                <p>{selectedJob.qualification || "Not specified"}</p>
               </div>
               {selectedJob.perks && selectedJob.perks.length > 0 && (
                 <div>
@@ -1013,8 +1154,8 @@ const JobManagement = () => {
                       </Button>
                       <select
                         value={application.status}
-                        onChange={(e) => updateApplicationStatus(application.applicationId, e.target.value as JobApplication["status"])}
-                        disabled={updatingStatus === application.applicationId}
+                        onChange={(e) => updateApplicationStatus(application._id, e.target.value as JobApplication["status"])}
+                        disabled={updatingStatus === application._id}
                         className="text-sm border rounded p-1"
                       >
                         <option value="Applied">Applied</option>
