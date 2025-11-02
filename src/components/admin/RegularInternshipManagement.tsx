@@ -85,7 +85,7 @@ const RegularInternshipManagement = () => {
     companyName: '',
     location: '',
     internshipType: 'Remote' as const,
-    category: 'Web Development', // Default value
+    category: 'Web Development',
     duration: '',
     startDate: '',
     applicationDeadline: '',
@@ -118,13 +118,18 @@ const RegularInternshipManagement = () => {
     const token = localStorage.getItem('token');
     if (!token) {
       console.error('No token found');
+      toast({
+        title: 'Error',
+        description: 'Please log in to view internships',
+        variant: 'destructive'
+      });
       return;
     }
 
     try {
       setLoading(true);
-      // Use the exact endpoint from your network tab
-      const response = await fetch('https://triaright.com/api/Internships/', {
+      // FIXED: Use lowercase endpoint
+      const response = await fetch('https://triaright.com/api/internships', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -169,8 +174,8 @@ const RegularInternshipManagement = () => {
     try {
       setApplicationsLoading(true);
       const url = internshipId 
-        ? `https://triaright.com/api/Internships/applications?internshipId=${internshipId}`
-        : 'https://triaright.com/api/Internships/applications';
+        ? `https://triaright.com/api/internships/applications?internshipId=${internshipId}`
+        : 'https://triaright.com/api/internships/applications';
       
       const response = await fetch(url, {
         headers: {
@@ -301,8 +306,8 @@ const RegularInternshipManagement = () => {
       console.log('Sending internship data:', internshipData);
       console.log('Token exists:', !!token);
 
-      // Use the exact endpoint from your network tab with capital I
-      const response = await fetch('https://triaright.com/api/Internships/', {
+      // FIXED: Use lowercase endpoint
+      const response = await fetch('https://triaright.com/api/internships', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -380,7 +385,8 @@ const RegularInternshipManagement = () => {
 
       console.log('Updating internship with data:', internshipData);
 
-      const response = await fetch(`https://triaright.com/api/Internships/update/${selectedInternship._id}`, {
+      // FIXED: Use lowercase endpoint
+      const response = await fetch(`https://triaright.com/api/internships/update/${selectedInternship._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -418,7 +424,8 @@ const RegularInternshipManagement = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`https://triaright.com/api/Internships/delete/${id}`, {
+      // FIXED: Use lowercase endpoint
+      const response = await fetch(`https://triaright.com/api/internships/delete/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -450,7 +457,8 @@ const RegularInternshipManagement = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`https://triaright.com/api/Internships/applications/${applicationId}/status`, {
+      // FIXED: Use lowercase endpoint
+      const response = await fetch(`https://triaright.com/api/internships/applications/${applicationId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -821,7 +829,6 @@ const RegularInternshipManagement = () => {
         </Dialog>
       </div>
 
-      {/* Rest of the component remains the same as previous version */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="internships">Internships</TabsTrigger>
@@ -1010,7 +1017,7 @@ const RegularInternshipManagement = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Dialog - Similar to Create Dialog but with update logic */}
+      {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1021,7 +1028,7 @@ const RegularInternshipManagement = () => {
           </DialogHeader>
           {selectedInternship && (
             <form onSubmit={updateInternship} className="space-y-4">
-              {/* Same form fields as create dialog */}
+              {/* Same form fields as create dialog, pre-filled with selectedInternship data */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Title *</label>
@@ -1077,29 +1084,6 @@ const RegularInternshipManagement = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Category</label>
-                  <Input
-                    value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Term *</label>
-                  <Select value={formData.term} onValueChange={(value: any) => setFormData({...formData, term: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Shortterm">Short Term</SelectItem>
-                      <SelectItem value="Longterm">Long Term</SelectItem>
-                      <SelectItem value="others">Others</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
                   <label className="text-sm font-medium">Duration *</label>
                   <Input
                     value={formData.duration}
@@ -1108,7 +1092,7 @@ const RegularInternshipManagement = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Mode</label>
+                  <label className="text-sm font-medium">Mode *</label>
                   <Select value={formData.mode} onValueChange={(value: any) => setFormData({...formData, mode: value})}>
                     <SelectTrigger>
                       <SelectValue />
@@ -1151,14 +1135,6 @@ const RegularInternshipManagement = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Start Date</label>
-                  <Input
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
                   <label className="text-sm font-medium">Application Deadline *</label>
                   <Input
                     type="date"
@@ -1167,53 +1143,18 @@ const RegularInternshipManagement = () => {
                     required
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Qualification</label>
-                  <Input
-                    value={formData.qualification}
-                    onChange={(e) => setFormData({...formData, qualification: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Openings</label>
-                  <Input
-                    type="number"
-                    value={formData.openings}
-                    onChange={(e) => setFormData({...formData, openings: Number(e.target.value)})}
-                    min="1"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Experience Required</label>
-                <Input
-                  value={formData.experienceRequired}
-                  onChange={(e) => setFormData({...formData, experienceRequired: e.target.value})}
-                />
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.certificateProvided}
-                    onChange={(e) => setFormData({...formData, certificateProvided: e.target.checked})}
-                    className="rounded border-gray-300"
-                  />
-                  <label className="text-sm font-medium">Certificate Provided</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.letterOfRecommendation}
-                    onChange={(e) => setFormData({...formData, letterOfRecommendation: e.target.checked})}
-                    className="rounded border-gray-300"
-                  />
-                  <label className="text-sm font-medium">Letter of Recommendation</label>
+                  <label className="text-sm font-medium">Status</label>
+                  <Select value={formData.status} onValueChange={(value: any) => setFormData({...formData, status: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Open">Open</SelectItem>
+                      <SelectItem value="Closed">Closed</SelectItem>
+                      <SelectItem value="On Hold">On Hold</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -1225,43 +1166,68 @@ const RegularInternshipManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Applications Dialog */}
+      {/* View Applications Dialog */}
       <Dialog open={showApplicationsDialog} onOpenChange={setShowApplicationsDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Applications for {selectedInternship?.title}
             </DialogTitle>
             <DialogDescription>
-              View and manage applications for this internship
+              Manage applications for this internship position
             </DialogDescription>
           </DialogHeader>
           
-          {applicationsLoading ? (
-            <div className="text-center py-8">Loading applications...</div>
-          ) : (
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search applications..."
+                  value={applicationSearch}
+                  onChange={(e) => setApplicationSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={applicationStatusFilter} onValueChange={setApplicationStatusFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="Applied">Applied</SelectItem>
+                  <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                  <SelectItem value="Selected">Selected</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
+                  <SelectItem value="Withdrawn">Withdrawn</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {applicationsLoading ? (
+              <div className="text-center py-8">Loading applications...</div>
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Applicant</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
                     <TableHead>College</TableHead>
+                    <TableHead>Qualification</TableHead>
                     <TableHead>Applied Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {applications.map((application) => (
+                  {filteredApplications.map((application) => (
                     <TableRow key={application._id}>
                       <TableCell className="font-medium">
                         {application.applicantDetails.name}
                       </TableCell>
                       <TableCell>{application.applicantDetails.email}</TableCell>
-                      <TableCell>{application.applicantDetails.phone}</TableCell>
                       <TableCell>{application.applicantDetails.college}</TableCell>
+                      <TableCell>{application.applicantDetails.qualification}</TableCell>
                       <TableCell>
                         {new Date(application.appliedAt).toLocaleDateString()}
                       </TableCell>
@@ -1269,29 +1235,24 @@ const RegularInternshipManagement = () => {
                         {getApplicationStatusBadge(application.status)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex space-x-2">
-                          <Select
-                            value={application.status}
-                            onValueChange={(value) => updateApplicationStatus(application._id, value)}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Applied">Applied</SelectItem>
-                              <SelectItem value="Shortlisted">Shortlisted</SelectItem>
-                              <SelectItem value="Selected">Selected</SelectItem>
-                              <SelectItem value="Rejected">Rejected</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Button variant="outline" size="sm">
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Select
+                          value={application.status}
+                          onValueChange={(value) => updateApplicationStatus(application._id, value)}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Applied">Applied</SelectItem>
+                            <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                            <SelectItem value="Selected">Selected</SelectItem>
+                            <SelectItem value="Rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {applications.length === 0 && (
+                  {filteredApplications.length === 0 && !applicationsLoading && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         No applications found for this internship
@@ -1300,8 +1261,8 @@ const RegularInternshipManagement = () => {
                   )}
                 </TableBody>
               </Table>
-            </div>
-          )}
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
