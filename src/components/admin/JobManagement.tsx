@@ -32,8 +32,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Eye, Edit, Trash2, Briefcase } from "lucide-react";
-import {jobsApi}from "../../services/api";
+import { Plus, Eye, Edit, Trash2, Briefcase, Users, Download, Mail, Phone } from "lucide-react";
+import { jobsApi, jobApplicationsApi } from "../../services/api";
 
 // Models/interfaces
 interface Job {
@@ -54,18 +54,49 @@ interface Job {
   Jobmode?: "Remote" | "On-Site" | "Hybrid";
   applicationDeadline?: string;
   perks?: string[];
+  postedBy?: string;
+}
+
+interface JobApplication {
+  id: string;
+  applicationId: string;
+  jobId: string;
+  userId: string;
+  applicantName: string;
+  email: string;
+  phone: string;
+  resumeUrl: string;
+  coverLetter?: string;
+  status: "Applied" | "Reviewed" | "Shortlisted" | "Rejected" | "Hired";
+  createdAt: string;
+  updatedAt: string;
+  job?: {
+    title: string;
+    companyName: string;
+    location: string;
+  };
+  user?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
 }
 
 const JobManagement = () => {
   // JOBS & FORM STATE
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [applications, setApplications] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [isApplicationsOpen, setIsApplicationsOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+  const [jobForApplications, setJobForApplications] = useState<Job | null>(null);
+  const [activeTab, setActiveTab] = useState("jobs");
   const { toast } = useToast();
 
   // Form model
@@ -86,6 +117,9 @@ const JobManagement = () => {
     perks: "",
   });
 
+  // Status update
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+
   // Fetch jobs
   const fetchJobs = async () => {
     setLoading(true);
@@ -101,6 +135,24 @@ const JobManagement = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch applications for a job
+  const fetchJobApplications = async (jobId: string) => {
+    setApplicationsLoading(true);
+    try {
+      const response = await jobApplicationsApi.getApplicationsForJob(jobId);
+      setApplications(response.data);
+    } catch (error) {
+      console.error("Failed to fetch applications:", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch job applications.",
+        variant: "destructive",
+      });
+    } finally {
+      setApplicationsLoading(false);
     }
   };
 
@@ -129,7 +181,6 @@ const JobManagement = () => {
   };
 
   const handleFormSubmit = async () => {
-    console.log("Button clicked! Job form:", jobForm); // <--- DEBUG LINE
     if (editingJob) {
       await handleUpdateJob();
     } else {
@@ -288,6 +339,48 @@ const JobManagement = () => {
     setIsDetailOpen(true);
   };
 
+  // VIEW APPLICATIONS
+  const viewJobApplications = async (job: Job) => {
+    setJobForApplications(job);
+    await fetchJobApplications(job.id);
+    setIsApplicationsOpen(true);
+  };
+
+  // UPDATE APPLICATION STATUS
+  const updateApplicationStatus = async (applicationId: string, status: JobApplication["status"]) => {
+    setUpdatingStatus(applicationId);
+    try {
+      await jobApplicationsApi.updateApplicationStatus(applicationId, { status });
+      toast({
+        title: "Success",
+        description: "Application status updated successfully.",
+      });
+      if (jobForApplications) {
+        await fetchJobApplications(jobForApplications.id);
+      }
+    } catch (error) {
+      console.error("Failed to update application status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update application status.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  // DOWNLOAD RESUME
+  const downloadResume = (resumeUrl: string, applicantName: string) => {
+    const link = document.createElement('a');
+    link.href = resumeUrl;
+    link.download = `${applicantName}_Resume.pdf`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // BADGE COLORS
   const getStatusBadgeVariant = (status: Job["status"]) => {
     switch (status) {
@@ -302,6 +395,23 @@ const JobManagement = () => {
     }
   };
 
+  const getApplicationStatusBadgeVariant = (status: JobApplication["status"]) => {
+    switch (status) {
+      case "Applied":
+        return "outline";
+      case "Reviewed":
+        return "secondary";
+      case "Shortlisted":
+        return "default";
+      case "Rejected":
+        return "destructive";
+      case "Hired":
+        return "default";
+      default:
+        return "outline";
+    }
+  };
+
   // RENDER
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -309,7 +419,7 @@ const JobManagement = () => {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Job Management</h2>
           <p className="text-muted-foreground">
-            Create, edit, and manage all your job postings.
+            Create, edit, and manage all your job postings and applications.
           </p>
         </div>
         <Button onClick={() => { resetForm(); setIsFormOpen(true); }}>
@@ -317,10 +427,13 @@ const JobManagement = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="jobs">
+      <Tabs defaultValue="jobs" value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="jobs">All Jobs ({jobs.length})</TabsTrigger>
+          <TabsTrigger value="applications">Applications</TabsTrigger>
         </TabsList>
+        
+        {/* Jobs Tab */}
         <TabsContent value="jobs">
           <Card>
             <CardHeader>
@@ -395,6 +508,9 @@ const JobManagement = () => {
                             <Button variant="ghost" size="icon" onClick={() => viewJobDetails(job)}>
                               <Eye className="h-4 w-4" />
                             </Button>
+                            <Button variant="ghost" size="icon" onClick={() => viewJobApplications(job)}>
+                              <Users className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => openEditForm(job)}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -405,6 +521,108 @@ const JobManagement = () => {
                               onClick={() => openDeleteAlert(job)}
                             >
                               <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Applications Tab */}
+        <TabsContent value="applications">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Job Applications</CardTitle>
+              <CardDescription>
+                View and manage applications across all your job postings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Applicant</TableHead>
+                    <TableHead>Job Title</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Applied On</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {applicationsLoading ? (
+                    [...Array(5)].map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-8 bg-gray-200 rounded w-24 ml-auto animate-pulse"></div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : applications.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center">
+                        <Users className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                        No applications found.
+                        <Button variant="link" onClick={() => setActiveTab("jobs")}>
+                          View your jobs
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    applications.map((application) => (
+                      <TableRow key={application.id}>
+                        <TableCell className="font-medium">{application.applicantName}</TableCell>
+                        <TableCell>{application.job?.title}</TableCell>
+                        <TableCell>{application.email}</TableCell>
+                        <TableCell>{application.phone}</TableCell>
+                        <TableCell>
+                          <Badge variant={getApplicationStatusBadgeVariant(application.status)}>
+                            {application.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(application.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => downloadResume(application.resumeUrl, application.applicantName)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" asChild>
+                              <a href={`mailto:${application.email}`}>
+                                <Mail className="h-4 w-4" />
+                              </a>
+                            </Button>
+                            <Button variant="ghost" size="icon" asChild>
+                              <a href={`tel:${application.phone}`}>
+                                <Phone className="h-4 w-4" />
+                              </a>
                             </Button>
                           </div>
                         </TableCell>
@@ -606,6 +824,86 @@ const JobManagement = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Job Applications Dialog */}
+      <Dialog open={isApplicationsOpen} onOpenChange={setIsApplicationsOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Applications for {jobForApplications?.title}
+            </DialogTitle>
+            <CardDescription>
+              {jobForApplications?.companyName} &middot; {jobForApplications?.location}
+            </CardDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {applicationsLoading ? (
+              // Skeleton loader for applications
+              [...Array(3)].map((_, i) => (
+                <div key={i} className="p-4 border rounded-lg space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+                  <div className="h-6 bg-gray-200 rounded-full w-20 animate-pulse"></div>
+                </div>
+              ))
+            ) : applications.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No applications received for this job yet.</p>
+              </div>
+            ) : (
+              applications.map((application) => (
+                <Card key={application.id} className="p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h4 className="font-semibold">{application.applicantName}</h4>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                        <Mail className="h-3 w-3" />
+                        {application.email}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Phone className="h-3 w-3" />
+                        {application.phone}
+                      </div>
+                    </div>
+                    <Badge variant={getApplicationStatusBadgeVariant(application.status)}>
+                      {application.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-500">
+                      Applied: {new Date(application.createdAt).toLocaleDateString()}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => downloadResume(application.resumeUrl, application.applicantName)}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Resume
+                      </Button>
+                      <select
+                        value={application.status}
+                        onChange={(e) => updateApplicationStatus(application.applicationId, e.target.value as JobApplication["status"])}
+                        disabled={updatingStatus === application.applicationId}
+                        className="text-sm border rounded p-1"
+                      >
+                        <option value="Applied">Applied</option>
+                        <option value="Reviewed">Reviewed</option>
+                        <option value="Shortlisted">Shortlisted</option>
+                        <option value="Rejected">Rejected</option>
+                        <option value="Hired">Hired</option>
+                      </select>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
