@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Tag } from 'lucide-react';
 
 interface APInternship {
   _id: string;
@@ -32,13 +32,21 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
   onSuccess
 }) => {
   const [loading, setLoading] = useState(false);
+  const [applyingWithCoupon, setApplyingWithCoupon] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [finalAmount, setFinalAmount] = useState(0);
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     college: '',
     qualification: '',
-    portfolioLink: ''
+    portfolioLink: '',
+    coverLetter: '' // Text cover letter
   });
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
@@ -55,8 +63,16 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
         phone: user.phone || '',
         college: user.college || '',
         qualification: user.qualification || '',
-        portfolioLink: ''
+        portfolioLink: '',
+        coverLetter: ''
       });
+      
+      // Reset coupon state
+      setCouponCode('');
+      setCouponApplied(false);
+      setDiscountAmount(0);
+      setApplyingWithCoupon(false);
+      setFinalAmount(internship?.amount || 0);
     } else {
       setFormData({
         name: '',
@@ -64,12 +80,17 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
         phone: '',
         college: '',
         qualification: '',
-        portfolioLink: ''
+        portfolioLink: '',
+        coverLetter: ''
       });
       setResumeFile(null);
       setCoverLetterFile(null);
+      setCouponCode('');
+      setCouponApplied(false);
+      setDiscountAmount(0);
+      setApplyingWithCoupon(false);
     }
-  }, [open, user]);
+  }, [open, user, internship]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFile: (file: File | null) => void) => {
     if (e.target.files && e.target.files[0]) {
@@ -94,6 +115,63 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
       }
       setFile(file);
     }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim() || !internship || internship.mode !== 'Paid') {
+      return;
+    }
+
+    setCouponLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/internships/validate-coupon', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          couponCode: couponCode.toUpperCase(),
+          internshipId: internship._id,
+          amount: internship.amount
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        setCouponApplied(true);
+        setDiscountAmount(data.discountAmount);
+        setFinalAmount(data.finalAmount);
+        toast({
+          title: 'Coupon Applied!',
+          description: `Discount of ₹${data.discountAmount} applied successfully`,
+          variant: 'default'
+        });
+      } else {
+        toast({
+          title: 'Invalid Coupon',
+          description: data.message || 'This coupon code is not valid',
+          variant: 'destructive'
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Coupon Error',
+        description: 'Failed to validate coupon code',
+        variant: 'destructive'
+      });
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponApplied(false);
+    setCouponCode('');
+    setDiscountAmount(0);
+    setFinalAmount(internship?.amount || 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,10 +209,16 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
       formDataToSend.append('college', formData.college || '');
       formDataToSend.append('qualification', formData.qualification || '');
       formDataToSend.append('portfolioLink', formData.portfolioLink || '');
+      formDataToSend.append('coverLetterText', formData.coverLetter || '');
       formDataToSend.append('resume', resumeFile);
       
       if (coverLetterFile) {
         formDataToSend.append('coverLetter', coverLetterFile);
+      }
+
+      // Add coupon code if applied
+      if (couponApplied && couponCode) {
+        formDataToSend.append('couponCode', couponCode.toUpperCase());
       }
 
       const token = localStorage.getItem('token');
@@ -159,6 +243,16 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
           onSuccess();
           onOpenChange(false);
         } 
+        // Handle paid internship with coupon code enrollment
+        else if (internship.mode === 'Paid' && couponApplied) {
+          toast({
+            title: 'Application Successful!',
+            description: `You have been successfully enrolled in "${internship.title}" using coupon code`,
+            variant: 'default'
+          });
+          onSuccess();
+          onOpenChange(false);
+        }
         // Handle paid internship - payment flow
         else if (internship.mode === 'Paid' && data.razorpayOrder) {
           // Initialize Razorpay payment
@@ -180,7 +274,8 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
                 body: JSON.stringify({
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature
+                  razorpay_signature: response.razorpay_signature,
+                  applicationId: data.applicationId // Pass the application ID for payment linking
                 })
               });
 
@@ -334,6 +429,18 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
             </div>
           </div>
 
+          {/* Cover Letter Text */}
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Cover Letter</h3>
+            <Textarea
+              value={formData.coverLetter}
+              onChange={(e) => setFormData({...formData, coverLetter: e.target.value})}
+              placeholder="Tell us why you're interested in this internship and what makes you a good candidate..."
+              className="min-h-[100px] resize-vertical"
+            />
+            <p className="text-xs text-gray-500">Optional - You can also upload a cover letter file below</p>
+          </div>
+
           {/* File Uploads - Full width below */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-lg font-semibold text-gray-900">Upload Documents</h3>
@@ -368,6 +475,74 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
             </div>
           </div>
 
+          {/* Coupon Code Section - Only for Paid Internships */}
+          {internship.mode === 'Paid' && (
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Coupon Code</h3>
+                {!applyingWithCoupon && !couponApplied && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setApplyingWithCoupon(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Tag className="h-4 w-4" />
+                    Apply Coupon
+                  </Button>
+                )}
+              </div>
+
+              {applyingWithCoupon && !couponApplied && (
+                <div className="flex gap-2">
+                  <Input
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="Enter coupon code"
+                    className="flex-1"
+                    disabled={couponLoading}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={!couponCode.trim() || couponLoading}
+                    variant="outline"
+                  >
+                    {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setApplyingWithCoupon(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+
+              {couponApplied && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-800 font-medium">Coupon Applied</p>
+                      <p className="text-green-600 text-sm">Code: {couponCode}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveCoupon}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Internship Summary */}
           <div className="bg-gray-50 rounded-lg p-4 border">
             <h4 className="font-semibold text-gray-900 mb-2">Internship Summary</h4>
@@ -389,9 +564,23 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
                 <p className="font-medium">{internship.duration}</p>
               </div>
               {internship.mode === 'Paid' && internship.amount && (
-                <div className="col-span-2">
-                  <span className="text-gray-600">Amount:</span>
-                  <p className="font-medium text-green-600">₹{internship.amount}</p>
+                <div className="col-span-2 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Original Amount:</span>
+                    <span className="font-medium">₹{internship.amount}</span>
+                  </div>
+                  {couponApplied && (
+                    <>
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount:</span>
+                        <span>-₹{discountAmount}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-1">
+                        <span className="text-gray-600 font-semibold">Final Amount:</span>
+                        <span className="font-bold text-green-600">₹{finalAmount}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -414,7 +603,12 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
                 className="sm:flex-1 bg-blue-600 hover:bg-blue-700"
               >
                 {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {internship.mode === 'Free' ? 'Apply & Enroll Now' : 'Proceed to Payment'}
+                {internship.mode === 'Free' 
+                  ? 'Apply & Enroll Now' 
+                  : couponApplied 
+                    ? 'Apply with Coupon' 
+                    : 'Proceed to Payment'
+                }
               </Button>
             </div>
           </DialogFooter>
