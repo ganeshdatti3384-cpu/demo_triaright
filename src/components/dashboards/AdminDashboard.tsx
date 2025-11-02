@@ -306,8 +306,8 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
             <TabsTrigger value="users" className="text-xs">Users</TabsTrigger>
             <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
-            <TabsTrigger value="regular-internships" className="text-xs">Regular Internships</TabsTrigger>
-            <TabsTrigger value="ap-internships" className="text-xs">AP Internships</TabsTrigger>
+            <TabsTrigger value="regular-internships" className="text-xs">Internships</TabsTrigger>
+            <TabsTrigger value="ap-internships" className="text-xs">AP Exclusive</TabsTrigger>
             <TabsTrigger value="applications" className="text-xs">Applications</TabsTrigger>
             <TabsTrigger value="pack365" className="text-xs">Pack365</TabsTrigger>
             <TabsTrigger value="jobs" className="text-xs">Jobs</TabsTrigger>
