@@ -27,7 +27,7 @@ interface APInternship {
   applicationDeadline: string;
   mode: 'Free' | 'Paid';
   stream: string;
-  Amount?: number;
+  amount?: number;
   currency: string;
   qualification: string;
   openings: number;
@@ -63,6 +63,7 @@ const APExclusiveInternshipsPage = () => {
 
   const fetchAPInternships = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/internships/ap-internships');
       const data = await response.json();
       if (data.success) {
@@ -124,6 +125,16 @@ const APExclusiveInternshipsPage = () => {
       return;
     }
 
+    // Check if application deadline has passed
+    if (isDeadlinePassed(internship.applicationDeadline)) {
+      toast({
+        title: 'Application Closed',
+        description: 'The application deadline for this internship has passed',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setSelectedInternship(internship);
     setShowApplyDialog(true);
   };
@@ -162,17 +173,17 @@ const APExclusiveInternshipsPage = () => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
     
     return (
-      <Card className="h-full flex flex-col border-2 border-blue-200">
+      <Card className="h-full flex flex-col border-2 border-blue-200 hover:border-blue-300 transition-colors">
         <CardHeader>
           <div className="flex justify-between items-start mb-2">
             <div>
-              <CardTitle className="text-lg mb-1">{internship.title}</CardTitle>
+              <CardTitle className="text-lg mb-1 line-clamp-2">{internship.title}</CardTitle>
               <div className="flex items-center text-sm text-gray-600 mb-2">
                 <Building2 className="h-4 w-4 mr-1" />
-                <span>{internship.companyName}</span>
+                <span className="line-clamp-1">{internship.companyName}</span>
               </div>
             </div>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap">
               <Star className="h-3 w-3 mr-1" />
               AP Exclusive
             </Badge>
@@ -185,7 +196,7 @@ const APExclusiveInternshipsPage = () => {
               {internship.location}
             </Badge>
           </div>
-          <CardDescription className="line-clamp-2">
+          <CardDescription className="line-clamp-3 text-sm">
             {internship.description}
           </CardDescription>
         </CardHeader>
@@ -206,7 +217,7 @@ const APExclusiveInternshipsPage = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Apply Before:</span>
-              <span className={`font-medium flex items-center ${deadlinePassed ? 'text-red-600' : ''}`}>
+              <span className={`font-medium flex items-center ${deadlinePassed ? 'text-red-600' : 'text-green-600'}`}>
                 <Calendar className="h-3 w-3 mr-1" />
                 {new Date(internship.applicationDeadline).toLocaleDateString()}
               </span>
@@ -226,12 +237,12 @@ const APExclusiveInternshipsPage = () => {
               <span className="text-gray-600">Term:</span>
               <span className="font-medium">{internship.term}</span>
             </div>
-            {internship.Amount && internship.Amount > 0 && (
+            {internship.amount && internship.amount > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Stipend:</span>
                 <span className="font-medium flex items-center text-green-600">
                   <IndianRupee className="h-3 w-3 mr-1" />
-                  {internship.Amount.toLocaleString()}/month
+                  {internship.amount.toLocaleString()}/month
                 </span>
               </div>
             )}
@@ -242,8 +253,10 @@ const APExclusiveInternshipsPage = () => {
             className="w-full" 
             onClick={() => handleApply(internship)}
             disabled={deadlinePassed}
+            variant={deadlinePassed ? "outline" : "default"}
           >
-            {deadlinePassed ? 'Application Closed' : 'Apply Now'}
+            {deadlinePassed ? 'Application Closed' : 
+             internship.mode === 'Free' ? 'Apply & Enroll' : 'Apply Now'}
           </Button>
         </CardFooter>
       </Card>
@@ -256,7 +269,10 @@ const APExclusiveInternshipsPage = () => {
         <Navbar />
         <div className="min-h-screen bg-gray-50 py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">Loading AP Exclusive internships...</div>
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+            <div className="text-center text-gray-600">Loading AP Exclusive internships...</div>
           </div>
         </div>
         <Footer />
@@ -283,7 +299,7 @@ const APExclusiveInternshipsPage = () => {
           </div>
 
           {/* Search and Filters */}
-          <Card className="mb-8 border-blue-200">
+          <Card className="mb-8 border-blue-200 bg-blue-50">
             <CardContent className="pt-6">
               <div className="flex flex-col lg:flex-row gap-4">
                 <div className="flex-1 relative">
@@ -292,12 +308,12 @@ const APExclusiveInternshipsPage = () => {
                     placeholder="Search AP internships by title, company, or description..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 bg-white"
                   />
                 </div>
                 <div className="flex gap-4 flex-wrap">
                   <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-40 bg-white">
                       <SelectValue placeholder="Internship Type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -307,7 +323,7 @@ const APExclusiveInternshipsPage = () => {
                     </SelectContent>
                   </Select>
                   <Select value={filters.mode} onValueChange={(value) => setFilters({...filters, mode: value})}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-32 bg-white">
                       <SelectValue placeholder="Mode" />
                     </SelectTrigger>
                     <SelectContent>
@@ -317,7 +333,7 @@ const APExclusiveInternshipsPage = () => {
                     </SelectContent>
                   </Select>
                   <Select value={filters.stream} onValueChange={(value) => setFilters({...filters, stream: value})}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-40 bg-white">
                       <SelectValue placeholder="Stream" />
                     </SelectTrigger>
                     <SelectContent>
@@ -327,6 +343,8 @@ const APExclusiveInternshipsPage = () => {
                       <SelectItem value="business">Business</SelectItem>
                       <SelectItem value="arts">Arts</SelectItem>
                       <SelectItem value="science">Science</SelectItem>
+                      <SelectItem value="medical">Medical</SelectItem>
+                      <SelectItem value="law">Law</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -336,11 +354,19 @@ const APExclusiveInternshipsPage = () => {
 
           {/* Tabs and Content */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="all">All Internships</TabsTrigger>
-              <TabsTrigger value="free">Free</TabsTrigger>
-              <TabsTrigger value="paid">Paid</TabsTrigger>
-              <TabsTrigger value="online">Online</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-4 bg-blue-50">
+              <TabsTrigger value="all" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                All Internships
+              </TabsTrigger>
+              <TabsTrigger value="free" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+                Free
+              </TabsTrigger>
+              <TabsTrigger value="paid" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+                Paid
+              </TabsTrigger>
+              <TabsTrigger value="online" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+                Online
+              </TabsTrigger>
             </TabsList>
 
             {/* All Internships */}
@@ -359,42 +385,72 @@ const APExclusiveInternshipsPage = () => {
               )}
             </TabsContent>
 
-            {/* Other Tabs */}
-            {['free', 'paid', 'online'].map((tab) => (
-              <TabsContent key={tab} value={tab} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredAPInternships.map((internship) => (
-                    <InternshipCard key={internship._id} internship={internship} />
-                  ))}
+            {/* Free Internships */}
+            <TabsContent value="free" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAPInternships.map((internship) => (
+                  <InternshipCard key={internship._id} internship={internship} />
+                ))}
+              </div>
+              {filteredAPInternships.length === 0 && (
+                <div className="text-center py-12">
+                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No free AP internships found</h3>
+                  <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
                 </div>
-                {filteredAPInternships.length === 0 && (
-                  <div className="text-center py-12">
-                    <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No {tab} AP internships found</h3>
-                    <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
-                  </div>
-                )}
-              </TabsContent>
-            ))}
+              )}
+            </TabsContent>
+
+            {/* Paid Internships */}
+            <TabsContent value="paid" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAPInternships.map((internship) => (
+                  <InternshipCard key={internship._id} internship={internship} />
+                ))}
+              </div>
+              {filteredAPInternships.length === 0 && (
+                <div className="text-center py-12">
+                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No paid AP internships found</h3>
+                  <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Online Internships */}
+            <TabsContent value="online" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAPInternships.map((internship) => (
+                  <InternshipCard key={internship._id} internship={internship} />
+                ))}
+              </div>
+              {filteredAPInternships.length === 0 && (
+                <div className="text-center py-12">
+                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No online AP internships found</h3>
+                  <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
 
           {/* Stats Section */}
           <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="border-blue-200">
+            <Card className="border-blue-200 bg-blue-50">
               <CardContent className="pt-6 text-center">
                 <div className="text-2xl font-bold text-blue-600">{apInternships.length}</div>
                 <p className="text-sm text-gray-600">AP Exclusive Internships</p>
               </CardContent>
             </Card>
-            <Card className="border-blue-200">
+            <Card className="border-green-200 bg-green-50">
               <CardContent className="pt-6 text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {apInternships.filter(i => i.mode === 'Paid').length}
+                  {apInternships.filter(i => i.mode === 'Free').length}
                 </div>
-                <p className="text-sm text-gray-600">Paid Opportunities</p>
+                <p className="text-sm text-gray-600">Free Opportunities</p>
               </CardContent>
             </Card>
-            <Card className="border-blue-200">
+            <Card className="border-purple-200 bg-purple-50">
               <CardContent className="pt-6 text-center">
                 <div className="text-2xl font-bold text-purple-600">
                   {apInternships.filter(i => i.internshipType === 'Online').length}
@@ -402,7 +458,7 @@ const APExclusiveInternshipsPage = () => {
                 <p className="text-sm text-gray-600">Online Programs</p>
               </CardContent>
             </Card>
-            <Card className="border-blue-200">
+            <Card className="border-orange-200 bg-orange-50">
               <CardContent className="pt-6 text-center">
                 <div className="text-2xl font-bold text-orange-600">
                   {[...new Set(apInternships.map(i => i.stream))].length}
@@ -421,6 +477,8 @@ const APExclusiveInternshipsPage = () => {
           onSuccess={() => {
             setShowApplyDialog(false);
             setSelectedInternship(null);
+            // Refresh internships to reflect any status changes
+            fetchAPInternships();
           }}
         />
       </div>
