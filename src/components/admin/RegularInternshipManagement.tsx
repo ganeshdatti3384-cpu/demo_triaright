@@ -106,6 +106,9 @@ const RegularInternshipManagement = () => {
   
   const { toast } = useToast();
 
+  // Base URL for API calls - FIXED: No trailing slash
+  const API_BASE_URL = 'https://triaright.com/api/internships';
+
   useEffect(() => {
     fetchInternships();
   }, []);
@@ -128,8 +131,8 @@ const RegularInternshipManagement = () => {
 
     try {
       setLoading(true);
-      // FIXED: Use lowercase endpoint
-      const response = await fetch('https://triaright.com/api/internships', {
+      // FIXED: No trailing slash
+      const response = await fetch(API_BASE_URL, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -174,8 +177,8 @@ const RegularInternshipManagement = () => {
     try {
       setApplicationsLoading(true);
       const url = internshipId 
-        ? `https://triaright.com/api/internships/applications?internshipId=${internshipId}`
-        : 'https://triaright.com/api/internships/applications';
+        ? `${API_BASE_URL}/applications?internshipId=${internshipId}`
+        : `${API_BASE_URL}/applications`;
       
       const response = await fetch(url, {
         headers: {
@@ -249,6 +252,8 @@ const RegularInternshipManagement = () => {
     if (formData.applicationDeadline) {
       const deadline = new Date(formData.applicationDeadline);
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       if (deadline <= today) {
         toast({
           title: 'Invalid Date',
@@ -277,7 +282,7 @@ const RegularInternshipManagement = () => {
     if (!validateFormData()) return;
 
     try {
-      // Prepare data according to backend schema with ALL required fields
+      // Prepare data according to backend schema
       const internshipData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
@@ -304,10 +309,9 @@ const RegularInternshipManagement = () => {
       };
 
       console.log('Sending internship data:', internshipData);
-      console.log('Token exists:', !!token);
 
-      // FIXED: Use lowercase endpoint
-      const response = await fetch('https://triaright.com/api/internships', {
+      // FIXED: No trailing slash
+      const response = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -336,7 +340,7 @@ const RegularInternshipManagement = () => {
         });
         setShowCreateDialog(false);
         resetFormData();
-        fetchInternships(); // Refresh the list
+        fetchInternships();
       } else {
         throw new Error(data.message || data.error || `Failed to create internship: ${response.status}`);
       }
@@ -385,8 +389,8 @@ const RegularInternshipManagement = () => {
 
       console.log('Updating internship with data:', internshipData);
 
-      // FIXED: Use lowercase endpoint
-      const response = await fetch(`https://triaright.com/api/internships/update/${selectedInternship._id}`, {
+      // FIXED: Consistent endpoint format
+      const response = await fetch(`${API_BASE_URL}/update/${selectedInternship._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -424,8 +428,8 @@ const RegularInternshipManagement = () => {
     if (!token) return;
 
     try {
-      // FIXED: Use lowercase endpoint
-      const response = await fetch(`https://triaright.com/api/internships/delete/${id}`, {
+      // FIXED: Consistent endpoint format
+      const response = await fetch(`${API_BASE_URL}/delete/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -457,8 +461,8 @@ const RegularInternshipManagement = () => {
     if (!token) return;
 
     try {
-      // FIXED: Use lowercase endpoint
-      const response = await fetch(`https://triaright.com/api/internships/applications/${applicationId}/status`, {
+      // FIXED: Consistent endpoint format
+      const response = await fetch(`${API_BASE_URL}/applications/${applicationId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1028,7 +1032,6 @@ const RegularInternshipManagement = () => {
           </DialogHeader>
           {selectedInternship && (
             <form onSubmit={updateInternship} className="space-y-4">
-              {/* Same form fields as create dialog, pre-filled with selectedInternship data */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Title *</label>
@@ -1084,6 +1087,29 @@ const RegularInternshipManagement = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <label className="text-sm font-medium">Category</label>
+                  <Input
+                    value={formData.category}
+                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Term *</label>
+                  <Select value={formData.term} onValueChange={(value: any) => setFormData({...formData, term: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Shortterm">Short Term</SelectItem>
+                      <SelectItem value="Longterm">Long Term</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Duration *</label>
                   <Input
                     value={formData.duration}
@@ -1092,7 +1118,7 @@ const RegularInternshipManagement = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Mode *</label>
+                  <label className="text-sm font-medium">Mode</label>
                   <Select value={formData.mode} onValueChange={(value: any) => setFormData({...formData, mode: value})}>
                     <SelectTrigger>
                       <SelectValue />
@@ -1135,6 +1161,14 @@ const RegularInternshipManagement = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Date</label>
+                  <Input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Application Deadline *</label>
                   <Input
                     type="date"
@@ -1143,18 +1177,53 @@ const RegularInternshipManagement = () => {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
-                  <Select value={formData.status} onValueChange={(value: any) => setFormData({...formData, status: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Open">Open</SelectItem>
-                      <SelectItem value="Closed">Closed</SelectItem>
-                      <SelectItem value="On Hold">On Hold</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="text-sm font-medium">Qualification</label>
+                  <Input
+                    value={formData.qualification}
+                    onChange={(e) => setFormData({...formData, qualification: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Openings</label>
+                  <Input
+                    type="number"
+                    value={formData.openings}
+                    onChange={(e) => setFormData({...formData, openings: Number(e.target.value)})}
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Experience Required</label>
+                <Input
+                  value={formData.experienceRequired}
+                  onChange={(e) => setFormData({...formData, experienceRequired: e.target.value})}
+                />
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.certificateProvided}
+                    onChange={(e) => setFormData({...formData, certificateProvided: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <label className="text-sm font-medium">Certificate Provided</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.letterOfRecommendation}
+                    onChange={(e) => setFormData({...formData, letterOfRecommendation: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <label className="text-sm font-medium">Letter of Recommendation</label>
                 </div>
               </div>
 
@@ -1166,68 +1235,43 @@ const RegularInternshipManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* View Applications Dialog */}
+      {/* Applications Dialog */}
       <Dialog open={showApplicationsDialog} onOpenChange={setShowApplicationsDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Applications for {selectedInternship?.title}
             </DialogTitle>
             <DialogDescription>
-              Manage applications for this internship position
+              View and manage applications for this internship
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="flex gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search applications..."
-                  value={applicationSearch}
-                  onChange={(e) => setApplicationSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={applicationStatusFilter} onValueChange={setApplicationStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Applied">Applied</SelectItem>
-                  <SelectItem value="Shortlisted">Shortlisted</SelectItem>
-                  <SelectItem value="Selected">Selected</SelectItem>
-                  <SelectItem value="Rejected">Rejected</SelectItem>
-                  <SelectItem value="Withdrawn">Withdrawn</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {applicationsLoading ? (
-              <div className="text-center py-8">Loading applications...</div>
-            ) : (
+          {applicationsLoading ? (
+            <div className="text-center py-8">Loading applications...</div>
+          ) : (
+            <div className="space-y-4">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Applicant</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
                     <TableHead>College</TableHead>
-                    <TableHead>Qualification</TableHead>
                     <TableHead>Applied Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredApplications.map((application) => (
+                  {applications.map((application) => (
                     <TableRow key={application._id}>
                       <TableCell className="font-medium">
                         {application.applicantDetails.name}
                       </TableCell>
                       <TableCell>{application.applicantDetails.email}</TableCell>
+                      <TableCell>{application.applicantDetails.phone}</TableCell>
                       <TableCell>{application.applicantDetails.college}</TableCell>
-                      <TableCell>{application.applicantDetails.qualification}</TableCell>
                       <TableCell>
                         {new Date(application.appliedAt).toLocaleDateString()}
                       </TableCell>
@@ -1235,24 +1279,29 @@ const RegularInternshipManagement = () => {
                         {getApplicationStatusBadge(application.status)}
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={application.status}
-                          onValueChange={(value) => updateApplicationStatus(application._id, value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Applied">Applied</SelectItem>
-                            <SelectItem value="Shortlisted">Shortlisted</SelectItem>
-                            <SelectItem value="Selected">Selected</SelectItem>
-                            <SelectItem value="Rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex space-x-2">
+                          <Select
+                            value={application.status}
+                            onValueChange={(value) => updateApplicationStatus(application._id, value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Applied">Applied</SelectItem>
+                              <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                              <SelectItem value="Selected">Selected</SelectItem>
+                              <SelectItem value="Rejected">Rejected</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button variant="outline" size="sm">
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredApplications.length === 0 && !applicationsLoading && (
+                  {applications.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         No applications found for this internship
@@ -1261,8 +1310,8 @@ const RegularInternshipManagement = () => {
                   )}
                 </TableBody>
               </Table>
-            )}
-          </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
