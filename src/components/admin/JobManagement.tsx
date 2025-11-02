@@ -36,7 +36,8 @@ import { Plus, Eye, Edit, Trash2, Briefcase, Users, Download, Mail, Phone } from
 
 // Models/interfaces
 interface Job {
-  id: string;
+  _id: string;
+  jobId: string;
   title: string;
   companyName: string;
   location: string;
@@ -53,6 +54,7 @@ interface Job {
   Jobmode?: "Remote" | "On-Site" | "Hybrid";
   applicationDeadline?: string;
   perks?: string[];
+  postedBy?: string;
 }
 
 interface JobApplication {
@@ -122,13 +124,18 @@ const JobManagement = () => {
   // API base URL - adjust according to your backend
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
+  // Get auth token
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
   // Fetch jobs
   const fetchJobs = async () => {
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/jobs`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${getAuthToken()}`,
           'Content-Type': 'application/json',
         },
       });
@@ -158,7 +165,7 @@ const JobManagement = () => {
     try {
       const response = await fetch(`${API_BASE}/jobs/job-applications/${jobId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${getAuthToken()}`,
           'Content-Type': 'application/json',
         },
       });
@@ -186,9 +193,9 @@ const JobManagement = () => {
       
       for (const job of jobsList) {
         try {
-          const response = await fetch(`${API_BASE}/jobs/job-applications/${job.id}`, {
+          const response = await fetch(`${API_BASE}/jobs/job-applications/${job._id}`, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Authorization': `Bearer ${getAuthToken()}`,
               'Content-Type': 'application/json',
             },
           });
@@ -206,7 +213,7 @@ const JobManagement = () => {
             allApps.push(...appsWithJobInfo);
           }
         } catch (error) {
-          console.error(`Failed to fetch applications for job ${job.id}:`, error);
+          console.error(`Failed to fetch applications for job ${job._id}:`, error);
         }
       }
       
@@ -284,7 +291,7 @@ const JobManagement = () => {
       const response = await fetch(`${API_BASE}/jobs`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${getAuthToken()}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(newJobPayload),
@@ -358,10 +365,10 @@ const JobManagement = () => {
         .filter(Boolean),
     };
     try {
-      const response = await fetch(`${API_BASE}/jobs/${editingJob.id}`, {
+      const response = await fetch(`${API_BASE}/jobs/${editingJob._id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${getAuthToken()}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(updatedJobPayload),
@@ -395,10 +402,10 @@ const JobManagement = () => {
   const handleDeleteJob = async () => {
     if (!jobToDelete) return;
     try {
-      const response = await fetch(`${API_BASE}/jobs/${jobToDelete.id}`, {
+      const response = await fetch(`${API_BASE}/jobs/${jobToDelete._id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${getAuthToken()}`,
         },
       });
 
@@ -430,7 +437,7 @@ const JobManagement = () => {
   // VIEW APPLICATIONS
   const viewJobApplications = async (job: Job) => {
     setJobForApplications(job);
-    await fetchJobApplications(job.id);
+    await fetchJobApplications(job._id);
     setIsApplicationsOpen(true);
   };
 
@@ -441,7 +448,7 @@ const JobManagement = () => {
       const response = await fetch(`${API_BASE}/jobs/job-applications/${applicationId}/status`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${getAuthToken()}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ status }),
@@ -455,7 +462,7 @@ const JobManagement = () => {
       });
       // Refresh applications
       if (jobForApplications) {
-        await fetchJobApplications(jobForApplications.id);
+        await fetchJobApplications(jobForApplications._id);
       }
       await fetchAllApplications();
     } catch (error) {
@@ -611,9 +618,9 @@ const JobManagement = () => {
                     </TableRow>
                   ) : (
                     jobs.map((job) => {
-                      const jobApplications = allApplications.filter(app => app.jobId === job.id);
+                      const jobApplications = allApplications.filter(app => app.jobId === job._id);
                       return (
-                        <TableRow key={job.id}>
+                        <TableRow key={job._id}>
                           <TableCell className="font-medium">{job.title}</TableCell>
                           <TableCell>{job.location}</TableCell>
                           <TableCell>
