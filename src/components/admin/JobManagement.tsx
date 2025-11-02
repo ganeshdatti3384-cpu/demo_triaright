@@ -121,7 +121,7 @@ const JobManagement = () => {
   // Status update
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
-  // API Configuration - Updated for your gateway
+  // API Configuration - FIXED: Added trailing slash to avoid 301 redirect
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://triaright.com/api";
   
   // Get auth token
@@ -129,7 +129,7 @@ const JobManagement = () => {
     return localStorage.getItem('token');
   };
 
-  // API Headers - FIXED: Added proper error handling
+  // API Headers
   const getHeaders = () => {
     const token = getAuthToken();
     const headers: any = {
@@ -143,27 +143,62 @@ const JobManagement = () => {
     return headers;
   };
 
-  // Fetch jobs - FIXED: Added better error handling
+  // Enhanced fetch function that handles redirects properly
+  const apiFetch = async (url: string, options: any = {}) => {
+    // Ensure URL has trailing slash to avoid 301 redirect
+    let finalUrl = url;
+    if (!url.endsWith('/') && !url.includes('?')) {
+      finalUrl = url + '/';
+    }
+
+    console.log(`API Call: ${options.method || 'GET'} ${finalUrl}`);
+    
+    const response = await fetch(finalUrl, {
+      ...options,
+      headers: {
+        ...getHeaders(),
+        ...options.headers,
+      },
+      // Don't let browser handle redirects automatically for POST requests
+      redirect: 'manual'
+    });
+
+    // Handle redirects manually
+    if (response.status === 301 || response.status === 302) {
+      const redirectUrl = response.headers.get('Location');
+      console.log(`Redirect detected to: ${redirectUrl}`);
+      
+      if (redirectUrl && options.method === 'POST') {
+        // For POST requests, make a new request to the redirect URL
+        return fetch(redirectUrl, {
+          ...options,
+          headers: {
+            ...getHeaders(),
+            ...options.headers,
+          }
+        });
+      } else if (redirectUrl) {
+        // For other methods, follow redirect
+        return fetch(redirectUrl, options);
+      }
+    }
+
+    return response;
+  };
+
+  // Fetch jobs
   const fetchJobs = async () => {
     setLoading(true);
     try {
-      console.log("Fetching jobs from:", `${API_BASE}/jobs`);
-      
-      const response = await fetch(`${API_BASE}/jobs`, {
-        headers: getHeaders(),
-      });
-      
-      console.log("Jobs response status:", response.status);
+      const response = await apiFetch(`${API_BASE}/jobs`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch jobs: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log("Jobs data received:", data);
       setJobs(data || []);
       
-      // Fetch all applications when jobs are loaded
       if (data && data.length > 0) {
         await fetchAllApplications(data);
       }
@@ -180,13 +215,11 @@ const JobManagement = () => {
     }
   };
 
-  // Fetch applications for a specific job - FIXED: Better error handling
+  // Fetch applications for a specific job
   const fetchJobApplications = async (jobId: string) => {
     setApplicationsLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/jobs/job-applications/${jobId}`, {
-        headers: getHeaders(),
-      });
+      const response = await apiFetch(`${API_BASE}/jobs/job-applications/${jobId}`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch applications: ${response.status}`);
@@ -207,7 +240,7 @@ const JobManagement = () => {
     }
   };
 
-  // Fetch all applications across all jobs - FIXED: Better error handling
+  // Fetch all applications across all jobs
   const fetchAllApplications = async (jobsList: Job[] = jobs) => {
     try {
       const allApps: JobApplication[] = [];
@@ -219,9 +252,7 @@ const JobManagement = () => {
       
       for (const job of jobsList) {
         try {
-          const response = await fetch(`${API_BASE}/jobs/job-applications/${job._id}`, {
-            headers: getHeaders(),
-          });
+          const response = await apiFetch(`${API_BASE}/jobs/job-applications/${job._id}`);
           
           if (response.ok) {
             const jobApps = await response.json();
@@ -279,7 +310,7 @@ const JobManagement = () => {
     }
   };
 
-  // Create job handler - FIXED: Complete rewrite with better error handling
+  // Create job handler - FIXED: Uses apiFetch with trailing slash
   const handleCreateJob = async () => {
     try {
       // Validation
@@ -292,7 +323,7 @@ const JobManagement = () => {
         return;
       }
 
-      // Prepare payload - FIXED: Handle empty values properly
+      // Prepare payload
       const newJobPayload: any = {
         title: jobForm.title.trim(),
         companyName: jobForm.companyName.trim(),
@@ -308,6 +339,8 @@ const JobManagement = () => {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean);
+      } else {
+        newJobPayload.skills = [];
       }
 
       if (jobForm.salaryMin) {
@@ -339,15 +372,15 @@ const JobManagement = () => {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean);
+      } else {
+        newJobPayload.perks = [];
       }
 
       console.log("Creating job with payload:", newJobPayload);
-      console.log("URL:", `${API_BASE}/jobs`);
-      console.log("Headers:", getHeaders());
 
-      const response = await fetch(`${API_BASE}/jobs`, {
+      // FIXED: Use apiFetch which handles the trailing slash redirect issue
+      const response = await apiFetch(`${API_BASE}/jobs`, {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify(newJobPayload),
       });
 
@@ -386,7 +419,7 @@ const JobManagement = () => {
     }
   };
 
-  // EDIT & UPDATE - FIXED: Better error handling
+  // EDIT & UPDATE - FIXED: Uses apiFetch
   const openEditForm = (job: Job) => {
     setEditingJob(job);
     setJobForm({
@@ -429,6 +462,8 @@ const JobManagement = () => {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean);
+      } else {
+        updatedJobPayload.skills = [];
       }
 
       if (jobForm.salaryMin) {
@@ -460,11 +495,13 @@ const JobManagement = () => {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean);
+      } else {
+        updatedJobPayload.perks = [];
       }
 
-      const response = await fetch(`${API_BASE}/jobs/${editingJob._id}`, {
+      // FIXED: Use apiFetch
+      const response = await apiFetch(`${API_BASE}/jobs/${editingJob._id}`, {
         method: 'PUT',
-        headers: getHeaders(),
         body: JSON.stringify(updatedJobPayload),
       });
 
@@ -496,7 +533,7 @@ const JobManagement = () => {
     }
   };
 
-  // DELETE - FIXED: Better error handling
+  // DELETE - FIXED: Uses apiFetch
   const openDeleteAlert = (job: Job) => {
     setJobToDelete(job);
     setIsDeleteAlertOpen(true);
@@ -505,9 +542,9 @@ const JobManagement = () => {
   const handleDeleteJob = async () => {
     if (!jobToDelete) return;
     try {
-      const response = await fetch(`${API_BASE}/jobs/${jobToDelete._id}`, {
+      // FIXED: Use apiFetch
+      const response = await apiFetch(`${API_BASE}/jobs/${jobToDelete._id}`, {
         method: 'DELETE',
-        headers: getHeaders(),
       });
 
       if (!response.ok) {
@@ -544,13 +581,13 @@ const JobManagement = () => {
     setIsApplicationsOpen(true);
   };
 
-  // UPDATE APPLICATION STATUS - FIXED: Better error handling
+  // UPDATE APPLICATION STATUS - FIXED: Uses apiFetch
   const updateApplicationStatus = async (applicationId: string, status: JobApplication["status"]) => {
     setUpdatingStatus(applicationId);
     try {
-      const response = await fetch(`${API_BASE}/jobs/job-applications/${applicationId}/status`, {
+      // FIXED: Use apiFetch
+      const response = await apiFetch(`${API_BASE}/jobs/job-applications/${applicationId}/status`, {
         method: 'PUT',
-        headers: getHeaders(),
         body: JSON.stringify({ status }),
       });
 
@@ -654,6 +691,7 @@ const JobManagement = () => {
 
   const applicationStats = getApplicationStats();
 
+  // The rest of your JSX remains exactly the same...
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
