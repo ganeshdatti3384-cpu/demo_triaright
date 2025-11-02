@@ -74,15 +74,15 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
   const handleRazorpayPayment = async (paymentData: any, applicationId: string) => {
     const options = {
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      amount: paymentData.amount * 100, // Convert to paise
+      amount: paymentData.amount,
       currency: paymentData.currency,
       name: internship.companyName,
       description: `Payment for ${internship.title}`,
-      order_id: paymentData.orderId,
+      order_id: paymentData.id,
       handler: async (response: any) => {
         try {
-          // Verify payment
-          const verifyResponse = await fetch('/api/internships/ap-internshipsapplication/verify-payment', {
+          // Verify payment for AP internship
+          const verifyResponse = await fetch('/api/internships/apinternshipverify-payment', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -144,15 +144,13 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
     try {
       const formDataToSend = new FormData();
       
-      // Add applicant details as JSON string
-      const applicantDetails = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        college: formData.college,
-        qualification: formData.qualification
-      };
-      formDataToSend.append('applicantDetails', JSON.stringify(applicantDetails));
+      // Add application data
+      formDataToSend.append('internshipId', internship._id);
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('college', formData.college);
+      formDataToSend.append('qualification', formData.qualification);
       
       if (formData.portfolioLink) {
         formDataToSend.append('portfolioLink', formData.portfolioLink);
@@ -168,13 +166,8 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
 
       const token = localStorage.getItem('token');
       
-      // Use the correct API endpoint for AP internships
-      const isAPInternship = internship.internshipId?.startsWith('APINT') || internship.location === 'Andhra Pradesh';
-      const endpoint = isAPInternship 
-        ? `/api/internships/ap-internshipsapplication/${internship._id}/apply`
-        : `/api/internships/applications/apply`;
-
-      const response = await fetch(endpoint, {
+      // Use AP internship application endpoint
+      const response = await fetch('/api/internships/apinternshipapply', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -185,9 +178,9 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
       const data = await response.json();
 
       if (data.success) {
-        if (data.requiresPayment) {
+        if (data.razorpayOrder) {
           // Handle payment flow for paid internships
-          await handleRazorpayPayment(data.paymentDetails, data.applicationId);
+          await handleRazorpayPayment(data.razorpayOrder, data.application?._id);
         } else {
           toast({
             title: 'Application Submitted',
@@ -244,19 +237,13 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
             </div>
           </div>
           <div className="flex gap-2 mt-3">
-            <Badge variant={internship.mode === 'Paid' || internship.mode === 'FeeBased' ? 'default' : 'outline'}>
+            <Badge variant={internship.mode === 'Paid' ? 'default' : 'outline'}>
               {internship.mode}
             </Badge>
-            {('stipendAmount' in internship && internship.stipendAmount > 0) && (
+            {internship.amount && internship.amount > 0 && (
               <Badge variant="default" className="bg-green-100 text-green-800">
                 <IndianRupee className="h-3 w-3 mr-1" />
-                {internship.stipendAmount}/month
-              </Badge>
-            )}
-            {('Amount' in internship && internship.Amount > 0) && (
-              <Badge variant="default" className="bg-green-100 text-green-800">
-                <IndianRupee className="h-3 w-3 mr-1" />
-                {internship.Amount}/month
+                {internship.amount}/month
               </Badge>
             )}
           </div>
@@ -333,7 +320,6 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
           <div className="space-y-2">
             <Label htmlFor="resume">Resume *</Label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-              <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
               <Input
                 id="resume"
                 type="file"
@@ -341,20 +327,19 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
                 onChange={(e) => handleFileChange(e, 'resume')}
                 className="hidden"
               />
-              <Label htmlFor="resume" className="cursor-pointer text-blue-600 hover:text-blue-700">
-                Choose resume file
+              <Label htmlFor="resume" className="cursor-pointer">
+                <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm text-gray-600">
+                  {resumeFile ? resumeFile.name : 'Click to upload resume (PDF, DOC, DOCX)'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Max file size: 5MB</p>
               </Label>
-              {resumeFile && (
-                <p className="text-sm text-gray-600 mt-2">Selected: {resumeFile.name}</p>
-              )}
-              <p className="text-xs text-gray-500 mt-1">PDF, DOC, DOCX (Max 5MB)</p>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="coverLetter">Cover Letter (Optional)</Label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-              <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
               <Input
                 id="coverLetter"
                 type="file"
@@ -362,34 +347,28 @@ const ApplyInternshipDialog = ({ internship, open, onOpenChange, onSuccess }: Ap
                 onChange={(e) => handleFileChange(e, 'coverLetter')}
                 className="hidden"
               />
-              <Label htmlFor="coverLetter" className="cursor-pointer text-blue-600 hover:text-blue-700">
-                Choose cover letter file
+              <Label htmlFor="coverLetter" className="cursor-pointer">
+                <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm text-gray-600">
+                  {coverLetterFile ? coverLetterFile.name : 'Click to upload cover letter (PDF, DOC, DOCX)'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Max file size: 5MB</p>
               </Label>
-              {coverLetterFile && (
-                <p className="text-sm text-gray-600 mt-2">Selected: {coverLetterFile.name}</p>
-              )}
-              <p className="text-xs text-gray-500 mt-1">PDF, DOC, DOCX (Max 5MB)</p>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="coverLetterText">Cover Letter Text (Optional)</Label>
-            <Textarea
-              id="coverLetterText"
-              value={formData.coverLetter}
-              onChange={(e) => setFormData({...formData, coverLetter: e.target.value})}
-              placeholder="Tell us why you're interested in this internship and what makes you a good candidate..."
-              rows={4}
-            />
-          </div>
-
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {loading ? 'Submitting...' : 'Submit Application'}
+              {internship.mode === 'Paid' && internship.amount > 0 ? 'Pay & Apply' : 'Submit Application'}
             </Button>
           </DialogFooter>
         </form>
