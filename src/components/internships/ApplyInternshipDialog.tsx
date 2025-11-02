@@ -242,10 +242,10 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Apply for {internship.title}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-xl">Apply for {internship.title}</DialogTitle>
+          <DialogDescription className="text-sm">
             {internship.mode === 'Free' 
               ? 'This is a free internship. You will be instantly enrolled upon application.'
               : `This is a paid internship. Amount: ₹${internship.amount}`
@@ -253,96 +253,170 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Full Name *</label>
-            <Input
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              required
-            />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Personal Information - Split into 2 columns */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column - Personal Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Personal Information</h3>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Full Name *</label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Email *</label>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Phone *</label>
+                  <Input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Education & Files */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Education & Documents</h3>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">College/University</label>
+                  <Input
+                    value={formData.college}
+                    onChange={(e) => setFormData({...formData, college: e.target.value})}
+                    className="mt-1"
+                    placeholder="Enter your college name"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Qualification</label>
+                  <Input
+                    value={formData.qualification}
+                    onChange={(e) => setFormData({...formData, qualification: e.target.value})}
+                    className="mt-1"
+                    placeholder="e.g., B.Tech Computer Science"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Portfolio Link</label>
+                  <Input
+                    type="url"
+                    value={formData.portfolioLink}
+                    onChange={(e) => setFormData({...formData, portfolioLink: e.target.value})}
+                    className="mt-1"
+                    placeholder="https://github.com/yourusername"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email *</label>
-            <Input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              required
-            />
+          {/* File Uploads - Full width below */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="text-lg font-semibold text-gray-900">Upload Documents</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Resume (PDF/DOC) *</label>
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => handleFileChange(e, setResumeFile)}
+                  required
+                />
+                <p className="text-xs text-gray-500">Max 5MB, PDF or DOC/DOCX files only</p>
+                {resumeFile && (
+                  <p className="text-sm text-green-600">✓ {resumeFile.name}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Cover Letter (PDF/DOC)</label>
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => handleFileChange(e, setCoverLetterFile)}
+                />
+                <p className="text-xs text-gray-500">Optional, Max 5MB</p>
+                {coverLetterFile && (
+                  <p className="text-sm text-green-600">✓ {coverLetterFile.name}</p>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Phone *</label>
-            <Input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({...formData, phone: e.target.value})}
-              required
-            />
+          {/* Internship Summary */}
+          <div className="bg-gray-50 rounded-lg p-4 border">
+            <h4 className="font-semibold text-gray-900 mb-2">Internship Summary</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Company:</span>
+                <p className="font-medium">{internship.companyName}</p>
+              </div>
+              <div>
+                <span className="text-gray-600">Mode:</span>
+                <p className="font-medium">{internship.mode}</p>
+              </div>
+              <div>
+                <span className="text-gray-600">Stream:</span>
+                <p className="font-medium">{internship.stream}</p>
+              </div>
+              <div>
+                <span className="text-gray-600">Duration:</span>
+                <p className="font-medium">{internship.duration}</p>
+              </div>
+              {internship.mode === 'Paid' && internship.amount && (
+                <div className="col-span-2">
+                  <span className="text-gray-600">Amount:</span>
+                  <p className="font-medium text-green-600">₹{internship.amount}</p>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">College/University</label>
-            <Input
-              value={formData.college}
-              onChange={(e) => setFormData({...formData, college: e.target.value})}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Qualification</label>
-            <Input
-              value={formData.qualification}
-              onChange={(e) => setFormData({...formData, qualification: e.target.value})}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Portfolio Link (GitHub/LinkedIn)</label>
-            <Input
-              type="url"
-              value={formData.portfolioLink}
-              onChange={(e) => setFormData({...formData, portfolioLink: e.target.value})}
-              placeholder="https://"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Resume (PDF/DOC) *</label>
-            <Input
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={(e) => handleFileChange(e, setResumeFile)}
-              required
-            />
-            <p className="text-xs text-gray-500">Max 5MB, PDF or DOC/DOCX files only</p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Cover Letter (PDF/DOC)</label>
-            <Input
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={(e) => handleFileChange(e, setCoverLetterFile)}
-            />
-            <p className="text-xs text-gray-500">Optional, Max 5MB</p>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {internship.mode === 'Free' ? 'Apply & Enroll' : 'Proceed to Payment'}
-            </Button>
+          <DialogFooter className="border-t pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={loading}
+                className="sm:flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="sm:flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {internship.mode === 'Free' ? 'Apply & Enroll Now' : 'Proceed to Payment'}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
