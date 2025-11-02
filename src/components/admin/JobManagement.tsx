@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Eye, Edit, Trash2, Briefcase, Users, Download, Mail, Phone } from "lucide-react";
-import { jobsApi, jobApplicationsApi } from "../../services/api";
+import { jobsApi } from "../../services/api";
 
 // Models/interfaces
 interface Job {
@@ -54,11 +54,10 @@ interface Job {
   Jobmode?: "Remote" | "On-Site" | "Hybrid";
   applicationDeadline?: string;
   perks?: string[];
-  postedBy?: string;
 }
 
 interface JobApplication {
-  id: string;
+  _id: string;
   applicationId: string;
   jobId: string;
   userId: string;
@@ -86,6 +85,7 @@ const JobManagement = () => {
   // JOBS & FORM STATE
   const [jobs, setJobs] = useState<Job[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [allApplications, setAllApplications] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -126,6 +126,9 @@ const JobManagement = () => {
     try {
       const response = await jobsApi.getAllJobs();
       setJobs(response.data);
+      
+      // Fetch all applications when jobs are loaded
+      await fetchAllApplications();
     } catch (error) {
       console.error("Failed to fetch jobs:", error);
       toast({
@@ -138,11 +141,11 @@ const JobManagement = () => {
     }
   };
 
-  // Fetch applications for a job
+  // Fetch applications for a specific job
   const fetchJobApplications = async (jobId: string) => {
     setApplicationsLoading(true);
     try {
-      const response = await jobApplicationsApi.getApplicationsForJob(jobId);
+      const response = await jobsApi.getJobApplications(jobId);
       setApplications(response.data);
     } catch (error) {
       console.error("Failed to fetch applications:", error);
@@ -153,6 +156,36 @@ const JobManagement = () => {
       });
     } finally {
       setApplicationsLoading(false);
+    }
+  };
+
+  // Fetch all applications across all jobs
+  const fetchAllApplications = async () => {
+    try {
+      // Since we don't have a direct endpoint for all applications,
+      // we'll fetch applications for each job and combine them
+      const allApps: JobApplication[] = [];
+      
+      for (const job of jobs) {
+        try {
+          const response = await jobsApi.getJobApplications(job.id);
+          const jobApps = response.data.map((app: JobApplication) => ({
+            ...app,
+            job: {
+              title: job.title,
+              companyName: job.companyName,
+              location: job.location
+            }
+          }));
+          allApps.push(...jobApps);
+        } catch (error) {
+          console.error(`Failed to fetch applications for job ${job.id}:`, error);
+        }
+      }
+      
+      setAllApplications(allApps);
+    } catch (error) {
+      console.error("Failed to fetch all applications:", error);
     }
   };
 
@@ -350,14 +383,16 @@ const JobManagement = () => {
   const updateApplicationStatus = async (applicationId: string, status: JobApplication["status"]) => {
     setUpdatingStatus(applicationId);
     try {
-      await jobApplicationsApi.updateApplicationStatus(applicationId, { status });
+      await jobsApi.updateApplicationStatus(applicationId, { status });
       toast({
         title: "Success",
         description: "Application status updated successfully.",
       });
+      // Refresh applications
       if (jobForApplications) {
         await fetchJobApplications(jobForApplications.id);
       }
+      await fetchAllApplications();
     } catch (error) {
       console.error("Failed to update application status:", error);
       toast({
@@ -374,7 +409,7 @@ const JobManagement = () => {
   const downloadResume = (resumeUrl: string, applicantName: string) => {
     const link = document.createElement('a');
     link.href = resumeUrl;
-    link.download = `${applicantName}_Resume.pdf`;
+    link.download = `${applicantName.replace(/\s+/g, '_')}_Resume.pdf`;
     link.target = '_blank';
     document.body.appendChild(link);
     link.click();
@@ -412,7 +447,21 @@ const JobManagement = () => {
     }
   };
 
-  // RENDER
+  // Count applications by status for the stats
+  const getApplicationStats = () => {
+    const stats = {
+      total: allApplications.length,
+      applied: allApplications.filter(app => app.status === "Applied").length,
+      reviewed: allApplications.filter(app => app.status === "Reviewed").length,
+      shortlisted: allApplications.filter(app => app.status === "Shortlisted").length,
+      hired: allApplications.filter(app => app.status === "Hired").length,
+      rejected: allApplications.filter(app => app.status === "Rejected").length,
+    };
+    return stats;
+  };
+
+  const applicationStats = getApplicationStats();
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -430,7 +479,9 @@ const JobManagement = () => {
       <Tabs defaultValue="jobs" value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="jobs">All Jobs ({jobs.length})</TabsTrigger>
-          <TabsTrigger value="applications">Applications</TabsTrigger>
+          <TabsTrigger value="applications">
+            Applications ({allApplications.length})
+          </TabsTrigger>
         </TabsList>
         
         {/* Jobs Tab */}
@@ -450,6 +501,7 @@ const JobManagement = () => {
                     <TableHead>Location</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Applications</TableHead>
                     <TableHead>Posted</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -472,6 +524,9 @@ const JobManagement = () => {
                           <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
                         </TableCell>
                         <TableCell>
+                          <div className="h-4 bg-gray-200 rounded w-8 animate-pulse"></div>
+                        </TableCell>
+                        <TableCell>
                           <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                         </TableCell>
                         <TableCell>
@@ -481,7 +536,7 @@ const JobManagement = () => {
                     ))
                   ) : jobs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         <Briefcase className="h-10 w-10 text-gray-400 mx-auto mb-2" />
                         No job postings found.
                         <Button variant="link" onClick={() => { resetForm(); setIsFormOpen(true); }}>
@@ -490,42 +545,55 @@ const JobManagement = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    jobs.map((job) => (
-                      <TableRow key={job.id}>
-                        <TableCell className="font-medium">{job.title}</TableCell>
-                        <TableCell>{job.location}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{job.jobType}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(job.status)}>
-                            {job.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(job.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-1">
-                            <Button variant="ghost" size="icon" onClick={() => viewJobDetails(job)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => viewJobApplications(job)}>
-                              <Users className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => openEditForm(job)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => openDeleteAlert(job)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    jobs.map((job) => {
+                      const jobApplications = allApplications.filter(app => app.jobId === job.id);
+                      return (
+                        <TableRow key={job.id}>
+                          <TableCell className="font-medium">{job.title}</TableCell>
+                          <TableCell>{job.location}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{job.jobType}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusBadgeVariant(job.status)}>
+                              {job.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={jobApplications.length > 0 ? "default" : "outline"}>
+                              {jobApplications.length}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{new Date(job.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end space-x-1">
+                              <Button variant="ghost" size="icon" onClick={() => viewJobDetails(job)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => viewJobApplications(job)}
+                                disabled={jobApplications.length === 0}
+                              >
+                                <Users className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => openEditForm(job)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => openDeleteAlert(job)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -540,6 +608,26 @@ const JobManagement = () => {
               <CardTitle>All Job Applications</CardTitle>
               <CardDescription>
                 View and manage applications across all your job postings.
+                <div className="flex flex-wrap gap-4 mt-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">Total: {applicationStats.total}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">Applied: {applicationStats.applied}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">Reviewed: {applicationStats.reviewed}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">Shortlisted: {applicationStats.shortlisted}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">Hired: {applicationStats.hired}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="destructive">Rejected: {applicationStats.rejected}</Badge>
+                  </div>
+                </div>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -556,33 +644,7 @@ const JobManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {applicationsLoading ? (
-                    [...Array(5)].map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell>
-                          <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-8 bg-gray-200 rounded w-24 ml-auto animate-pulse"></div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : applications.length === 0 ? (
+                  {allApplications.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="h-24 text-center">
                         <Users className="h-10 w-10 text-gray-400 mx-auto mb-2" />
@@ -593,10 +655,12 @@ const JobManagement = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    applications.map((application) => (
-                      <TableRow key={application.id}>
+                    allApplications.map((application) => (
+                      <TableRow key={application._id}>
                         <TableCell className="font-medium">{application.applicantName}</TableCell>
-                        <TableCell>{application.job?.title}</TableCell>
+                        <TableCell>
+                          {application.job?.title || `Job ID: ${application.jobId}`}
+                        </TableCell>
                         <TableCell>{application.email}</TableCell>
                         <TableCell>{application.phone}</TableCell>
                         <TableCell>
@@ -855,7 +919,7 @@ const JobManagement = () => {
               </div>
             ) : (
               applications.map((application) => (
-                <Card key={application.id} className="p-4">
+                <Card key={application._id} className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <h4 className="font-semibold">{application.applicantName}</h4>
