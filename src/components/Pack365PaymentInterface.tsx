@@ -100,11 +100,18 @@ const Pack365PaymentInterface = ({
         throw new Error(result.message || "Invalid coupon");
       }
 
-      const discount = result.couponDetails?.discount || 0;
-      const basePrice = streamPrice ;
+      // Get discount from the new response structure
+      const discount = result.couponDetails?.discountAmount || result.couponDetails?.discount || 0;
+      const basePrice = streamPrice || 999;
+
+      // Validate discount doesn't exceed price (backend already does this, but good for frontend safety)
+      if (discount > basePrice) {
+        throw new Error('Discount cannot exceed stream price');
+      }
+
       const discountedPrice = Math.max(0, basePrice - discount);
       const gst = Math.round(discountedPrice * 0.18);
-      const finalAmount = discountedPrice ;
+      const finalAmount = discountedPrice + gst;
 
       setPaymentCalculation({
         baseAmount: basePrice,
