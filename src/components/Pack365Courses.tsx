@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Clock, BookOpen, ArrowRight, Lock, AlertCircle, ArrowLeft, Star, Users, Zap, Award, CheckCircle, Sparkles } from 'lucide-react';
-import { pack365Api, Pack365Course } from '@/services/api';
+import { pack365Api } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
@@ -24,9 +24,37 @@ interface StreamData {
   name: string;
   price: number;
   imageUrl: string;
-  courses: Pack365Course[];
   id: string;
 }
+
+// Mock courses data for each stream since backend doesn't provide courses
+const mockCoursesByStream: { [key: string]: any[] } = {
+  'Full Stack Development': [
+    { courseName: 'HTML, CSS & JavaScript Fundamentals', stream: 'Full Stack Development' },
+    { courseName: 'React.js & Next.js Mastery', stream: 'Full Stack Development' },
+    { courseName: 'Node.js & Express Backend', stream: 'Full Stack Development' },
+    { courseName: 'MongoDB Database Design', stream: ' FullStack Development' },
+    { courseName: 'DevOps & Deployment', stream: 'Full Stack Development' }
+  ],
+  'Data Science': [
+    { courseName: 'Python for Data Science', stream: 'Data Science' },
+    { courseName: 'Machine Learning Fundamentals', stream: 'Data Science' },
+    { courseName: 'Data Visualization & Analysis', stream: 'Data Science' },
+    { courseName: 'Advanced Statistical Modeling', stream: 'Data Science' }
+  ],
+  'Mobile Development': [
+    { courseName: 'React Native Cross-Platform', stream: 'Mobile Development' },
+    { courseName: 'Flutter & Dart Programming', stream: 'Mobile Development' },
+    { courseName: 'Mobile App Design Principles', stream: 'Mobile Development' },
+    { courseName: 'App Store Deployment', stream: 'Mobile Development' }
+  ],
+  'Cyber Security': [
+    { courseName: 'Network Security Fundamentals', stream: 'Cyber Security' },
+    { courseName: 'Ethical Hacking & Penetration Testing', stream: 'Cyber Security' },
+    { courseName: 'Cryptography & Secure Communications', stream: 'Cyber Security' },
+    { courseName: 'Security Audit & Compliance', stream: 'Cyber Security' }
+  ]
+};
 
 const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365CoursesProps) => {
   const [streams, setStreams] = useState<StreamData[]>([]);
@@ -65,8 +93,14 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
       setError('');
       
       const streamsResponse = await pack365Api.getAllStreams();
+      console.log('Streams API Response:', streamsResponse); // Debug log
+      
       if (streamsResponse.success && streamsResponse.streams) {
-        setStreams(streamsResponse.streams);
+        // Ensure we have valid streams data
+        const validStreams = streamsResponse.streams.filter((stream: any) => 
+          stream && stream.name && stream.price !== undefined
+        );
+        setStreams(validStreams);
       } else {
         setStreams([]);
         if (showLoginRequired) {
@@ -97,11 +131,23 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
         return;
       } else {
         setError('Unable to load course bundles at the moment');
-        toast({ title: 'Error', description: 'Failed to load streams. Please try again.', variant: 'destructive' });
+        toast({ 
+          title: 'Error', 
+          description: 'Failed to load streams. Please try again.', 
+          variant: 'destructive' 
+        });
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCoursesForStream = (streamName: string) => {
+    return mockCoursesByStream[streamName] || [
+      { courseName: `${streamName} Fundamentals`, stream: streamName },
+      { courseName: `Advanced ${streamName}`, stream: streamName },
+      { courseName: `${streamName} Projects`, stream: streamName }
+    ];
   };
 
   const handleStreamClick = (stream: StreamData) => {
@@ -113,7 +159,11 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
       }
       return;
     }
-    navigate(`/pack365/bundle/${stream.name.toLowerCase()}`);
+    
+    // Set selected stream and show enrollment view
+    setSelectedStream(stream);
+    setShowEnrollment(true);
+    setShowCourses(false);
   };
 
   const handleCourseClick = (courseName: string) => {
@@ -121,12 +171,14 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   };
 
   const handleEnrollNow = () => {
+    if (!selectedStream) return;
+    
     navigate('/razorpay-payment', { 
       state: { 
-        streamName: selectedStream?.name, 
+        streamName: selectedStream.name, 
         fromStream: true, 
-        streamPrice: selectedStream?.price,
-        coursesCount: selectedStream?.courses?.length || 3
+        streamPrice: selectedStream.price,
+        coursesCount: getCoursesForStream(selectedStream.name).length
       } 
     });
   };
@@ -145,9 +197,9 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   // Enhanced slider settings
   const sliderSettings = {
     dots: true,
-    infinite: true,
+    infinite: streams.length > 1,
     speed: 800,
-    slidesToShow: 3,
+    slidesToShow: Math.min(3, streams.length),
     slidesToScroll: 1,
     autoplay: true,
     autoplaySpeed: 4000,
@@ -157,14 +209,14 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
       { 
         breakpoint: 1280, 
         settings: { 
-          slidesToShow: 3,
+          slidesToShow: Math.min(3, streams.length),
           dots: true
         } 
       },
       { 
         breakpoint: 1024, 
         settings: { 
-          slidesToShow: 2, 
+          slidesToShow: Math.min(2, streams.length), 
           speed: 600 
         } 
       },
@@ -198,9 +250,9 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     );
   }
 
-  if (error) {
+  if (error && !showLoginRequired) {
     return (
-      <div className={showLoginRequired ? 'py-12' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16'}>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-3xl p-8 max-w-md mx-auto shadow-lg">
             <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
@@ -220,6 +272,8 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
 
   // Show enrollment view after clicking explore more
   if (showEnrollment && selectedStream) {
+    const streamCourses = getCoursesForStream(selectedStream.name);
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -235,7 +289,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
             <div className="relative h-80">
               <img 
-                src={selectedStream.imageUrl} 
+                src={selectedStream.imageUrl || '/api/placeholder/800/400'} 
                 alt={`${selectedStream.name} Bundle`}
                 className="w-full h-full object-cover"
               />
@@ -246,7 +300,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
                   Pack365 Exclusive
                 </Badge>
                 <h1 className="text-4xl font-bold mb-2">{selectedStream.name} Master Bundle</h1>
-                <p className="text-xl text-blue-200">Complete learning path with {selectedStream.courses.length}+ courses</p>
+                <p className="text-xl text-blue-200">Complete learning path with {streamCourses.length}+ courses</p>
               </div>
             </div>
             
@@ -319,6 +373,8 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
 
   // Show courses after coupon success
   if (showCourses && selectedStream) {
+    const streamCourses = getCoursesForStream(selectedStream.name);
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -340,16 +396,16 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
               Welcome to {selectedStream.name} Bundle
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Start your learning journey with {selectedStream.courses.length} carefully curated courses
+              Start your learning journey with {streamCourses.length} carefully curated courses
             </p>
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {selectedStream.courses.map((course, index) => (
+            {streamCourses.map((course, index) => (
               <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 group">
                 <div className="relative h-48 overflow-hidden">
                   <img 
-                    src={selectedStream.imageUrl} 
+                    src={selectedStream.imageUrl || '/api/placeholder/400/200'} 
                     alt={course.courseName}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
@@ -410,7 +466,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     );
   }
 
-  if (streams.length === 0) {
+  if (streams.length === 0 && !showLoginRequired) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -527,172 +583,176 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
         `}</style>
         
         <Slider {...sliderSettings}>
-          {streams.map((stream) => (
-            <div key={stream._id} className="px-4">
-              <Card 
-                className="stream-card overflow-hidden cursor-pointer group border-0 shadow-xl relative"
-                onMouseEnter={() => setHoveredStream(stream.name)}
-                onMouseLeave={() => setHoveredStream(null)}
-                onClick={() => handleStreamClick(stream)}
-              >
-                {/* Premium Badge */}
-                <div className="absolute top-4 left-4 z-20">
-                  <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 shadow-lg">
-                    <Star className="h-3 w-3 mr-1 fill-current" />
-                    Premium
-                  </Badge>
-                </div>
-
-                {/* Pack365 Badge */}
-                <div className="absolute top-4 right-4 z-20">
-                  <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-lg font-semibold">
-                    Pack365
-                  </Badge>
-                </div>
-
-                {/* Image Container */}
-                <div className="relative overflow-hidden h-56">
-                  <img 
-                    src={stream.imageUrl} 
-                    alt={`${stream.name} Bundle`}
-                    className="stream-image w-full h-full object-cover"
-                  />
-                  
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                  
-                  {/* Hover Overlay */}
-                  <div className={`absolute inset-0 bg-gradient-to-t from-blue-900/80 via-purple-900/40 to-transparent 
-                    ${hoveredStream === stream.name ? 'opacity-100' : 'opacity-0'} transition-all duration-500`}>
-                    <div className="absolute bottom-6 left-6 right-6 text-white">
-                      <h4 className="font-bold text-lg mb-3 flex items-center">
-                        <BookOpen className="h-5 w-5 mr-2" />
-                        Included Courses
-                      </h4>
-                      <div className="course-list bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                        {stream.courses && stream.courses.length > 0 ? (
-                          <ul className="space-y-2">
-                            {stream.courses.slice(0, 4).map((course, index) => (
-                              <li key={index}>
-                                <div className="course-item text-left w-full text-sm text-white/90 
-                                  flex items-center justify-between bg-white/5 rounded-lg px-3 py-2 
-                                  hover:bg-white/10 transition-all duration-300">
-                                  <span className="truncate pr-2 font-medium">{course.courseName}</span>
-                                  <ArrowRight className="h-3 w-3 flex-shrink-0 opacity-70" />
-                                </div>
-                              </li>
-                            ))}
-                            {stream.courses.length > 4 && (
-                              <li className="text-center text-xs text-white/70 pt-2 font-medium">
-                                +{stream.courses.length - 4} more courses
-                              </li>
-                            )}
-                          </ul>
-                        ) : (
-                          <p className="text-sm text-white/70 italic text-center py-4">
-                            Courses are being uploaded...
-                          </p>
-                        )}
-                      </div>
-                    </div>
+          {streams.map((stream) => {
+            const streamCourses = getCoursesForStream(stream.name);
+            
+            return (
+              <div key={stream._id} className="px-4">
+                <Card 
+                  className="stream-card overflow-hidden cursor-pointer group border-0 shadow-xl relative"
+                  onMouseEnter={() => setHoveredStream(stream.name)}
+                  onMouseLeave={() => setHoveredStream(null)}
+                  onClick={() => handleStreamClick(stream)}
+                >
+                  {/* Premium Badge */}
+                  <div className="absolute top-4 left-4 z-20">
+                    <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 shadow-lg">
+                      <Star className="h-3 w-3 mr-1 fill-current" />
+                      Premium
+                    </Badge>
                   </div>
 
-                  {/* Login Required Overlay */}
-                  {showLoginRequired && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center 
-                      opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm rounded-t-xl">
-                      <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 text-center">
-                        <Lock className="h-8 w-8 text-gray-700 mx-auto mb-3" />
-                        <p className="text-gray-700 font-semibold">Sign in to explore</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Card Content */}
-                <CardHeader className="pb-4 pt-6">
-                  <CardTitle className="text-2xl text-center bg-gradient-to-r from-blue-600 to-purple-600 
-                    bg-clip-text text-transparent font-bold">
-                    {stream.name} Pro
-                  </CardTitle>
-                  <div className="text-center">
-                    <div className="inline-flex items-center space-x-4 text-sm text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <BookOpen className="h-4 w-4" />
-                        <span>{stream.courses.length} Courses</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>365 Days</span>
-                      </div>
-                    </div>
+                  {/* Pack365 Badge */}
+                  <div className="absolute top-4 right-4 z-20">
+                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-lg font-semibold">
+                      Pack365
+                    </Badge>
                   </div>
-                </CardHeader>
 
-                <CardContent className="pt-0">
-                  <div className="space-y-5">
-                    {/* Price */}
+                  {/* Image Container */}
+                  <div className="relative overflow-hidden h-56">
+                    <img 
+                      src={stream.imageUrl || '/api/placeholder/400/250'} 
+                      alt={`${stream.name} Bundle`}
+                      className="stream-image w-full h-full object-cover"
+                    />
+                    
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                    
+                    {/* Hover Overlay */}
+                    <div className={`absolute inset-0 bg-gradient-to-t from-blue-900/80 via-purple-900/40 to-transparent 
+                      ${hoveredStream === stream.name ? 'opacity-100' : 'opacity-0'} transition-all duration-500`}>
+                      <div className="absolute bottom-6 left-6 right-6 text-white">
+                        <h4 className="font-bold text-lg mb-3 flex items-center">
+                          <BookOpen className="h-5 w-5 mr-2" />
+                          Included Courses
+                        </h4>
+                        <div className="course-list bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                          {streamCourses.length > 0 ? (
+                            <ul className="space-y-2">
+                              {streamCourses.slice(0, 4).map((course, index) => (
+                                <li key={index}>
+                                  <div className="course-item text-left w-full text-sm text-white/90 
+                                    flex items-center justify-between bg-white/5 rounded-lg px-3 py-2 
+                                    hover:bg-white/10 transition-all duration-300">
+                                    <span className="truncate pr-2 font-medium">{course.courseName}</span>
+                                    <ArrowRight className="h-3 w-3 flex-shrink-0 opacity-70" />
+                                  </div>
+                                </li>
+                              ))}
+                              {streamCourses.length > 4 && (
+                                <li className="text-center text-xs text-white/70 pt-2 font-medium">
+                                  +{streamCourses.length - 4} more courses
+                                </li>
+                              )}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-white/70 italic text-center py-4">
+                              Courses are being uploaded...
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Login Required Overlay */}
+                    {showLoginRequired && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center 
+                        opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm rounded-t-xl">
+                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 text-center">
+                          <Lock className="h-8 w-8 text-gray-700 mx-auto mb-3" />
+                          <p className="text-gray-700 font-semibold">Sign in to explore</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card Content */}
+                  <CardHeader className="pb-4 pt-6">
+                    <CardTitle className="text-2xl text-center bg-gradient-to-r from-blue-600 to-purple-600 
+                      bg-clip-text text-transparent font-bold">
+                      {stream.name} Pro
+                    </CardTitle>
                     <div className="text-center">
-                      <div className="flex items-center justify-center space-x-2 mb-2">
-                        <span className="text-gray-500 line-through text-sm">₹{stream.price * 2}</span>
-                        <Badge variant="secondary" className="bg-green-100 text-green-700 border-0">
-                          Save 50%
-                        </Badge>
-                      </div>
-                      <div className="text-3xl font-bold text-gray-900">₹{stream.price}</div>
-                      <p className="text-sm text-gray-500 mt-1">One-time payment</p>
-                    </div>
-
-                    {/* CTA Button */}
-                    <Button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStreamClick(stream);
-                      }}
-                      className={`w-full font-bold text-lg py-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${
-                        showLoginRequired 
-                          ? 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 shadow-lg' 
-                          : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl pulse-glow'
-                      }`}
-                    >
-                      {showLoginRequired ? (
-                        <>
-                          <Lock className="h-5 w-5 mr-2" />
-                          Sign In to View
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-5 w-5 mr-2" />
-                          Explore Bundle
-                          <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </>
-                      )}
-                    </Button>
-
-                    {/* Features */}
-                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                      <div className="flex items-center space-x-1">
-                        <CheckCircle className="h-3 w-3 text-green-500" />
-                        <span>Certificate</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <CheckCircle className="h-3 w-3 text-green-500" />
-                        <span>Lifetime Updates</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <CheckCircle className="h-3 w-3 text-green-500" />
-                        <span>Community</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <CheckCircle className="h-3 w-3 text-green-500" />
-                        <span>Support</span>
+                      <div className="inline-flex items-center space-x-4 text-sm text-gray-500">
+                        <div className="flex items-center space-x-1">
+                          <BookOpen className="h-4 w-4" />
+                          <span>{streamCourses.length} Courses</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-4 w-4" />
+                          <span>365 Days</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ))}
+                  </CardHeader>
+
+                  <CardContent className="pt-0">
+                    <div className="space-y-5">
+                      {/* Price */}
+                      <div className="text-center">
+                        <div className="flex items-center justify-center space-x-2 mb-2">
+                          <span className="text-gray-500 line-through text-sm">₹{stream.price * 2}</span>
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 border-0">
+                            Save 50%
+                          </Badge>
+                        </div>
+                        <div className="text-3xl font-bold text-gray-900">₹{stream.price}</div>
+                        <p className="text-sm text-gray-500 mt-1">One-time payment</p>
+                      </div>
+
+                      {/* CTA Button */}
+                      <Button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStreamClick(stream);
+                        }}
+                        className={`w-full font-bold text-lg py-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${
+                          showLoginRequired 
+                            ? 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 shadow-lg' 
+                            : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl pulse-glow'
+                        }`}
+                      >
+                        {showLoginRequired ? (
+                          <>
+                            <Lock className="h-5 w-5 mr-2" />
+                            Sign In to View
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-5 w-5 mr-2" />
+                            Explore Bundle
+                            <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                          </>
+                        )}
+                      </Button>
+
+                      {/* Features */}
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                        <div className="flex items-center space-x-1">
+                          <CheckCircle className="h-3 w-3 text-green-500" />
+                          <span>Certificate</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <CheckCircle className="h-3 w-3 text-green-500" />
+                          <span>Lifetime Updates</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <CheckCircle className="h-3 w-3 text-green-500" />
+                          <span>Community</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <CheckCircle className="h-3 w-3 text-green-500" />
+                          <span>Support</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })}
         </Slider>
 
         {/* Bottom CTA */}
