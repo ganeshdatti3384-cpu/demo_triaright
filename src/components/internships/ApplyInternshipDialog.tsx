@@ -57,6 +57,9 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
 
+  // FIXED: Base URL with trailing slash to match backend
+  const API_BASE_URL = 'https://triaright.com/api/internships/';
+
   // Calculate amounts based on internship mode and coupon
   useEffect(() => {
     if (internship?.mode === 'feebased' && internship.stipendAmount) {
@@ -151,7 +154,8 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
     setCouponLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/internships/validate-coupon', {
+      // FIXED: Use correct API endpoint for coupon validation
+      const response = await fetch(`${API_BASE_URL}validate-coupon`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -251,7 +255,8 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/internships/apply', {
+      // FIXED: Use correct API endpoint for application submission
+      const response = await fetch(`${API_BASE_URL}applications/apply`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -294,7 +299,8 @@ const ApplyInternshipDialog: React.FC<ApplyInternshipDialogProps> = ({
             order_id: data.paymentDetails.orderId,
             handler: async function (response: any) {
               // Verify payment on backend
-              const verifyResponse = await fetch('/api/internships/verify-payment', {
+              // FIXED: Use correct API endpoint for payment verification
+              const verifyResponse = await fetch(`${API_BASE_URL}verify-payment`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
