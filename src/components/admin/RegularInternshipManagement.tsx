@@ -106,8 +106,8 @@ const RegularInternshipManagement = () => {
   
   const { toast } = useToast();
 
-  // Base URL for API calls - FIXED: No trailing slash
-  const API_BASE_URL = 'https://triaright.com/api/internships';
+  // FIXED: Base URL with trailing slash to match backend redirect
+  const API_BASE_URL = 'https://triaright.com/api/internships/';
 
   useEffect(() => {
     fetchInternships();
@@ -131,6 +131,7 @@ const RegularInternshipManagement = () => {
 
     try {
       setLoading(true);
+      // FIXED: Use base URL directly (trailing slash included)
       const response = await fetch(API_BASE_URL, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -175,8 +176,8 @@ const RegularInternshipManagement = () => {
 
     try {
       setApplicationsLoading(true);
-      // FIXED: Use the correct endpoint for getting all applications
-      const response = await fetch(`${API_BASE_URL}/applications`, {
+      // FIXED: Use the correct applications endpoint
+      const response = await fetch(`${API_BASE_URL}applications`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -289,7 +290,7 @@ const RegularInternshipManagement = () => {
     if (!validateFormData()) return;
 
     try {
-      // Prepare data according to backend schema - FIXED: Match backend Internship model
+      // Prepare data according to backend schema
       const internshipData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
@@ -317,6 +318,7 @@ const RegularInternshipManagement = () => {
 
       console.log('Sending internship data:', internshipData);
 
+      // FIXED: Use base URL directly for POST (trailing slash included)
       const response = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: {
@@ -389,8 +391,8 @@ const RegularInternshipManagement = () => {
 
       console.log('Updating internship with data:', internshipData);
 
-      // FIXED: Use the correct update endpoint
-      const response = await fetch(`${API_BASE_URL}/update/${selectedInternship._id}`, {
+      // FIXED: Use the exact backend route pattern "update/:id"
+      const response = await fetch(`${API_BASE_URL}update/${selectedInternship._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -431,8 +433,8 @@ const RegularInternshipManagement = () => {
     if (!token) return;
 
     try {
-      // FIXED: Use the correct delete endpoint
-      const response = await fetch(`${API_BASE_URL}/delete/${id}`, {
+      // FIXED: Use the exact backend route pattern "delete/:id"
+      const response = await fetch(`${API_BASE_URL}delete/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -467,8 +469,8 @@ const RegularInternshipManagement = () => {
     if (!token) return;
 
     try {
-      // FIXED: Use the correct endpoint for updating application status
-      const response = await fetch(`${API_BASE_URL}/applications/${applicationId}/status`, {
+      // FIXED: Use the exact backend route pattern
+      const response = await fetch(`${API_BASE_URL}applications/${applicationId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
