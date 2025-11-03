@@ -1049,7 +1049,7 @@ const RegularInternshipManagement = () => {
             <form onSubmit={updateInternship} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Title</label>
+                  <label className="text-sm font-medium">Title *</label>
                   <Input
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
@@ -1057,7 +1057,7 @@ const RegularInternshipManagement = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Company Name</label>
+                  <label className="text-sm font-medium">Company Name *</label>
                   <Input
                     value={formData.companyName}
                     onChange={(e) => setFormData({...formData, companyName: e.target.value})}
@@ -1067,7 +1067,7 @@ const RegularInternshipManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Description</label>
+                <label className="text-sm font-medium">Description *</label>
                 <Textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
@@ -1078,7 +1078,7 @@ const RegularInternshipManagement = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Location</label>
+                  <label className="text-sm font-medium">Location *</label>
                   <Input
                     value={formData.location}
                     onChange={(e) => setFormData({...formData, location: e.target.value})}
@@ -1109,7 +1109,7 @@ const RegularInternshipManagement = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Term</label>
+                  <label className="text-sm font-medium">Term *</label>
                   <Select value={formData.term} onValueChange={(value: any) => setFormData({...formData, term: value})}>
                     <SelectTrigger>
                       <SelectValue />
@@ -1125,7 +1125,7 @@ const RegularInternshipManagement = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Duration</label>
+                  <label className="text-sm font-medium">Duration *</label>
                   <Input
                     value={formData.duration}
                     onChange={(e) => setFormData({...formData, duration: e.target.value})}
@@ -1133,7 +1133,7 @@ const RegularInternshipManagement = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Mode</label>
+                  <label className="text-sm font-medium">Mode *</label>
                   <Select value={formData.mode} onValueChange={(value: any) => setFormData({...formData, mode: value})}>
                     <SelectTrigger>
                       <SelectValue />
@@ -1183,7 +1183,7 @@ const RegularInternshipManagement = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Application Deadline</label>
+                  <label className="text-sm font-medium">Application Deadline *</label>
                   <Input
                     type="date"
                     value={formData.applicationDeadline}
@@ -1274,74 +1274,91 @@ const RegularInternshipManagement = () => {
               View and manage applications for this internship
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {applicationsLoading ? (
-              <div className="text-center py-8">Loading applications...</div>
-            ) : (
-              <>
-                {applications.filter(app => app.internshipId._id === selectedInternship?._id).length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    No applications found for this internship
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Applicant</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>College</TableHead>
-                        <TableHead>Qualification</TableHead>
-                        <TableHead>Applied Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {applications
-                        .filter(app => app.internshipId._id === selectedInternship?._id)
-                        .map((application) => (
-                          <TableRow key={application._id}>
-                            <TableCell className="font-medium">
-                              {application.applicantDetails.name}
-                            </TableCell>
-                            <TableCell>{application.applicantDetails.email}</TableCell>
-                            <TableCell>{application.applicantDetails.college}</TableCell>
-                            <TableCell>{application.applicantDetails.qualification}</TableCell>
-                            <TableCell>
-                              {new Date(application.appliedAt).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              {getApplicationStatusBadge(application.status)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Select
-                                  value={application.status}
-                                  onValueChange={(value) => updateApplicationStatus(application._id, value)}
-                                >
-                                  <SelectTrigger className="w-32">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Applied">Applied</SelectItem>
-                                    <SelectItem value="Shortlisted">Shortlisted</SelectItem>
-                                    <SelectItem value="Selected">Selected</SelectItem>
-                                    <SelectItem value="Rejected">Rejected</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Button variant="outline" size="sm">
-                                  <FileText className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </>
-            )}
+          
+          <div className="flex gap-4 mb-6">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search applications..."
+                value={applicationSearch}
+                onChange={(e) => setApplicationSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={applicationStatusFilter} onValueChange={setApplicationStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="Applied">Applied</SelectItem>
+                <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                <SelectItem value="Selected">Selected</SelectItem>
+                <SelectItem value="Rejected">Rejected</SelectItem>
+                <SelectItem value="Withdrawn">Withdrawn</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {applicationsLoading ? (
+            <div className="text-center py-8">Loading applications...</div>
+          ) : (
+            <div className="space-y-4">
+              {filteredApplications.map((application) => (
+                <Card key={application._id}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-2">
+                        <h4 className="font-semibold">{application.applicantDetails.name}</h4>
+                        <p className="text-sm text-gray-600">{application.applicantDetails.email}</p>
+                        <p className="text-sm text-gray-600">{application.applicantDetails.phone}</p>
+                        <p className="text-sm text-gray-600">{application.applicantDetails.college}</p>
+                        <p className="text-sm text-gray-600">Qualification: {application.applicantDetails.qualification}</p>
+                        {application.coverLetter && (
+                          <p className="text-sm text-gray-600">Cover Letter: {application.coverLetter}</p>
+                        )}
+                        {application.portfolioLink && (
+                          <p className="text-sm text-gray-600">
+                            Portfolio: <a href={application.portfolioLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{application.portfolioLink}</a>
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-500">
+                          Applied on: {new Date(application.appliedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end space-y-2">
+                        {getApplicationStatusBadge(application.status)}
+                        <Select
+                          value={application.status}
+                          onValueChange={(value) => updateApplicationStatus(application._id, value)}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Applied">Applied</SelectItem>
+                            <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                            <SelectItem value="Selected">Selected</SelectItem>
+                            <SelectItem value="Rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="sm">
+                          <a href={application.resumeLink} target="_blank" rel="noopener noreferrer">
+                            View Resume
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {filteredApplications.length === 0 && !applicationsLoading && (
+                <div className="text-center py-8 text-gray-500">
+                  No applications found for this internship
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
