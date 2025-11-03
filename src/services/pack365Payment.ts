@@ -50,6 +50,22 @@ interface PaymentVerificationResponse {
   };
 }
 
+interface CouponValidationResponse {
+  success: boolean;
+  message: string;
+  courseDetails?: {
+    stream: string;
+    originalPrice: number;
+    finalAmount: number;
+  };
+  couponDetails?: {
+    code: string;
+    discountAmount?: number;
+    discount?: number;
+    description?: string;
+  };
+}
+
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 
 export class Pack365PaymentService {
@@ -112,6 +128,67 @@ export class Pack365PaymentService {
     return 'IT';
   }
 
+  // New method to validate coupon with updated backend structure
+  static async validateCouponCode(
+    couponCode: string, 
+    streamName: string, 
+    token: string
+  ): Promise<CouponValidationResponse> {
+    try {
+      console.log('Validating coupon code:', { couponCode, streamName });
+
+      const response = await axios.post(
+        `${API_BASE_URL}/pack365/validate-enrollment-code`,
+        { 
+          code: couponCode,
+          stream: streamName 
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Coupon validation response:', response.data);
+      
+      // Handle the new response structure
+      if (response.data.success && response.data.couponDetails) {
+        const discount = response.data.couponDetails.discountAmount || response.data.couponDetails.discount || 0;
+        
+        // Additional validation to match backend rules
+        if (discount <= 0) {
+          throw new Error('Invalid discount amount');
+        }
+        
+        return {
+          success: true,
+          message: response.data.message || 'Coupon applied successfully',
+          courseDetails: response.data.courseDetails,
+          couponDetails: {
+            ...response.data.couponDetails,
+            discount // Ensure consistent discount field
+          }
+        };
+      } else {
+        throw new Error(response.data.message || 'Invalid coupon code');
+      }
+
+    } catch (error: any) {
+      console.error('Error validating coupon:', error);
+      
+      if (error.response) {
+        const errorMessage = error.response.data?.message || 'Failed to validate coupon';
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      } else {
+        throw new Error(error.message || 'Unable to validate coupon. Please try again later.');
+      }
+    }
+  }
+
   static async createOrder(options: PaymentOptions): Promise<OrderResponse> {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -133,7 +210,9 @@ export class Pack365PaymentService {
       if (options.couponCode) {
         requestData.code = options.couponCode;
       }
-      console.log("Sending createOrder request with data:",requestData);
+      
+      console.log("Sending createOrder request with data:", requestData);
+      
       const response = await axios.post(
         `${API_BASE_URL}/pack365/create-order`,
         requestData,
