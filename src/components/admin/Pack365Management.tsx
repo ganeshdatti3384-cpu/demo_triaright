@@ -141,13 +141,26 @@ const Pack365Management = () => {
         return;
       }
 
-      const response = await pack365Api.createStream(token, {
-        name: streamFormData.name,
-        price: Number(streamFormData.price),
-        imageFile: streamFormData.imageFile,
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('name', streamFormData.name);
+      formData.append('price', streamFormData.price);
+      if (streamFormData.imageFile) {
+        formData.append('image', streamFormData.imageFile);
+      }
+
+      // Use direct fetch instead of pack365Api to handle FormData properly
+      const response = await fetch('https://dev.triaright.com/api/pack365/streams', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
       });
 
-      if (response.success) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         await fetchStreams();
         toast({
           title: 'Stream added successfully',
@@ -160,12 +173,14 @@ const Pack365Management = () => {
           imageFile: null,
         });
         setShowStreamDialog(false);
+      } else {
+        throw new Error(result.message || 'Failed to add stream');
       }
     } catch (error: any) {
       console.error('Error adding stream:', error);
       toast({
         title: 'Error adding stream',
-        description: error.response?.data?.message || 'Failed to add stream to Pack365',
+        description: error.message || 'Failed to add stream to Pack365',
         variant: 'destructive',
       });
     } finally {
@@ -186,13 +201,25 @@ const Pack365Management = () => {
     try {
       setLoading(true);
 
-      const response = await pack365Api.updateStream(token, editingStream._id, {
-        name: streamFormData.name || editingStream.name,
-        price: streamFormData.price ? Number(streamFormData.price) : editingStream.price,
-        imageFile: streamFormData.imageFile,
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('name', streamFormData.name || editingStream.name);
+      formData.append('price', streamFormData.price || editingStream.price.toString());
+      if (streamFormData.imageFile) {
+        formData.append('image', streamFormData.imageFile);
+      }
+
+      const response = await fetch(`https://dev.triaright.com/api/pack365/streams/${editingStream._id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
       });
 
-      if (response.success) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         await fetchStreams();
         toast({
           title: 'Stream updated successfully',
@@ -206,12 +233,14 @@ const Pack365Management = () => {
         });
         setEditingStream(null);
         setShowStreamDialog(false);
+      } else {
+        throw new Error(result.message || 'Failed to update stream');
       }
     } catch (error: any) {
       console.error('Error updating stream:', error);
       toast({
         title: 'Error updating stream',
-        description: error.response?.data?.message || 'Failed to update stream',
+        description: error.message || 'Failed to update stream',
         variant: 'destructive',
       });
     } finally {
@@ -236,20 +265,30 @@ const Pack365Management = () => {
     try {
       setLoading(true);
 
-      const response = await pack365Api.deleteStream(token, streamId);
+      const response = await fetch(`https://dev.triaright.com/api/pack365/streams/${streamId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      if (response.success) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         await fetchStreams();
         toast({
           title: 'Stream deleted successfully',
           description: 'Stream has been removed from Pack365',
         });
+      } else {
+        throw new Error(result.message || 'Failed to delete stream');
       }
     } catch (error: any) {
       console.error('Error deleting stream:', error);
       toast({
         title: 'Error deleting stream',
-        description: error.response?.data?.message || 'Failed to delete stream',
+        description: error.message || 'Failed to delete stream',
         variant: 'destructive',
       });
     } finally {
