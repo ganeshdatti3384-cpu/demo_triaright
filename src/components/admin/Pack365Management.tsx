@@ -141,7 +141,6 @@ const Pack365Management = () => {
         return;
       }
 
-      // Use the API service instead of direct fetch to avoid CORS issues
       const response = await pack365Api.createStream(token, {
         name: streamFormData.name,
         price: Number(streamFormData.price),
@@ -161,14 +160,12 @@ const Pack365Management = () => {
           imageFile: null,
         });
         setShowStreamDialog(false);
-      } else {
-        throw new Error(response.message || 'Failed to add stream');
       }
     } catch (error: any) {
       console.error('Error adding stream:', error);
       toast({
         title: 'Error adding stream',
-        description: error.message || error.response?.data?.message || 'Failed to add stream to Pack365',
+        description: error.response?.data?.message || 'Failed to add stream to Pack365',
         variant: 'destructive',
       });
     } finally {
@@ -189,7 +186,6 @@ const Pack365Management = () => {
     try {
       setLoading(true);
 
-      // Use the API service instead of direct fetch
       const response = await pack365Api.updateStream(token, editingStream._id, {
         name: streamFormData.name || editingStream.name,
         price: streamFormData.price ? Number(streamFormData.price) : editingStream.price,
@@ -210,14 +206,12 @@ const Pack365Management = () => {
         });
         setEditingStream(null);
         setShowStreamDialog(false);
-      } else {
-        throw new Error(response.message || 'Failed to update stream');
       }
     } catch (error: any) {
       console.error('Error updating stream:', error);
       toast({
         title: 'Error updating stream',
-        description: error.message || error.response?.data?.message || 'Failed to update stream',
+        description: error.response?.data?.message || 'Failed to update stream',
         variant: 'destructive',
       });
     } finally {
@@ -250,14 +244,12 @@ const Pack365Management = () => {
           title: 'Stream deleted successfully',
           description: 'Stream has been removed from Pack365',
         });
-      } else {
-        throw new Error(response.message || 'Failed to delete stream');
       }
     } catch (error: any) {
       console.error('Error deleting stream:', error);
       toast({
         title: 'Error deleting stream',
-        description: error.message || error.response?.data?.message || 'Failed to delete stream',
+        description: error.response?.data?.message || 'Failed to delete stream',
         variant: 'destructive',
       });
     } finally {
@@ -324,14 +316,12 @@ const Pack365Management = () => {
         await fetchCoursesForStream(selectedStream.name);
         resetForm();
         setShowDialog(false);
-      } else {
-        throw new Error(response.message || 'Failed to create course');
       }
     } catch (error: any) {
       console.error('Error creating course:', error);
       toast({
         title: 'Error creating course',
-        description: error.message || error.response?.data?.message || 'Failed to create course',
+        description: error.response?.data?.message || 'Failed to create course',
         variant: 'destructive',
       });
     }
@@ -364,14 +354,12 @@ const Pack365Management = () => {
         resetForm();
         setShowDialog(false);
         setEditingCourse(null);
-      } else {
-        throw new Error(response.message || 'Failed to update course');
       }
     } catch (error: any) {
       console.error('Error updating course:', error);
       toast({
         title: 'Error updating course',
-        description: error.message || error.response?.data?.message || 'Failed to update course',
+        description: error.response?.data?.message || 'Failed to update course',
         variant: 'destructive',
       });
     }
@@ -397,14 +385,12 @@ const Pack365Management = () => {
         if (selectedStream) {
           await fetchCoursesForStream(selectedStream.name);
         }
-      } else {
-        throw new Error(response.message || 'Failed to delete course');
       }
     } catch (error: any) {
       console.error('Error deleting course:', error);
       toast({
         title: 'Error deleting course',
-        description: error.message || error.response?.data?.message || 'Failed to delete course',
+        description: error.response?.data?.message || 'Failed to delete course',
         variant: 'destructive',
       });
     }
@@ -688,9 +674,9 @@ const Pack365Management = () => {
                 <Button
                   onClick={editingStream ? handleUpdateStream : handleAddStream}
                   className="flex-1"
-                  disabled={!streamFormData.name || !streamFormData.price || loading}
+                  disabled={!streamFormData.name || !streamFormData.price}
                 >
-                  {loading ? 'Processing...' : editingStream ? 'Update Stream' : 'Add Stream'}
+                  {editingStream ? 'Update Stream' : 'Add Stream'}
                 </Button>
                 <Button
                   variant="outline"
@@ -699,7 +685,6 @@ const Pack365Management = () => {
                     setEditingStream(null);
                     setStreamFormData({ name: '', price: '', imageFile: null });
                   }}
-                  disabled={loading}
                 >
                   Cancel
                 </Button>
@@ -911,15 +896,14 @@ const Pack365Management = () => {
                 type="button"
                 onClick={editingCourse ? handleUpdateCourse : handleCreateCourse}
                 className="flex-1"
-                disabled={!formData.courseName || !formData.courseDocument || formData.topics.length === 0 || loading}
+                disabled={!formData.courseName || !formData.courseDocument || formData.topics.length === 0}
               >
-                {loading ? 'Processing...' : editingCourse ? 'Update Course' : 'Create Course'}
+                {editingCourse ? 'Update Course' : 'Create Course'}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowDialog(false)}
-                disabled={loading}
               >
                 Cancel
               </Button>
