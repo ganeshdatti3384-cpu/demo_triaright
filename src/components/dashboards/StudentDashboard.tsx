@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search, Calculator, MapPin, Target, TrendingUp, AlertCircle, IndianRupee, PlayCircle, CreditCard, FileCheck, BellRing, CalendarDays, Building, Laptop, Zap, Mail, Phone, MapPin as MapPinIcon } from 'lucide-react';
+import { BookOpen, Trophy, Users, Clock, Star, Play, Code, FolderOpen, Settings, User, Calendar, Bell, Award, CheckCircle, Briefcase, GraduationCap, PenTool, FileText, Filter, Search, Calculator, MapPin, Target, TrendingUp, AlertCircle, IndianRupee, PlayCircle, CreditCard, FileCheck, BellRing, CalendarDays, Building, Laptop, Zap, Mail, Phone, MapPin as MapPinIcon, DollarSign, Building2 } from 'lucide-react';
 import Navbar from '../Navbar';
 import Pack365Card from '../Pack365Card';
 import CodeCompiler from '../CodeCompiler';
@@ -17,12 +17,31 @@ import ResumeBuilder from '../ResumeBuilder';
 import { useNavigate } from 'react-router-dom';
 import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
-import { pack365Api, Pack365Course, EnhancedPack365Enrollment, courseApi } from '@/services/api';
+import { pack365Api, Pack365Course, EnhancedPack365Enrollment, courseApi, jobsApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import Pack365Courses from '../Pack365Courses';
 import Pack365Dashboard from '../Pack365Dashboard';
 import Pack365CoursesStudent from '../Pack365Courses2';
 import { EnhancedCourse } from '@/types/api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+
+interface Job {
+  _id: string;
+  title: string;
+  companyName: string;
+  location: string;
+  jobType: 'Full-Time' | 'Part-Time' | 'Contract' | 'Internship';
+  salaryMin?: number;
+  salaryMax?: number;
+  description: string;
+  skills: string[];
+  createdAt: string;
+  status: 'Open' | 'Closed' | 'On Hold';
+  isFeatured?: boolean;
+  companyLogo?: string;
+}
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -42,6 +61,25 @@ const StudentDashboard = () => {
   const [courseFilter, setCourseFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Jobs state
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [jobSearchTerm, setJobSearchTerm] = useState('');
+  const [jobFilters, setJobFilters] = useState({
+    jobType: '',
+    location: ''
+  });
+  const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [applicationForm, setApplicationForm] = useState({
+    applicantName: '',
+    email: '',
+    phone: '',
+    coverLetter: ''
+  });
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchEnrollments = async () => {
@@ -64,7 +102,117 @@ const StudentDashboard = () => {
     loadPack365Enrollments();
     loadAllCourses();
     loadMyEnrollments();
+    fetchJobs();
   }, []);
+
+  const fetchJobs = async () => {
+    setLoadingJobs(true);
+    try {
+      const response = await jobsApi.getAllJobs();
+      const openJobs = response.data.filter((job: Job) => job.status === 'Open');
+      setJobs(openJobs);
+      setFilteredJobs(openJobs);
+    } catch (error) {
+      console.error("Failed to fetch jobs:", error);
+      toast({ title: "Error", description: "Could not fetch jobs.", variant: "destructive" });
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
+  useEffect(() => {
+    let result = jobs;
+
+    // Apply search filter
+    if (jobSearchTerm) {
+      result = result.filter(job =>
+        job.title.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
+        job.companyName.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
+        job.skills.some(skill => skill.toLowerCase().includes(jobSearchTerm.toLowerCase()))
+      );
+    }
+
+    // Apply job type filter
+    if (jobFilters.jobType) {
+      result = result.filter(job => job.jobType === jobFilters.jobType);
+    }
+
+    // Apply location filter
+    if (jobFilters.location) {
+      result = result.filter(job =>
+        job.location.toLowerCase().includes(jobFilters.location.toLowerCase())
+      );
+    }
+
+    setFilteredJobs(result);
+  }, [jobSearchTerm, jobFilters, jobs]);
+
+  const formatSalary = (min?: number, max?: number) => {
+    if (!min && !max) return 'Not specified';
+    if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+    if (min) return `From $${min.toLocaleString()}`;
+    if (max) return `Up to $${max.toLocaleString()}`;
+  };
+
+  const getJobTypeColor = (type: string) => {
+    switch (type) {
+      case 'Full-Time': return 'bg-emerald-500/10 text-emerald-700 border-emerald-200';
+      case 'Part-Time': return 'bg-blue-500/10 text-blue-700 border-blue-200';
+      case 'Contract': return 'bg-purple-500/10 text-purple-700 border-purple-200';
+      case 'Internship': return 'bg-amber-500/10 text-amber-700 border-amber-200';
+      default: return 'bg-gray-500/10 text-gray-700 border-gray-200';
+    }
+  };
+
+  const handleApplyNow = (job: Job) => {
+    setSelectedJob(job);
+    setIsApplyDialogOpen(true);
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!selectedJob) return;
+
+    if (!applicationForm.applicantName || !applicationForm.email || !applicationForm.phone || !resumeFile) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please fill all required fields and upload a resume.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('applicantName', applicationForm.applicantName);
+      formData.append('email', applicationForm.email);
+      formData.append('phone', applicationForm.phone);
+      formData.append('coverLetter', applicationForm.coverLetter);
+      formData.append('resume', resumeFile);
+
+      await jobsApi.applyToJob(selectedJob._id, formData);
+      
+      toast({
+        title: "Application Submitted",
+        description: `Your application for ${selectedJob.title} has been submitted successfully.`,
+      });
+      
+      setIsApplyDialogOpen(false);
+      setApplicationForm({
+        applicantName: '',
+        email: '',
+        phone: '',
+        coverLetter: ''
+      });
+      setResumeFile(null);
+    } catch (error) {
+      console.error("Failed to apply for job:", error);
+      toast({ 
+        title: "Error", 
+        description: "Could not submit application. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  };
 
   const loadAllCourses = async () => {
     try {
@@ -830,7 +978,7 @@ const StudentDashboard = () => {
             <Tabs defaultValue="job-assurance" className="space-y-4">
               <TabsList className="bg-white">
                 <TabsTrigger value="job-assurance">Job Assurance</TabsTrigger>
-                <TabsTrigger value="job-assistance">Job Assistance</TabsTrigger>
+                <TabsTrigger value="job-assistance">Browse Jobs</TabsTrigger>
               </TabsList>
 
               <TabsContent value="job-assurance" className="space-y-6">
@@ -930,44 +1078,295 @@ const StudentDashboard = () => {
               </TabsContent>
 
               <TabsContent value="job-assistance" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Job Assistance Services</CardTitle>
-                    <CardDescription>Get help with your job search and career development</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <Card className="text-center">
-                        <CardContent className="pt-6">
-                          <FileText className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                          <h3 className="font-semibold mb-2">Resume Building</h3>
-                          <p className="text-sm text-gray-600 mb-4">Professional resume creation and optimization</p>
-                          <Button variant="outline" size="sm">Get Started</Button>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="text-center">
-                        <CardContent className="pt-6">
-                          <Users className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                          <h3 className="font-semibold mb-2">Mock Interviews</h3>
-                          <p className="text-sm text-gray-600 mb-4">Practice interviews with industry experts</p>
-                          <Button variant="outline" size="sm">Schedule Now</Button>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="text-center">
-                        <CardContent className="pt-6">
-                          <Briefcase className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                          <h3 className="font-semibold mb-2">Job Search</h3>
-                          <p className="text-sm text-gray-600 mb-4">Access to exclusive job opportunities</p>
-                          <Button variant="outline" size="sm">Browse Jobs</Button>
-                        </CardContent>
-                      </Card>
+                {/* Search and Filters */}
+                <Card className="mb-8 border-0 shadow-xl rounded-2xl overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col lg:flex-row gap-6 items-end">
+                      <div className="flex-1 w-full">
+                        <Label className="text-sm font-medium text-gray-700 mb-2 block">Search Opportunities</Label>
+                        <div className="relative">
+                          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <Input
+                            placeholder="Job title, company, or keywords..."
+                            value={jobSearchTerm}
+                            onChange={(e) => setJobSearchTerm(e.target.value)}
+                            className="pl-12 pr-4 py-3 h-12 text-lg border-2 border-gray-200 focus:border-blue-500 transition-colors rounded-xl"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium text-gray-700 mb-2 block">Job Type</Label>
+                          <select
+                            value={jobFilters.jobType}
+                            onChange={(e) => setJobFilters(prev => ({ ...prev, jobType: e.target.value }))}
+                            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 h-12 focus:border-blue-500 transition-colors"
+                          >
+                            <option value="">All Types</option>
+                            <option value="Full-Time">Full-Time</option>
+                            <option value="Part-Time">Part-Time</option>
+                            <option value="Contract">Contract</option>
+                            <option value="Internship">Internship</option>
+                          </select>
+                        </div>
+                        
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium text-gray-700 mb-2 block">Location</Label>
+                          <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Any location"
+                              value={jobFilters.location}
+                              onChange={(e) => setJobFilters(prev => ({ ...prev, location: e.target.value }))}
+                              className="pl-10 border-2 border-gray-200 rounded-xl h-12 focus:border-blue-500 transition-colors"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-end">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setJobSearchTerm('');
+                              setJobFilters({ jobType: '', location: '' });
+                            }}
+                            className="h-12 px-6 border-2 rounded-xl w-full sm:w-auto"
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Jobs List */}
+                <div className="space-y-6">
+                  {loadingJobs ? (
+                    <div className="grid gap-6">
+                      {[...Array(6)].map((_, i) => (
+                        <Card key={i} className="animate-pulse border-0 shadow-sm rounded-2xl">
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-3 flex-1">
+                                <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                                <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                                <div className="flex gap-4">
+                                  <div className="h-4 bg-gray-200 rounded w-1/5"></div>
+                                  <div className="h-4 bg-gray-200 rounded w-1/5"></div>
+                                </div>
+                                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                              </div>
+                              <div className="h-8 bg-gray-200 rounded w-20"></div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : filteredJobs.length > 0 ? (
+                    <div className="grid gap-6">
+                      {filteredJobs.map((job) => (
+                        <Card key={job._id} className="group border-0 shadow-sm hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+                          <CardContent className="p-0">
+                            <div className="p-6">
+                              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-start gap-4 mb-4">
+                                    <div className="w-14 h-14 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                                      {job.companyLogo ? (
+                                        <img src={job.companyLogo} alt={job.companyName} className="w-8 h-8" />
+                                      ) : (
+                                        <Building2 className="h-6 w-6 text-gray-600" />
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="mb-2">
+                                        <div>
+                                          <h3 className="text-xl font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
+                                            {job.title}
+                                          </h3>
+                                          <p className="text-lg text-gray-700 font-medium">{job.companyName}</p>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
+                                        <div className="flex items-center gap-2">
+                                          <MapPin className="h-4 w-4" />
+                                          <span>{job.location}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <DollarSign className="h-4 w-4" />
+                                          <span>{formatSalary(job.salaryMin, job.salaryMax)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Clock className="h-4 w-4" />
+                                          <span>{new Date(job.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                      </div>
+
+                                      <Badge className={`${getJobTypeColor(job.jobType)} border`}>
+                                        {job.jobType}
+                                      </Badge>
+
+                                      <p className="text-gray-600 mt-3 line-clamp-2 leading-relaxed">
+                                        {job.description}
+                                      </p>
+
+                                      <div className="flex flex-wrap gap-2 mt-4">
+                                        {job.skills.slice(0, 4).map((skill, index) => (
+                                          <Badge key={index} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                            {skill}
+                                          </Badge>
+                                        ))}
+                                        {job.skills.length > 4 && (
+                                          <Badge variant="outline" className="text-xs">
+                                            +{job.skills.length - 4} more
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex gap-2 lg:items-end">
+                                  <Button 
+                                    className="bg-blue-600 hover:bg-blue-700 px-6 rounded-xl"
+                                    onClick={() => handleApplyNow(job)}
+                                  >
+                                    Apply Now
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="border-0 shadow-sm rounded-2xl overflow-hidden">
+                      <CardContent className="text-center py-16">
+                        <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                          <Building2 className="h-10 w-10 text-gray-400" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                          No jobs found
+                        </h3>
+                        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                          We couldn't find any jobs matching your criteria. Try adjusting your search filters or browse all available positions.
+                        </p>
+                        <Button
+                          onClick={() => {
+                            setJobSearchTerm('');
+                            setJobFilters({ jobType: '', location: '' });
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 rounded-xl px-8"
+                        >
+                          View All Jobs
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
+
+            {/* Modern Application Dialog */}
+            <Dialog open={isApplyDialogOpen} onOpenChange={setIsApplyDialogOpen}>
+              <DialogContent className="max-w-2xl rounded-2xl border-0 shadow-2xl">
+                <DialogHeader className="pb-4">
+                  <DialogTitle className="text-2xl font-bold text-gray-900">
+                    Apply for {selectedJob?.title}
+                  </DialogTitle>
+                  <p className="text-gray-600">at {selectedJob?.companyName}</p>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Full Name *</Label>
+                      <Input
+                        value={applicationForm.applicantName}
+                        onChange={(e) => setApplicationForm(prev => ({ ...prev, applicantName: e.target.value }))}
+                        placeholder="Enter your full name"
+                        className="rounded-xl h-12"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Email *</Label>
+                      <Input
+                        type="email"
+                        value={applicationForm.email}
+                        onChange={(e) => setApplicationForm(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="Enter your email"
+                        className="rounded-xl h-12"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Phone Number *</Label>
+                    <Input
+                      value={applicationForm.phone}
+                      onChange={(e) => setApplicationForm(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="Enter your phone number"
+                      className="rounded-xl h-12"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Cover Letter</Label>
+                    <Textarea
+                      value={applicationForm.coverLetter}
+                      onChange={(e) => setApplicationForm(prev => ({ ...prev, coverLetter: e.target.value }))}
+                      placeholder="Tell us why you're the perfect candidate for this position..."
+                      rows={4}
+                      className="rounded-xl resize-none"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Resume *</Label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center hover:border-blue-400 transition-colors">
+                      <Input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setResumeFile(file);
+                          }
+                        }}
+                        className="hidden"
+                        id="resume-upload"
+                      />
+                      <Label htmlFor="resume-upload" className="cursor-pointer">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <Building2 className="h-6 w-6 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Upload your resume</p>
+                            <p className="text-sm text-gray-500 mt-1">PDF, DOC, DOCX (Max 5MB)</p>
+                          </div>
+                          {resumeFile && (
+                            <p className="text-sm text-green-600 font-medium mt-2">
+                              ✓ {resumeFile.name}
+                            </p>
+                          )}
+                        </div>
+                      </Label>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleSubmitApplication} 
+                    className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-lg font-medium"
+                  >
+                    Submit Application
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         );
 
