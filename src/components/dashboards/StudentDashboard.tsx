@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -458,6 +458,15 @@ const StudentDashboard = () => {
       title: "Application Started",
       description: `Redirecting to apply for ${internship.title}`,
     });
+    
+    // Navigate to the respective internship page
+    if ('stream' in internship) {
+      // AP Internship
+      navigate('/ap-internships');
+    } else {
+      // Regular Internship
+      navigate('/internships');
+    }
   };
 
   const InternshipCard = ({ internship, isAP = false }: { internship: Internship | APInternship, isAP?: boolean }) => {
@@ -526,6 +535,12 @@ const StudentDashboard = () => {
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Stream:</span>
                 <span className="font-medium">{internship.stream}</span>
+              </div>
+            )}
+            {'term' in internship && (
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Term:</span>
+                <span className="font-medium">{internship.term}</span>
               </div>
             )}
             {'amount' in internship && internship.amount && internship.amount > 0 && (
@@ -614,7 +629,6 @@ const StudentDashboard = () => {
       if (response.success && response.enrollments) {
         console.log('Setting myEnrollments:', response.enrollments);
         setMyEnrollments(response.enrollments);
-        // Don't overwrite enrolledCourses here - let Pack365 handle it
       } else {
         console.log('No regular course enrollments found');
         setMyEnrollments([]);
@@ -668,7 +682,6 @@ const StudentDashboard = () => {
   const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
     console.log('🚀 Continue Learning clicked, enrollment:', enrollment);
     
-    // Extract courseId from enrollment object (handle both string and object types)
     let courseId: string;
     
     if (typeof enrollment.courseId === 'string') {
@@ -724,13 +737,12 @@ const StudentDashboard = () => {
   const streams = ['all', ...Array.from(new Set(allCourses.map(course => course.stream)))];
 
   const handleEnrollInCourse = (courseId: string) => {
-    // Navigate to course enrollment page
     navigate(`/course-enrollment/${courseId}`);
   };
   
   const pack365Stats = {
     totalStreams: pack365Enrollments.length,
-    totalCourses: pack365Enrollments.length, // Each enrollment represents one course/stream
+    totalCourses: pack365Enrollments.length,
     averageProgress: pack365Enrollments.length > 0 
       ? Math.round(pack365Enrollments.reduce((sum, enrollment) => sum + enrollment.totalWatchedPercentage, 0) / pack365Enrollments.length)
       : 0,
