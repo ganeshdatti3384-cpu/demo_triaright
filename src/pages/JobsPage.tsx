@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, MapPin, Building2, DollarSign, Clock, Bookmark, Share2, ArrowRight, Star } from 'lucide-react';
+import { Search, Filter, MapPin, Building2, DollarSign, Clock, Bookmark, ArrowRight, Star, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -33,6 +33,7 @@ interface Job {
 const JobsPage = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [savedJobs, setSavedJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -57,6 +58,12 @@ const JobsPage = () => {
       const openJobs = response.data.filter((job: Job) => job.status === 'Open');
       setJobs(openJobs);
       setFilteredJobs(openJobs);
+      
+      // Load saved jobs from localStorage (simulated)
+      const savedJobsFromStorage = openJobs.filter(job => 
+        localStorage.getItem(`saved-job-${job._id}`)
+      );
+      setSavedJobs(savedJobsFromStorage);
     } catch (error) {
       console.error("Failed to fetch jobs:", error);
       toast({ title: "Error", description: "Could not fetch jobs.", variant: "destructive" });
@@ -164,17 +171,41 @@ const JobsPage = () => {
   };
 
   const handleSaveJob = (job: Job) => {
-    toast({
-      title: "Job Saved",
-      description: `${job.title} has been saved to your favorites`,
-    });
+    const isAlreadySaved = savedJobs.some(savedJob => savedJob._id === job._id);
+    
+    if (isAlreadySaved) {
+      // Remove from saved jobs
+      const updatedSavedJobs = savedJobs.filter(savedJob => savedJob._id !== job._id);
+      setSavedJobs(updatedSavedJobs);
+      localStorage.removeItem(`saved-job-${job._id}`);
+      toast({
+        title: "Job Removed",
+        description: `${job.title} has been removed from your saved jobs`,
+      });
+    } else {
+      // Add to saved jobs
+      const updatedSavedJobs = [...savedJobs, job];
+      setSavedJobs(updatedSavedJobs);
+      localStorage.setItem(`saved-job-${job._id}`, 'true');
+      toast({
+        title: "Job Saved",
+        description: `${job.title} has been saved to your favorites`,
+      });
+    }
   };
 
-  const handleShareJob = (job: Job) => {
-    toast({
-      title: "Link Copied",
-      description: "Job link copied to clipboard",
-    });
+  const handleRemoveSavedJob = (jobId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const jobToRemove = savedJobs.find(job => job._id === jobId);
+    if (jobToRemove) {
+      const updatedSavedJobs = savedJobs.filter(job => job._id !== jobId);
+      setSavedJobs(updatedSavedJobs);
+      localStorage.removeItem(`saved-job-${jobId}`);
+      toast({
+        title: "Job Removed",
+        description: `${jobToRemove.title} has been removed from your saved jobs`,
+      });
+    }
   };
 
   const featuredJobs = jobs.filter(job => job.isFeatured).slice(0, 3);
@@ -228,8 +259,19 @@ const JobsPage = () => {
                             <p className="text-sm text-gray-600">{job.companyName}</p>
                           </div>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Bookmark className="h-4 w-4" />
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => handleSaveJob(job)}
+                        >
+                          <Bookmark 
+                            className={`h-4 w-4 ${
+                              savedJobs.some(savedJob => savedJob._id === job._id) 
+                                ? 'fill-blue-600 text-blue-600' 
+                                : ''
+                            }`} 
+                          />
                         </Button>
                       </div>
                       
@@ -338,10 +380,6 @@ const JobsPage = () => {
                     >
                       Clear
                     </Button>
-                    <Button className="h-12 px-6 bg-blue-600 hover:bg-blue-700 rounded-xl">
-                      <Filter className="h-4 w-4 mr-2" />
-                      Filter
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -360,10 +398,13 @@ const JobsPage = () => {
                 </span>
               </TabsTrigger>
               <TabsTrigger 
-                value="featured" 
+                value="saved-jobs" 
                 className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"
               >
-                Featured
+                Saved Jobs
+                <span className="ml-2 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs min-w-6">
+                  {savedJobs.length}
+                </span>
               </TabsTrigger>
             </TabsList>
 
@@ -418,17 +459,15 @@ const JobsPage = () => {
                                         variant="ghost" 
                                         size="icon"
                                         onClick={() => handleSaveJob(job)}
-                                        className="h-9 w-9 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="h-9 w-9"
                                       >
-                                        <Bookmark className="h-4 w-4" />
-                                      </Button>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon"
-                                        onClick={() => handleShareJob(job)}
-                                        className="h-9 w-9 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      >
-                                        <Share2 className="h-4 w-4" />
+                                        <Bookmark 
+                                          className={`h-4 w-4 ${
+                                            savedJobs.some(savedJob => savedJob._id === job._id) 
+                                              ? 'fill-blue-600 text-blue-600' 
+                                              : ''
+                                          }`} 
+                                        />
                                       </Button>
                                     </div>
                                   </div>
@@ -484,8 +523,14 @@ const JobsPage = () => {
                                 className="rounded-xl"
                                 onClick={() => handleSaveJob(job)}
                               >
-                                <Bookmark className="h-4 w-4 mr-2" />
-                                Save
+                                <Bookmark 
+                                  className={`h-4 w-4 mr-2 ${
+                                    savedJobs.some(savedJob => savedJob._id === job._id) 
+                                      ? 'fill-blue-600 text-blue-600' 
+                                      : ''
+                                  }`} 
+                                />
+                                {savedJobs.some(savedJob => savedJob._id === job._id) ? 'Saved' : 'Save'}
                               </Button>
                             </div>
                           </div>
@@ -520,21 +565,119 @@ const JobsPage = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="featured">
-              <Card className="border-0 shadow-sm rounded-2xl overflow-hidden">
-                <CardContent className="text-center py-16">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <Star className="h-10 w-10 text-blue-500" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                    Premium Opportunities
-                  </h3>
-                  <p className="text-gray-600 max-w-md mx-auto">
-                    Featured job listings with enhanced visibility and premium placement are coming soon. 
-                    Stay tuned for exclusive opportunities from top companies.
-                  </p>
-                </CardContent>
-              </Card>
+            <TabsContent value="saved-jobs">
+              {savedJobs.length > 0 ? (
+                <div className="grid gap-6">
+                  {savedJobs.map((job) => (
+                    <Card key={job._id} className="group border-0 shadow-sm hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+                      <CardContent className="p-0">
+                        <div className="p-6">
+                          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-start gap-4 mb-4">
+                                <div className="w-14 h-14 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                                  {job.companyLogo ? (
+                                    <img src={job.companyLogo} alt={job.companyName} className="w-8 h-8" />
+                                  ) : (
+                                    <Building2 className="h-6 w-6 text-gray-600" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div>
+                                      <h3 className="text-xl font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
+                                        {job.title}
+                                      </h3>
+                                      <p className="text-lg text-gray-700 font-medium">{job.companyName}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon"
+                                        onClick={(e) => handleRemoveSavedJob(job._id, e)}
+                                        className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
+                                    <div className="flex items-center gap-2">
+                                      <MapPin className="h-4 w-4" />
+                                      <span>{job.location}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <DollarSign className="h-4 w-4" />
+                                      <span>{formatSalary(job.salaryMin, job.salaryMax)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="h-4 w-4" />
+                                      <span>{new Date(job.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                  </div>
+
+                                  <Badge className={`${getJobTypeColor(job.jobType)} border`}>
+                                    {job.jobType}
+                                  </Badge>
+
+                                  <p className="text-gray-600 mt-3 line-clamp-2 leading-relaxed">
+                                    {job.description}
+                                  </p>
+
+                                  <div className="flex flex-wrap gap-2 mt-4">
+                                    {job.skills.slice(0, 4).map((skill, index) => (
+                                      <Badge key={index} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                        {skill}
+                                      </Badge>
+                                    ))}
+                                    {job.skills.length > 4 && (
+                                      <Badge variant="outline" className="text-xs">
+                                        +{job.skills.length - 4} more
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex lg:flex-col gap-2 lg:items-end">
+                              <Button 
+                                className="bg-blue-600 hover:bg-blue-700 px-6 rounded-xl"
+                                onClick={() => handleApplyNow(job)}
+                              >
+                                Apply Now
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                className="rounded-xl text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+                                onClick={(e) => handleRemoveSavedJob(job._id, e)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-0 shadow-sm rounded-2xl overflow-hidden">
+                  <CardContent className="text-center py-16">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <Bookmark className="h-10 w-10 text-blue-500" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                      No saved jobs yet
+                    </h3>
+                    <p className="text-gray-600 max-w-md mx-auto">
+                      Start browsing jobs and save your favorites to apply later. Your saved jobs will appear here for easy access.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </div>
