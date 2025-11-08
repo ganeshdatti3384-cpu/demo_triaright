@@ -22,8 +22,7 @@ import Pack365Courses from '../Pack365Courses';
 import Pack365Dashboard from '../Pack365Dashboard';
 import Pack365CoursesStudent from '../Pack365Courses2';
 import { EnhancedCourse } from '@/types/api';
-import JobsPage from '@/pages/JobsPage';
-import JobAssistance from '@/pages/JobAssistance';
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -312,7 +311,6 @@ const StudentDashboard = () => {
               <TabsTrigger value="courses">Courses</TabsTrigger>
               <TabsTrigger value="pack365">Pack365</TabsTrigger>
               <TabsTrigger value="jobs">Jobs</TabsTrigger>
-              <TabsTrigger value="job-assistance">Job Assistance</TabsTrigger>
               <TabsTrigger value="internships">Internships</TabsTrigger>
               <TabsTrigger value="trainings">Trainings</TabsTrigger>
               <TabsTrigger value="exams">Exams</TabsTrigger>
@@ -729,16 +727,142 @@ const StudentDashboard = () => {
               </Card>
             </TabsContent>
 
-            {/* Jobs Tab - Replaced with JobsPage */}
+              
             <TabsContent value="jobs" className="space-y-6">
-              <JobsPage />
+              <Tabs defaultValue="job-assurance" className="space-y-4">
+                <TabsList className="bg-white">
+                  <TabsTrigger value="job-assurance">Job Assurance</TabsTrigger>
+                  <TabsTrigger value="job-assistance">Job Assistance</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="job-assurance" className="space-y-6">
+                  <div className="bg-blue-600 text-white rounded-lg p-8 mb-8">
+                    <div className="text-center">
+                      <h2 className="text-3xl font-bold mb-4">Triaright Job Assurance Program</h2>
+                      <p className="text-xl mb-6 text-blue-100">
+                        Personalized Training + Guaranteed Placement — Or 100% Refund!
+                      </p>
+                      <div className="inline-flex items-center bg-white/20 rounded-full px-6 py-3">
+                        🔥 Limited Slots Available – Apply Now!
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <Card className="border-2 border-blue-200 hover:border-blue-400 transition-colors">
+                      <CardHeader className="bg-blue-50">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-xl text-blue-800">IT Track</CardTitle>
+                          <Badge className="bg-blue-600">Popular</Badge>
+                        </div>
+                        <div className="flex items-center space-x-2 mt-4">
+                          <Clock className="h-4 w-4 text-blue-600" />
+                          <span className="text-blue-700 font-medium">1 Year Program</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        <div className="text-center mb-6">
+                          <div className="text-3xl font-bold text-blue-600 mb-2">₹30,000</div>
+                          <p className="text-gray-600">Includes training & placement support</p>
+                        </div>
+                        <ul className="space-y-2 mb-6">
+                          <li className="flex items-center space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">Full-stack development training</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">Modern frameworks & technologies</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">Real-world project experience</span>
+                          </li>
+                        </ul>
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700">Apply for IT Track</Button>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-2 border-orange-200 hover:border-orange-400 transition-colors">
+                      <CardHeader className="bg-orange-50">
+                        <CardTitle className="text-xl text-orange-800">Non-IT Track</CardTitle>
+                        <div className="flex items-center space-x-2 mt-4">
+                          <Clock className="h-4 w-4 text-orange-600" />
+                          <span className="text-orange-700 font-medium">100-Day Program</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        <div className="text-center mb-6">
+                          <div className="text-3xl font-bold text-orange-600 mb-2">₹10,000</div>
+                          <p className="text-gray-600">Includes targeted training & job assistance</p>
+                        </div>
+                        <ul className="space-y-2 mb-6">
+                          <li className="flex items-center space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">Business skills development</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">Communication & leadership training</span>
+                          </li>
+                          <li className="flex items-center space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">Industry-specific knowledge</span>
+                          </li>
+                        </ul>
+                        <Button className="w-full bg-orange-600 hover:bg-orange-700">Apply for Non-IT Track</Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="job-assistance" className="space-y-6">
+                  <div className="bg-green-600 text-white rounded-lg p-8 mb-8">
+                    <div className="text-center">
+                      <h2 className="text-3xl font-bold mb-4">Advance Your Career with Expert Guidance</h2>
+                      <p className="text-xl mb-6 text-green-100">
+                        🚀 Land Your Dream Job Faster with Triaright's Professional Job Assistance
+                      </p>
+                      <div className="bg-white/20 rounded-xl p-6 max-w-xl mx-auto">
+                        <div className="text-4xl font-bold mb-2">₹500 Only</div>
+                        <div className="text-lg mb-2">Lifetime Access</div>
+                        <p className="text-green-100">One-time investment for lifetime career support!</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      { icon: Bell, title: "Real-time updates on job opportunities", description: "Get instant notifications about new job openings that match your profile" },
+                      { icon: Target, title: "Customized preparation guidance", description: "Personalized interview preparation and skill development recommendations" },
+                      { icon: Trophy, title: "Insider tips to stand out from competition", description: "Learn industry secrets and strategies to make your application stand out" },
+                      { icon: Bell, title: "Direct notifications about openings", description: "Be the first to know about exclusive job opportunities from our partner companies" }
+                    ].map((benefit, index) => (
+                      <Card key={index} className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+                        <CardHeader>
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-green-100 p-3 rounded-lg">
+                              <benefit.icon className="h-5 w-5 text-green-600" />
+                            </div>
+                            <CardTitle className="text-sm">{benefit.title}</CardTitle>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-gray-600 text-sm">{benefit.description}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  <div className="text-center mt-8">
+                    <Button onClick={() => navigate('/job-assistance')} size="lg" className="bg-green-600 hover:bg-green-700 font-semibold px-8 py-3">
+                      Get Started Now - ₹500 Only!
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
-            {/* Job Assistance Tab - Replaced with JobAssistance */}
-            <TabsContent value="job-assistance" className="space-y-6">
-              <JobAssistance />
-            </TabsContent>
-              
             <TabsContent value="internships" className="space-y-6">
               <Tabs defaultValue="online" className="space-y-4">
                 <TabsList className="bg-white">
