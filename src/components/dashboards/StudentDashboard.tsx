@@ -26,6 +26,7 @@ import { EnhancedCourse } from '@/types/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import APStudentDashboard from './student/APStudentDashboard';
 
 interface Job {
   _id: string;
@@ -146,13 +147,6 @@ const StudentDashboard = () => {
   const [apInternships, setApInternships] = useState<APInternship[]>([]);
   const [filteredAPInternships, setFilteredAPInternships] = useState<APInternship[]>([]);
   const [loadingAPInternships, setLoadingAPInternships] = useState(true);
-  const [apInternshipSearchTerm, setApInternshipSearchTerm] = useState('');
-  const [apInternshipFilters, setApInternshipFilters] = useState({
-    type: 'all',
-    mode: 'all',
-    stream: 'all'
-  });
-  const [apInternshipActiveTab, setApInternshipActiveTab] = useState('all');
 
   useEffect(() => {
     const fetchEnrollments = async () => {
@@ -270,10 +264,6 @@ const StudentDashboard = () => {
     filterInternships();
   }, [internships, internshipSearchTerm, internshipFilters, internshipActiveTab]);
 
-  useEffect(() => {
-    filterAPInternships();
-  }, [apInternships, apInternshipSearchTerm, apInternshipFilters, apInternshipActiveTab]);
-
   const filterInternships = () => {
     let filtered = internships.filter(internship => {
       const matchesSearch = internship.title.toLowerCase().includes(internshipSearchTerm.toLowerCase()) ||
@@ -296,31 +286,6 @@ const StudentDashboard = () => {
     }
 
     setFilteredInternships(filtered);
-  };
-
-  const filterAPInternships = () => {
-    let filtered = apInternships.filter(internship => {
-      const matchesSearch = internship.title.toLowerCase().includes(apInternshipSearchTerm.toLowerCase()) ||
-                           internship.companyName.toLowerCase().includes(apInternshipSearchTerm.toLowerCase()) ||
-                           internship.description.toLowerCase().includes(apInternshipSearchTerm.toLowerCase());
-      
-      const matchesType = apInternshipFilters.type === 'all' || internship.internshipType.toLowerCase() === apInternshipFilters.type;
-      const matchesMode = apInternshipFilters.mode === 'all' || internship.mode.toLowerCase() === apInternshipFilters.mode;
-      const matchesStream = apInternshipFilters.stream === 'all' || internship.stream.toLowerCase().includes(apInternshipFilters.stream);
-
-      return matchesSearch && matchesType && matchesMode && matchesStream;
-    });
-
-    // Apply tab-specific filtering
-    if (apInternshipActiveTab === 'free') {
-      filtered = filtered.filter(internship => internship.mode === 'Free');
-    } else if (apInternshipActiveTab === 'paid') {
-      filtered = filtered.filter(internship => internship.mode === 'Paid');
-    } else if (apInternshipActiveTab === 'online') {
-      filtered = filtered.filter(internship => internship.internshipType === 'Online');
-    }
-
-    setFilteredAPInternships(filtered);
   };
 
   const formatSalary = (min?: number, max?: number) => {
@@ -1856,187 +1821,7 @@ const StudentDashboard = () => {
         );
 
       case 'trainings':
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>AP Exclusive Internships</CardTitle>
-                <CardDescription>Special internship opportunities exclusively for Andhra Pradesh students</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* Search and Filters */}
-                <Card className="mb-8 border-blue-200 bg-blue-50">
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col lg:flex-row gap-4">
-                      <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          placeholder="Search AP internships by title, company, or description..."
-                          value={apInternshipSearchTerm}
-                          onChange={(e) => setApInternshipSearchTerm(e.target.value)}
-                          className="pl-10 bg-white"
-                        />
-                      </div>
-                      <div className="flex gap-4 flex-wrap">
-                        <Select value={apInternshipFilters.type} onValueChange={(value) => setApInternshipFilters({...apInternshipFilters, type: value})}>
-                          <SelectTrigger className="w-40 bg-white">
-                            <SelectValue placeholder="Internship Type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Types</SelectItem>
-                            <SelectItem value="online">Online</SelectItem>
-                            <SelectItem value="offline">Offline</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Select value={apInternshipFilters.mode} onValueChange={(value) => setApInternshipFilters({...apInternshipFilters, mode: value})}>
-                          <SelectTrigger className="w-32 bg-white">
-                            <SelectValue placeholder="Mode" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Modes</SelectItem>
-                            <SelectItem value="paid">Paid</SelectItem>
-                            <SelectItem value="free">Free</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Select value={apInternshipFilters.stream} onValueChange={(value) => setApInternshipFilters({...apInternshipFilters, stream: value})}>
-                          <SelectTrigger className="w-40 bg-white">
-                            <SelectValue placeholder="Stream" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Streams</SelectItem>
-                            <SelectItem value="engineering">Engineering</SelectItem>
-                            <SelectItem value="computer science">Computer Science</SelectItem>
-                            <SelectItem value="business">Business</SelectItem>
-                            <SelectItem value="arts">Arts</SelectItem>
-                            <SelectItem value="science">Science</SelectItem>
-                            <SelectItem value="medical">Medical</SelectItem>
-                            <SelectItem value="law">Law</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Tabs and Content */}
-                <Tabs value={apInternshipActiveTab} onValueChange={setApInternshipActiveTab} className="space-y-6">
-                  <TabsList className="grid w-full grid-cols-4 bg-blue-50">
-                    <TabsTrigger value="all" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                      All Internships
-                    </TabsTrigger>
-                    <TabsTrigger value="free" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
-                      Free
-                    </TabsTrigger>
-                    <TabsTrigger value="paid" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                      Paid
-                    </TabsTrigger>
-                    <TabsTrigger value="online" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">
-                      Online
-                    </TabsTrigger>
-                  </TabsList>
-
-                  {/* All Internships */}
-                  <TabsContent value="all" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredAPInternships.map((internship) => (
-                        <InternshipCard key={internship._id} internship={internship} isAP={true} />
-                      ))}
-                    </div>
-                    {filteredAPInternships.length === 0 && (
-                      <div className="text-center py-12">
-                        <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No AP internships found</h3>
-                        <p className="text-gray-600">Try adjusting your search criteria or check back later for new opportunities.</p>
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  {/* Free Internships */}
-                  <TabsContent value="free" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredAPInternships.map((internship) => (
-                        <InternshipCard key={internship._id} internship={internship} isAP={true} />
-                      ))}
-                    </div>
-                    {filteredAPInternships.length === 0 && (
-                      <div className="text-center py-12">
-                        <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No free AP internships found</h3>
-                        <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  {/* Paid Internships */}
-                  <TabsContent value="paid" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredAPInternships.map((internship) => (
-                        <InternshipCard key={internship._id} internship={internship} isAP={true} />
-                      ))}
-                    </div>
-                    {filteredAPInternships.length === 0 && (
-                      <div className="text-center py-12">
-                        <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No paid AP internships found</h3>
-                        <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  {/* Online Internships */}
-                  <TabsContent value="online" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredAPInternships.map((internship) => (
-                        <InternshipCard key={internship._id} internship={internship} isAP={true} />
-                      ))}
-                    </div>
-                    {filteredAPInternships.length === 0 && (
-                      <div className="text-center py-12">
-                        <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No online AP internships found</h3>
-                        <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
-
-                {/* Stats Section */}
-                <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <Card className="border-blue-200 bg-blue-50">
-                    <CardContent className="pt-6 text-center">
-                      <div className="text-2xl font-bold text-blue-600">{apInternships.length}</div>
-                      <p className="text-sm text-gray-600">AP Exclusive Internships</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-green-200 bg-green-50">
-                    <CardContent className="pt-6 text-center">
-                      <div className="text-2xl font-bold text-green-600">
-                        {apInternships.filter(i => i.mode === 'Free').length}
-                      </div>
-                      <p className="text-sm text-gray-600">Free Opportunities</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-purple-200 bg-purple-50">
-                    <CardContent className="pt-6 text-center">
-                      <div className="text-2xl font-bold text-purple-600">
-                        {apInternships.filter(i => i.internshipType === 'Online').length}
-                      </div>
-                      <p className="text-sm text-gray-600">Online Programs</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-orange-200 bg-orange-50">
-                    <CardContent className="pt-6 text-center">
-                      <div className="text-2xl font-bold text-orange-600">
-                        {[...new Set(apInternships.map(i => i.stream))].length}
-                      </div>
-                      <p className="text-sm text-gray-600">Different Streams</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
+        return <APStudentDashboard />;
 
       case 'exams':
         return (
