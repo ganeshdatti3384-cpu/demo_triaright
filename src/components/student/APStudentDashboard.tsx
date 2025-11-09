@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Video, Award, Clock, Play, CheckCircle, FileText, Search, MapPin, Building2, Calendar, IndianRupee, Users, Star } from 'lucide-react';
+import { BookOpen, Video, Award, Clock, Play, CheckCircle, FileText, Search, MapPin, Building2, Calendar, IndianRupee, Users, Star, Eye, GraduationCap, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -37,33 +37,50 @@ interface APInternship {
 
 interface APEnrollment {
   _id: string;
-  courseId: {
-    _id: string;
-    title: string;
-    stream: string;
-    totalDuration: number;
-    curriculum: Topic[];
-    instructorName: string;
-  };
   internshipId: {
     _id: string;
     title: string;
     companyName: string;
     duration: string;
     mode: string;
+    stream: string;
+    internshipType: string;
   };
-  progress: TopicProgress[];
-  totalWatchedDuration: number;
-  totalVideoDuration: number;
-  finalExamEligible: boolean;
-  finalExamAttempted: boolean;
-  courseCompleted: boolean;
-  enrollmentDate: string;
+  userId: string;
+  status: 'active' | 'completed' | 'cancelled';
+  enrolledAt: string;
+  progress?: number;
+  lastAccessed?: string;
+  certificateIssued?: boolean;
+  certificateUrl?: string;
+}
+
+interface APCourse {
+  _id: string;
+  courseId: string;
+  title: string;
+  stream: string;
+  totalDuration: number;
+  providerName: string;
+  instructorName: string;
+  courseLanguage: string;
+  certificationProvided: string;
+  hasFinalExam: boolean;
+  internshipRef: {
+    _id: string;
+    title: string;
+    companyName: string;
+  };
+  curriculum: Topic[];
+  createdAt: string;
 }
 
 interface Topic {
   topicName: string;
+  topicCount: number;
   subtopics: Subtopic[];
+  directLink?: string;
+  examExcelLink?: string;
 }
 
 interface Subtopic {
@@ -72,29 +89,14 @@ interface Subtopic {
   duration: number;
 }
 
-interface TopicProgress {
-  topicName: string;
-  subtopics: SubtopicProgress[];
-  topicWatchedDuration: number;
-  topicTotalDuration: number;
-  examAttempted: boolean;
-  examScore: number;
-  passed: boolean;
-}
-
-interface SubtopicProgress {
-  subTopicName: string;
-  subTopicLink: string;
-  watchedDuration: number;
-  totalDuration: number;
-}
-
 const APStudentDashboard = () => {
   const [enrollments, setEnrollments] = useState<APEnrollment[]>([]);
   const [apInternships, setApInternships] = useState<APInternship[]>([]);
+  const [courses, setCourses] = useState<APCourse[]>([]);
   const [filteredInternships, setFilteredInternships] = useState<APInternship[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingInternships, setLoadingInternships] = useState(true);
+  const [loadingEnrollments, setLoadingEnrollments] = useState(true);
   const [selectedEnrollment, setSelectedEnrollment] = useState<APEnrollment | null>(null);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [currentVideo, setCurrentVideo] = useState<{ link: string; title: string } | null>(null);
@@ -112,6 +114,7 @@ const APStudentDashboard = () => {
   useEffect(() => {
     fetchEnrollments();
     fetchAPInternships();
+    fetchCourses();
   }, []);
 
   useEffect(() => {
@@ -120,10 +123,13 @@ const APStudentDashboard = () => {
 
   const fetchEnrollments = async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      setLoadingEnrollments(false);
+      return;
+    }
 
     try {
-      setLoading(true);
+      setLoadingEnrollments(true);
       const response = await fetch('/api/internships/ap-enrollments/my', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -131,7 +137,9 @@ const APStudentDashboard = () => {
       });
       const data = await response.json();
       if (data.success) {
-        setEnrollments(data.enrollments);
+        setEnrollments(data.enrollments || []);
+      } else {
+        setEnrollments([]);
       }
     } catch (error) {
       console.error('Error fetching enrollments:', error);
@@ -140,7 +148,9 @@ const APStudentDashboard = () => {
         description: 'Failed to load your enrollments',
         variant: 'destructive'
       });
+      setEnrollments([]);
     } finally {
+      setLoadingEnrollments(false);
       setLoading(false);
     }
   };
@@ -154,6 +164,9 @@ const APStudentDashboard = () => {
         const openInternships = data.internships.filter((internship: APInternship) => internship.status === 'Open');
         setApInternships(openInternships);
         setFilteredInternships(openInternships);
+      } else {
+        setApInternships([]);
+        setFilteredInternships([]);
       }
     } catch (error) {
       console.error('Error fetching AP internships:', error);
@@ -162,8 +175,22 @@ const APStudentDashboard = () => {
         description: 'Failed to load AP internships',
         variant: 'destructive'
       });
+      setApInternships([]);
+      setFilteredInternships([]);
     } finally {
       setLoadingInternships(false);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch('/api/internships/ap-courses');
+      const data = await response.json();
+      if (data.success) {
+        setCourses(data.courses || []);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
     }
   };
 
@@ -183,7 +210,7 @@ const APStudentDashboard = () => {
     setFilteredInternships(filtered);
   };
 
-  const updateProgress = async (enrollmentId: string, topicName: string, subTopicName: string, watchedDuration: number) => {
+  const updateProgress = async (enrollmentId: string, progress: number) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
@@ -196,9 +223,7 @@ const APStudentDashboard = () => {
         },
         body: JSON.stringify({
           enrollmentId,
-          topicName,
-          subTopicName,
-          watchedDuration
+          progress
         })
       });
 
@@ -211,7 +236,7 @@ const APStudentDashboard = () => {
     }
   };
 
-  const playVideo = (enrollment: APEnrollment, topicName: string, subtopic: Subtopic) => {
+  const playVideo = (enrollment: APEnrollment, course: APCourse | undefined, topicName: string, subtopic: Subtopic) => {
     setSelectedEnrollment(enrollment);
     setCurrentVideo({
       link: subtopic.link,
@@ -219,15 +244,11 @@ const APStudentDashboard = () => {
     });
     setShowVideoPlayer(true);
 
-    // Start tracking progress
-    const interval = setInterval(() => {
-      if (selectedEnrollment) {
-        updateProgress(enrollment._id, topicName, subtopic.name, subtopic.duration);
-      }
-    }, 30000); // Update every 30 seconds
-
-    // Clear interval when component unmounts
-    return () => clearInterval(interval);
+    // Update progress when video is played
+    if (enrollment.progress !== undefined && enrollment.progress < 100) {
+      const newProgress = Math.min(enrollment.progress + 10, 100);
+      updateProgress(enrollment._id, newProgress);
+    }
   };
 
   const handleApply = (internship: APInternship) => {
@@ -245,6 +266,16 @@ const APStudentDashboard = () => {
         title: 'Access Denied',
         description: 'Only students and job seekers can apply for internships',
         variant: 'destructive'
+      });
+      return;
+    }
+
+    // Check if already enrolled
+    if (isEnrolled(internship._id)) {
+      toast({
+        title: 'Already Enrolled',
+        description: 'You are already enrolled in this internship',
+        variant: 'default'
       });
       return;
     }
@@ -268,28 +299,16 @@ const APStudentDashboard = () => {
     window.location.href = '/ap-internships';
   };
 
+  const isEnrolled = (internshipId: string) => {
+    return enrollments.some(enrollment => enrollment.internshipId._id === internshipId && enrollment.status === 'active');
+  };
+
   const isDeadlinePassed = (deadline: string) => {
     return new Date(deadline) < new Date();
   };
 
-  const getCompletionPercentage = (enrollment: APEnrollment) => {
-    if (enrollment.totalVideoDuration === 0) return 0;
-    return (enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100;
-  };
-
-  const getTopicProgress = (enrollment: APEnrollment, topicName: string) => {
-    const topic = enrollment.progress.find(t => t.topicName === topicName);
-    if (!topic) return 0;
-    if (topic.topicTotalDuration === 0) return 0;
-    return (topic.topicWatchedDuration / topic.topicTotalDuration) * 100;
-  };
-
-  const isSubtopicCompleted = (enrollment: APEnrollment, topicName: string, subtopicName: string) => {
-    const topic = enrollment.progress.find(t => t.topicName === topicName);
-    if (!topic) return false;
-    const subtopic = topic.subtopics.find(s => s.subTopicName === subtopicName);
-    if (!subtopic) return false;
-    return subtopic.watchedDuration >= subtopic.totalDuration * 0.9; // 90% watched
+  const getCourseForEnrollment = (enrollment: APEnrollment) => {
+    return courses.find(course => course.internshipRef._id === enrollment.internshipId._id);
   };
 
   const getModeBadge = (mode: string) => {
@@ -318,9 +337,23 @@ const APStudentDashboard = () => {
     );
   };
 
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      active: 'default',
+      completed: 'secondary',
+      cancelled: 'destructive'
+    } as const;
+
+    return (
+      <Badge variant={variants[status as keyof typeof variants] || 'outline'}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
+  };
+
   const InternshipCard = ({ internship }: { internship: APInternship }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
-    const isEnrolled = enrollments.some(enrollment => enrollment.internshipId._id === internship._id);
+    const enrolled = isEnrolled(internship._id);
     
     return (
       <Card className="h-full flex flex-col border-2 border-blue-200 hover:border-blue-300 transition-colors">
@@ -338,7 +371,7 @@ const APStudentDashboard = () => {
                 <Star className="h-3 w-3 mr-1" />
                 AP Exclusive
               </Badge>
-              {isEnrolled && (
+              {enrolled && (
                 <Badge variant="default" className="bg-green-500 text-white">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Enrolled
@@ -407,8 +440,17 @@ const APStudentDashboard = () => {
           </div>
         </CardContent>
         <CardFooter>
-          {isEnrolled ? (
-            <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => setActiveTab('enrolled')}>
+          {enrolled ? (
+            <Button 
+              className="w-full bg-green-600 hover:bg-green-700" 
+              onClick={() => {
+                const enrollment = enrollments.find(e => e.internshipId._id === internship._id);
+                if (enrollment) {
+                  setSelectedEnrollment(enrollment);
+                  setActiveTab('enrolled');
+                }
+              }}
+            >
               <BookOpen className="h-4 w-4 mr-2" />
               Continue Learning
             </Button>
@@ -428,7 +470,7 @@ const APStudentDashboard = () => {
     );
   };
 
-  if (loading && loadingInternships) {
+  if (loading && loadingInternships && loadingEnrollments) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -445,8 +487,73 @@ const APStudentDashboard = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My AP Internships</h1>
+          <h1 className="text-3xl font-bold text-gray-900">My AP Internships Dashboard</h1>
           <p className="text-gray-600">Track your progress in AP exclusive internship programs</p>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                  <BookOpen className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{enrollments.length}</p>
+                  <p className="text-sm text-gray-600">Total Enrollments</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {enrollments.filter(e => e.status === 'completed').length}
+                  </p>
+                  <p className="text-sm text-gray-600">Completed</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
+                  <BarChart3 className="h-6 w-6 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {enrollments.length > 0 
+                      ? Math.round(enrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / enrollments.length)
+                      : 0
+                    }%
+                  </p>
+                  <p className="text-sm text-gray-600">Avg Progress</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                  <Award className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {enrollments.filter(e => e.certificateIssued).length}
+                  </p>
+                  <p className="text-sm text-gray-600">Certificates</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -463,12 +570,21 @@ const APStudentDashboard = () => {
 
           {/* Enrolled Internships Tab */}
           <TabsContent value="enrolled" className="space-y-6">
-            {enrollments.length === 0 ? (
+            {loadingEnrollments ? (
+              <Card>
+                <CardContent className="flex justify-center items-center py-8">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p>Loading your enrollments...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : enrollments.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-12">
-                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No enrollments yet</h3>
-                  <p className="text-gray-600 mb-4">You haven't enrolled in any AP internship programs.</p>
+                  <p className="text-gray-600 mb-6">You haven't enrolled in any AP internship programs.</p>
                   <Button onClick={() => setActiveTab('browse')}>
                     Browse AP Internships
                   </Button>
@@ -476,148 +592,133 @@ const APStudentDashboard = () => {
               </Card>
             ) : (
               <div className="space-y-6">
-                {enrollments.map((enrollment) => (
-                  <Card key={enrollment._id} className="border-l-4 border-l-blue-500">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle>{enrollment.courseId.title}</CardTitle>
-                          <CardDescription>
-                            {enrollment.internshipId.companyName} • {enrollment.internshipId.duration}
-                            {enrollment.internshipId.mode === 'Paid' && ' • Paid Program'}
-                          </CardDescription>
-                        </div>
-                        <div className="text-right">
-                          <Badge 
-                            variant={
-                              enrollment.courseCompleted ? "default" : 
-                              getCompletionPercentage(enrollment) >= 80 ? "secondary" : "outline"
-                            }
-                          >
-                            {enrollment.courseCompleted ? 'Completed' : 
-                             getCompletionPercentage(enrollment) >= 80 ? 'Exam Ready' : 'In Progress'}
-                          </Badge>
-                          <div className="text-sm text-gray-600 mt-1">
-                            Instructor: {enrollment.courseId.instructorName}
+                {enrollments.map((enrollment) => {
+                  const course = getCourseForEnrollment(enrollment);
+                  return (
+                    <Card key={enrollment._id} className="border-l-4 border-l-blue-500">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle>{enrollment.internshipId.title}</CardTitle>
+                            <CardDescription>
+                              {enrollment.internshipId.companyName} • {enrollment.internshipId.duration}
+                              {enrollment.internshipId.mode === 'Paid' && ' • Paid Program'}
+                            </CardDescription>
                           </div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {/* Overall Progress */}
-                        <div>
-                          <div className="flex justify-between text-sm mb-2">
-                            <span>Overall Progress</span>
-                            <span>{getCompletionPercentage(enrollment).toFixed(1)}%</span>
-                          </div>
-                          <Progress value={getCompletionPercentage(enrollment)} className="h-2" />
-                          <div className="flex justify-between text-xs text-gray-600 mt-1">
-                            <span>{enrollment.totalWatchedDuration} mins watched</span>
-                            <span>{enrollment.totalVideoDuration} mins total</span>
-                          </div>
-                        </div>
-
-                        {/* Topics */}
-                        <div className="space-y-3">
-                          <h4 className="font-semibold">Course Content</h4>
-                          {enrollment.courseId.curriculum.map((topic) => (
-                            <div key={topic.topicName} className="border rounded-lg p-4">
-                              <div className="flex justify-between items-center mb-3">
-                                <h5 className="font-medium">{topic.topicName}</h5>
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="outline" className="text-xs">
-                                    {getTopicProgress(enrollment, topic.topicName).toFixed(0)}%
-                                  </Badge>
-                                  {enrollment.progress.find(t => t.topicName === topic.topicName)?.passed && (
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                {topic.subtopics.map((subtopic) => (
-                                  <div
-                                    key={subtopic.name}
-                                    className={`flex justify-between items-center p-2 rounded ${
-                                      isSubtopicCompleted(enrollment, topic.topicName, subtopic.name)
-                                        ? 'bg-green-50 border border-green-200'
-                                        : 'bg-gray-50'
-                                    }`}
-                                  >
-                                    <div className="flex items-center space-x-3">
-                                      {isSubtopicCompleted(enrollment, topic.topicName, subtopic.name) ? (
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                      ) : (
-                                        <Play className="h-4 w-4 text-gray-400" />
-                                      )}
-                                      <span className="text-sm">{subtopic.name}</span>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                      <span className="text-xs text-gray-600">{subtopic.duration} mins</span>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => playVideo(enrollment, topic.topicName, subtopic)}
-                                      >
-                                        <Video className="h-3 w-3 mr-1" />
-                                        Watch
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Topic Exam */}
-                              {enrollment.progress.find(t => t.topicName === topic.topicName)?.examAttempted && (
-                                <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <span className="text-sm font-medium">Topic Exam: </span>
-                                      <span className={`text-sm ${
-                                        enrollment.progress.find(t => t.topicName === topic.topicName)?.passed
-                                          ? 'text-green-600'
-                                          : 'text-red-600'
-                                      }`}>
-                                        {enrollment.progress.find(t => t.topicName === topic.topicName)?.score}%
-                                        {enrollment.progress.find(t => t.topicName === topic.topicName)?.passed ? ' (Passed)' : ' (Failed)'}
-                                      </span>
-                                    </div>
-                                    <Button size="sm" variant="outline">
-                                      <FileText className="h-3 w-3 mr-1" />
-                                      Retake Exam
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
+                          <div className="text-right">
+                            {getStatusBadge(enrollment.status)}
+                            <div className="text-sm text-gray-500 mt-1">
+                              Enrolled: {new Date(enrollment.enrolledAt).toLocaleDateString()}
                             </div>
-                          ))}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex justify-between">
-                      <div className="flex space-x-2">
-                        {enrollment.finalExamEligible && !enrollment.finalExamAttempted && (
-                          <Button>
-                            <Award className="h-4 w-4 mr-2" />
-                            Take Final Exam
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Progress Bar */}
+                          {enrollment.progress !== undefined && (
+                            <div>
+                              <div className="flex justify-between text-sm mb-2">
+                                <span>Overall Progress</span>
+                                <span>{enrollment.progress}%</span>
+                              </div>
+                              <Progress value={enrollment.progress} className="h-2" />
+                            </div>
+                          )}
+
+                          {/* Course Content */}
+                          {course && (
+                            <div className="space-y-3">
+                              <h4 className="font-semibold">Course Content</h4>
+                              {course.curriculum.map((topic, index) => (
+                                <div key={index} className="border rounded-lg p-4">
+                                  <div className="flex justify-between items-center mb-3">
+                                    <h5 className="font-medium">{topic.topicName}</h5>
+                                    <Badge variant="outline" className="text-xs">
+                                      {topic.subtopics.length} lessons
+                                    </Badge>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    {topic.subtopics.map((subtopic, subIndex) => (
+                                      <div
+                                        key={subIndex}
+                                        className="flex justify-between items-center p-2 rounded bg-gray-50"
+                                      >
+                                        <div className="flex items-center space-x-3">
+                                          <Play className="h-4 w-4 text-gray-400" />
+                                          <span className="text-sm">{subtopic.name}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-3">
+                                          <span className="text-xs text-gray-600">{subtopic.duration} mins</span>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => playVideo(enrollment, course, topic.topicName, subtopic)}
+                                          >
+                                            <Video className="h-3 w-3 mr-1" />
+                                            Watch
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Certificate Section */}
+                          {enrollment.certificateIssued && enrollment.certificateUrl && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <Award className="h-5 w-5 text-green-600 mr-2" />
+                                  <div>
+                                    <p className="font-medium text-green-800">Certificate Available</p>
+                                    <p className="text-sm text-green-600">Download your completion certificate</p>
+                                  </div>
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => window.open(enrollment.certificateUrl, '_blank')}
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  View Certificate
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                      <CardFooter className="flex justify-between border-t pt-4">
+                        <div className="text-sm text-gray-600">
+                          Last accessed: {enrollment.lastAccessed ? new Date(enrollment.lastAccessed).toLocaleDateString() : 'Never'}
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_blank')}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Details
                           </Button>
-                        )}
-                        {enrollment.finalExamAttempted && (
-                          <Badge variant={enrollment.courseCompleted ? "default" : "secondary"}>
-                            {enrollment.courseCompleted ? 'Course Completed' : 'Final Exam Attempted'}
-                          </Badge>
-                        )}
-                      </div>
-                      {enrollment.courseCompleted && (
-                        <Button variant="outline">
-                          <Award className="h-4 w-4 mr-2" />
-                          Download Certificate
-                        </Button>
-                      )}
-                    </CardFooter>
-                  </Card>
-                ))}
+                          {enrollment.status === 'active' && (
+                            <Button 
+                              size="sm"
+                              onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_blank')}
+                            >
+                              <Play className="h-4 w-4 mr-1" />
+                              Continue Learning
+                            </Button>
+                          )}
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -737,12 +838,17 @@ const APStudentDashboard = () => {
                 <DialogTitle>{currentVideo.title}</DialogTitle>
               </DialogHeader>
               <div className="aspect-video bg-black rounded-lg">
-                {/* You can integrate with a proper video player here */}
                 <div className="w-full h-full flex items-center justify-center text-white">
                   <div className="text-center">
                     <Video className="h-16 w-16 mx-auto mb-4" />
-                    <p>Video Player</p>
-                    <p className="text-sm text-gray-400 mt-2">{currentVideo.link}</p>
+                    <p>Video Player - {currentVideo.title}</p>
+                    <p className="text-sm text-gray-400 mt-2">Video URL: {currentVideo.link}</p>
+                    <Button 
+                      className="mt-4" 
+                      onClick={() => window.open(currentVideo.link, '_blank')}
+                    >
+                      Open Video in New Tab
+                    </Button>
                   </div>
                 </div>
               </div>
