@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen, Star } from 'lucide-react';
+import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen, Star, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
@@ -37,10 +37,18 @@ interface APInternship {
   createdAt: string;
 }
 
+interface Enrollment {
+  _id: string;
+  internshipId: string;
+  status: 'active' | 'completed' | 'cancelled';
+  enrolledAt: string;
+}
+
 const APExclusiveInternshipsPage = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [apInternships, setApInternships] = useState<APInternship[]>([]);
   const [filteredAPInternships, setFilteredAPInternships] = useState<APInternship[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -58,6 +66,7 @@ const APExclusiveInternshipsPage = () => {
 
   useEffect(() => {
     fetchAPInternships();
+    fetchEnrollments();
   }, []);
 
   useEffect(() => {
@@ -81,6 +90,27 @@ const APExclusiveInternshipsPage = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEnrollments = async () => {
+    if (!isAuthenticated) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/internships/ap-enrollments/my', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setEnrollments(data.enrollments);
+      }
+    } catch (error) {
+      console.error('Error fetching enrollments:', error);
     }
   };
 
@@ -109,6 +139,10 @@ const APExclusiveInternshipsPage = () => {
     setFilteredAPInternships(filtered);
   };
 
+  const isEnrolled = (internshipId: string) => {
+    return enrollments.some(enrollment => enrollment.internshipId === internshipId && enrollment.status === 'active');
+  };
+
   const handleApply = async (internship: APInternship) => {
     if (!isAuthenticated) {
       toast({
@@ -124,6 +158,16 @@ const APExclusiveInternshipsPage = () => {
         title: 'Access Denied',
         description: 'Only students and job seekers can apply for internships',
         variant: 'destructive'
+      });
+      return;
+    }
+
+    // Check if already enrolled
+    if (isEnrolled(internship._id)) {
+      toast({
+        title: 'Already Enrolled',
+        description: 'You are already enrolled in this internship',
+        variant: 'default'
       });
       return;
     }
@@ -155,7 +199,7 @@ const APExclusiveInternshipsPage = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/internships/apinternshipapply', {
+      const response = await fetch('/api/internships/ap-internship-apply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,9 +222,12 @@ const APExclusiveInternshipsPage = () => {
           variant: 'default'
         });
         
-        // Redirect to student dashboard or enrollment page
+        // Refresh enrollments
+        fetchEnrollments();
+        
+        // Redirect to student dashboard after a delay
         setTimeout(() => {
-          window.location.href = '/student-dashboard';
+          window.location.href = '/student-dashboard?tab=trainings';
         }, 2000);
       } else {
         throw new Error(data.message || 'Failed to enroll in internship');
@@ -207,7 +254,7 @@ const APExclusiveInternshipsPage = () => {
       setLoading(true);
       
       // Submit application
-      const response = await fetch('/api/internships/apinternshipapply', {
+      const response = await fetch('/api/internships/ap-internship-apply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -234,8 +281,11 @@ const APExclusiveInternshipsPage = () => {
             variant: 'default'
           });
           
+          // Refresh enrollments
+          fetchEnrollments();
+          
           setTimeout(() => {
-            window.location.href = '/student-dashboard';
+            window.location.href = '/student-dashboard?tab=trainings';
           }, 2000);
         } else {
           // For paid internships, proceed to payment
@@ -264,8 +314,11 @@ const APExclusiveInternshipsPage = () => {
       variant: 'default'
     });
     
+    // Refresh enrollments
+    fetchEnrollments();
+    
     setTimeout(() => {
-      window.location.href = '/student-dashboard';
+      window.location.href = '/student-dashboard?tab=trainings';
     }, 2000);
   };
 
@@ -306,6 +359,7 @@ const APExclusiveInternshipsPage = () => {
 
   const InternshipCard = ({ internship }: { internship: APInternship }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
+    const enrolled = isEnrolled(internship._id);
     
     return (
       <Card className="h-full flex flex-col border-2 border-blue-200 hover:border-blue-300 transition-colors">
@@ -318,10 +372,18 @@ const APExclusiveInternshipsPage = () => {
                 <span className="line-clamp-1">{internship.companyName}</span>
               </div>
             </div>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap">
-              <Star className="h-3 w-3 mr-1" />
-              AP Exclusive
-            </Badge>
+            <div className="flex flex-col items-end gap-2">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap">
+                <Star className="h-3 w-3 mr-1" />
+                AP Exclusive
+              </Badge>
+              {enrolled && (
+                <Badge variant="default" className="bg-green-500 text-white">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Enrolled
+                </Badge>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-3">
             {getModeBadge(internship.mode)}
@@ -384,22 +446,29 @@ const APExclusiveInternshipsPage = () => {
           </div>
         </CardContent>
         <CardFooter>
-          <Button 
-            className="w-full" 
-            onClick={() => handleApply(internship)}
-            disabled={deadlinePassed || loading}
-            variant={deadlinePassed ? "outline" : "default"}
-          >
-            {loading ? (
-              'Processing...'
-            ) : deadlinePassed ? (
-              'Application Closed'
-            ) : internship.mode === 'Free' ? (
-              'Apply & Enroll Free'
-            ) : (
-              'Apply Now'
-            )}
-          </Button>
+          {enrolled ? (
+            <Button className="w-full bg-green-600 hover:bg-green-700">
+              <BookOpen className="h-4 w-4 mr-2" />
+              Go to Dashboard
+            </Button>
+          ) : (
+            <Button 
+              className="w-full" 
+              onClick={() => handleApply(internship)}
+              disabled={deadlinePassed || loading}
+              variant={deadlinePassed ? "outline" : "default"}
+            >
+              {loading ? (
+                'Processing...'
+              ) : deadlinePassed ? (
+                'Application Closed'
+              ) : internship.mode === 'Free' ? (
+                'Apply & Enroll Free'
+              ) : (
+                'Apply Now'
+              )}
+            </Button>
+          )}
         </CardFooter>
       </Card>
     );
