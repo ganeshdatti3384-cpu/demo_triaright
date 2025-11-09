@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import ApplyInternshipDialog from './ApplyInternshipDialog';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import ApplyInternshipDialog from './ApplyInternshipDialog';
+import APRazorpayPayment from './APRazorpayPayment';
 
 interface APInternship {
   _id: string;
@@ -49,6 +50,8 @@ const APExclusiveInternshipsPage = () => {
   });
   const [selectedInternship, setSelectedInternship] = useState<APInternship | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
+  const [showPaymentPage, setShowPaymentPage] = useState(false);
+  const [applicationId, setApplicationId] = useState<string>('');
   
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -106,7 +109,7 @@ const APExclusiveInternshipsPage = () => {
     setFilteredAPInternships(filtered);
   };
 
-  const handleApply = (internship: APInternship) => {
+  const handleApply = async (internship: APInternship) => {
     if (!isAuthenticated) {
       toast({
         title: 'Authentication Required',
@@ -136,7 +139,139 @@ const APExclusiveInternshipsPage = () => {
     }
 
     setSelectedInternship(internship);
-    setShowApplyDialog(true);
+
+    // For free internships, enroll directly
+    if (internship.mode === 'Free') {
+      await enrollInFreeInternship(internship);
+    } else {
+      // For paid internships, show application dialog first
+      setShowApplyDialog(true);
+    }
+  };
+
+  const enrollInFreeInternship = async (internship: APInternship) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch('/api/internships/apinternshipapply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          internshipId: internship._id,
+          amount: 0,
+          currency: 'INR',
+          mode: 'free'
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: 'Successfully Enrolled!',
+          description: `You have been enrolled in ${internship.title}`,
+          variant: 'default'
+        });
+        
+        // Redirect to student dashboard or enrollment page
+        setTimeout(() => {
+          window.location.href = '/student-dashboard';
+        }, 2000);
+      } else {
+        throw new Error(data.message || 'Failed to enroll in internship');
+      }
+    } catch (error: any) {
+      console.error('Error enrolling in free internship:', error);
+      toast({
+        title: 'Enrollment Failed',
+        description: error.message || 'Failed to enroll in internship',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplicationSubmit = async (applicationData: any) => {
+    if (!selectedInternship) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      
+      // Submit application
+      const response = await fetch('/api/internships/apinternshipapply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          internshipId: selectedInternship._id,
+          amount: selectedInternship.amount || 0,
+          currency: selectedInternship.currency,
+          mode: selectedInternship.mode,
+          applicationData: applicationData
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setApplicationId(data.applicationId);
+        
+        if (selectedInternship.mode === 'Free') {
+          toast({
+            title: 'Successfully Enrolled!',
+            description: `You have been enrolled in ${selectedInternship.title}`,
+            variant: 'default'
+          });
+          
+          setTimeout(() => {
+            window.location.href = '/student-dashboard';
+          }, 2000);
+        } else {
+          // For paid internships, proceed to payment
+          setShowApplyDialog(false);
+          setShowPaymentPage(true);
+        }
+      } else {
+        throw new Error(data.message || 'Failed to submit application');
+      }
+    } catch (error: any) {
+      console.error('Error submitting application:', error);
+      toast({
+        title: 'Application Failed',
+        description: error.message || 'Failed to submit application',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    toast({
+      title: 'Payment Successful!',
+      description: `You have been successfully enrolled in ${selectedInternship?.title}`,
+      variant: 'default'
+    });
+    
+    setTimeout(() => {
+      window.location.href = '/student-dashboard';
+    }, 2000);
+  };
+
+  const handlePaymentBack = () => {
+    setShowPaymentPage(false);
+    setSelectedInternship(null);
   };
 
   const isDeadlinePassed = (deadline: string) => {
@@ -252,18 +387,39 @@ const APExclusiveInternshipsPage = () => {
           <Button 
             className="w-full" 
             onClick={() => handleApply(internship)}
-            disabled={deadlinePassed}
+            disabled={deadlinePassed || loading}
             variant={deadlinePassed ? "outline" : "default"}
           >
-            {deadlinePassed ? 'Application Closed' : 
-             internship.mode === 'Free' ? 'Apply & Enroll' : 'Apply Now'}
+            {loading ? (
+              'Processing...'
+            ) : deadlinePassed ? (
+              'Application Closed'
+            ) : internship.mode === 'Free' ? (
+              'Apply & Enroll Free'
+            ) : (
+              'Apply Now'
+            )}
           </Button>
         </CardFooter>
       </Card>
     );
   };
 
-  if (loading) {
+  // Show payment page if applicable
+  if (showPaymentPage && selectedInternship) {
+    return (
+      <APRazorpayPayment
+        internshipId={selectedInternship._id}
+        internshipTitle={selectedInternship.title}
+        amount={selectedInternship.amount || 0}
+        applicationId={applicationId}
+        onPaymentSuccess={handlePaymentSuccess}
+        onBack={handlePaymentBack}
+      />
+    );
+  }
+
+  if (loading && !showPaymentPage) {
     return (
       <>
         <Navbar />
@@ -474,12 +630,8 @@ const APExclusiveInternshipsPage = () => {
           internship={selectedInternship}
           open={showApplyDialog}
           onOpenChange={setShowApplyDialog}
-          onSuccess={() => {
-            setShowApplyDialog(false);
-            setSelectedInternship(null);
-            // Refresh internships to reflect any status changes
-            fetchAPInternships();
-          }}
+          onSubmit={handleApplicationSubmit}
+          loading={loading}
         />
       </div>
       <Footer />
