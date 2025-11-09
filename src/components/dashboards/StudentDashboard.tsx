@@ -26,7 +26,7 @@ import { EnhancedCourse } from '@/types/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import APStudentDashboard from './student/APStudentDashboard';
+import APStudentDashboard from '@/components/student/APStudentDashboard';
 
 interface Job {
   _id: string;
