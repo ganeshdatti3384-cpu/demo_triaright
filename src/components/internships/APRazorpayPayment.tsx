@@ -1,7 +1,7 @@
 // components/internships/APRazorpayPayment.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, CheckCircle, CreditCard } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/hooks/use-toast';
@@ -28,27 +28,40 @@ const APRazorpayPayment = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if Razorpay is available
-    if (typeof window !== 'undefined' && (window as any).Razorpay) {
-      setInitializing(false);
-    } else {
-      // Load Razorpay script dynamically
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      script.onload = () => {
-        setInitializing(false);
-      };
-      script.onerror = () => {
+    // Load Razorpay script dynamically
+    const loadRazorpay = () => {
+      return new Promise((resolve, reject) => {
+        if (typeof window !== 'undefined' && (window as any).Razorpay) {
+          resolve(true);
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.onload = () => {
+          console.log('Razorpay SDK loaded successfully');
+          resolve(true);
+        };
+        script.onerror = () => {
+          console.error('Failed to load Razorpay SDK');
+          reject(new Error('Failed to load payment gateway'));
+        };
+        document.body.appendChild(script);
+      });
+    };
+
+    loadRazorpay()
+      .then(() => setInitializing(false))
+      .catch((error) => {
+        console.error('Error loading Razorpay:', error);
         toast({
           title: 'Error',
-          description: 'Failed to load payment gateway',
+          description: 'Failed to load payment gateway. Please refresh the page.',
           variant: 'destructive'
         });
         setInitializing(false);
-      };
-      document.body.appendChild(script);
-    }
+      });
   }, [toast]);
 
   const initializeRazorpayPayment = async () => {
@@ -74,8 +87,8 @@ const APRazorpayPayment = ({
         return;
       }
 
-      // Create Razorpay order via your backend
-      const orderResponse = await fetch('/api/internships/apinternshipapply', {
+      // Create Razorpay order
+      const orderResponse = await fetch('/api/internships/ap-internship-payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,10 +96,9 @@ const APRazorpayPayment = ({
         },
         body: JSON.stringify({
           internshipId,
-          amount: Math.round(amount * 100), // Convert to paise
+          amount: amount,
           currency: 'INR',
-          applicationId,
-          createOrder: true
+          applicationId
         })
       });
 
@@ -96,14 +108,14 @@ const APRazorpayPayment = ({
         throw new Error(orderData.message || 'Failed to create payment order');
       }
 
-      const razorpayOrder = orderData.razorpayOrder;
+      const razorpayOrder = orderData.order;
 
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY_ID', // Replace with your key
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
-        name: 'Triaright Education - AP Internships',
-        description: `Internship: ${internshipTitle}`,
+        name: 'Triaright Education',
+        description: `AP Internship: ${internshipTitle}`,
         order_id: razorpayOrder.id,
         handler: async function (response: any) {
           await verifyPayment(response);
@@ -114,14 +126,14 @@ const APRazorpayPayment = ({
           contact: localStorage.getItem('userPhone') || ''
         },
         theme: {
-          color: '#4F46E5'
+          color: '#2563eb'
         },
         modal: {
           ondismiss: function() {
             setLoading(false);
             toast({
               title: 'Payment Cancelled',
-              description: 'You cancelled the payment process',
+              description: 'You can complete the payment later',
               variant: 'default'
             });
           }
@@ -133,9 +145,10 @@ const APRazorpayPayment = ({
 
       razorpay.on('payment.failed', function (response: any) {
         setLoading(false);
+        console.error('Payment failed:', response.error);
         toast({
           title: 'Payment Failed',
-          description: response.error.description || 'Payment could not be completed',
+          description: response.error.description || 'Payment could not be completed. Please try again.',
           variant: 'destructive'
         });
       });
@@ -144,7 +157,7 @@ const APRazorpayPayment = ({
       console.error('Payment initialization error:', error);
       toast({
         title: 'Payment Error',
-        description: error.message || 'Failed to initialize payment',
+        description: error.message || 'Failed to initialize payment. Please try again.',
         variant: 'destructive'
       });
       setLoading(false);
@@ -155,7 +168,7 @@ const APRazorpayPayment = ({
     try {
       const token = localStorage.getItem('token');
       
-      const verifyResponse = await fetch('/api/internships/apinternshipverify-payment', {
+      const verifyResponse = await fetch('/api/internships/ap-internship-verify-payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,11 +186,6 @@ const APRazorpayPayment = ({
       const verifyData = await verifyResponse.json();
 
       if (verifyResponse.ok && verifyData.success) {
-        toast({
-          title: 'Payment Successful!',
-          description: 'You have been successfully enrolled in the internship',
-          variant: 'default'
-        });
         onPaymentSuccess();
       } else {
         throw new Error(verifyData.message || 'Payment verification failed');
@@ -203,6 +211,7 @@ const APRazorpayPayment = ({
             <div className="text-center py-12">
               <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
               <h2 className="text-xl font-semibold text-gray-900">Loading Payment Gateway...</h2>
+              <p className="text-gray-600 mt-2">Please wait while we initialize the payment system.</p>
             </div>
           </div>
         </div>
@@ -228,23 +237,26 @@ const APRazorpayPayment = ({
 
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
             <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CreditCard className="h-8 w-8 text-blue-600" />
+              </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Complete Your Internship Enrollment
+                Complete Your Payment
               </h1>
               <p className="text-gray-600">
-                Secure payment for {internshipTitle}
+                Secure payment for <strong>{internshipTitle}</strong>
               </p>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-600">Internship:</span>
-                <span className="font-semibold">{internshipTitle}</span>
+                <span className="text-sm text-gray-600">Internship Program:</span>
+                <span className="font-semibold text-blue-900">{internshipTitle}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Amount:</span>
-                <span className="text-xl font-bold text-green-600">
-                  ₹{amount}
+                <span className="text-sm text-gray-600">Total Amount:</span>
+                <span className="text-2xl font-bold text-green-600">
+                  ₹{amount.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -271,7 +283,7 @@ const APRazorpayPayment = ({
             <Button
               onClick={initializeRazorpayPayment}
               disabled={loading || initializing}
-              className="w-full py-6 text-lg bg-blue-600 hover:bg-blue-700"
+              className="w-full py-6 text-lg bg-blue-600 hover:bg-blue-700 font-semibold"
               size="lg"
             >
               {loading ? (
@@ -280,13 +292,16 @@ const APRazorpayPayment = ({
                   Processing Payment...
                 </>
               ) : (
-                `Pay ₹${amount} Securely`
+                <>
+                  <CreditCard className="h-5 w-5 mr-2" />
+                  Pay ₹{amount.toLocaleString()} Securely
+                </>
               )}
             </Button>
 
             <div className="text-xs text-gray-500 text-center mt-4">
               By proceeding, you agree to our{' '}
-              <a href="/terms" className="text-blue-600 hover:underline">Terms</a>
+              <a href="/terms" className="text-blue-600 hover:underline">Terms of Service</a>
               {' '}and{' '}
               <a href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</a>
             </div>
