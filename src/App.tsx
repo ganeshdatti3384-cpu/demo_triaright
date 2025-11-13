@@ -267,7 +267,7 @@ const App = () => {
             }
           />
           <Route
-            path="/pack365-learning/:stream/course"
+            path="/pack365-learning/:stream/course/:courseId?"
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <StreamLearningInterface />
