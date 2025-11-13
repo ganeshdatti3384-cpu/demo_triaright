@@ -43,20 +43,21 @@ import CourseLearning from '@/pages/CourseLearning';
 import ExamList from '@/pages/ExamList';
 import ExamInterface from '@/pages/ExamInterface';
 import NotFound from '@/pages/NotFound';
-import CouponCode from './pages/CouponCode';
-import PaymentSelection from './pages/PaymentSelection';
-import RazorpayPayment from './pages/RazorpayPayment';
+import CouponCode from '@/pages/CouponCode';
+import PaymentSelection from '@/pages/PaymentSelection';
+import RazorpayPayment from '@/pages/RazorpayPayment';
 import StudentProfilePage from '@/components/profile/StudentProfilePage';
 import JobSeekerProfilePage from '@/components/profile/JobSeekerProfilePage';
 import EmployerProfilePage from '@/components/profile/EmployerProfilePage';
 import Pack365Dashboard from '@/components/Pack365Dashboard';
 import Pack365StreamLearning from '@/pages/Pack365StreamLearning';
-import LearningInterface from './components/CourseLearningInterface2';
-import Learning from './pages/CourseLearning2';
-import InternshipDetailsPage from './components/internships/InternshipDetailsPage';
-import RegularInternshipsPage from './components/internships/RegularInternshipsPage';
-import APExclusiveInternshipsPage from './components/internships/APExclusiveInternshipsPage';
-import JobsPage from './pages/JobsPage';
+import LearningInterface from '@/components/CourseLearningInterface2';
+import Learning from '@/pages/CourseLearning2';
+import InternshipDetailsPage from '@/components/internships/InternshipDetailsPage';
+import RegularInternshipsPage from '@/components/internships/RegularInternshipsPage';
+import APExclusiveInternshipsPage from '@/components/internships/APExclusiveInternshipsPage';
+import JobsPage from '@/pages/JobsPage';
+import StreamLearningInterface from '@/components/pack365/StreamLearningInterface';
 
 const queryClient = new QueryClient();
 
@@ -136,7 +137,7 @@ const App = () => {
           />
          
           <Route
-            path="/Coupon-code"
+            path="/coupon-code"
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <CouponCode />
@@ -205,6 +206,7 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          
           {/* Profile Routes */}
           <Route
             path="/student/profile"
@@ -246,6 +248,8 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          
+          {/* Pack365 Learning Routes */}
           <Route
             path="/pack365-dashboard"
             element={
@@ -259,6 +263,22 @@ const App = () => {
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <Pack365StreamLearning />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pack365-learning/:stream/course"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <StreamLearningInterface />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/exam/:stream"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <ExamInterface />
               </ProtectedRoute>
             }
           />
