@@ -198,6 +198,20 @@ const Pack365StreamLearning = () => {
     fetchStreamEnrollment();
   }, [stream]);
 
+  const getCourseProgress = (courseId: string) => {
+    if (!enrollment?.topicProgress) return 0;
+    
+    // Use courseId consistently
+    const courseTopics = enrollment.topicProgress.filter(tp => 
+      tp.courseId === courseId
+    );
+    
+    if (courseTopics.length === 0) return 0;
+    
+    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
+    return (watchedTopics / courseTopics.length) * 100;
+  };
+
   const handleCourseStart = (course: Course) => {
     navigate(`/pack365-learning/${stream}/course`, { 
       state: { 
@@ -224,16 +238,6 @@ const Pack365StreamLearning = () => {
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
     year: 'numeric', month: 'long', day: 'numeric'
   });
-
-  const getCourseProgress = (courseId: string) => {
-    if (!enrollment?.topicProgress) return 0;
-    
-    const courseTopics = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
-    if (courseTopics.length === 0) return 0;
-    
-    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
-    return (watchedTopics / courseTopics.length) * 100;
-  };
 
   if (loading) {
     return <SkeletonLoader />;
@@ -354,7 +358,7 @@ const Pack365StreamLearning = () => {
                 <CardContent className="space-y-6">
                   {enrollment.courses && enrollment.courses.length > 0 ? (
                     enrollment.courses.map((course) => {
-                      const courseProgress = getCourseProgress(course._id);
+                      const courseProgress = getCourseProgress(course.courseId);
                       
                       return (
                         <div key={course.courseId} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
