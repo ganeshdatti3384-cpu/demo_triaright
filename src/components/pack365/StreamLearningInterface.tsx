@@ -53,6 +53,7 @@ const StreamLearningInterface = () => {
   const [topicProgress, setTopicProgress] = useState<TopicProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrollment, setEnrollment] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadStreamData();
@@ -61,8 +62,10 @@ const StreamLearningInterface = () => {
   const loadStreamData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const token = localStorage.getItem('token');
       if (!token) {
+        setError('Authentication required');
         toast({ title: 'Authentication Required', variant: 'destructive' });
         navigate('/login');
         return;
@@ -70,11 +73,19 @@ const StreamLearningInterface = () => {
 
       // Get enrollment data
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-      const streamEnrollment = enrollmentResponse.enrollments?.find(
+      
+      if (!enrollmentResponse.success || !enrollmentResponse.enrollments) {
+        setError('Failed to load enrollment data');
+        toast({ title: 'Error', description: 'Failed to load enrollment data', variant: 'destructive' });
+        return;
+      }
+
+      const streamEnrollment = enrollmentResponse.enrollments.find(
         (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
       );
 
       if (!streamEnrollment) {
+        setError('You are not enrolled in this stream');
         toast({ title: 'Access Denied', description: 'You are not enrolled in this stream', variant: 'destructive' });
         navigate('/pack365');
         return;
@@ -85,15 +96,32 @@ const StreamLearningInterface = () => {
 
       // Get courses for this stream
       const coursesResponse = await pack365Api.getAllCourses();
-      const streamCourses = coursesResponse.data?.filter(
+      
+      if (!coursesResponse.success || !coursesResponse.data) {
+        setError('Failed to load courses');
+        toast({ title: 'Error', description: 'Failed to load courses', variant: 'destructive' });
+        return;
+      }
+
+      const streamCourses = coursesResponse.data.filter(
         (course: Course) => course.stream?.toLowerCase() === stream?.toLowerCase()
       ) || [];
+
+      if (streamCourses.length === 0) {
+        setError('No courses found for this stream');
+        toast({ title: 'No Courses', description: 'No courses available for this stream', variant: 'destructive' });
+        return;
+      }
 
       setCourses(streamCourses);
 
       // Set selected course from location state or first course
+      const selectedCourseFromState = location.state?.selectedCourse;
       const selectedCourseId = location.state?.selectedCourseId;
-      if (selectedCourseId) {
+      
+      if (selectedCourseFromState) {
+        setSelectedCourse(selectedCourseFromState);
+      } else if (selectedCourseId) {
         const course = streamCourses.find((c: Course) => c.courseId === selectedCourseId);
         setSelectedCourse(course || streamCourses[0]);
       } else {
@@ -101,8 +129,13 @@ const StreamLearningInterface = () => {
       }
 
     } catch (error: any) {
-      toast({ title: 'Error', description: 'Failed to load stream data', variant: 'destructive' });
-      navigate('/pack365');
+      console.error('Error loading stream data:', error);
+      setError('Failed to load stream data');
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to load stream data. Please try again.', 
+        variant: 'destructive' 
+      });
     } finally {
       setLoading(false);
     }
@@ -156,6 +189,33 @@ const StreamLearningInterface = () => {
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
     return courseTopics.length > 0 ? (watchedTopics / courseTopics.length) * 100 : 0;
   };
+
+  if (error) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <Card className="max-w-md w-full">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Content</h2>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <div className="space-x-2">
+                  <Button onClick={loadStreamData} variant="default">
+                    Try Again
+                  </Button>
+                  <Button onClick={() => navigate('/pack365-dashboard')} variant="outline">
+                    Back to Dashboard
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </>
+    );
+  }
 
   if (loading) {
     return (
