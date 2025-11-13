@@ -157,6 +157,24 @@ const ExamInterface = () => {
     }
   };
 
+  // Add this function to refresh enrollment data
+  const refreshEnrollmentData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // Update the enrollment data to reflect exam completion
+      const response = await pack365Api.getMyEnrollments(token);
+      if (response.success) {
+        // Set a flag to trigger refresh in other components
+        localStorage.setItem('lastEnrollmentUpdate', new Date().toISOString());
+        console.log('Enrollment data refreshed after exam completion');
+      }
+    } catch (error) {
+      console.error('Error refreshing enrollment data:', error);
+    }
+  };
+
   const handleAutoSubmit = async () => {
     if (!exam) return;
     
@@ -174,6 +192,9 @@ const ExamInterface = () => {
       const result = await pack365Api.submitExam(token, submission);
       
       if (result.success) {
+        // Refresh enrollment data to update exam status
+        await refreshEnrollmentData();
+        
         toast({
           title: 'Exam Auto-Submitted',
           description: 'Time is up! Your exam has been automatically submitted.',
@@ -223,6 +244,9 @@ const ExamInterface = () => {
       const result = await pack365Api.submitExam(token, submission);
       
       if (result.success) {
+        // Refresh enrollment data to update exam status
+        await refreshEnrollmentData();
+        
         toast({
           title: 'Exam Submitted',
           description: 'Your exam has been submitted successfully!',
