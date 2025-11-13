@@ -155,38 +155,6 @@ const StreamLearningInterface = () => {
     return match ? match[1] : null;
   };
 
-  const getTopicProgress = (courseId: string, topicName: string) => {
-    return topicProgress.find(
-      tp => tp.courseId === courseId && tp.topicName === topicName
-    );
-  };
-
-  const getCourseProgress = (courseId: string) => {
-    // Use courseId instead of _id for consistency
-    const courseTopics = topicProgress.filter(tp => tp.courseId === courseId);
-    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
-    return courseTopics.length > 0 ? (watchedTopics / courseTopics.length) * 100 : 0;
-  };
-
-  const refreshProgress = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-      const streamEnrollment = enrollmentResponse.enrollments.find(
-        (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
-      );
-      
-      if (streamEnrollment) {
-        setTopicProgress(streamEnrollment.topicProgress || []);
-        setEnrollment(streamEnrollment);
-      }
-    } catch (error) {
-      console.error('Error refreshing progress:', error);
-    }
-  };
-
   const handleTopicClick = async (topic: Topic) => {
     if (!selectedCourse) return;
 
@@ -217,7 +185,7 @@ const StreamLearningInterface = () => {
       setVideoProgress(progress);
       
       // Mark as completed if progress reaches 80% or more
-      if (progress >= 80 && isTrackingProgress) {
+      if (progress >= 80 && !isTrackingProgress) {
         markTopicAsCompleted(topic);
         clearInterval(progressInterval);
       }
@@ -240,17 +208,50 @@ const StreamLearningInterface = () => {
         return; // Already marked as completed
       }
 
+      // Calculate stream progress
+      const totalWatchedTopics = [...topicProgress.filter(tp => tp.watched), 
+        { courseId: selectedCourse.courseId, topicName: topic.name, watched: true, watchedDuration: topic.duration }
+      ].length;
+      
+      const totalTopicsInStream = courses.reduce((total, course) => total + course.topics.length, 0);
+      const newPercentage = Math.round((totalWatchedTopics / totalTopicsInStream) * 100);
+
       // Update progress via API
       await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse.courseId,
         topicName: topic.name,
-        watched: true,
         watchedDuration: topic.duration,
+        totalWatchedPercentage: newPercentage,
         lastWatchedAt: new Date().toISOString()
       });
 
-      // Refresh progress data
-      await refreshProgress();
+      // Update local state
+      setTopicProgress(prev => {
+        const existing = prev.find(tp => 
+          tp.topicName === topic.name && tp.courseId === selectedCourse.courseId
+        );
+        
+        if (existing) {
+          return prev.map(tp => 
+            tp.topicName === topic.name && tp.courseId === selectedCourse.courseId
+              ? { 
+                  ...tp, 
+                  watched: true, 
+                  watchedDuration: topic.duration,
+                  lastWatchedAt: new Date().toISOString()
+                }
+              : tp
+          );
+        } else {
+          return [...prev, {
+            courseId: selectedCourse.courseId,
+            topicName: topic.name,
+            watched: true,
+            watchedDuration: topic.duration,
+            lastWatchedAt: new Date().toISOString()
+          }];
+        }
+      });
 
       setIsTrackingProgress(false);
       
@@ -274,6 +275,39 @@ const StreamLearningInterface = () => {
     await markTopicAsCompleted(topic);
     setIsVideoModalOpen(false);
     setSelectedTopic(null);
+  };
+
+  const getTopicProgress = (courseId: string, topicName: string) => {
+    return topicProgress.find(
+      tp => tp.courseId === courseId && tp.topicName === topicName
+    );
+  };
+
+  const getCourseProgress = (courseId: string) => {
+    const course = courses.find(c => c.courseId === courseId);
+    if (!course || course.topics.length === 0) return 0;
+    
+    const courseTopicsProgress = topicProgress.filter(tp => tp.courseId === courseId);
+    const watchedTopics = courseTopicsProgress.filter(tp => tp.watched).length;
+    return (watchedTopics / course.topics.length) * 100;
+  };
+
+  const getStreamProgress = () => {
+    if (courses.length === 0) return 0;
+    
+    const totalTopicsInStream = courses.reduce((total, course) => total + course.topics.length, 0);
+    if (totalTopicsInStream === 0) return 0;
+    
+    const totalWatchedTopics = topicProgress.filter(tp => tp.watched).length;
+    return (totalWatchedTopics / totalTopicsInStream) * 100;
+  };
+
+  const getTotalWatchedTopics = () => {
+    return topicProgress.filter(tp => tp.watched).length;
+  };
+
+  const getTotalTopicsInStream = () => {
+    return courses.reduce((total, course) => total + course.topics.length, 0);
   };
 
   const handleOpenInNewTab = (topic: Topic) => {
@@ -438,6 +472,21 @@ const StreamLearningInterface = () => {
             <p className="text-gray-600 mt-2">
               Complete all courses and topics to unlock the final exam
             </p>
+            
+            {/* Stream Progress Summary */}
+            <div className="mt-4 bg-white p-4 rounded-lg border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium">Overall Stream Progress</span>
+                <span className="text-sm text-gray-600">
+                  {getTotalWatchedTopics()} / {getTotalTopicsInStream()} topics completed
+                </span>
+              </div>
+              <Progress value={getStreamProgress()} className="h-3" />
+              <div className="flex justify-between text-sm text-gray-600 mt-1">
+                <span>{Math.round(getStreamProgress())}% Complete</span>
+                <span>{getTotalTopicsInStream() - getTotalWatchedTopics()} topics remaining</span>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -464,7 +513,6 @@ const StreamLearningInterface = () => {
                           {course.topics.length} topics
                         </Badge>
                       </div>
-                      {/* Use course.courseId instead of course._id */}
                       <Progress 
                         value={getCourseProgress(course.courseId)} 
                         className="h-2" 
@@ -479,7 +527,7 @@ const StreamLearningInterface = () => {
               </Card>
 
               {/* Exam Eligibility */}
-              {enrollment?.totalWatchedPercentage >= 80 && (
+              {getStreamProgress() >= 80 && (
                 <Card className="bg-green-50 border-green-200">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2 mb-2">
@@ -510,10 +558,15 @@ const StreamLearningInterface = () => {
                         <CardTitle className="text-2xl">{selectedCourse.courseName}</CardTitle>
                         <p className="text-gray-600 mt-1">{selectedCourse.description}</p>
                       </div>
-                      <Badge variant="outline">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {selectedCourse.totalDuration} min
-                      </Badge>
+                      <div className="flex items-center gap-4">
+                        <Badge variant="outline">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {selectedCourse.totalDuration} min
+                        </Badge>
+                        <Badge variant="secondary">
+                          {getCourseProgress(selectedCourse.courseId)}% Complete
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -538,9 +591,20 @@ const StreamLearningInterface = () => {
                       </div>
                     )}
 
+                    {/* Course Progress */}
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium">Course Progress</span>
+                        <span className="text-sm text-gray-600">
+                          {topicProgress.filter(tp => tp.courseId === selectedCourse.courseId && tp.watched).length} / {selectedCourse.topics.length} topics completed
+                        </span>
+                      </div>
+                      <Progress value={getCourseProgress(selectedCourse.courseId)} className="h-2" />
+                    </div>
+
                     {/* Topics List */}
                     <div className="space-y-3">
-                      <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
+                      <h3 className="text-lg font-semibold mb-4">Course Topics ({selectedCourse.topics.length})</h3>
                       {selectedCourse.topics.map((topic, index) => {
                         const progress = getTopicProgress(selectedCourse.courseId, topic.name);
                         const isWatched = progress?.watched;
