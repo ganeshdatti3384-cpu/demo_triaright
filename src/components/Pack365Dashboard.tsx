@@ -178,7 +178,11 @@ const Pack365Dashboard = () => {
   const getCourseProgress = (enrollment: StreamEnrollment, courseId: string) => {
     if (!enrollment.topicProgress) return 0;
     
-    const courseTopics = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
+    // Filter by courseId and ensure we have topics
+    const courseTopics = enrollment.topicProgress.filter(tp => 
+      tp.courseId === courseId
+    );
+    
     if (courseTopics.length === 0) return 0;
     
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
@@ -348,7 +352,7 @@ const Pack365Dashboard = () => {
                           <span className="text-sm font-medium mb-2 block">Courses Progress:</span>
                           <div className="space-y-2">
                             {enrollment.courses.slice(0, 3).map((course, courseIndex) => {
-                              const courseProgress = getCourseProgress(enrollment, course._id);
+                              const courseProgress = getCourseProgress(enrollment, course.courseId);
                               return (
                                 <div key={courseIndex} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg p-2">
                                   <span className="font-medium truncate">{course.courseName}</span>
