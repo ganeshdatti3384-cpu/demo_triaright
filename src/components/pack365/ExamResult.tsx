@@ -11,7 +11,8 @@ import {
   ArrowLeft,
   BarChart3,
   Clock,
-  BookOpen
+  BookOpen,
+  RefreshCw
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
@@ -63,6 +64,19 @@ const ExamResult = () => {
     return `${minutes}m ${remainingSeconds}s`;
   };
 
+  const handleRefreshDashboard = () => {
+    // Set flag to force refresh in dashboard
+    localStorage.setItem('forceRefresh', 'true');
+    localStorage.setItem('lastEnrollmentUpdate', new Date().toISOString());
+    navigate('/pack365-dashboard');
+  };
+
+  const handleBackToStream = () => {
+    // Set flag to force refresh in stream learning page
+    localStorage.setItem('lastEnrollmentUpdate', new Date().toISOString());
+    navigate(`/pack365-learning/${stream}`);
+  };
+
   return (
     <>
       <Navbar />
@@ -71,7 +85,7 @@ const ExamResult = () => {
           {/* Header */}
           <div className="mb-8">
             <Button 
-              onClick={() => navigate(`/pack365-learning/${stream}`)}
+              onClick={handleBackToStream}
               variant="outline"
               className="mb-4"
             >
@@ -229,10 +243,11 @@ const ExamResult = () => {
                         <span className="text-sm font-medium">Stream Completed!</span>
                       </div>
                       <Button 
-                        onClick={() => navigate('/pack365-dashboard')}
+                        onClick={handleRefreshDashboard}
                         className="w-full"
                       >
-                        View Dashboard
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        View Updated Dashboard
                       </Button>
                     </>
                   ) : (
@@ -242,7 +257,7 @@ const ExamResult = () => {
                         <span className="text-sm font-medium">Review course materials</span>
                       </div>
                       <Button 
-                        onClick={() => navigate(`/pack365-learning/${stream}`)}
+                        onClick={handleBackToStream}
                         variant="outline"
                         className="w-full"
                       >
@@ -257,6 +272,16 @@ const ExamResult = () => {
                     className="w-full"
                   >
                     Browse Other Streams
+                  </Button>
+
+                  {/* Force Refresh Button */}
+                  <Button 
+                    onClick={handleRefreshDashboard}
+                    variant="outline"
+                    className="w-full mt-2"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Progress
                   </Button>
                 </CardContent>
               </Card>
