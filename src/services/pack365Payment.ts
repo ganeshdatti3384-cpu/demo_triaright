@@ -50,22 +50,6 @@ interface PaymentVerificationResponse {
   };
 }
 
-interface CouponValidationResponse {
-  success: boolean;
-  message: string;
-  courseDetails?: {
-    stream: string;
-    originalPrice: number;
-    finalAmount: number;
-  };
-  couponDetails?: {
-    code: string;
-    discountAmount?: number;
-    discount?: number;
-    description?: string;
-  };
-}
-
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 
 export class Pack365PaymentService {
@@ -113,87 +97,19 @@ export class Pack365PaymentService {
 
   // Helper method to normalize stream names for backend
   private static normalizeStreamName(streamName: string): string {
-    if (!streamName) return 'IT';
+    if (!streamName) return 'it';
     
     const normalized = streamName.toLowerCase();
     
-    // Match exactly what your backend expects
     if (normalized.includes('it')) return 'IT';
     if (normalized.includes('finance')) return 'FINANCE';
-    if (normalized.includes('marketing')) return 'MARKETING';
+    if (normalized.includes('marketing')) return 'mMARKETING';
     if (normalized.includes('hr')) return 'HR';
     if (normalized.includes('pharma')) return 'PHARMA';
     if (normalized.includes('non')) return 'NON-IT';
     
-    // Return original name capitalized
-    return streamName.toUpperCase();
-  }
-
-  // New method to validate coupon with updated backend structure
-  static async validateCouponCode(
-    couponCode: string, 
-    streamName: string, 
-    token: string
-  ): Promise<CouponValidationResponse> {
-    try {
-      console.log('🔍 Validating coupon code:', { couponCode, streamName });
-
-      const response = await axios.post(
-        `${API_BASE_URL}/pack365/validate-enrollment-code`,
-        { 
-          code: couponCode,
-          stream: streamName 
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 10000
-        }
-      );
-
-      console.log('✅ Coupon validation response:', response.data);
-      
-      // Handle the new response structure
-      if (response.data.success && response.data.couponDetails) {
-        const discount = response.data.couponDetails.discountAmount || response.data.couponDetails.discount || 0;
-        
-        // Additional validation to match backend rules
-        if (discount <= 0) {
-          throw new Error('Invalid discount amount');
-        }
-        
-        return {
-          success: true,
-          message: response.data.message || 'Coupon applied successfully',
-          courseDetails: response.data.courseDetails,
-          couponDetails: {
-            ...response.data.couponDetails,
-            discount // Ensure consistent discount field
-          }
-        };
-      } else {
-        throw new Error(response.data.message || 'Invalid coupon code');
-      }
-
-    } catch (error: any) {
-      console.error('❌ Error validating coupon:', error);
-      
-      if (error.response) {
-        console.error('📊 Backend error response:', {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers
-        });
-        const errorMessage = error.response.data?.message || 'Failed to validate coupon';
-        throw new Error(errorMessage);
-      } else if (error.request) {
-        throw new Error('Network error. Please check your internet connection and try again.');
-      } else {
-        throw new Error(error.message || 'Unable to validate coupon. Please try again later.');
-      }
-    }
+    // Default fallback
+    return 'IT';
   }
 
   static async createOrder(options: PaymentOptions): Promise<OrderResponse> {
@@ -202,12 +118,12 @@ export class Pack365PaymentService {
       throw new Error('Authentication required');
     }
 
-    console.log('🚀 Creating order with options:', options);
+    console.log('Creating order with options:', options);
 
     try {
       // Normalize stream name for backend compatibility
       const normalizedStream = this.normalizeStreamName(options.streamName);
-      console.log('🔄 Normalized stream name:', options.streamName, '->', normalizedStream);
+      console.log('Normalized stream name:', options.streamName, '->', normalizedStream);
 
       const requestData: any = {
         stream: normalizedStream
@@ -217,11 +133,7 @@ export class Pack365PaymentService {
       if (options.couponCode) {
         requestData.code = options.couponCode;
       }
-      
-      console.log("📤 Sending createOrder request with data:", requestData);
-      console.log("🔑 Authorization token present:", !!token);
-      console.log("🌐 API URL:", `${API_BASE_URL}/pack365/create-order`);
-      
+      console.log("Sending createOrder request with data:",requestData);
       const response = await axios.post(
         `${API_BASE_URL}/pack365/create-order`,
         requestData,
@@ -229,12 +141,11 @@ export class Pack365PaymentService {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          },
-          timeout: 30000 // 30 second timeout
+          }
         }
       );
 
-      console.log('✅ Order created successfully:', response.data);
+      console.log('Order created successfully:', response.data);
       
       // Handle free enrollment case (when total amount is 0)
       if (response.data.success && response.data.enrollmentId) {
@@ -256,18 +167,7 @@ export class Pack365PaymentService {
       };
 
     } catch (error: any) {
-      console.error('❌ Error creating order:', error);
-      
-      // Enhanced error logging
-      if (error.response) {
-        console.error('📊 Backend response error:', {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers
-        });
-      } else if (error.request) {
-        console.error('🌐 Network error - No response received:', error.request);
-      }
+      console.error('Error creating order:', error);
       
       // Handle free enrollment case
       if (error.message === 'FREE_ENROLLMENT') {
@@ -276,7 +176,7 @@ export class Pack365PaymentService {
       
       if (error.response) {
         const errorMessage = error.response.data?.error || error.response.data?.message || 'Failed to create order';
-        throw new Error(`Backend Error (${error.response.status}): ${errorMessage}`);
+        throw new Error(errorMessage);
       } else if (error.request) {
         throw new Error('Network error. Please check your internet connection and try again.');
       } else {
@@ -291,21 +191,10 @@ export class Pack365PaymentService {
     onError?: (error: any) => void
   ): Promise<void> {
     try {
-      console.log('=== 🚀 PAYMENT PROCESS START ===');
-      console.log('📋 Options:', options);
-      console.log('🔑 Token exists:', !!localStorage.getItem('token'));
-      console.log('👤 User data:', localStorage.getItem('currentUser'));
+      console.log('Starting payment process...');
       
       const orderDetails = await this.createOrder(options);
-      console.log('✅ Order created successfully:', orderDetails);
-
-      if (!orderDetails.orderId) {
-        throw new Error('No order ID received from server');
-      }
-
-      if (orderDetails.amount <= 0) {
-        throw new Error('Invalid order amount: ' + orderDetails.amount);
-      }
+      console.log('Order created:', orderDetails);
 
       const isScriptLoaded = await this.loadRazorpayScript();
       if (!isScriptLoaded) {
@@ -317,7 +206,7 @@ export class Pack365PaymentService {
 
       const razorpayOptions = {
         key: "rzp_live_muJa8GZA0HcuE1",
-        amount: orderDetails.amount * 100, // Convert to paise
+        amount: orderDetails.amount * 100,
         currency: 'INR',
         name: 'Pack365',
         description: `${orderDetails.stream} Bundle - ${orderDetails.coursesCount} courses`,
@@ -331,14 +220,15 @@ export class Pack365PaymentService {
           color: '#3B82F6'
         },
         handler: async (response: RazorpayResponse) => {
-          console.log('✅ Payment successful:', response);
+          console.log('Payment successful:', response);
+          // Don't verify here - let the calling component handle verification
           if (onSuccess) {
             onSuccess(response);
           }
         },
         modal: {
           ondismiss: () => {
-            console.log('❌ Payment cancelled by user');
+            console.log('Payment cancelled by user');
             const error = new Error('Payment was cancelled by user');
             if (onError) {
               onError(error);
@@ -347,12 +237,7 @@ export class Pack365PaymentService {
         }
       };
 
-      console.log('🔄 Opening Razorpay checkout with options:', {
-        amount: razorpayOptions.amount,
-        currency: razorpayOptions.currency,
-        order_id: razorpayOptions.order_id,
-        description: razorpayOptions.description
-      });
+      console.log('Opening Razorpay checkout with options:', razorpayOptions);
 
       if (!window.Razorpay) {
         throw new Error('Razorpay is not loaded. Please refresh the page and try again.');
@@ -360,23 +245,21 @@ export class Pack365PaymentService {
 
       const razorpay = new window.Razorpay(razorpayOptions);
       razorpay.on('payment.failed', (response: any) => {
-        console.error('❌ Payment failed:', response.error);
+        console.error('Payment failed:', response.error);
         const error = new Error(response.error.description || 'Payment failed');
         if (onError) {
           onError(error);
         }
       });
 
-      console.log('✅ Opening Razorpay modal...');
       razorpay.open();
 
     } catch (error: any) {
-      console.error('=== ❌ PAYMENT PROCESS ERROR ===');
-      console.error('Error details:', error);
+      console.error('Error processing payment:', error);
       
       // Handle free enrollment case
       if (error.message === 'FREE_ENROLLMENT') {
-        console.log('🎉 Free enrollment detected');
+        console.log('Free enrollment detected, redirecting to success page');
         if (onSuccess) {
           onSuccess({
             razorpay_payment_id: 'FREE_COUPON',
@@ -400,11 +283,9 @@ export class Pack365PaymentService {
     navigate?: ReturnType<typeof useNavigate>
   ): Promise<PaymentVerificationResponse> {
     try {
-      console.log('🔍 Verifying payment:', response);
-      
       // Handle free enrollment case
       if (response.razorpay_order_id === 'FREE_ENROLLMENT') {
-        console.log('🎉 Free enrollment - automatically successful');
+        console.log('Free enrollment - automatically successful');
         
         if (navigate) {
           navigate('/payment-success');
@@ -427,7 +308,7 @@ export class Pack365PaymentService {
         razorpay_signature: response.razorpay_signature,
       };
 
-      console.log('📤 Verifying payment with data:', requestData);
+      console.log('Verifying payment with data:', requestData);
 
       const verificationResponse = await axios.post(
         `${API_BASE_URL}/pack365/payment/verify`,
@@ -439,15 +320,15 @@ export class Pack365PaymentService {
         }
       );
 
-      console.log('✅ Payment verification response:', verificationResponse.data);
+      console.log('Payment verification response:', verificationResponse.data);
 
       if (verificationResponse.data.success) {
-        console.log('✅ Payment verification successful');
+        console.log('Payment verification successful');
         if (navigate) {
           navigate('/payment-success');
         }
       } else {
-        console.log('❌ Payment verification failed');
+        console.log('Payment verification failed');
         if (navigate) {
           navigate('/payment-failure');
         }
@@ -456,7 +337,7 @@ export class Pack365PaymentService {
 
       return verificationResponse.data;
     } catch (error: any) {
-      console.error('❌ Error verifying payment:', error);
+      console.error('Error verifying payment:', error);
       if (navigate) {
         navigate('/payment-failure');
       }
