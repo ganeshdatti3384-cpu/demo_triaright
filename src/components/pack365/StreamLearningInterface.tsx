@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Play, 
@@ -13,7 +14,9 @@ import {
   ArrowLeft,
   Award,
   Video,
-  FileText
+  FileText,
+  X,
+  ExternalLink
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -40,6 +43,7 @@ interface TopicProgress {
   topicName: string;
   watched: boolean;
   watchedDuration: number;
+  lastWatchedAt?: string;
 }
 
 const StreamLearningInterface = () => {
@@ -54,6 +58,10 @@ const StreamLearningInterface = () => {
   const [loading, setLoading] = useState(true);
   const [enrollment, setEnrollment] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [videoProgress, setVideoProgress] = useState<number>(0);
+  const [isTrackingProgress, setIsTrackingProgress] = useState(false);
 
   useEffect(() => {
     loadStreamData();
@@ -141,41 +149,114 @@ const StreamLearningInterface = () => {
     }
   };
 
+  const extractYouTubeVideoId = (url: string): string | null => {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
   const handleTopicClick = async (topic: Topic) => {
     if (!selectedCourse) return;
 
-    // Update progress via API
+    setSelectedTopic(topic);
+    setIsVideoModalOpen(true);
+    setVideoProgress(0);
+    setIsTrackingProgress(false);
+
+    // Start progress tracking after a short delay
+    setTimeout(() => {
+      setIsTrackingProgress(true);
+      startProgressTracking(topic);
+    }, 2000);
+  };
+
+  const startProgressTracking = (topic: Topic) => {
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      if (progress >= 100) {
+        clearInterval(progressInterval);
+        markTopicAsCompleted(topic);
+        return;
+      }
+      
+      progress += (100 / (topic.duration * 60)) * 5; // Increment every 5 seconds
+      if (progress > 100) progress = 100;
+      
+      setVideoProgress(progress);
+      
+      // Mark as completed if progress reaches 80% or more
+      if (progress >= 80 && !isTrackingProgress) {
+        markTopicAsCompleted(topic);
+        clearInterval(progressInterval);
+      }
+    }, 5000); // Update every 5 seconds
+
+    // Cleanup interval when component unmounts or modal closes
+    return () => clearInterval(progressInterval);
+  };
+
+  const markTopicAsCompleted = async (topic: Topic) => {
+    if (!selectedCourse || !isTrackingProgress) return;
+
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Calculate new progress
+      // Calculate new overall progress
+      const currentTopicProgress = getTopicProgress(selectedCourse._id, topic.name);
+      if (currentTopicProgress?.watched) {
+        return; // Already marked as completed
+      }
+
       const totalWatched = topicProgress.filter(tp => tp.watched).length + 1;
       const totalTopics = topicProgress.length;
       const newPercentage = Math.round((totalWatched / totalTopics) * 100);
 
+      // Update progress via API
       await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse.courseId,
         topicName: topic.name,
         watchedDuration: topic.duration,
-        totalWatchedPercentage: newPercentage
+        totalWatchedPercentage: newPercentage,
+        lastWatchedAt: new Date().toISOString()
       });
 
       // Update local state
       setTopicProgress(prev => 
         prev.map(tp => 
           tp.topicName === topic.name && tp.courseId === selectedCourse._id
-            ? { ...tp, watched: true, watchedDuration: topic.duration }
+            ? { 
+                ...tp, 
+                watched: true, 
+                watchedDuration: topic.duration,
+                lastWatchedAt: new Date().toISOString()
+              }
             : tp
         )
       );
 
-      // Open topic link in new tab
-      window.open(topic.link, '_blank');
+      setIsTrackingProgress(false);
+      
+      toast({
+        title: 'Progress Updated',
+        description: `"${topic.name}" marked as completed!`,
+        variant: 'default'
+      });
 
     } catch (error: any) {
-      toast({ title: 'Error', description: 'Failed to update progress', variant: 'destructive' });
+      console.error('Error updating progress:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to update progress', 
+        variant: 'destructive' 
+      });
     }
+  };
+
+  const handleManualComplete = async (topic: Topic) => {
+    await markTopicAsCompleted(topic);
+    setIsVideoModalOpen(false);
+    setSelectedTopic(null);
   };
 
   const getTopicProgress = (courseId: string, topicName: string) => {
@@ -188,6 +269,10 @@ const StreamLearningInterface = () => {
     const courseTopics = topicProgress.filter(tp => tp.courseId === courseId);
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
     return courseTopics.length > 0 ? (watchedTopics / courseTopics.length) * 100 : 0;
+  };
+
+  const handleOpenInNewTab = (topic: Topic) => {
+    window.open(topic.link, '_blank');
   };
 
   if (error) {
@@ -234,6 +319,102 @@ const StreamLearningInterface = () => {
   return (
     <>
       <Navbar />
+      
+      {/* Video Modal */}
+      <Dialog open={isVideoModalOpen} onOpenChange={setIsVideoModalOpen}>
+        <DialogContent className="max-w-4xl w-full h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{selectedTopic?.name}</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectedTopic && handleOpenInNewTab(selectedTopic)}
+                >
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  Open in New Tab
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsVideoModalOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 flex flex-col">
+            {selectedTopic && (
+              <>
+                {/* YouTube Video Embed */}
+                <div className="flex-1 bg-black rounded-lg mb-4">
+                  {extractYouTubeVideoId(selectedTopic.link) ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${extractYouTubeVideoId(selectedTopic.link)}?autoplay=1`}
+                      title={selectedTopic.name}
+                      className="w-full h-full rounded-lg"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white">
+                      <div className="text-center">
+                        <Video className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                        <p className="text-lg mb-2">Video not available</p>
+                        <Button 
+                          onClick={() => handleOpenInNewTab(selectedTopic)}
+                          variant="default"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open Video Link
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Progress Tracking */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Watching Progress</span>
+                    <span className="text-sm text-gray-600">{Math.round(videoProgress)}%</span>
+                  </div>
+                  <Progress value={videoProgress} className="h-2 mb-4" />
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-600">
+                      {isTrackingProgress ? (
+                        <span className="flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          Tracking your progress...
+                        </span>
+                      ) : (
+                        <span className="flex items-center text-green-600">
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Completed
+                        </span>
+                      )}
+                    </div>
+                    
+                    <Button
+                      onClick={() => selectedTopic && handleManualComplete(selectedTopic)}
+                      variant="default"
+                      size="sm"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Mark as Completed
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Header */}
@@ -361,12 +542,11 @@ const StreamLearningInterface = () => {
                         return (
                           <div
                             key={index}
-                            className={`p-4 border rounded-lg transition-colors cursor-pointer ${
+                            className={`p-4 border rounded-lg transition-colors ${
                               isWatched
                                 ? 'bg-green-50 border-green-200'
                                 : 'bg-white border-gray-200 hover:bg-gray-50'
                             }`}
-                            onClick={() => handleTopicClick(topic)}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
@@ -390,10 +570,24 @@ const StreamLearningInterface = () => {
                                   </div>
                                 </div>
                               </div>
-                              <Button variant="ghost" size="sm">
-                                <Video className="h-4 w-4 mr-1" />
-                                Watch
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleOpenInNewTab(topic)}
+                                >
+                                  <ExternalLink className="h-4 w-4 mr-1" />
+                                  New Tab
+                                </Button>
+                                <Button 
+                                  variant={isWatched ? "outline" : "default"} 
+                                  size="sm"
+                                  onClick={() => handleTopicClick(topic)}
+                                >
+                                  <Video className="h-4 w-4 mr-1" />
+                                  {isWatched ? 'Watch Again' : 'Watch'}
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         );
