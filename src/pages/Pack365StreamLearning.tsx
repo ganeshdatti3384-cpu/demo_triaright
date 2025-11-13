@@ -26,6 +26,12 @@ import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
 
 // --- Interfaces for Type Safety ---
+interface Topic {
+  name: string;
+  link: string;
+  duration: number;
+}
+
 interface Course {
   courseId: string;
   courseName: string;
@@ -34,11 +40,7 @@ interface Course {
   topicsCount: number;
   _id: string;
   stream: string;
-  topics: Array<{
-    name: string;
-    link: string;
-    duration: number;
-  }>;
+  topics: Topic[];
   documentLink?: string;
 }
 
@@ -169,10 +171,18 @@ const Pack365StreamLearning = () => {
               );
               setAllCourses(streamCourses);
               
-              // Enhance enrollment with complete course data
+              // Calculate accurate progress based on actual topics
+              const totalTopicsInStream = streamCourses.reduce((total, course) => total + (course.topics?.length || 0), 0);
+              const watchedTopics = currentEnrollment.topicProgress?.filter(tp => tp.watched).length || 0;
+              const accurateProgress = totalTopicsInStream > 0 ? (watchedTopics / totalTopicsInStream) * 100 : 0;
+
+              // Enhance enrollment with accurate data
               const enhancedEnrollment = {
                 ...currentEnrollment,
-                courses: streamCourses
+                courses: streamCourses,
+                totalTopics: totalTopicsInStream,
+                watchedTopics: watchedTopics,
+                totalWatchedPercentage: accurateProgress
               };
               setEnrollment(enhancedEnrollment);
             } else {
@@ -197,20 +207,6 @@ const Pack365StreamLearning = () => {
 
     fetchStreamEnrollment();
   }, [stream]);
-
-  const getCourseProgress = (courseId: string) => {
-    if (!enrollment?.topicProgress) return 0;
-    
-    // Use courseId consistently
-    const courseTopics = enrollment.topicProgress.filter(tp => 
-      tp.courseId === courseId
-    );
-    
-    if (courseTopics.length === 0) return 0;
-    
-    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
-    return (watchedTopics / courseTopics.length) * 100;
-  };
 
   const handleCourseStart = (course: Course) => {
     navigate(`/pack365-learning/${stream}/course`, { 
@@ -238,6 +234,21 @@ const Pack365StreamLearning = () => {
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
     year: 'numeric', month: 'long', day: 'numeric'
   });
+
+  const getCourseProgress = (courseId: string) => {
+    if (!enrollment?.topicProgress) return 0;
+    
+    const course = enrollment.courses.find(c => c.courseId === courseId);
+    if (!course || !course.topics || course.topics.length === 0) return 0;
+    
+    const courseTopicsProgress = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
+    const watchedTopics = courseTopicsProgress.filter(tp => tp.watched).length;
+    return (watchedTopics / course.topics.length) * 100;
+  };
+
+  const getTotalTopicsInStream = () => {
+    return enrollment?.courses?.reduce((total, course) => total + (course.topics?.length || 0), 0) || 0;
+  };
 
   if (loading) {
     return <SkeletonLoader />;
@@ -293,9 +304,12 @@ const Pack365StreamLearning = () => {
                   <div className="w-full mt-4">
                     <div className="flex justify-between text-sm text-gray-600 mb-1">
                       <span>Topics Completed</span>
-                      <span>{enrollment.watchedTopics || 0} / {enrollment.totalTopics || 0}</span>
+                      <span>{enrollment.watchedTopics || 0} / {getTotalTopicsInStream()}</span>
                     </div>
-                    <Progress value={(enrollment.watchedTopics / enrollment.totalTopics) * 100} className="h-2" />
+                    <Progress 
+                      value={getTotalTopicsInStream() > 0 ? (enrollment.watchedTopics / getTotalTopicsInStream()) * 100 : 0} 
+                      className="h-2" 
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -311,11 +325,11 @@ const Pack365StreamLearning = () => {
                    </div>
                    <div className="flex items-center justify-between">
                       <span className="text-gray-500 flex items-center gap-2"><BookOpen className="h-4 w-4"/>Total Courses</span>
-                      <span className="font-semibold text-gray-800">{enrollment.coursesCount}</span>
+                      <span className="font-semibold text-gray-800">{enrollment.courses?.length || 0}</span>
                    </div>
                    <div className="flex items-center justify-between">
                       <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4"/>Topics Completed</span>
-                      <span className="font-semibold text-gray-800">{enrollment.watchedTopics} / {enrollment.totalTopics}</span>
+                      <span className="font-semibold text-gray-800">{enrollment.watchedTopics} / {getTotalTopicsInStream()}</span>
                    </div>
                    <div className="flex items-center justify-between">
                       <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4"/>Access Until</span>
@@ -359,6 +373,10 @@ const Pack365StreamLearning = () => {
                   {enrollment.courses && enrollment.courses.length > 0 ? (
                     enrollment.courses.map((course) => {
                       const courseProgress = getCourseProgress(course.courseId);
+                      const courseTopicsCount = course.topics?.length || 0;
+                      const watchedTopicsInCourse = enrollment.topicProgress?.filter(tp => 
+                        tp.courseId === course.courseId && tp.watched
+                      ).length || 0;
                       
                       return (
                         <div key={course.courseId} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
@@ -379,7 +397,7 @@ const Pack365StreamLearning = () => {
                                 </span>
                                 <span className="flex items-center gap-1.5">
                                   <BookOpen className="h-4 w-4" /> 
-                                  {course.topics?.length || 0} topics
+                                  {courseTopicsCount} topics
                                 </span>
                                 {course.documentLink && (
                                   <span className="flex items-center gap-1.5">
@@ -392,7 +410,7 @@ const Pack365StreamLearning = () => {
                               {/* Course Progress */}
                               <div className="w-full">
                                 <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                  <span>Progress</span>
+                                  <span>Progress ({watchedTopicsInCourse}/{courseTopicsCount} topics)</span>
                                   <span>{Math.round(courseProgress)}%</span>
                                 </div>
                                 <Progress value={courseProgress} className="h-2" />
@@ -454,6 +472,10 @@ const Pack365StreamLearning = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Current progress:</span>
                       <span className="text-sm font-medium">{Math.round(enrollment.totalWatchedPercentage)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Topics completed:</span>
+                      <span className="text-sm font-medium">{enrollment.watchedTopics} / {getTotalTopicsInStream()}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Exam status:</span>
