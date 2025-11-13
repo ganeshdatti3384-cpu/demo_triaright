@@ -15,12 +15,28 @@ import {
   Gift, 
   X,
   Calculator,
-  CheckCircle2,
-  AlertCircle
+  CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Pack365PaymentService } from '@/services/pack365Payment';
 import { pack365Api } from '@/services/api';
+
+// Helper function to normalize stream names for backend compatibility
+const normalizeStreamName = (streamName: string): string => {
+  if (!streamName) return 'it';
+  
+  const normalized = streamName.toLowerCase();
+  
+  if (normalized.includes('it')) return 'it';
+  if (normalized.includes('finance')) return 'finance';
+  if (normalized.includes('marketing')) return 'marketing';
+  if (normalized.includes('hr')) return 'hr';
+  if (normalized.includes('pharma')) return 'pharma';
+  if (normalized.includes('non')) return 'non-it';
+  
+  // Default fallback
+  return 'it';
+};
 
 interface Pack365PaymentInterfaceProps {
   streamName: string;
@@ -48,7 +64,6 @@ const Pack365PaymentInterface = ({
     gst: Math.round((streamPrice || 999) * 0.18),
     finalAmount: Math.round((streamPrice || 999) * 1.18)
   });
-  const [debugInfo, setDebugInfo] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -57,6 +72,7 @@ const Pack365PaymentInterface = ({
     const calculation = Pack365PaymentService.calculatePaymentAmount(basePrice, 0);
     setPaymentCalculation(calculation);
   }, [streamPrice]);
+
 
   const validateCoupon = async () => {
     if (!couponCode.trim()) {
@@ -69,14 +85,10 @@ const Pack365PaymentInterface = ({
     }
 
     setIsValidatingCoupon(true);
-    setDebugInfo('Validating coupon...');
 
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Authentication required');
-
-      console.log('🔍 Starting coupon validation...');
-      setDebugInfo('Calling coupon validation API...');
 
       const result = await pack365Api.validateEnrollmentCode(
         token, 
@@ -84,25 +96,15 @@ const Pack365PaymentInterface = ({
         streamName
       );
 
-      console.log('✅ Coupon validation result:', result);
-      setDebugInfo('Coupon validation successful');
-
       if (!result.success) {
         throw new Error(result.message || "Invalid coupon");
       }
 
-      // Get discount from the new response structure
-      const discount = result.couponDetails?.discountAmount || result.couponDetails?.discount || 0;
-      const basePrice = streamPrice || 999;
-
-      // Validate discount doesn't exceed price (backend already does this, but good for frontend safety)
-      if (discount > basePrice) {
-        throw new Error('Discount cannot exceed stream price');
-      }
-
+      const discount = result.couponDetails?.discount || 0;
+      const basePrice = streamPrice ;
       const discountedPrice = Math.max(0, basePrice - discount);
       const gst = Math.round(discountedPrice * 0.18);
-      const finalAmount = discountedPrice + gst;
+      const finalAmount = discountedPrice ;
 
       setPaymentCalculation({
         baseAmount: basePrice,
@@ -118,17 +120,12 @@ const Pack365PaymentInterface = ({
         description: result.couponDetails?.description || 'Discount applied',
       });
 
-      setDebugInfo(`Coupon applied: ₹${discount} discount`);
-
       toast({
         title: 'Coupon Applied!',
         description: `₹${discount} discount applied. New amount: ₹${finalAmount}`,
       });
 
     } catch (error: any) {
-      console.error('❌ Coupon validation error:', error);
-      setDebugInfo(`Coupon error: ${error.message}`);
-      
       toast({
         title: 'Invalid Coupon',
         description: error?.response?.data?.message || error.message || 'The coupon code is invalid or expired.',
@@ -145,8 +142,6 @@ const Pack365PaymentInterface = ({
     const basePrice = streamPrice || 999;
     const calculation = Pack365PaymentService.calculatePaymentAmount(basePrice, 0);
     setPaymentCalculation(calculation);
-    setDebugInfo('Coupon removed');
-    
     toast({
       title: 'Coupon Removed',
       description: 'Coupon has been removed. Amount reset to original price.',
@@ -154,32 +149,13 @@ const Pack365PaymentInterface = ({
   };
 
   const handlePayment = async () => {
-    console.log('🚀 Starting payment process...');
-    setDebugInfo('Starting payment process...');
     setIsProcessingPayment(true);
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        setDebugInfo('No authentication token found');
-        throw new Error('User not authenticated');
-      }
-
-      // Debug info
-      console.log('=== PAYMENT DEBUG INFO ===');
-      console.log('Stream Name:', streamName);
-      console.log('Stream Price:', streamPrice);
-      console.log('Coupon Code:', couponCode);
-      console.log('Applied Coupon:', appliedCoupon);
-      console.log('Token exists:', !!token);
-      console.log('User data:', localStorage.getItem('currentUser'));
-      console.log('Final Amount:', paymentCalculation.finalAmount);
-      console.log('========================');
-
-      setDebugInfo(`Processing payment for ${streamName} - ₹${paymentCalculation.finalAmount}`);
+      if (!token) throw new Error('User not authenticated');
 
       if (couponCode && !appliedCoupon) {
-        setDebugInfo('Coupon not validated');
         toast({
           title: 'Coupon Not Applied',
           description: 'Please validate the coupon before making payment.',
@@ -190,12 +166,9 @@ const Pack365PaymentInterface = ({
 
       // If final amount is 0, handle free enrollment
       if (paymentCalculation.finalAmount === 0) {
-        setDebugInfo('Free enrollment detected');
         await handleFreeEnrollment();
         return;
       }
-
-      setDebugInfo('Calling payment service...');
 
       await Pack365PaymentService.processPayment(
         {
@@ -206,27 +179,21 @@ const Pack365PaymentInterface = ({
         },
         // Payment Success Callback
         (response) => {
-          console.log('✅ Payment successful in Pack365PaymentInterface:', response);
-          setDebugInfo('Payment successful!');
-          if (onPaymentSuccess) {
-            onPaymentSuccess(response);
-          }
+          console.log('Payment successful in Pack365PaymentInterface:', response);
+          onPaymentSuccess(response);
         },
         // Payment Error Callback
         (error) => {
-          console.error('❌ Payment failed in Pack365PaymentInterface:', error);
-          setDebugInfo(`Payment failed: ${error.message}`);
+          console.error('Payment failed in Pack365PaymentInterface:', error);
           toast({
             title: 'Payment Failed',
-            description: error.message || 'Payment could not be processed. Please try again.',
+            description: (error as any).message || 'Payment could not be processed. Please try again.',
             variant: 'destructive'
           });
         }
       );
-
     } catch (error: any) {
-      console.error('❌ Error initiating payment:', error);
-      setDebugInfo(`Payment error: ${error.message}`);
+      console.error('Error initiating payment:', error);
       toast({
         title: 'Payment Error',
         description: error.message || 'Failed to initiate payment. Please try again.',
@@ -243,7 +210,6 @@ const Pack365PaymentInterface = ({
       if (!token) throw new Error('User not authenticated');
 
       setIsProcessingPayment(true);
-      setDebugInfo('Processing free enrollment...');
       
       // Use the enrollWithCode API for free enrollment
       const enrollmentResult = await pack365Api.createOrder(token, {
@@ -252,7 +218,6 @@ const Pack365PaymentInterface = ({
       });
 
       if (enrollmentResult.status === 'success') {
-        setDebugInfo('Free enrollment successful');
         toast({
           title: 'Enrollment Successful!',
           description: 'You have been enrolled successfully with 100% discount!',
@@ -275,7 +240,6 @@ const Pack365PaymentInterface = ({
       }
     } catch (error: any) {
       console.error('Free enrollment error:', error);
-      setDebugInfo(`Free enrollment error: ${error.message}`);
       toast({
         title: 'Enrollment Failed',
         description: error.message || 'Failed to complete free enrollment. Please try again.',
@@ -288,19 +252,6 @@ const Pack365PaymentInterface = ({
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      {/* Debug Info - Only show in development */}
-      {import.meta.env.DEV && (
-        <Card className="mb-4 border-yellow-200 bg-yellow-50">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
-              <span className="text-sm font-medium text-yellow-800">Debug Info:</span>
-            </div>
-            <p className="text-xs text-yellow-700 mt-1 font-mono">{debugInfo || 'No debug info yet'}</p>
-          </CardContent>
-        </Card>
-      )}
-
       <Card className="shadow-xl">
         <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <CardTitle className="text-2xl flex items-center">
