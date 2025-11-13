@@ -21,6 +21,23 @@ import {
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 
+interface Topic {
+  name: string;
+  link: string;
+  duration: number;
+}
+
+interface Course {
+  courseId: string;
+  courseName: string;
+  description: string;
+  totalDuration: number;
+  topicsCount: number;
+  _id: string;
+  stream: string;
+  topics: Topic[];
+}
+
 interface StreamEnrollment {
   stream: string;
   amountPaid: number;
@@ -34,14 +51,7 @@ interface StreamEnrollment {
   coursesCount: number;
   totalTopics: number;
   watchedTopics: number;
-  courses: {
-    courseId: string;
-    courseName: string;
-    description: string;
-    totalDuration: number;
-    topicsCount: number;
-    _id: string;
-  }[];
+  courses: Course[];
   topicProgress: Array<{
     courseId: string;
     topicName: string;
@@ -89,27 +99,56 @@ const Pack365Dashboard = () => {
       
       if (response.success && response.enrollments) {
         const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
-        console.log('Processed enrollments:', streamEnrollments);
-        setEnrollments(streamEnrollments);
+        
+        // Fetch all courses to calculate accurate progress
+        const coursesResponse = await pack365Api.getAllCourses();
+        const allCourses = coursesResponse.success ? coursesResponse.data : [];
+
+        // Enhance enrollments with accurate progress data
+        const enhancedEnrollments = streamEnrollments.map(enrollment => {
+          const streamCourses = allCourses.filter((course: Course) => 
+            course.stream?.toLowerCase() === enrollment.stream.toLowerCase()
+          );
+          
+          // Calculate accurate progress based on actual topics
+          const totalTopicsInStream = streamCourses.reduce((total: number, course: Course) => 
+            total + (course.topics?.length || 0), 0
+          );
+          
+          const watchedTopics = enrollment.topicProgress?.filter(tp => tp.watched).length || 0;
+          const accurateProgress = totalTopicsInStream > 0 ? (watchedTopics / totalTopicsInStream) * 100 : 0;
+
+          return {
+            ...enrollment,
+            courses: streamCourses,
+            totalTopics: totalTopicsInStream,
+            watchedTopics: watchedTopics,
+            totalWatchedPercentage: accurateProgress,
+            coursesCount: streamCourses.length
+          };
+        });
+
+        console.log('Enhanced enrollments:', enhancedEnrollments);
+        setEnrollments(enhancedEnrollments);
         
         // Calculate comprehensive stats
-        const totalStreams = streamEnrollments.length;
-        const totalCourses = streamEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => 
+        const totalStreams = enhancedEnrollments.length;
+        const totalCourses = enhancedEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => 
           sum + (enrollment.coursesCount || 0), 0
         );
-        const completedStreams = streamEnrollments.filter(
+        const completedStreams = enhancedEnrollments.filter(
           (enrollment: StreamEnrollment) => (enrollment.totalWatchedPercentage || 0) >= 100
         ).length;
         
-        const totalHours = streamEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => {
+        const totalHours = enhancedEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => {
           return sum + (enrollment.courses || []).reduce((courseSum, course) => courseSum + (course.totalDuration || 0), 0);
         }, 0);
         
-        const averageProgress = streamEnrollments.length > 0 
-          ? streamEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => sum + (enrollment.totalWatchedPercentage || 0), 0) / streamEnrollments.length
+        const averageProgress = enhancedEnrollments.length > 0 
+          ? enhancedEnrollments.reduce((sum: number, enrollment: StreamEnrollment) => sum + (enrollment.totalWatchedPercentage || 0), 0) / enhancedEnrollments.length
           : 0;
           
-        const examsCompleted = streamEnrollments.filter(
+        const examsCompleted = enhancedEnrollments.filter(
           (enrollment: StreamEnrollment) => enrollment.isExamCompleted
         ).length;
         
@@ -122,7 +161,7 @@ const Pack365Dashboard = () => {
           examsCompleted
         });
         
-        if (streamEnrollments.length === 0) {
+        if (enhancedEnrollments.length === 0) {
           toast({
             title: 'No Enrollments Found',
             description: 'You haven\'t enrolled in any Pack365 streams yet. Browse available streams to get started!',
@@ -178,15 +217,12 @@ const Pack365Dashboard = () => {
   const getCourseProgress = (enrollment: StreamEnrollment, courseId: string) => {
     if (!enrollment.topicProgress) return 0;
     
-    // Filter by courseId and ensure we have topics
-    const courseTopics = enrollment.topicProgress.filter(tp => 
-      tp.courseId === courseId
-    );
+    const course = enrollment.courses.find(c => c.courseId === courseId);
+    if (!course || !course.topics || course.topics.length === 0) return 0;
     
-    if (courseTopics.length === 0) return 0;
-    
-    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
-    return (watchedTopics / courseTopics.length) * 100;
+    const courseTopicsProgress = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
+    const watchedTopics = courseTopicsProgress.filter(tp => tp.watched).length;
+    return (watchedTopics / course.topics.length) * 100;
   };
 
   if (loading) {
