@@ -17,7 +17,8 @@ import {
   User,
   GraduationCap,
   BarChart3,
-  Target
+  Target,
+  RefreshCw
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 
@@ -63,6 +64,7 @@ interface StreamEnrollment {
 const Pack365Dashboard = () => {
   const [enrollments, setEnrollments] = useState<StreamEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
     totalStreams: 0,
     totalCourses: 0,
@@ -76,6 +78,29 @@ const Pack365Dashboard = () => {
 
   useEffect(() => {
     fetchEnrollments();
+    
+    // Check if we need to refresh due to recent exam completion
+    const lastUpdate = localStorage.getItem('lastEnrollmentUpdate');
+    if (lastUpdate) {
+      const updateTime = new Date(lastUpdate);
+      const now = new Date();
+      const diffMinutes = (now.getTime() - updateTime.getTime()) / (1000 * 60);
+      
+      // Refresh if last update was less than 5 minutes ago (recent exam)
+      if (diffMinutes < 5) {
+        console.log('Auto-refreshing due to recent exam completion');
+        fetchEnrollments();
+        localStorage.removeItem('lastEnrollmentUpdate');
+      }
+    }
+
+    // Check for force refresh
+    const forceRefresh = localStorage.getItem('forceRefresh');
+    if (forceRefresh === 'true') {
+      console.log('Force refreshing enrollments');
+      fetchEnrollments();
+      localStorage.removeItem('forceRefresh');
+    }
   }, []);
 
   const fetchEnrollments = async () => {
@@ -118,17 +143,23 @@ const Pack365Dashboard = () => {
           const watchedTopics = enrollment.topicProgress?.filter(tp => tp.watched).length || 0;
           const accurateProgress = totalTopicsInStream > 0 ? (watchedTopics / totalTopicsInStream) * 100 : 0;
 
+          // Ensure exam status is properly set
+          const isExamCompleted = enrollment.isExamCompleted || false;
+          const examScore = enrollment.examScore || null;
+
           return {
             ...enrollment,
             courses: streamCourses,
             totalTopics: totalTopicsInStream,
             watchedTopics: watchedTopics,
             totalWatchedPercentage: accurateProgress,
-            coursesCount: streamCourses.length
+            coursesCount: streamCourses.length,
+            isExamCompleted: isExamCompleted,
+            examScore: examScore
           };
         });
 
-        console.log('Enhanced enrollments:', enhancedEnrollments);
+        console.log('Enhanced enrollments with exam status:', enhancedEnrollments);
         setEnrollments(enhancedEnrollments);
         
         // Calculate comprehensive stats
@@ -187,7 +218,18 @@ const Pack365Dashboard = () => {
       });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchEnrollments();
+    toast({
+      title: 'Refreshed',
+      description: 'Your progress has been updated.',
+      variant: 'default'
+    });
   };
 
   const handleStreamLearning = (stream: string) => {
@@ -247,13 +289,13 @@ const Pack365Dashboard = () => {
               <p className="text-gray-600">Track your learning progress and achievements</p>
             </div>
             <Button 
-              onClick={fetchEnrollments}
+              onClick={handleRefresh}
               variant="outline"
-              disabled={loading}
+              disabled={refreshing}
               className="flex items-center gap-2"
             >
-              <BookOpen className="h-4 w-4" />
-              {loading ? 'Loading...' : 'Refresh'}
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
           </div>
         </div>
@@ -408,14 +450,26 @@ const Pack365Dashboard = () => {
                         </div>
 
                         {/* Exam Status */}
-                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                        <div className={`flex items-center justify-between p-3 rounded-lg ${
+                          enrollment.isExamCompleted 
+                            ? 'bg-green-50 border border-green-200' 
+                            : enrollment.totalWatchedPercentage >= 80 
+                              ? 'bg-blue-50 border border-blue-200'
+                              : 'bg-gray-50 border border-gray-200'
+                        }`}>
                           <div className="flex items-center">
-                            <Target className="h-5 w-5 text-blue-600 mr-2" />
+                            <Target className={`h-5 w-5 mr-2 ${
+                              enrollment.isExamCompleted 
+                                ? 'text-green-600' 
+                                : enrollment.totalWatchedPercentage >= 80 
+                                  ? 'text-blue-600'
+                                  : 'text-gray-400'
+                            }`} />
                             <div>
                               <p className="text-sm font-medium">Stream Exam</p>
                               <p className="text-xs text-gray-600">
                                 {enrollment.isExamCompleted 
-                                  ? `Score: ${enrollment.examScore}%` 
+                                  ? `Completed - Score: ${enrollment.examScore}%` 
                                   : enrollment.totalWatchedPercentage >= 80 
                                     ? 'Ready to take exam'
                                     : `${80 - Math.round(enrollment.totalWatchedPercentage)}% more to unlock`
@@ -430,6 +484,12 @@ const Pack365Dashboard = () => {
                             >
                               Take Exam
                             </Button>
+                          )}
+                          {enrollment.isExamCompleted && (
+                            <Badge variant="default" className="bg-green-100 text-green-800">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Completed
+                            </Badge>
                           )}
                         </div>
 
@@ -496,8 +556,8 @@ const Pack365Dashboard = () => {
           </Button>
 
           {enrollments.length > 0 && (
-            <Button variant="outline" onClick={fetchEnrollments}>
-              <CheckCircle2 className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-2" />
               Refresh Progress
             </Button>
           )}
