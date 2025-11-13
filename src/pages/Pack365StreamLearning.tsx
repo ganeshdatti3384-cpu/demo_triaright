@@ -6,6 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
   BookOpen,
@@ -201,6 +202,7 @@ const Pack365StreamLearning = () => {
     navigate(`/pack365-learning/${stream}/course`, { 
       state: { 
         selectedCourse: course,
+        selectedCourseId: course.courseId,
         streamName: stream,
         enrollment: enrollment
       } 
