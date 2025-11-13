@@ -41,7 +41,8 @@ import ProfileCompletion from '@/components/ProfileCompletion';
 import EnhancedProfile from '@/components/EnhancedProfile';
 import CourseLearning from '@/pages/CourseLearning';
 import ExamList from '@/pages/ExamList';
-import ExamInterface from '@/pages/ExamInterface';
+import ExamInterface from '@/components/pack365/ExamInterface';
+import ExamResult from '@/components/pack365/ExamResult';
 import NotFound from '@/pages/NotFound';
 import CouponCode from '@/pages/CouponCode';
 import PaymentSelection from '@/pages/PaymentSelection';
@@ -274,6 +275,8 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          
+          {/* Exam Routes */}
           <Route
             path="/exam/:stream"
             element={
@@ -282,6 +285,16 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/exam-result/:stream"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <ExamResult />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Course Learning Routes */}
           <Route
             path="/course-learning/:id"
             element={
@@ -298,6 +311,8 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          
+          {/* Exam List Route */}
           <Route
             path="/exams"
             element={
@@ -306,14 +321,7 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/exam/:examId"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <ExamInterface />
-              </ProtectedRoute>
-            }
-          />
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </TooltipProvider>
