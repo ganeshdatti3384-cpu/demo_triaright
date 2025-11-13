@@ -1,4 +1,3 @@
-// Pack365Courses.tsx
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -7,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Clock, BookOpen, ArrowRight, Lock, AlertCircle, ArrowLeft, Star, Users, Zap, Award, CheckCircle, Sparkles } from 'lucide-react';
-import { pack365Api } from '@/services/api';
+import { Clock, BookOpen, ArrowRight, Lock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { pack365Api, Pack365Course } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
@@ -24,37 +23,9 @@ interface StreamData {
   name: string;
   price: number;
   imageUrl: string;
+  courses: Pack365Course[];
   id: string;
 }
-
-// Mock courses data for each stream since backend doesn't provide courses
-const mockCoursesByStream: { [key: string]: any[] } = {
-  'Full Stack Development': [
-    { courseName: 'HTML, CSS & JavaScript Fundamentals', stream: 'Full Stack Development' },
-    { courseName: 'React.js & Next.js Mastery', stream: 'Full Stack Development' },
-    { courseName: 'Node.js & Express Backend', stream: 'Full Stack Development' },
-    { courseName: 'MongoDB Database Design', stream: ' FullStack Development' },
-    { courseName: 'DevOps & Deployment', stream: 'Full Stack Development' }
-  ],
-  'Data Science': [
-    { courseName: 'Python for Data Science', stream: 'Data Science' },
-    { courseName: 'Machine Learning Fundamentals', stream: 'Data Science' },
-    { courseName: 'Data Visualization & Analysis', stream: 'Data Science' },
-    { courseName: 'Advanced Statistical Modeling', stream: 'Data Science' }
-  ],
-  'Mobile Development': [
-    { courseName: 'React Native Cross-Platform', stream: 'Mobile Development' },
-    { courseName: 'Flutter & Dart Programming', stream: 'Mobile Development' },
-    { courseName: 'Mobile App Design Principles', stream: 'Mobile Development' },
-    { courseName: 'App Store Deployment', stream: 'Mobile Development' }
-  ],
-  'Cyber Security': [
-    { courseName: 'Network Security Fundamentals', stream: 'Cyber Security' },
-    { courseName: 'Ethical Hacking & Penetration Testing', stream: 'Cyber Security' },
-    { courseName: 'Cryptography & Secure Communications', stream: 'Cyber Security' },
-    { courseName: 'Security Audit & Compliance', stream: 'Cyber Security' }
-  ]
-};
 
 const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365CoursesProps) => {
   const [streams, setStreams] = useState<StreamData[]>([]);
@@ -71,6 +42,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   useEffect(() => {
     loadCoursesAndEnrollments();
     
+    // Check URL params for post-coupon flow
     const urlParams = new URLSearchParams(window.location.search);
     const streamParam = urlParams.get('stream');
     const enrolledParam = urlParams.get('enrolled');
@@ -83,6 +55,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
         setShowEnrollment(false);
       }
       
+      // Clear URL params
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
@@ -90,20 +63,16 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   const loadCoursesAndEnrollments = async () => {
     try {
       setLoading(true);
-      setError('');
+      setError(''); // Clear any previous errors
       
       const streamsResponse = await pack365Api.getAllStreams();
-      console.log('Streams API Response:', streamsResponse); // Debug log
-      
       if (streamsResponse.success && streamsResponse.streams) {
-        // Ensure we have valid streams data
-        const validStreams = streamsResponse.streams.filter((stream: any) => 
-          stream && stream.name && stream.price !== undefined
-        );
-        setStreams(validStreams);
+        setStreams(streamsResponse.streams);
       } else {
+        // Set empty array as fallback and show a graceful message
         setStreams([]);
         if (showLoginRequired) {
+          // For homepage, don't show error, just hide the section
           return;
         } else {
           setError('Unable to load course bundles at the moment');
@@ -124,46 +93,23 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
       }
     } catch (err: any) {
       console.error('Error loading streams:', err);
-      setStreams([]);
+      setStreams([]); // Set empty array as fallback
       
       if (showLoginRequired) {
+        // For homepage, don't show error toast or error state, just fail silently
         setError('');
         return;
       } else {
         setError('Unable to load course bundles at the moment');
-        toast({ 
-          title: 'Error', 
-          description: 'Failed to load streams. Please try again.', 
-          variant: 'destructive' 
-        });
+        toast({ title: 'Error', description: 'Failed to load streams. Please try again.', variant: 'destructive' });
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const getCoursesForStream = (streamName: string) => {
-    return mockCoursesByStream[streamName] || [
-      { courseName: `${streamName} Fundamentals`, stream: streamName },
-      { courseName: `Advanced ${streamName}`, stream: streamName },
-      { courseName: `${streamName} Projects`, stream: streamName }
-    ];
-  };
-
   const handleStreamClick = (stream: StreamData) => {
-    if (showLoginRequired) {
-      if (onLoginRequired) {
-        onLoginRequired();
-      } else {
-        navigate('/login');
-      }
-      return;
-    }
-    
-    // Set selected stream and show enrollment view
-    setSelectedStream(stream);
-    setShowEnrollment(true);
-    setShowCourses(false);
+    navigate(`/pack365/bundle/${stream.name.toLowerCase()}`);
   };
 
   const handleCourseClick = (courseName: string) => {
@@ -171,14 +117,12 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
   };
 
   const handleEnrollNow = () => {
-    if (!selectedStream) return;
-    
     navigate('/razorpay-payment', { 
       state: { 
-        streamName: selectedStream.name, 
+        streamName: selectedStream?.name, 
         fromStream: true, 
-        streamPrice: selectedStream.price,
-        coursesCount: getCoursesForStream(selectedStream.name).length
+        streamPrice: selectedStream?.price,
+        coursesCount: selectedStream?.courses?.length || 3
       } 
     });
   };
@@ -194,77 +138,25 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     setShowEnrollment(true);
   };
 
-  // Enhanced slider settings
-  const sliderSettings = {
-    dots: true,
-    infinite: streams.length > 1,
-    speed: 800,
-    slidesToShow: Math.min(3, streams.length),
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 4000,
-    pauseOnHover: true,
-    cssEase: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-    responsive: [
-      { 
-        breakpoint: 1280, 
-        settings: { 
-          slidesToShow: Math.min(3, streams.length),
-          dots: true
-        } 
-      },
-      { 
-        breakpoint: 1024, 
-        settings: { 
-          slidesToShow: Math.min(2, streams.length), 
-          speed: 600 
-        } 
-      },
-      { 
-        breakpoint: 768, 
-        settings: { 
-          slidesToShow: 1, 
-          speed: 500,
-          dots: true
-        } 
-      }
-    ]
-  };
-
   if (loading) {
     return (
-      <div className={showLoginRequired ? 'py-12' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16'}>
+      <div className={showLoginRequired ? 'py-8' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12'}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex justify-center space-x-3 mb-6">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-4 h-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-bounce"
-                style={{ animationDelay: `${i * 0.1}s` }}
-              />
-            ))}
-          </div>
-          <p className="text-lg text-gray-600 font-medium">Loading amazing course bundles...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading streams...</p>
         </div>
       </div>
     );
   }
 
-  if (error && !showLoginRequired) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16">
+      <div className={showLoginRequired ? 'py-8' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12'}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-3xl p-8 max-w-md mx-auto shadow-lg">
-            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Oops! Something went wrong</h2>
-            <p className="text-gray-600 mb-6">{error}</p>
-            <Button 
-              onClick={loadCoursesAndEnrollments}
-              className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-8 py-3 rounded-full font-semibold shadow-lg"
-            >
-              Try Again
-            </Button>
-          </div>
+          <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Streams</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={loadCoursesAndEnrollments}>Try Again</Button>
         </div>
       </div>
     );
@@ -272,170 +164,120 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
 
   // Show enrollment view after clicking explore more
   if (showEnrollment && selectedStream) {
-    const streamCourses = getCoursesForStream(selectedStream.name);
-    
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <Button 
             onClick={handleBackToBundles}
             variant="outline"
-            className="mb-8 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-full px-6"
+            className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Bundles
           </Button>
           
-          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-            <div className="relative h-80">
+          <Card className="overflow-hidden shadow-2xl bg-white/80 backdrop-blur-sm">
+            <div className="relative h-64">
               <img 
-                src={selectedStream.imageUrl || '/api/placeholder/800/400'} 
+                src={selectedStream.imageUrl} 
                 alt={`${selectedStream.name} Bundle`}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-              <div className="absolute bottom-8 left-8 text-white">
-                <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0 mb-4 px-4 py-2 text-sm">
-                  <Sparkles className="h-4 w-4 mr-1" />
-                  Pack365 Exclusive
-                </Badge>
-                <h1 className="text-4xl font-bold mb-2">{selectedStream.name} Master Bundle</h1>
-                <p className="text-xl text-blue-200">Complete learning path with {streamCourses.length}+ courses</p>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute bottom-6 left-6 text-white">
+                <h1 className="text-3xl font-bold mb-2">{selectedStream.name} Bundle</h1>
+                <Badge className="bg-blue-600 text-white">Pack 365</Badge>
               </div>
             </div>
             
-            <div className="p-8">
-              <div className="grid lg:grid-cols-2 gap-12">
+            <CardContent className="p-8">
+              <div className="grid md:grid-cols-2 gap-8">
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                    <Award className="h-6 w-6 text-blue-500 mr-3" />
-                    What You'll Get
-                  </h3>
-                  <div className="space-y-4">
-                    {[
-                      { icon: BookOpen, text: `All ${selectedStream.name} courses`, color: 'text-blue-500' },
-                      { icon: Clock, text: '365 days full access', color: 'text-purple-500' },
-                      { icon: Zap, text: 'Lifetime course updates', color: 'text-yellow-500' },
-                      { icon: Users, text: 'Community access', color: 'text-green-500' },
-                      { icon: Star, text: 'Certificate of completion', color: 'text-orange-500' },
-                      { icon: CheckCircle, text: 'Priority support', color: 'text-red-500' }
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center space-x-4 p-3 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-blue-50 hover:to-purple-50 transition-all duration-300">
-                        <div className={`p-2 rounded-lg bg-white shadow-sm ${item.color}`}>
-                          <item.icon className="h-5 w-5" />
-                        </div>
-                        <span className="text-gray-700 font-medium">{item.text}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <h3 className="text-xl font-semibold mb-4">What's Included</h3>
+                  <ul className="space-y-3">
+                    <li className="flex items-center">
+                      <BookOpen className="h-5 w-5 text-blue-500 mr-3" />
+                      <span>All {selectedStream.name} courses</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Clock className="h-5 w-5 text-purple-500 mr-3" />
+                      <span>365 days access</span>
+                    </li>
+                    <li className="flex items-center">
+                      <ArrowRight className="h-5 w-5 text-green-500 mr-3" />
+                      <span>Lifetime updates</span>
+                    </li>
+                    <li className="flex items-center">
+                      <ArrowRight className="h-5 w-5 text-orange-500 mr-3" />
+                      <span>Certificate of completion</span>
+                    </li>
+                  </ul>
                 </div>
                 
-                <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-8 text-white">
-                  <div className="text-center mb-6">
-                    <h3 className="text-2xl font-bold mb-2">Special Launch Offer</h3>
-                    <div className="flex items-center justify-center space-x-2 mb-4">
-                      <span className="text-blue-200 line-through text-lg">₹{selectedStream.price * 2}</span>
-                      <Badge variant="secondary" className="bg-yellow-400 text-gray-900">50% OFF</Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="text-center mb-6">
-                    <div className="text-5xl font-bold mb-2">₹{selectedStream.price}</div>
-                    <p className="text-blue-200">One-time payment • No hidden fees</p>
-                  </div>
-
-                  <div className="space-y-4">
+                <div className="text-center">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Special Price</h3>
+                    <div className="text-4xl font-bold text-blue-600 mb-4">₹{selectedStream.price}</div>
+                    <p className="text-gray-600 mb-6">One-time payment for full access</p>
+                    
                     <Button 
                       onClick={handleEnrollNow}
-                      className="w-full bg-white text-blue-600 hover:bg-gray-100 text-lg py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                      size="lg"
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-3"
                     >
-                      <Sparkles className="h-5 w-5 mr-2" />
-                      Enroll Now & Save 50%
+                      Enroll Now
                       <ArrowRight className="h-5 w-5 ml-2" />
                     </Button>
-                    
-                    <div className="text-center text-blue-200 text-sm">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Users className="h-4 w-4" />
-                        <span>Join 1,000+ successful students</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
-  // Show courses after coupon success
+  // Show courses after coupon success (this would be triggered from a success callback)
   if (showCourses && selectedStream) {
-    const streamCourses = getCoursesForStream(selectedStream.name);
-    
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Button 
             onClick={handleBackFromCourses}
             variant="outline"
-            className="mb-8 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-full px-6"
+            className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Enrollment
           </Button>
           
-          <div className="text-center mb-12">
-            <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 mb-4 px-4 py-2">
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Enrollment Successful!
-            </Badge>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Welcome to {selectedStream.name} Bundle
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {selectedStream.name} Bundle Courses
             </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Start your learning journey with {streamCourses.length} carefully curated courses
-            </p>
+            <p className="text-gray-600">Access all courses in this stream</p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {streamCourses.map((course, index) => (
-              <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 group">
-                <div className="relative h-48 overflow-hidden">
-                  <img 
-                    src={selectedStream.imageUrl || '/api/placeholder/400/200'} 
-                    alt={course.courseName}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute top-4 left-4">
-                    <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-gray-800">
-                      Course {index + 1}
-                    </Badge>
-                  </div>
-                </div>
-                
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-gray-900 line-clamp-2">{course.courseName}</CardTitle>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {selectedStream.courses.map((course, index) => (
+              <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="text-lg">{course.courseName}</CardTitle>
                 </CardHeader>
-                
-                <CardContent className="pt-0">
+                <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between text-sm text-gray-600">
-                      <span className="font-medium">{course.stream}</span>
-                      <Badge variant="outline" className="border-green-200 text-green-600">
-                        Available
-                      </Badge>
+                      <span>Stream: {course.stream}</span>
+                      <Badge variant="secondary">All Levels</Badge>
                     </div>
                     
                     <Button 
                       onClick={() => handleCourseClick(course.courseName)}
-                      className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg py-3 font-semibold transition-all duration-300 group-hover:shadow-lg"
+                      className="w-full"
+                      variant="outline"
                     >
-                      Start Learning
-                      <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      Enroll in Course
+                      <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
                 </CardContent>
@@ -447,68 +289,52 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     );
   }
 
+  // If no streams available and this is the homepage, don't show anything
   if (streams.length === 0 && showLoginRequired) {
     return (
-      <div className="py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-12 shadow-lg">
-            <Sparkles className="h-16 w-16 text-blue-500 mx-auto mb-6" />
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">Pack365 Coming Soon</h3>
-            <p className="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
-              We're crafting amazing learning bundles that will transform your career. Get ready for something extraordinary!
-            </p>
-            <div className="bg-white rounded-2xl p-6 inline-block shadow-md">
-              <p className="text-sm text-gray-500 font-medium">Be the first to know when we launch</p>
-            </div>
+      <div className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-8">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Pack365 Coming Soon</h3>
+            <p className="text-gray-600">Our premium learning bundles are being prepared. Check back soon!</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (streams.length === 0 && !showLoginRequired) {
+  // If no streams available and this is not homepage
+  if (streams.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-3xl p-12 shadow-lg">
-            <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-6" />
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Amazing Bundles Coming Soon</h2>
-            <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-              We're preparing something special for you. Our course bundles are being crafted with care to provide the best learning experience.
-            </p>
-            <Button 
-              onClick={loadCoursesAndEnrollments}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-8 py-3 rounded-full font-semibold shadow-lg"
-            >
-              <Sparkles className="h-5 w-5 mr-2" />
-              Notify Me
-            </Button>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Course Bundles Available</h2>
+          <p className="text-gray-600 mb-4">Course bundles are being prepared. Please check back later.</p>
+          <Button onClick={loadCoursesAndEnrollments}>Refresh</Button>
         </div>
       </div>
     );
   }
+  const sliderSettings = {
+    dots: true,
+    infinite: true,
+    speed: 800,
+    slidesToShow: 3,
+    slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 4000,
+    pauseOnHover: true,
+    cssEase: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    responsive: [
+      { breakpoint: 1024, settings: { slidesToShow: 2, speed: 600 } },
+      { breakpoint: 640, settings: { slidesToShow: 1, speed: 500 } }
+    ]
+  };
 
   return (
-    <div className={showLoginRequired ? 'py-8' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-16'}>
+    <div className={showLoginRequired ? '' : 'min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-2'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header Section */}
-        {!showLoginRequired && (
-          <div className="text-center mb-16">
-            <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0 mb-6 px-6 py-3 text-sm font-semibold">
-              <Sparkles className="h-4 w-4 mr-2" />
-              Most Popular
-            </Badge>
-            <h2 className="text-5xl font-bold text-gray-900 mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Pack365 Learning Bundles
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Master complete tech stacks with our curated bundles. Get <span className="font-semibold text-blue-600">365 days access</span> to all courses, 
-              lifetime updates, and exclusive community support.
-            </p>
-          </div>
-        )}
-
         <style>{`
           .slick-dots {
             bottom: -60px;
@@ -516,262 +342,184 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
           .slick-dots li button:before {
             font-size: 12px;
             color: #3b82f6;
-            opacity: 0.3;
+            opacity: 0.5;
           }
           .slick-dots li.slick-active button:before {
             opacity: 1;
             color: #1d4ed8;
           }
-          .slick-prev, .slick-next {
-            width: 48px;
-            height: 48px;
+          .slick-prev,
+          .slick-next {
+            width: 36px;
+            height: 36px;
             z-index: 1;
-            background: white;
-            border-radius: 50%;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
           }
-          .slick-prev { left: -60px; }
-          .slick-next { right: -60px; }
-          .slick-prev:hover, .slick-next:hover {
-            background: #f8fafc;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+
+          .slick-prev:before,
+          .slick-next:before {
+            font-size: 24px;
+            color: #bfdbfe;
+            opacity: 1;
           }
-          .slick-prev:before, .slick-next:before {
-            font-size: 20px;
+
+          .slick-prev:hover:before,
+          .slick-next:hover:before {
             color: #3b82f6;
-            opacity: 0.8;
           }
           .stream-card {
-            height: 480px;
-            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            height: 420px;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
           }
           .stream-card:hover {
-            transform: translateY(-12px) scale(1.02);
-            box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.25);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
           }
           .stream-image {
-            transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
           }
           .stream-card:hover .stream-image {
-            transform: scale(1.15);
+            transform: scale(1.1);
           }
           .course-list {
-            max-height: 160px;
+            max-height: 140px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #3b82f6 #f1f5f9;
           }
           .course-list::-webkit-scrollbar {
-            width: 6px;
+            width: 4px;
           }
           .course-list::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            background: #f1f5f9;
+            border-radius: 2px;
           }
           .course-list::-webkit-scrollbar-thumb {
-            background: linear-gradient(to bottom, #3b82f6, #1d4ed8);
-            border-radius: 10px;
+            background: #3b82f6;
+            border-radius: 2px;
           }
-          .pulse-glow {
-            animation: pulse-glow 2s ease-in-out infinite alternate;
+          .course-list::-webkit-scrollbar-thumb:hover {
+            background: #1d4ed8;
           }
-          @keyframes pulse-glow {
-            from { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
-            to { box-shadow: 0 0 30px rgba(59, 130, 246, 0.8); }
+          .course-item {
+            transition: all 0.3s ease;
+          }
+          .course-item:hover {
+            transform: translateX(4px);
+            color: #1d4ed8;
+          }
+          .hover-overlay {
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
           }
         `}</style>
         
         <Slider {...sliderSettings}>
-          {streams.map((stream) => {
-            const streamCourses = getCoursesForStream(stream.name);
-            
-            return (
-              <div key={stream._id} className="px-4">
-                <Card 
-                  className="stream-card overflow-hidden cursor-pointer group border-0 shadow-xl relative"
-                  onMouseEnter={() => setHoveredStream(stream.name)}
-                  onMouseLeave={() => setHoveredStream(null)}
-                  onClick={() => handleStreamClick(stream)}
-                >
-                  {/* Premium Badge */}
-                  <div className="absolute top-4 left-4 z-20">
-                    <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 shadow-lg">
-                      <Star className="h-3 w-3 mr-1 fill-current" />
-                      Premium
-                    </Badge>
-                  </div>
-
-                  {/* Pack365 Badge */}
-                  <div className="absolute top-4 right-4 z-20">
-                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-lg font-semibold">
-                      Pack365
-                    </Badge>
-                  </div>
-
-                  {/* Image Container */}
-                  <div className="relative overflow-hidden h-56">
-                    <img 
-                      src={stream.imageUrl || '/api/placeholder/400/250'} 
-                      alt={`${stream.name} Bundle`}
-                      className="stream-image w-full h-full object-cover"
-                    />
-                    
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                    
-                    {/* Hover Overlay */}
-                    <div className={`absolute inset-0 bg-gradient-to-t from-blue-900/80 via-purple-900/40 to-transparent 
-                      ${hoveredStream === stream.name ? 'opacity-100' : 'opacity-0'} transition-all duration-500`}>
-                      <div className="absolute bottom-6 left-6 right-6 text-white">
-                        <h4 className="font-bold text-lg mb-3 flex items-center">
-                          <BookOpen className="h-5 w-5 mr-2" />
-                          Included Courses
-                        </h4>
-                        <div className="course-list bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                          {streamCourses.length > 0 ? (
-                            <ul className="space-y-2">
-                              {streamCourses.slice(0, 4).map((course, index) => (
-                                <li key={index}>
-                                  <div className="course-item text-left w-full text-sm text-white/90 
-                                    flex items-center justify-between bg-white/5 rounded-lg px-3 py-2 
-                                    hover:bg-white/10 transition-all duration-300">
-                                    <span className="truncate pr-2 font-medium">{course.courseName}</span>
-                                    <ArrowRight className="h-3 w-3 flex-shrink-0 opacity-70" />
-                                  </div>
-                                </li>
-                              ))}
-                              {streamCourses.length > 4 && (
-                                <li className="text-center text-xs text-white/70 pt-2 font-medium">
-                                  +{streamCourses.length - 4} more courses
-                                </li>
-                              )}
-                            </ul>
-                          ) : (
-                            <p className="text-sm text-white/70 italic text-center py-4">
-                              Courses are being uploaded...
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Login Required Overlay */}
-                    {showLoginRequired && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center 
-                        opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm rounded-t-xl">
-                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 text-center">
-                          <Lock className="h-8 w-8 text-gray-700 mx-auto mb-3" />
-                          <p className="text-gray-700 font-semibold">Sign in to explore</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card Content */}
-                  <CardHeader className="pb-4 pt-6">
-                    <CardTitle className="text-2xl text-center bg-gradient-to-r from-blue-600 to-purple-600 
-                      bg-clip-text text-transparent font-bold">
-                      {stream.name} Pro
-                    </CardTitle>
-                    <div className="text-center">
-                      <div className="inline-flex items-center space-x-4 text-sm text-gray-500">
-                        <div className="flex items-center space-x-1">
-                          <BookOpen className="h-4 w-4" />
-                          <span>{streamCourses.length} Courses</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-4 w-4" />
-                          <span>365 Days</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="pt-0">
-                    <div className="space-y-5">
-                      {/* Price */}
-                      <div className="text-center">
-                        <div className="flex items-center justify-center space-x-2 mb-2">
-                          <span className="text-gray-500 line-through text-sm">₹{stream.price * 2}</span>
-                          <Badge variant="secondary" className="bg-green-100 text-green-700 border-0">
-                            Save 50%
-                          </Badge>
-                        </div>
-                        <div className="text-3xl font-bold text-gray-900">₹{stream.price}</div>
-                        <p className="text-sm text-gray-500 mt-1">One-time payment</p>
-                      </div>
-
-                      {/* CTA Button */}
-                      <Button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStreamClick(stream);
-                        }}
-                        className={`w-full font-bold text-lg py-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${
-                          showLoginRequired 
-                            ? 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 shadow-lg' 
-                            : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl pulse-glow'
-                        }`}
-                      >
-                        {showLoginRequired ? (
-                          <>
-                            <Lock className="h-5 w-5 mr-2" />
-                            Sign In to View
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-5 w-5 mr-2" />
-                            Explore Bundle
-                            <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                          </>
-                        )}
-                      </Button>
-
-                      {/* Features */}
-                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                          <span>Certificate</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                          <span>Lifetime Updates</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                          <span>Community</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                          <span>Support</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            );
-          })}
-        </Slider>
-
-        {/* Bottom CTA */}
-        {!showLoginRequired && (
-          <div className="text-center mt-20">
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8 max-w-2xl mx-auto shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Transform Your Career?</h3>
-              <p className="text-gray-600 mb-6">Join thousands of students who've accelerated their learning with Pack365</p>
-              <Button 
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                onClick={() => navigate('/pack365')}
+          {streams.map((stream) => (
+            <div key={stream._id} className="px-3">
+              <Card 
+                className="stream-card overflow-hidden cursor-pointer group bg-white/70 backdrop-blur-sm border-0 shadow-lg"
+                onMouseEnter={() => setHoveredStream(stream.name)}
+                onMouseLeave={() => setHoveredStream(null)}
+                onClick={() => handleStreamClick(stream)}
               >
-                <Sparkles className="h-5 w-5 mr-2" />
-                View All Bundles
-                <ArrowRight className="h-5 w-5 ml-2" />
-              </Button>
+                <div className="relative overflow-hidden h-48">
+                  <img 
+                    src={stream.imageUrl} 
+                    alt={`${stream.name} Bundle`}
+                    className="stream-image w-full h-full object-cover"
+                  />
+                  <div className="absolute top-4 right-4 z-10">
+                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+                      Pack 365
+                    </Badge>
+                  </div>
+                  
+                  <div className={`hover-overlay absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent 
+                    ${hoveredStream === stream.name ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="absolute bottom-4 left-4 right-4 text-white">
+                      <h4 className="font-bold text-lg mb-2">Available Courses</h4>
+                      <div className="course-list bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                        {stream.courses && stream.courses.length > 0 ? (
+                          <ul className="space-y-1">
+                            {stream.courses.slice(0, 4).map((course, index) => (
+                              <li key={index}>
+                                <div className="course-item text-left w-full text-sm text-white/90 
+                                  flex items-center justify-between bg-white/5 rounded px-2 py-1">
+                                  <span className="truncate pr-2">{course.courseName}</span>
+                                  <ArrowRight className="h-3 w-3 flex-shrink-0" />
+                                </div>
+                              </li>
+                            ))}
+                            {stream.courses.length > 4 && (
+                              <li className="text-center text-xs text-white/70 pt-1">
+                                +{stream.courses.length - 4} more courses
+                              </li>
+                            )}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-white/70 italic text-center py-2">
+                            Courses are being uploaded...
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {showLoginRequired && (
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center 
+                      opacity-0 group-hover:opacity-100 transition-all duration-400">
+                      <div className="bg-white/90 backdrop-blur-sm rounded-full p-3">
+                        <Lock className="h-6 w-6 text-gray-700" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl text-center bg-gradient-to-r from-blue-600 to-purple-600 
+                    bg-clip-text text-transparent font-bold">
+                    {stream.name} Bundle
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="pt-0">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <div className="flex items-center space-x-2">
+                        <BookOpen className="h-4 w-4 text-blue-500" />
+                        <span className="font-medium">{stream.courses.length} Courses</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4 text-purple-500" />
+                        <span className="font-medium">365 days access</span>
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStreamClick(stream);
+                      }}
+                      className={`w-full font-semibold transition-all duration-300 transform hover:scale-105 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+                      }`}
+                    >
+                      {showLoginRequired ? (
+                        <>
+                          <Lock className="h-4 w-4 mr-2" />
+                          Click to Explore
+                        </>
+                      ) : (
+                        <>
+                          View Details
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </div>
-        )}
+          ))}
+        </Slider>
       </div>
     </div>
   );
