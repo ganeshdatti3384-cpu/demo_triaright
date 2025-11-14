@@ -715,12 +715,12 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ NEW: Upload Exam from Excel
-  uploadExam: async (
+  // FIXED: Updated endpoint from /exam/upload to /pack365/exams/upload
+  uploadExamFromExcel: async (
     token: string,
     formData: FormData
   ): Promise<{ success: boolean; message: string; exam: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/exam/upload`, formData, {
+    const res = await axios.post(`${API_BASE_URL}/pack365/exams/upload`, formData, {
       headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data'
@@ -729,47 +729,35 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ NEW: Get Available Exams for User
-  getAvailableExams: async (
-    token: string
-  ): Promise<{ success: boolean; message?: string; exams: any[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/available/user`, {
+  getExamQuestions: async (
+    token: string,
+    examId: string
+  ): Promise<{ questions: any[]; maxAttempts: number; examId: string }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/questions`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
   },
 
-  // ✅ NEW: Get Exam Details
   getExamDetails: async (
     token: string,
     examId: string
-  ): Promise<{ success: boolean; examDetails: any }> => {
+  ): Promise<{ examDetails: any }> => {
     const res = await axios.get(`${API_BASE_URL}/exam/${examId}/details`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
   },
 
-  // ✅ NEW: Get Exam by Stream
-  getExamByStream: async (
-    stream: string
-  ): Promise<{ success: boolean; exam: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/stream/${stream}`);
-    return res.data;
-  },
-
-  // ✅ NEW: Get Exam Attempts
-  getExamAttempts: async (
-    token: string,
-    examId: string
-  ): Promise<{ success: boolean; attempts: any[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/attempts`, {
+  getAllExams: async (
+    token: string
+  ): Promise<any[]> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/getexam`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
   },
 
-  // ✅ UPDATED: Submit Exam (fixed parameters to match backend)
   submitExam: async (
     token: string,
     data: {
@@ -779,7 +767,6 @@ export const pack365Api = {
       timeTaken?: number;
     }
   ): Promise<{
-    success: boolean;
     message: string;
     currentScore: number;
     bestScore: number;
@@ -795,21 +782,10 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ UPDATED: Get Exam Questions
-  getExamQuestions: async (
-    token: string,
-    examId: string
-  ): Promise<{ success: boolean; questions: any[]; maxAttempts: number; examId: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/questions`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
-
-  getAllExams: async (
+  getAvailableExamsForUser: async (
     token: string
-  ): Promise<{ success: boolean; exams: any[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/getexam`, {
+  ): Promise<{ message?: string; exams: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/available/user`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -818,7 +794,7 @@ export const pack365Api = {
   getExamHistory: async (
     token: string,
     courseId: string
-  ): Promise<{ success: boolean; examHistory: any }> => {
+  ): Promise<{ examHistory: any }> => {
     const res = await axios.get(`${API_BASE_URL}/exam/history/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -828,7 +804,7 @@ export const pack365Api = {
   getExamStatistics: async (
     token: string,
     courseId: string
-  ): Promise<{ success: boolean; statistics: any }> => {
+  ): Promise<{ statistics: any }> => {
     const res = await axios.get(`${API_BASE_URL}/exam/statistics/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -838,7 +814,7 @@ export const pack365Api = {
   resetExamAttempts: async (
     token: string,
     data: { userId: string; courseId: string }
-  ): Promise<{ success: boolean; message: string; resetData: any }> => {
+  ): Promise<{ message: string; resetData: any }> => {
     const res = await axios.post(`${API_BASE_URL}/exam/reset-attempts`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -848,7 +824,7 @@ export const pack365Api = {
   updateExamMaxAttempts: async (
     token: string,
     data: { examId: string; maxAttempts: number }
-  ): Promise<{ success: boolean; message: string; examId: string; maxAttempts: number }> => {
+  ): Promise<{ message: string; examId: string; maxAttempts: number }> => {
     const res = await axios.put(`${API_BASE_URL}/exam/update-max-attempts`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
