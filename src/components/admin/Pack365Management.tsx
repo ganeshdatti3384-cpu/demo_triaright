@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Eye, Edit, Trash, Upload, FileText, Download, ArrowLeft, BookOpen } from 'lucide-react';
+import { Plus, Eye, Edit, Trash, Upload, FileText, Download, ArrowLeft, BookOpen, AlertCircle } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
 import { StreamData } from '@/types/api';
 
@@ -28,6 +28,7 @@ const Pack365Management = () => {
   const [showExamDialog, setShowExamDialog] = useState(false);
   const [examCourse, setExamCourse] = useState<Pack365Course | null>(null);
   const [examFile, setExamFile] = useState<File | null>(null);
+  const [fileValidation, setFileValidation] = useState({ isValid: true, message: '' });
   const [viewType, setViewType] = useState<'streams' | 'courses'>('streams');
   
   // Stream management states
@@ -56,11 +57,69 @@ const Pack365Management = () => {
     }
   }, [viewType, selectedStream]);
 
+  // ✅ NEW: Validate Excel file before upload
+  const validateExcelFile = async (file: File): Promise<{ isValid: boolean; message: string; rowCount?: number }> => {
+    return new Promise((resolve) => {
+      // Basic validation
+      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+        resolve({ isValid: false, message: 'Please upload an Excel file (.xlsx or .xls)' });
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        resolve({ isValid: false, message: 'File size must be less than 5MB' });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          // For frontend validation, we'll just check basic structure
+          // Since we can't parse Excel without a library, we'll trust the backend for detailed validation
+          // But we can at least check file type and size
+          resolve({ 
+            isValid: true, 
+            message: 'File appears valid. Click Upload to proceed.' 
+          });
+        } catch (error) {
+          resolve({ 
+            isValid: false, 
+            message: 'Invalid Excel file format' 
+          });
+        }
+      };
+      
+      reader.onerror = () => {
+        resolve({ 
+          isValid: false, 
+          message: 'Error reading file' 
+        });
+      };
+      
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  // ✅ NEW: Handle file selection with validation
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setExamFile(file);
+
+    if (file) {
+      setFileValidation({ isValid: false, message: 'Validating file...' });
+      
+      const validation = await validateExcelFile(file);
+      setFileValidation(validation);
+    } else {
+      setFileValidation({ isValid: true, message: '' });
+    }
+  };
+
   const fetchStreams = async () => {
     try {
       setLoading(true);
       const response = await pack365Api.getAllStreams();
-      console.log('Streams response:', response); // Debug log
+      console.log('Streams response:', response);
       if (response.success && response.streams) {
         setStreams(response.streams);
       } else {
@@ -83,9 +142,8 @@ const Pack365Management = () => {
     try {
       setLoading(true);
       const response = await pack365Api.getAllCourses();
-      console.log('Courses response:', response); // Debug log
+      console.log('Courses response:', response);
       if (response.success && response.data) {
-        // Filter courses by selected stream
         const streamCourses = response.data.filter((course: Pack365Course) => 
           course.stream === streamName
         );
@@ -106,19 +164,148 @@ const Pack365Management = () => {
     }
   };
 
-  const fetchAllCourses = async () => {
+  // ✅ UPDATED: Improved exam upload with better error handling
+  const handleExamUpload = async () => {
+    if (!examFile || !examCourse) {
+      toast({
+        title: 'Missing information',
+        description: 'Please select an Excel file to upload',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!fileValidation.isValid) {
+      toast({
+        title: 'Invalid file',
+        description: fileValidation.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
-      const response = await pack365Api.getAllCourses();
-      if (response.success && response.data) {
-        return response.data;
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: 'Authentication required',
+          variant: 'destructive',
+        });
+        return;
       }
-      return [];
-    } catch (error) {
-      console.error('Error fetching all courses:', error);
-      return [];
+
+      const formData = new FormData();
+      formData.append('file', examFile);
+      formData.append('courseId', examCourse.courseId || examCourse._id);
+      formData.append('maxAttempts', '3');
+
+      console.log('Uploading exam for course:', examCourse.courseId || examCourse._id);
+
+      const response = await fetch('https://triaright.com/api/pack365/exams/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: 'Exam uploaded successfully!',
+          description: `Exam file "${examFile.name}" has been uploaded for ${examCourse.courseName}`,
+        });
+
+        setShowExamDialog(false);
+        setExamFile(null);
+        setExamCourse(null);
+        setFileValidation({ isValid: true, message: '' });
+      } else {
+        // ✅ Better error messages for common backend errors
+        let errorMessage = result.message || 'Failed to upload exam';
+        
+        if (errorMessage.includes('30 questions')) {
+          errorMessage = '❌ Excel file must contain exactly 30 questions. Please check your file has exactly 30 rows of questions.';
+        } else if (errorMessage.includes('Course not found')) {
+          errorMessage = 'Course not found. Please refresh the page and try again.';
+        } else if (errorMessage.includes('Missing fields')) {
+          errorMessage = 'Excel file is missing required columns. Required: Question, Option1, Option2, Option3, Option4, CorrectAnswer, Type';
+        } else if (errorMessage.includes('Correct answer')) {
+          errorMessage = 'Some questions have incorrect answer format. Correct answer must exactly match one of the options.';
+        } else if (errorMessage.includes('Invalid type')) {
+          errorMessage = 'Some questions have invalid type. Type must be: easy, medium, or hard';
+        }
+        
+        throw new Error(errorMessage);
+      }
+    } catch (error: any) {
+      console.error('Error uploading exam:', error);
+      toast({
+        title: 'Upload failed',
+        description: error.message || 'Failed to upload exam file',
+        variant: 'destructive',
+      });
     }
   };
 
+  // ✅ NEW: Download template function
+  const downloadExamTemplate = () => {
+    // Create a simple text guide since we can't create Excel without a library
+    const templateGuide = `
+EXAM UPLOAD TEMPLATE INSTRUCTIONS:
+
+1. Create an Excel file with exactly 30 rows of questions
+2. Required columns (exact names):
+   - Question
+   - Option1
+   - Option2  
+   - Option3
+   - Option4
+   - CorrectAnswer
+   - Type
+   - Description (optional)
+
+3. Column requirements:
+   - Question: The question text
+   - Option1, Option2, Option3, Option4: Four answer choices
+   - CorrectAnswer: Must exactly match one of the options
+   - Type: Must be "easy", "medium", or "hard"
+   - Description: Optional explanation
+
+4. Example row:
+   Question: "What is 2+2?"
+   Option1: "1"
+   Option2: "2" 
+   Option3: "3"
+   Option4: "4"
+   CorrectAnswer: "4"
+   Type: "easy"
+   Description: "Basic math question"
+
+5. IMPORTANT: You must have exactly 30 questions (30 data rows + 1 header row = 31 total rows)
+
+6. Save as Excel file (.xlsx or .xls) and upload.
+    `;
+
+    // Create downloadable text file
+    const blob = new Blob([templateGuide], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'exam-upload-instructions.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Instructions downloaded',
+      description: 'Check the downloaded file for Excel template requirements',
+    });
+  };
+
+  // Rest of your existing functions remain the same...
   const handleAddStream = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -131,7 +318,6 @@ const Pack365Management = () => {
 
     try {
       setLoading(true);
-
       if (!streamFormData.name || !streamFormData.price) {
         toast({
           title: 'Missing data',
@@ -153,12 +339,7 @@ const Pack365Management = () => {
           title: 'Stream added successfully',
           description: 'Stream added to Pack365',
         });
-
-        setStreamFormData({
-          name: '',
-          price: '',
-          imageFile: null,
-        });
+        setStreamFormData({ name: '', price: '', imageFile: null });
         setShowStreamDialog(false);
       }
     } catch (error: any) {
@@ -185,7 +366,6 @@ const Pack365Management = () => {
 
     try {
       setLoading(true);
-
       const response = await pack365Api.updateStream(token, editingStream._id, {
         name: streamFormData.name || editingStream.name,
         price: streamFormData.price ? Number(streamFormData.price) : editingStream.price,
@@ -198,12 +378,7 @@ const Pack365Management = () => {
           title: 'Stream updated successfully',
           description: 'Stream details have been updated',
         });
-
-        setStreamFormData({
-          name: '',
-          price: '',
-          imageFile: null,
-        });
+        setStreamFormData({ name: '', price: '', imageFile: null });
         setEditingStream(null);
         setShowStreamDialog(false);
       }
@@ -235,9 +410,7 @@ const Pack365Management = () => {
 
     try {
       setLoading(true);
-
       const response = await pack365Api.deleteStream(token, streamId);
-
       if (response.success) {
         await fetchStreams();
         toast({
@@ -267,11 +440,7 @@ const Pack365Management = () => {
       });
     } else {
       setEditingStream(null);
-      setStreamFormData({
-        name: '',
-        price: '',
-        imageFile: null
-      });
+      setStreamFormData({ name: '', price: '', imageFile: null });
     }
     setShowStreamDialog(true);
   };
@@ -307,12 +476,9 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
       
-      console.log('Creating course with data:', courseData); // Debug log
-      
       const response = await pack365Api.createCourse(token, courseData);
       if (response.success) {
         toast({ title: 'Course created successfully!' });
-        // Refresh courses for the current stream
         await fetchCoursesForStream(selectedStream.name);
         resetForm();
         setShowDialog(false);
@@ -340,14 +506,10 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
 
-      console.log('Updating course with data:', courseData); // Debug log
-
-      // Use courseId for update, fallback to _id
       const courseId = editingCourse.courseId || editingCourse._id;
       const response = await pack365Api.updateCourse(token, courseId, courseData);
       if (response.success) {
         toast({ title: 'Course updated successfully!' });
-        // Refresh courses for the current stream
         if (selectedStream) {
           await fetchCoursesForStream(selectedStream.name);
         }
@@ -377,11 +539,9 @@ const Pack365Management = () => {
     }
 
     try {
-      console.log('Deleting course with ID:', courseId); // Debug log
       const response = await pack365Api.deleteCourse(token, courseId);
       if (response.success) {
         toast({ title: 'Course deleted successfully!' });
-        // Refresh courses for the current stream
         if (selectedStream) {
           await fetchCoursesForStream(selectedStream.name);
         }
@@ -391,75 +551,6 @@ const Pack365Management = () => {
       toast({
         title: 'Error deleting course',
         description: error.response?.data?.message || 'Failed to delete course',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // ✅ FIXED: Real exam upload implementation
-  const handleExamUpload = async () => {
-    if (!examFile || !examCourse) {
-      toast({
-        title: 'Missing information',
-        description: 'Please select an Excel file to upload',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!examFile.name.endsWith('.xlsx') && !examFile.name.endsWith('.xls')) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload an Excel file (.xlsx or .xls)',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast({
-          title: 'Authentication required',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('file', examFile);
-      formData.append('courseId', examCourse.courseId || examCourse._id);
-      formData.append('maxAttempts', '3'); // ✅ Required field
-
-      console.log('Uploading exam for course:', examCourse.courseId || examCourse._id);
-
-      const response = await fetch('https://triaright.com/api/pack365/exams/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: 'Exam uploaded successfully!',
-          description: `Exam file "${examFile.name}" has been uploaded for ${examCourse.courseName}`,
-        });
-
-        setShowExamDialog(false);
-        setExamFile(null);
-        setExamCourse(null);
-      } else {
-        throw new Error(result.message || 'Failed to upload exam');
-      }
-    } catch (error: any) {
-      console.error('Error uploading exam:', error);
-      toast({
-        title: 'Upload failed',
-        description: error.message || 'Failed to upload exam file',
         variant: 'destructive',
       });
     }
@@ -477,6 +568,7 @@ const Pack365Management = () => {
   const openExamDialog = (course: Pack365Course) => {
     setExamCourse(course);
     setExamFile(null);
+    setFileValidation({ isValid: true, message: '' });
     setShowExamDialog(true);
   };
 
@@ -574,10 +666,7 @@ const Pack365Management = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {streams.map((stream) => (
-              <Card 
-                key={stream._id} 
-                className="overflow-hidden hover:shadow-lg transition-shadow group"
-              >
+              <Card key={stream._id} className="overflow-hidden hover:shadow-lg transition-shadow group">
                 <div className="relative h-48">
                   <img 
                     src={stream.imageUrl || '/api/placeholder/400/250'} 
@@ -611,9 +700,7 @@ const Pack365Management = () => {
                   </div>
                   <div className="absolute bottom-4 left-4 text-white">
                     <h3 className="text-xl font-bold">{stream.name}</h3>
-                    <Badge className="bg-blue-600 text-white mt-1">
-                      Pack 365
-                    </Badge>
+                    <Badge className="bg-blue-600 text-white mt-1">Pack 365</Badge>
                   </div>
                 </div>
                 
@@ -622,20 +709,12 @@ const Pack365Management = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <BookOpen className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm font-medium">
-                          Courses: {stream.courses?.length || 0}
-                        </span>
+                        <span className="text-sm font-medium">Courses: {stream.courses?.length || 0}</span>
                       </div>
-                      <div className="text-lg font-bold text-blue-600">
-                        ₹{stream.price}
-                      </div>
+                      <div className="text-lg font-bold text-blue-600">₹{stream.price}</div>
                     </div>
                     
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={() => handleStreamClick(stream)}
-                    >
+                    <Button className="w-full" variant="outline" onClick={() => handleStreamClick(stream)}>
                       Manage Courses
                       <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
                     </Button>
@@ -650,9 +729,7 @@ const Pack365Management = () => {
         <Dialog open={showStreamDialog} onOpenChange={setShowStreamDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>
-                {editingStream ? 'Edit Stream' : 'Add New Stream'}
-              </DialogTitle>
+              <DialogTitle>{editingStream ? 'Edit Stream' : 'Add New Stream'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -664,7 +741,6 @@ const Pack365Management = () => {
                   placeholder="Enter stream name"
                 />
               </div>
-
               <div>
                 <Label htmlFor="streamPrice">Price (₹)</Label>
                 <Input
@@ -675,7 +751,6 @@ const Pack365Management = () => {
                   placeholder="Enter price"
                 />
               </div>
-
               <div>
                 <Label htmlFor="streamImage">Stream Image</Label>
                 <Input
@@ -685,7 +760,6 @@ const Pack365Management = () => {
                   onChange={(e) => setStreamFormData(prev => ({ ...prev, imageFile: e.target.files?.[0] || null }))}
                 />
               </div>
-
               <div className="flex space-x-2 pt-4">
                 <Button
                   onClick={editingStream ? handleUpdateStream : handleAddStream}
@@ -694,16 +768,7 @@ const Pack365Management = () => {
                 >
                   {editingStream ? 'Update Stream' : 'Add Stream'}
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowStreamDialog(false);
-                    setEditingStream(null);
-                    setStreamFormData({ name: '', price: '', imageFile: null });
-                  }}
-                >
-                  Cancel
-                </Button>
+                <Button variant="outline" onClick={() => setShowStreamDialog(false)}>Cancel</Button>
               </div>
             </div>
           </DialogContent>
@@ -770,12 +835,7 @@ const Pack365Management = () => {
                       <TableCell>{course.totalDuration || 0} min</TableCell>
                       <TableCell>
                         {course.documentLink ? (
-                          <a 
-                            href={course.documentLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-center space-x-1"
-                          >
+                          <a href={course.documentLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center space-x-1">
                             <FileText className="h-4 w-4" />
                             <span>View Document</span>
                           </a>
@@ -785,33 +845,16 @@ const Pack365Management = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewCourse(course)}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => handleViewCourse(course)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditDialog(course)}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => openEditDialog(course)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {/* ✅ Added Exam Upload Button */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openExamDialog(course)}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => openExamDialog(course)}>
                             <Upload className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteCourse(course.courseId)}
-                          >
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteCourse(course.courseId)}>
                             <Trash className="h-4 w-4" />
                           </Button>
                         </div>
@@ -829,9 +872,7 @@ const Pack365Management = () => {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {editingCourse ? 'Edit Course' : `Create New Course in ${selectedStream?.name} Stream`}
-            </DialogTitle>
+            <DialogTitle>{editingCourse ? 'Edit Course' : `Create New Course in ${selectedStream?.name} Stream`}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -844,7 +885,6 @@ const Pack365Management = () => {
                 required
               />
             </div>
-
             <div>
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -855,7 +895,6 @@ const Pack365Management = () => {
                 rows={4}
               />
             </div>
-
             <div>
               <Label htmlFor="courseDocument">Course Document *</Label>
               <Input
@@ -865,11 +904,8 @@ const Pack365Management = () => {
                 accept="image/*,application/pdf"
                 required={!editingCourse}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Required for new courses. Supported formats: images, PDF
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Required for new courses. Supported formats: images, PDF</p>
             </div>
-
             <div>
               <div className="flex justify-between items-center mb-2">
                 <Label>Topics *</Label>
@@ -901,12 +937,7 @@ const Pack365Management = () => {
                       required
                     />
                     {formData.topics.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeTopic(index)}
-                      >
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeTopic(index)}>
                         <Trash className="h-4 w-4" />
                       </Button>
                     )}
@@ -914,7 +945,6 @@ const Pack365Management = () => {
                 ))}
               </div>
             </div>
-
             <div className="flex space-x-2 pt-4">
               <Button
                 type="button"
@@ -924,13 +954,7 @@ const Pack365Management = () => {
               >
                 {editingCourse ? 'Update Course' : 'Create Course'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowDialog(false)}
-              >
-                Cancel
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
             </div>
           </div>
         </DialogContent>
@@ -946,33 +970,23 @@ const Pack365Management = () => {
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold text-lg">{viewingCourse.courseName}</h3>
-                <Badge variant="outline" className="capitalize mt-1">
-                  {viewingCourse.stream}
-                </Badge>
+                <Badge variant="outline" className="capitalize mt-1">{viewingCourse.stream}</Badge>
               </div>
-              
               <div>
                 <Label className="text-sm font-medium">Description</Label>
                 <p className="text-sm text-gray-600 mt-1">{viewingCourse.description || 'No description available'}</p>
               </div>
-
               {viewingCourse.documentLink && (
                 <div>
                   <Label className="text-sm font-medium">Course Document</Label>
                   <div className="mt-1">
-                    <a 
-                      href={viewingCourse.documentLink} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline flex items-center space-x-1"
-                    >
+                    <a href={viewingCourse.documentLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center space-x-1">
                       <FileText className="h-4 w-4" />
                       <span>View Document</span>
                     </a>
                   </div>
                 </div>
               )}
-
               <div>
                 <Label className="text-sm font-medium">Topics ({viewingCourse.topics?.length || 0})</Label>
                 <div className="mt-1 space-y-2">
@@ -982,14 +996,7 @@ const Pack365Management = () => {
                       <div className="flex items-center space-x-2">
                         <span className="text-xs text-gray-500">{topic.duration} min</span>
                         {topic.link && (
-                          <a
-                            href={topic.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 text-sm hover:underline"
-                          >
-                            View Link
-                          </a>
+                          <a href={topic.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View Link</a>
                         )}
                       </div>
                     </div>
@@ -1001,45 +1008,69 @@ const Pack365Management = () => {
         </DialogContent>
       </Dialog>
 
-      {/* ✅ ADDED: Exam Upload Dialog */}
+      {/* ✅ IMPROVED: Exam Upload Dialog with validation and instructions */}
       <Dialog open={showExamDialog} onOpenChange={setShowExamDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Upload Exam for {examCourse?.courseName}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-amber-800 mb-1">Important Requirements:</h4>
+                  <ul className="text-sm text-amber-700 space-y-1">
+                    <li>• <strong className="text-red-600">Exactly 30 questions</strong> - no more, no less</li>
+                    <li>• Required columns: <strong>Question, Option1, Option2, Option3, Option4, CorrectAnswer, Type</strong></li>
+                    <li>• <strong>Type</strong> must be: easy, medium, or hard</li>
+                    <li>• <strong>CorrectAnswer</strong> must exactly match one of the options</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
             <div>
-              <Label htmlFor="examFile">Exam Excel File</Label>
+              <Label htmlFor="examFile">Exam Excel File *</Label>
               <Input
                 id="examFile"
                 type="file"
                 accept=".xlsx,.xls"
-                onChange={(e) => setExamFile(e.target.files?.[0] || null)}
+                onChange={handleFileSelect}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Upload an Excel file with exactly 30 questions. Required columns: Question, Option1, Option2, Option3, Option4, CorrectAnswer, Type, Description
-              </p>
+              {examFile && (
+                <div className={`mt-2 text-sm ${fileValidation.isValid ? 'text-green-600' : 'text-red-600'} flex items-center space-x-1`}>
+                  {fileValidation.isValid ? '✅' : '❌'} 
+                  <span>Selected: {examFile.name} ({(examFile.size / 1024).toFixed(2)} KB) - {fileValidation.message}</span>
+                </div>
+              )}
             </div>
 
-            <div className="flex space-x-2 pt-4">
-              <Button
-                onClick={handleExamUpload}
-                className="flex-1"
-                disabled={!examFile}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Exam
+            <div className="flex justify-between pt-2">
+              <Button variant="outline" onClick={downloadExamTemplate} size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Download Instructions
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowExamDialog(false);
-                  setExamFile(null);
-                  setExamCourse(null);
-                }}
-              >
-                Cancel
-              </Button>
+              <div className="flex space-x-2">
+                <Button
+                  onClick={handleExamUpload}
+                  disabled={!examFile || !fileValidation.isValid}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Exam
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowExamDialog(false);
+                    setExamFile(null);
+                    setExamCourse(null);
+                    setFileValidation({ isValid: true, message: '' });
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
