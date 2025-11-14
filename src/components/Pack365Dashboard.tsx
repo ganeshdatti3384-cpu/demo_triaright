@@ -17,8 +17,7 @@ import {
   User,
   GraduationCap,
   BarChart3,
-  Target,
-  RefreshCw
+  Target
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 
@@ -64,7 +63,6 @@ interface StreamEnrollment {
 const Pack365Dashboard = () => {
   const [enrollments, setEnrollments] = useState<StreamEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
     totalStreams: 0,
     totalCourses: 0,
@@ -78,29 +76,6 @@ const Pack365Dashboard = () => {
 
   useEffect(() => {
     fetchEnrollments();
-    
-    // Check if we need to refresh due to recent exam completion
-    const lastUpdate = localStorage.getItem('lastEnrollmentUpdate');
-    if (lastUpdate) {
-      const updateTime = new Date(lastUpdate);
-      const now = new Date();
-      const diffMinutes = (now.getTime() - updateTime.getTime()) / (1000 * 60);
-      
-      // Refresh if last update was less than 5 minutes ago (recent exam)
-      if (diffMinutes < 5) {
-        console.log('Auto-refreshing due to recent exam completion');
-        fetchEnrollments();
-        localStorage.removeItem('lastEnrollmentUpdate');
-      }
-    }
-
-    // Check for force refresh
-    const forceRefresh = localStorage.getItem('forceRefresh');
-    if (forceRefresh === 'true') {
-      console.log('Force refreshing enrollments');
-      fetchEnrollments();
-      localStorage.removeItem('forceRefresh');
-    }
   }, []);
 
   const fetchEnrollments = async () => {
@@ -125,41 +100,23 @@ const Pack365Dashboard = () => {
       if (response.success && response.enrollments) {
         const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
         
-        // Fetch all courses to calculate accurate progress
-        const coursesResponse = await pack365Api.getAllCourses();
-        const allCourses = coursesResponse.success ? coursesResponse.data : [];
-
-        // Enhance enrollments with accurate progress data
+        // Use backend calculated progress directly
         const enhancedEnrollments = streamEnrollments.map(enrollment => {
-          const streamCourses = allCourses.filter((course: Course) => 
-            course.stream?.toLowerCase() === enrollment.stream.toLowerCase()
-          );
-          
-          // Calculate accurate progress based on actual topics
-          const totalTopicsInStream = streamCourses.reduce((total: number, course: Course) => 
-            total + (course.topics?.length || 0), 0
-          );
-          
+          // Calculate accurate progress based on topic progress
+          const totalTopics = enrollment.topicProgress?.length || 0;
           const watchedTopics = enrollment.topicProgress?.filter(tp => tp.watched).length || 0;
-          const accurateProgress = totalTopicsInStream > 0 ? (watchedTopics / totalTopicsInStream) * 100 : 0;
-
-          // Ensure exam status is properly set
-          const isExamCompleted = enrollment.isExamCompleted || false;
-          const examScore = enrollment.examScore || null;
+          const accurateProgress = totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
 
           return {
             ...enrollment,
-            courses: streamCourses,
-            totalTopics: totalTopicsInStream,
-            watchedTopics: watchedTopics,
-            totalWatchedPercentage: accurateProgress,
-            coursesCount: streamCourses.length,
-            isExamCompleted: isExamCompleted,
-            examScore: examScore
+            totalTopics,
+            watchedTopics,
+            totalWatchedPercentage: enrollment.totalWatchedPercentage || accurateProgress,
+            coursesCount: enrollment.courses?.length || 0
           };
         });
 
-        console.log('Enhanced enrollments with exam status:', enhancedEnrollments);
+        console.log('Enhanced enrollments:', enhancedEnrollments);
         setEnrollments(enhancedEnrollments);
         
         // Calculate comprehensive stats
@@ -218,18 +175,7 @@ const Pack365Dashboard = () => {
       });
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchEnrollments();
-    toast({
-      title: 'Refreshed',
-      description: 'Your progress has been updated.',
-      variant: 'default'
-    });
   };
 
   const handleStreamLearning = (stream: string) => {
@@ -237,12 +183,13 @@ const Pack365Dashboard = () => {
   };
 
   const handleTakeExam = (stream: string, enrollment: StreamEnrollment) => {
-    if (enrollment.totalWatchedPercentage >= 80) {
+    const progress = enrollment.totalWatchedPercentage || 0;
+    if (progress >= 80) {
       navigate(`/exam/${stream}`);
     } else {
       toast({
         title: 'Not Eligible',
-        description: `You need to complete at least 80% of the ${stream} stream to take the exam. Current progress: ${Math.round(enrollment.totalWatchedPercentage)}%`,
+        description: `You need to complete at least 80% of the ${stream} stream to take the exam. Current progress: ${Math.round(progress)}%`,
         variant: 'destructive'
       });
     }
@@ -259,12 +206,11 @@ const Pack365Dashboard = () => {
   const getCourseProgress = (enrollment: StreamEnrollment, courseId: string) => {
     if (!enrollment.topicProgress) return 0;
     
-    const course = enrollment.courses.find(c => c.courseId === courseId);
-    if (!course || !course.topics || course.topics.length === 0) return 0;
+    const courseTopics = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
+    if (courseTopics.length === 0) return 0;
     
-    const courseTopicsProgress = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
-    const watchedTopics = courseTopicsProgress.filter(tp => tp.watched).length;
-    return (watchedTopics / course.topics.length) * 100;
+    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
+    return (watchedTopics / courseTopics.length) * 100;
   };
 
   if (loading) {
@@ -289,13 +235,13 @@ const Pack365Dashboard = () => {
               <p className="text-gray-600">Track your learning progress and achievements</p>
             </div>
             <Button 
-              onClick={handleRefresh}
+              onClick={fetchEnrollments}
               variant="outline"
-              disabled={refreshing}
+              disabled={loading}
               className="flex items-center gap-2"
             >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing...' : 'Refresh'}
+              <BookOpen className="h-4 w-4" />
+              {loading ? 'Loading...' : 'Refresh'}
             </Button>
           </div>
         </div>
@@ -405,6 +351,11 @@ const Pack365Dashboard = () => {
                             <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage)}%</span>
                           </div>
                           <Progress value={enrollment.totalWatchedPercentage} className="h-2" />
+                          <div className="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>0%</span>
+                            <span>Exam: 80%</span>
+                            <span>100%</span>
+                          </div>
                         </div>
 
                         {/* Topics Progress */}
@@ -425,51 +376,15 @@ const Pack365Dashboard = () => {
                           </div>
                         </div>
 
-                        {/* Courses Progress */}
-                        <div>
-                          <span className="text-sm font-medium mb-2 block">Courses Progress:</span>
-                          <div className="space-y-2">
-                            {enrollment.courses.slice(0, 3).map((course, courseIndex) => {
-                              const courseProgress = getCourseProgress(enrollment, course.courseId);
-                              return (
-                                <div key={courseIndex} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg p-2">
-                                  <span className="font-medium truncate">{course.courseName}</span>
-                                  <div className="flex items-center space-x-2">
-                                    <Progress value={courseProgress} className="w-16 h-2" />
-                                    <span className="text-gray-500 text-xs w-8">{Math.round(courseProgress)}%</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            {enrollment.courses.length > 3 && (
-                              <div className="text-xs text-gray-500 text-center">
-                                +{enrollment.courses.length - 3} more courses
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
                         {/* Exam Status */}
-                        <div className={`flex items-center justify-between p-3 rounded-lg ${
-                          enrollment.isExamCompleted 
-                            ? 'bg-green-50 border border-green-200' 
-                            : enrollment.totalWatchedPercentage >= 80 
-                              ? 'bg-blue-50 border border-blue-200'
-                              : 'bg-gray-50 border border-gray-200'
-                        }`}>
+                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                           <div className="flex items-center">
-                            <Target className={`h-5 w-5 mr-2 ${
-                              enrollment.isExamCompleted 
-                                ? 'text-green-600' 
-                                : enrollment.totalWatchedPercentage >= 80 
-                                  ? 'text-blue-600'
-                                  : 'text-gray-400'
-                            }`} />
+                            <Target className="h-5 w-5 text-blue-600 mr-2" />
                             <div>
                               <p className="text-sm font-medium">Stream Exam</p>
                               <p className="text-xs text-gray-600">
                                 {enrollment.isExamCompleted 
-                                  ? `Completed - Score: ${enrollment.examScore}%` 
+                                  ? `Score: ${enrollment.examScore}%` 
                                   : enrollment.totalWatchedPercentage >= 80 
                                     ? 'Ready to take exam'
                                     : `${80 - Math.round(enrollment.totalWatchedPercentage)}% more to unlock`
@@ -484,12 +399,6 @@ const Pack365Dashboard = () => {
                             >
                               Take Exam
                             </Button>
-                          )}
-                          {enrollment.isExamCompleted && (
-                            <Badge variant="default" className="bg-green-100 text-green-800">
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Completed
-                            </Badge>
                           )}
                         </div>
 
@@ -556,8 +465,8 @@ const Pack365Dashboard = () => {
           </Button>
 
           {enrollments.length > 0 && (
-            <Button variant="outline" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={fetchEnrollments}>
+              <CheckCircle2 className="h-4 w-4 mr-2" />
               Refresh Progress
             </Button>
           )}
