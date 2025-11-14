@@ -69,7 +69,6 @@ const StreamLearningInterface = () => {
   }, [stream]);
 
   useEffect(() => {
-    // Cleanup interval on unmount
     return () => {
       if (progressIntervalId) {
         clearInterval(progressIntervalId);
@@ -178,7 +177,7 @@ const StreamLearningInterface = () => {
       clearInterval(progressIntervalId);
     }
 
-    // Start progress tracking after a short delay
+    // Start progress tracking
     const intervalId = startProgressTracking(topic);
     setProgressIntervalId(intervalId);
   };
@@ -197,8 +196,8 @@ const StreamLearningInterface = () => {
       
       setVideoProgress(progress);
       
-      // Mark as completed if progress reaches 80% or more
-      if (progress >= 80 && isTrackingProgress) {
+      // Mark as completed if progress reaches 95% or more
+      if (progress >= 95 && !isTrackingProgress) {
         markTopicAsCompleted(topic);
         clearInterval(interval);
       }
@@ -219,7 +218,7 @@ const StreamLearningInterface = () => {
       const currentTopicProgress = getTopicProgress(selectedCourse._id, topic.name);
       if (currentTopicProgress?.watched) {
         setIsTrackingProgress(false);
-        return; // Already marked as completed
+        return;
       }
 
       // Update progress via API
@@ -239,7 +238,6 @@ const StreamLearningInterface = () => {
           );
           
           if (existingIndex >= 0) {
-            // Update existing
             return prev.map((tp, index) => 
               index === existingIndex 
                 ? { 
@@ -251,7 +249,6 @@ const StreamLearningInterface = () => {
                 : tp
             );
           } else {
-            // Add new
             return [
               ...prev,
               {
@@ -266,6 +263,9 @@ const StreamLearningInterface = () => {
         });
 
         setIsTrackingProgress(false);
+        
+        // Refresh enrollment data to get updated progress
+        await loadStreamData();
         
         toast({
           title: 'Progress Updated',
@@ -287,9 +287,11 @@ const StreamLearningInterface = () => {
   };
 
   const calculateNewProgress = (completedTopic: Topic): number => {
-    const courseTopics = selectedCourse?.topics || [];
+    if (!selectedCourse) return 0;
+    
+    const courseTopics = selectedCourse.topics || [];
     const currentWatched = topicProgress.filter(tp => 
-      tp.courseId === selectedCourse?._id && tp.watched
+      tp.courseId === selectedCourse._id && tp.watched
     ).length;
     
     const newWatchedCount = currentWatched + 1;
@@ -329,8 +331,36 @@ const StreamLearningInterface = () => {
     return totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
   };
 
+  const getOverallStreamProgress = () => {
+    if (!enrollment) return 0;
+    
+    // Use backend calculated progress if available, otherwise calculate locally
+    if (enrollment.totalWatchedPercentage !== undefined) {
+      return enrollment.totalWatchedPercentage;
+    }
+    
+    // Fallback calculation
+    const allTopics = courses.flatMap(course => course.topics);
+    const watchedTopics = topicProgress.filter(tp => tp.watched).length;
+    return allTopics.length > 0 ? (watchedTopics / allTopics.length) * 100 : 0;
+  };
+
   const handleOpenInNewTab = (topic: Topic) => {
     window.open(topic.link, '_blank');
+  };
+
+  const handleTakeExam = async () => {
+    const overallProgress = getOverallStreamProgress();
+    
+    if (overallProgress >= 80) {
+      navigate(`/exam/${stream}`);
+    } else {
+      toast({
+        title: 'Not Eligible',
+        description: `You need to complete at least 80% of the ${stream} stream to take the exam. Current progress: ${Math.round(overallProgress)}%`,
+        variant: 'destructive'
+      });
+    }
   };
 
   if (error) {
@@ -373,6 +403,8 @@ const StreamLearningInterface = () => {
       </>
     );
   }
+
+  const overallProgress = getOverallStreamProgress();
 
   return (
     <>
@@ -491,6 +523,20 @@ const StreamLearningInterface = () => {
             <p className="text-gray-600 mt-2">
               Complete all courses and topics to unlock the final exam
             </p>
+            
+            {/* Overall Progress */}
+            <div className="mt-6 max-w-2xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Overall Stream Progress</span>
+                <span className="text-sm font-medium">{Math.round(overallProgress)}%</span>
+              </div>
+              <Progress value={overallProgress} className="h-3" />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0%</span>
+                <span>Exam Unlock: 80%</span>
+                <span>100%</span>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -531,7 +577,7 @@ const StreamLearningInterface = () => {
               </Card>
 
               {/* Exam Eligibility */}
-              {enrollment?.totalWatchedPercentage >= 80 && (
+              {overallProgress >= 80 && (
                 <Card className="bg-green-50 border-green-200">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2 mb-2">
@@ -542,7 +588,7 @@ const StreamLearningInterface = () => {
                       You've completed enough content to take the stream exam.
                     </p>
                     <Button 
-                      onClick={() => navigate(`/exam/${stream}`)}
+                      onClick={handleTakeExam}
                       className="w-full bg-green-600 hover:bg-green-700"
                     >
                       Take Stream Exam
