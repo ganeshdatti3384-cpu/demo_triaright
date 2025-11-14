@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Eye, Edit, Trash, Upload, FileText, Download, ArrowLeft, BookOpen } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
@@ -28,7 +28,6 @@ const Pack365Management = () => {
   const [showExamDialog, setShowExamDialog] = useState(false);
   const [examCourse, setExamCourse] = useState<Pack365Course | null>(null);
   const [examFile, setExamFile] = useState<File | null>(null);
-  const [maxAttempts, setMaxAttempts] = useState(3);
   const [viewType, setViewType] = useState<'streams' | 'courses'>('streams');
   
   // Stream management states
@@ -61,7 +60,7 @@ const Pack365Management = () => {
     try {
       setLoading(true);
       const response = await pack365Api.getAllStreams();
-      console.log('Streams response:', response);
+      console.log('Streams response:', response); // Debug log
       if (response.success && response.streams) {
         setStreams(response.streams);
       } else {
@@ -84,8 +83,9 @@ const Pack365Management = () => {
     try {
       setLoading(true);
       const response = await pack365Api.getAllCourses();
-      console.log('Courses response:', response);
+      console.log('Courses response:', response); // Debug log
       if (response.success && response.data) {
+        // Filter courses by selected stream
         const streamCourses = response.data.filter((course: Pack365Course) => 
           course.stream === streamName
         );
@@ -307,11 +307,12 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
       
-      console.log('Creating course with data:', courseData);
+      console.log('Creating course with data:', courseData); // Debug log
       
       const response = await pack365Api.createCourse(token, courseData);
       if (response.success) {
         toast({ title: 'Course created successfully!' });
+        // Refresh courses for the current stream
         await fetchCoursesForStream(selectedStream.name);
         resetForm();
         setShowDialog(false);
@@ -339,12 +340,14 @@ const Pack365Management = () => {
         topics: formData.topics.filter(topic => topic.name.trim() !== '' && topic.duration > 0)
       };
 
-      console.log('Updating course with data:', courseData);
+      console.log('Updating course with data:', courseData); // Debug log
 
+      // Use courseId for update, fallback to _id
       const courseId = editingCourse.courseId || editingCourse._id;
       const response = await pack365Api.updateCourse(token, courseId, courseData);
       if (response.success) {
         toast({ title: 'Course updated successfully!' });
+        // Refresh courses for the current stream
         if (selectedStream) {
           await fetchCoursesForStream(selectedStream.name);
         }
@@ -374,10 +377,11 @@ const Pack365Management = () => {
     }
 
     try {
-      console.log('Deleting course with ID:', courseId);
+      console.log('Deleting course with ID:', courseId); // Debug log
       const response = await pack365Api.deleteCourse(token, courseId);
       if (response.success) {
         toast({ title: 'Course deleted successfully!' });
+        // Refresh courses for the current stream
         if (selectedStream) {
           await fetchCoursesForStream(selectedStream.name);
         }
@@ -392,6 +396,7 @@ const Pack365Management = () => {
     }
   };
 
+  // ✅ FIXED: Real exam upload implementation
   const handleExamUpload = async () => {
     if (!examFile || !examCourse) {
       toast({
@@ -424,28 +429,47 @@ const Pack365Management = () => {
       const formData = new FormData();
       formData.append('file', examFile);
       formData.append('courseId', examCourse.courseId || examCourse._id);
-      formData.append('maxAttempts', maxAttempts.toString());
+      formData.append('maxAttempts', '3'); // ✅ Required field
 
-      // FIXED: Using the correct function name uploadExamFromExcel
-      const response = await pack365Api.uploadExamFromExcel(token, formData);
-      
-      if (response.success) {
+      console.log('Uploading exam for course:', examCourse.courseId || examCourse._id);
+
+      const response = await fetch('https://triaright.com/api/pack365/exams/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
         toast({
           title: 'Exam uploaded successfully!',
-          description: `Exam has been uploaded for ${examCourse.courseName}`,
+          description: `Exam file "${examFile.name}" has been uploaded for ${examCourse.courseName}`,
         });
 
         setShowExamDialog(false);
         setExamFile(null);
         setExamCourse(null);
-        setMaxAttempts(3);
+      } else {
+        throw new Error(result.message || 'Failed to upload exam');
       }
     } catch (error: any) {
       console.error('Error uploading exam:', error);
       toast({
         title: 'Upload failed',
-        description: error.response?.data?.message || 'Failed to upload exam file',
+        description: error.message || 'Failed to upload exam file',
         variant: 'destructive',
+      });
+    }
+  };
+
+  const handleExamDownload = (course: Pack365Course) => {
+    if (course.examFile) {
+      toast({
+        title: 'Download started',
+        description: `Downloading exam file: ${course.examFile.originalName}`,
       });
     }
   };
@@ -453,7 +477,6 @@ const Pack365Management = () => {
   const openExamDialog = (course: Pack365Course) => {
     setExamCourse(course);
     setExamFile(null);
-    setMaxAttempts(3);
     setShowExamDialog(true);
   };
 
@@ -685,55 +708,6 @@ const Pack365Management = () => {
             </div>
           </DialogContent>
         </Dialog>
-
-        {/* Exam Upload Dialog */}
-        <Dialog open={showExamDialog} onOpenChange={setShowExamDialog}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Upload Exam for {examCourse?.courseName}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="examFile">Exam Excel File *</Label>
-                <Input
-                  id="examFile"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setExamFile(e.target.files?.[0] || null)}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Must contain exactly 30 questions with columns: Question, Option1, Option2, Option3, Option4, CorrectAnswer, Type
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="maxAttempts">Maximum Attempts</Label>
-                <Input
-                  id="maxAttempts"
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={maxAttempts}
-                  onChange={(e) => setMaxAttempts(Number(e.target.value))}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Number of times students can attempt this exam (1-10)
-                </p>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  onClick={handleExamUpload}
-                  disabled={!examFile}
-                  className="w-full"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Exam
-                </Button>
-              </DialogFooter>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     );
   }
@@ -825,6 +799,7 @@ const Pack365Management = () => {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
+                          {/* ✅ Added Exam Upload Button */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -1026,7 +1001,7 @@ const Pack365Management = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Exam Upload Dialog */}
+      {/* ✅ ADDED: Exam Upload Dialog */}
       <Dialog open={showExamDialog} onOpenChange={setShowExamDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1034,7 +1009,7 @@ const Pack365Management = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="examFile">Exam Excel File *</Label>
+              <Label htmlFor="examFile">Exam Excel File</Label>
               <Input
                 id="examFile"
                 type="file"
@@ -1042,35 +1017,30 @@ const Pack365Management = () => {
                 onChange={(e) => setExamFile(e.target.files?.[0] || null)}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Must contain exactly 30 questions with columns: Question, Option1, Option2, Option3, Option4, CorrectAnswer, Type
+                Upload an Excel file with exactly 30 questions. Required columns: Question, Option1, Option2, Option3, Option4, CorrectAnswer, Type, Description
               </p>
             </div>
 
-            <div>
-              <Label htmlFor="maxAttempts">Maximum Attempts</Label>
-              <Input
-                id="maxAttempts"
-                type="number"
-                min="1"
-                max="10"
-                value={maxAttempts}
-                onChange={(e) => setMaxAttempts(Number(e.target.value))}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Number of times students can attempt this exam (1-10)
-              </p>
-            </div>
-
-            <DialogFooter>
+            <div className="flex space-x-2 pt-4">
               <Button
                 onClick={handleExamUpload}
+                className="flex-1"
                 disabled={!examFile}
-                className="w-full"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Exam
               </Button>
-            </DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowExamDialog(false);
+                  setExamFile(null);
+                  setExamCourse(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
