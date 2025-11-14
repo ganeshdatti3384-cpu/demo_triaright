@@ -63,6 +63,7 @@ const StreamLearningInterface = () => {
   const [videoProgress, setVideoProgress] = useState<number>(0);
   const [isTrackingProgress, setIsTrackingProgress] = useState(false);
   const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [examEligible, setExamEligible] = useState(false);
 
   useEffect(() => {
     loadStreamData();
@@ -88,7 +89,6 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // Get enrollment data
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       
       if (!enrollmentResponse.success || !enrollmentResponse.enrollments) {
@@ -111,7 +111,6 @@ const StreamLearningInterface = () => {
       setEnrollment(streamEnrollment);
       setTopicProgress(streamEnrollment.topicProgress || []);
 
-      // Get courses for this stream
       const coursesResponse = await pack365Api.getAllCourses();
       
       if (!coursesResponse.success || !coursesResponse.data) {
@@ -132,7 +131,6 @@ const StreamLearningInterface = () => {
 
       setCourses(streamCourses);
 
-      // Set selected course from location state or first course
       const selectedCourseFromState = location.state?.selectedCourse;
       const selectedCourseId = location.state?.selectedCourseId;
       
@@ -145,6 +143,8 @@ const StreamLearningInterface = () => {
         setSelectedCourse(streamCourses[0]);
       }
 
+      await checkExamEligibility();
+
     } catch (error: any) {
       console.error('Error loading stream data:', error);
       setError('Failed to load stream data');
@@ -155,6 +155,23 @@ const StreamLearningInterface = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkExamEligibility = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const availableExamsResponse = await pack365Api.getAvailableExams(token);
+      if (availableExamsResponse.success && availableExamsResponse.exams) {
+        const hasEligibleExam = availableExamsResponse.exams.some((exam: any) => 
+          exam.attemptInfo.canRetake
+        );
+        setExamEligible(hasEligibleExam);
+      }
+    } catch (error) {
+      console.error('Error checking exam eligibility:', error);
     }
   };
 
@@ -172,12 +189,10 @@ const StreamLearningInterface = () => {
     setVideoProgress(0);
     setIsTrackingProgress(false);
 
-    // Clear any existing interval
     if (progressIntervalId) {
       clearInterval(progressIntervalId);
     }
 
-    // Start progress tracking
     const intervalId = startProgressTracking(topic);
     setProgressIntervalId(intervalId);
   };
@@ -191,17 +206,16 @@ const StreamLearningInterface = () => {
         return;
       }
       
-      progress += (100 / (topic.duration * 60)) * 5; // Increment every 5 seconds
+      progress += (100 / (topic.duration * 60)) * 5;
       if (progress > 100) progress = 100;
       
       setVideoProgress(progress);
       
-      // Mark as completed if progress reaches 95% or more
-      if (progress >= 95 && !isTrackingProgress) {
+      if (progress >= 80 && isTrackingProgress) {
         markTopicAsCompleted(topic);
         clearInterval(interval);
       }
-    }, 5000); // Update every 5 seconds
+    }, 5000);
 
     setIsTrackingProgress(true);
     return interval;
@@ -214,14 +228,12 @@ const StreamLearningInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Check if already completed
       const currentTopicProgress = getTopicProgress(selectedCourse._id, topic.name);
       if (currentTopicProgress?.watched) {
         setIsTrackingProgress(false);
         return;
       }
 
-      // Update progress via API
       const response = await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse.courseId,
         topicName: topic.name,
@@ -231,7 +243,6 @@ const StreamLearningInterface = () => {
       });
 
       if (response.success) {
-        // Update local state
         setTopicProgress(prev => {
           const existingIndex = prev.findIndex(
             tp => tp.topicName === topic.name && tp.courseId === selectedCourse._id
@@ -264,18 +275,14 @@ const StreamLearningInterface = () => {
 
         setIsTrackingProgress(false);
         
-        // Refresh enrollment data to get updated progress
-        await loadStreamData();
+        await checkExamEligibility();
         
         toast({
           title: 'Progress Updated',
           description: `"${topic.name}" marked as completed!`,
           variant: 'default'
         });
-      } else {
-        throw new Error('API call failed');
       }
-
     } catch (error: any) {
       console.error('Error updating progress:', error);
       toast({ 
@@ -287,11 +294,9 @@ const StreamLearningInterface = () => {
   };
 
   const calculateNewProgress = (completedTopic: Topic): number => {
-    if (!selectedCourse) return 0;
-    
-    const courseTopics = selectedCourse.topics || [];
+    const courseTopics = selectedCourse?.topics || [];
     const currentWatched = topicProgress.filter(tp => 
-      tp.courseId === selectedCourse._id && tp.watched
+      tp.courseId === selectedCourse?._id && tp.watched
     ).length;
     
     const newWatchedCount = currentWatched + 1;
@@ -331,36 +336,8 @@ const StreamLearningInterface = () => {
     return totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
   };
 
-  const getOverallStreamProgress = () => {
-    if (!enrollment) return 0;
-    
-    // Use backend calculated progress if available, otherwise calculate locally
-    if (enrollment.totalWatchedPercentage !== undefined) {
-      return enrollment.totalWatchedPercentage;
-    }
-    
-    // Fallback calculation
-    const allTopics = courses.flatMap(course => course.topics);
-    const watchedTopics = topicProgress.filter(tp => tp.watched).length;
-    return allTopics.length > 0 ? (watchedTopics / allTopics.length) * 100 : 0;
-  };
-
   const handleOpenInNewTab = (topic: Topic) => {
     window.open(topic.link, '_blank');
-  };
-
-  const handleTakeExam = async () => {
-    const overallProgress = getOverallStreamProgress();
-    
-    if (overallProgress >= 80) {
-      navigate(`/exam/${stream}`);
-    } else {
-      toast({
-        title: 'Not Eligible',
-        description: `You need to complete at least 80% of the ${stream} stream to take the exam. Current progress: ${Math.round(overallProgress)}%`,
-        variant: 'destructive'
-      });
-    }
   };
 
   if (error) {
@@ -403,8 +380,6 @@ const StreamLearningInterface = () => {
       </>
     );
   }
-
-  const overallProgress = getOverallStreamProgress();
 
   return (
     <>
@@ -523,20 +498,6 @@ const StreamLearningInterface = () => {
             <p className="text-gray-600 mt-2">
               Complete all courses and topics to unlock the final exam
             </p>
-            
-            {/* Overall Progress */}
-            <div className="mt-6 max-w-2xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Overall Stream Progress</span>
-                <span className="text-sm font-medium">{Math.round(overallProgress)}%</span>
-              </div>
-              <Progress value={overallProgress} className="h-3" />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>0%</span>
-                <span>Exam Unlock: 80%</span>
-                <span>100%</span>
-              </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -577,7 +538,7 @@ const StreamLearningInterface = () => {
               </Card>
 
               {/* Exam Eligibility */}
-              {overallProgress >= 80 && (
+              {examEligible && (
                 <Card className="bg-green-50 border-green-200">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2 mb-2">
@@ -588,7 +549,7 @@ const StreamLearningInterface = () => {
                       You've completed enough content to take the stream exam.
                     </p>
                     <Button 
-                      onClick={handleTakeExam}
+                      onClick={() => navigate(`/exam/${stream}`)}
                       className="w-full bg-green-600 hover:bg-green-700"
                     >
                       Take Stream Exam
