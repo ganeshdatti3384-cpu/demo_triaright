@@ -426,7 +426,8 @@ const Pack365Management = () => {
       formData.append('courseId', examCourse.courseId || examCourse._id);
       formData.append('maxAttempts', maxAttempts.toString());
 
-      const response = await pack365Api.uploadExam(token, formData);
+      // FIXED: Using the correct function name uploadExamFromExcel
+      const response = await pack365Api.uploadExamFromExcel(token, formData);
       
       if (response.success) {
         toast({
