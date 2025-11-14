@@ -59,9 +59,10 @@ const ExamInterface = () => {
   const [submitting, setSubmitting] = useState(false);
   const [userAttempts, setUserAttempts] = useState<ExamAttempt[]>([]);
   const [hasOngoingAttempt, setHasOngoingAttempt] = useState(false);
+  const [eligibilityChecked, setEligibilityChecked] = useState(false);
 
   useEffect(() => {
-    loadExamData();
+    checkExamEligibility();
   }, [stream]);
 
   useEffect(() => {
@@ -80,7 +81,7 @@ const ExamInterface = () => {
     return () => clearInterval(timer);
   }, [timeLeft, exam]);
 
-  const loadExamData = async () => {
+  const checkExamEligibility = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -90,7 +91,7 @@ const ExamInterface = () => {
         return;
       }
 
-      // Check if user is eligible
+      // First check if user is eligible by checking their progress
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       if (!enrollmentResponse.success) {
         throw new Error('Failed to fetch enrollment data');
@@ -100,17 +101,50 @@ const ExamInterface = () => {
         (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
       );
 
-      if (!streamEnrollment || streamEnrollment.totalWatchedPercentage < 80) {
+      if (!streamEnrollment) {
         toast({
-          title: 'Not Eligible',
-          description: 'You need to complete at least 80% of the stream to take the exam.',
+          title: 'Not Enrolled',
+          description: 'You are not enrolled in this stream.',
           variant: 'destructive'
         });
         navigate(`/pack365-learning/${stream}`);
         return;
       }
 
+      // Check progress eligibility
+      const progress = streamEnrollment.totalWatchedPercentage || 0;
+      if (progress < 80) {
+        toast({
+          title: 'Not Eligible',
+          description: `You need to complete at least 80% of the stream to take the exam. Current progress: ${Math.round(progress)}%`,
+          variant: 'destructive'
+        });
+        navigate(`/pack365-learning/${stream}`);
+        return;
+      }
+
+      setEligibilityChecked(true);
+      // If eligible, load the exam
+      await loadExamData();
+
+    } catch (error: any) {
+      console.error('Error checking exam eligibility:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to check exam eligibility',
+        variant: 'destructive'
+      });
+      navigate(`/pack365-learning/${stream}`);
+    }
+  };
+
+  const loadExamData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
       // Fetch exam for this stream
+      // Note: You'll need to implement getExamByStream in your API service
       const examResponse = await pack365Api.getExamByStream(stream || '');
       if (!examResponse.success || !examResponse.exam) {
         throw new Error('Exam not found for this stream');
@@ -132,7 +166,6 @@ const ExamInterface = () => {
         description: error.message || 'Failed to load exam',
         variant: 'destructive'
       });
-      navigate(`/pack365-learning/${stream}`);
     } finally {
       setLoading(false);
     }
@@ -157,24 +190,6 @@ const ExamInterface = () => {
     }
   };
 
-  // Add this function to refresh enrollment data
-  const refreshEnrollmentData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      // Update the enrollment data to reflect exam completion
-      const response = await pack365Api.getMyEnrollments(token);
-      if (response.success) {
-        // Set a flag to trigger refresh in other components
-        localStorage.setItem('lastEnrollmentUpdate', new Date().toISOString());
-        console.log('Enrollment data refreshed after exam completion');
-      }
-    } catch (error) {
-      console.error('Error refreshing enrollment data:', error);
-    }
-  };
-
   const handleAutoSubmit = async () => {
     if (!exam) return;
     
@@ -192,16 +207,12 @@ const ExamInterface = () => {
       const result = await pack365Api.submitExam(token, submission);
       
       if (result.success) {
-        // Refresh enrollment data to update exam status
-        await refreshEnrollmentData();
-        
         toast({
           title: 'Exam Auto-Submitted',
           description: 'Time is up! Your exam has been automatically submitted.',
           variant: 'default'
         });
         
-        // Show results
         navigate(`/exam-result/${stream}`, { 
           state: { 
             result: result.result,
@@ -244,9 +255,6 @@ const ExamInterface = () => {
       const result = await pack365Api.submitExam(token, submission);
       
       if (result.success) {
-        // Refresh enrollment data to update exam status
-        await refreshEnrollmentData();
-        
         toast({
           title: 'Exam Submitted',
           description: 'Your exam has been submitted successfully!',
@@ -285,7 +293,7 @@ const ExamInterface = () => {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Loading exam...</p>
+            <p>{eligibilityChecked ? 'Loading exam...' : 'Checking eligibility...'}</p>
           </div>
         </div>
       </>
