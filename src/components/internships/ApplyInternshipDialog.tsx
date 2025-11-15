@@ -6,31 +6,29 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { IndianRupee, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
-interface Internship {
+interface APInternship {
   _id: string;
   title: string;
   companyName: string;
-  mode: 'Unpaid' | 'Paid' | 'FeeBased';
-  stipendAmount?: number;
-  currency?: string;
+  mode: 'Free' | 'Paid';
+  amount?: number;
 }
 
 interface ApplyInternshipDialogProps {
-  internship: Internship | null;
+  internship: APInternship | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
-  loading?: boolean;
+  onSubmit: (applicationData: any) => void;
+  loading: boolean;
 }
 
 const ApplyInternshipDialog = ({
   internship,
   open,
   onOpenChange,
-  onSuccess,
-  loading = false
+  onSubmit,
+  loading
 }: ApplyInternshipDialogProps) => {
   const [formData, setFormData] = useState({
     fullName: '',
@@ -42,71 +40,9 @@ const ApplyInternshipDialog = ({
     coverLetter: ''
   });
 
-  const [file, setFile] = useState<File | null>(null);
-  const { toast } = useToast();
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!internship) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast({
-          title: 'Authentication Required',
-          description: 'Please log in to apply for internships',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // Create FormData for file upload
-      const submitData = new FormData();
-      submitData.append('internshipId', internship._id);
-      submitData.append('applicantDetails', JSON.stringify({
-        name: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        college: formData.education,
-        qualification: formData.education
-      }));
-      
-      if (file) {
-        submitData.append('resume', file);
-      }
-      
-      submitData.append('portfolioLink', formData.experience || '');
-      
-      const response = await fetch('https://triaright.com/api/internships/applications/apply', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: submitData
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        toast({
-          title: 'Success',
-          description: 'Application submitted successfully!'
-        });
-        onSuccess();
-        onOpenChange(false);
-        resetForm();
-      } else {
-        throw new Error(data.message || 'Failed to submit application');
-      }
-    } catch (error: any) {
-      console.error('Error applying for internship:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to submit application',
-        variant: 'destructive'
-      });
-    }
+    onSubmit(formData);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -114,25 +50,6 @@ const ApplyInternshipDialog = ({
       ...prev,
       [field]: value
     }));
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      fullName: '',
-      email: '',
-      phone: '',
-      education: '',
-      skills: '',
-      experience: '',
-      coverLetter: ''
-    });
-    setFile(null);
   };
 
   if (!internship) return null;
@@ -155,19 +72,19 @@ const ApplyInternshipDialog = ({
                 <h4 className="font-semibold text-blue-900">{internship.title}</h4>
                 <p className="text-sm text-blue-700">{internship.companyName}</p>
               </div>
-              {internship.mode === 'Paid' && internship.stipendAmount && (
+              {internship.mode === 'Paid' && internship.amount && (
                 <div className="text-right">
-                  <p className="text-sm text-blue-600">Stipend</p>
+                  <p className="text-sm text-blue-600">Program Fee</p>
                   <p className="text-xl font-bold text-green-600 flex items-center">
                     <IndianRupee className="h-5 w-5" />
-                    {internship.stipendAmount.toLocaleString()}/month
+                    {internship.amount.toLocaleString()}
                   </p>
                 </div>
               )}
-              {internship.mode === 'Unpaid' && (
+              {internship.mode === 'Free' && (
                 <div className="text-right">
                   <p className="text-sm text-blue-600">Program Type</p>
-                  <p className="text-lg font-bold text-green-600">UNPAID</p>
+                  <p className="text-lg font-bold text-green-600">FREE</p>
                 </div>
               )}
             </div>
@@ -235,18 +152,6 @@ const ApplyInternshipDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="resume">Resume *</Label>
-            <Input
-              id="resume"
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={handleFileChange}
-              required
-            />
-            <p className="text-sm text-gray-500">Upload your resume (PDF, DOC, DOCX)</p>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="experience">Previous Experience</Label>
             <Textarea
               id="experience"
@@ -280,16 +185,18 @@ const ApplyInternshipDialog = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={loading || !file}
+              disabled={loading}
               className="min-w-32"
             >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Submitting...
+                  {internship.mode === 'Free' ? 'Enrolling...' : 'Processing...'}
                 </>
+              ) : internship.mode === 'Free' ? (
+                'Enroll Now'
               ) : (
-                'Submit Application'
+                'Proceed to Payment'
               )}
             </Button>
           </DialogFooter>
