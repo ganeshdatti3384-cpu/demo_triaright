@@ -1,5 +1,6 @@
 // components/internships/RegularInternshipsPage.tsx
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,7 @@ interface Internship {
   duration: string;
   startDate: string;
   applicationDeadline: string;
-  mode: 'Unpaid' | 'Paid' | 'FeeBased';
+  mode: 'Unpaid' | 'Paid';
   stipendAmount?: number;
   currency: string;
   qualification: string;
@@ -38,6 +39,7 @@ interface Internship {
   status: 'Open' | 'Closed' | 'On Hold';
   postedBy: string;
   createdAt: string;
+  term: 'Shortterm' | 'Longterm' | 'others';
 }
 
 const RegularInternshipsPage = () => {
@@ -45,6 +47,7 @@ const RegularInternshipsPage = () => {
   const [internships, setInternships] = useState<Internship[]>([]);
   const [filteredInternships, setFilteredInternships] = useState<Internship[]>([]);
   const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     type: 'all',
@@ -111,7 +114,73 @@ const RegularInternshipsPage = () => {
     setFilteredInternships(filtered);
   };
 
-  const handleApply = (internship: Internship) => {
+  const handleApply = async (applicationData: any) => {
+    if (!isAuthenticated || !user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please login to apply for internships',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (user.role !== 'student' && user.role !== 'jobseeker') {
+      toast({
+        title: 'Access Denied',
+        description: 'Only students and job seekers can apply for internships',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setApplying(true);
+    try {
+      const formData = new FormData();
+      formData.append('internshipId', selectedInternship!._id);
+      formData.append('applicantDetails', JSON.stringify({
+        name: applicationData.fullName,
+        email: applicationData.email,
+        phone: applicationData.phone,
+        college: applicationData.education,
+        qualification: applicationData.education
+      }));
+      formData.append('resume', applicationData.resume);
+      formData.append('portfolioLink', '');
+
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/internships/applications/apply', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Application submitted successfully!'
+        });
+        setShowApplyDialog(false);
+        setSelectedInternship(null);
+      } else {
+        throw new Error(result.message || 'Failed to submit application');
+      }
+    } catch (error: any) {
+      console.error('Error applying for internship:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit application',
+        variant: 'destructive'
+      });
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleApplyClick = (internship: Internship) => {
     if (!isAuthenticated) {
       toast({
         title: 'Authentication Required',
@@ -141,8 +210,7 @@ const RegularInternshipsPage = () => {
   const getModeBadge = (mode: string) => {
     const variants = {
       Paid: 'default',
-      Unpaid: 'outline',
-      FeeBased: 'destructive'
+      Unpaid: 'outline'
     } as const;
 
     return (
@@ -173,7 +241,7 @@ const RegularInternshipsPage = () => {
       <Card className="h-full flex flex-col">
         <CardHeader>
           <div>
-            <CardTitle className="text-lg mb-1">{internship.title}</CardTitle>
+            <CardTitle className="text-lg mb-1 line-clamp-2">{internship.title}</CardTitle>
             <div className="flex items-center text-sm text-gray-600 mb-2">
               <Building2 className="h-4 w-4 mr-1" />
               <span>{internship.companyName}</span>
@@ -205,7 +273,7 @@ const RegularInternshipsPage = () => {
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Start Date:</span>
               <span className="font-medium">
-                {new Date(internship.startDate).toLocaleDateString()}
+                {internship.startDate ? new Date(internship.startDate).toLocaleDateString() : 'Flexible'}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -233,13 +301,18 @@ const RegularInternshipsPage = () => {
             )}
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex gap-2">
+          <Link to={`/internships/${internship._id}`} className="flex-1">
+            <Button variant="outline" className="w-full">
+              View Details
+            </Button>
+          </Link>
           <Button 
-            className="w-full" 
-            onClick={() => handleApply(internship)}
+            className="flex-1" 
+            onClick={() => handleApplyClick(internship)}
             disabled={deadlinePassed}
           >
-            {deadlinePassed ? 'Application Closed' : 'Apply Now'}
+            {deadlinePassed ? 'Closed' : 'Apply Now'}
           </Button>
         </CardFooter>
       </Card>
@@ -308,7 +381,6 @@ const RegularInternshipsPage = () => {
                       <SelectItem value="all">All Modes</SelectItem>
                       <SelectItem value="paid">Paid</SelectItem>
                       <SelectItem value="unpaid">Unpaid</SelectItem>
-                      <SelectItem value="feebased">Fee Based</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -392,10 +464,8 @@ const RegularInternshipsPage = () => {
           internship={selectedInternship}
           open={showApplyDialog}
           onOpenChange={setShowApplyDialog}
-          onSuccess={() => {
-            setShowApplyDialog(false);
-            setSelectedInternship(null);
-          }}
+          onSubmit={handleApply}
+          loading={applying}
         />
       </div>
       <Footer />
