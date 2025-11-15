@@ -148,6 +148,10 @@ const StudentDashboard = () => {
   const [filteredAPInternships, setFilteredAPInternships] = useState<APInternship[]>([]);
   const [loadingAPInternships, setLoadingAPInternships] = useState(true);
 
+  // Apply internship state
+  const [applyingInternship, setApplyingInternship] = useState<Internship | APInternship | null>(null);
+  const [applyLoading, setApplyLoading] = useState(false);
+
   useEffect(() => {
     const fetchEnrollments = async () => {
       const token = localStorage.getItem('token');
@@ -230,6 +234,113 @@ const StudentDashboard = () => {
       });
     } finally {
       setLoadingAPInternships(false);
+    }
+  };
+
+  // Apply to internship function
+  const applyToInternship = async (internship: Internship | APInternship) => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please login to apply for internships',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (user?.role !== 'student' && user?.role !== 'jobseeker') {
+      toast({
+        title: 'Access Denied',
+        description: 'Only students and job seekers can apply for internships',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Check if application deadline has passed
+    if (isDeadlinePassed(internship.applicationDeadline)) {
+      toast({
+        title: 'Application Closed',
+        description: 'The application deadline for this internship has passed',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setApplyingInternship(internship);
+    setApplyLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      // Get user profile for applicant details
+      const profileResponse = await fetch('/api/users/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const userProfile = await profileResponse.json();
+      
+      // Prepare application data
+      const applicationData = {
+        internshipId: internship._id,
+        applicantDetails: {
+          name: userProfile.name || `${userProfile.firstName} ${userProfile.lastName}`,
+          email: userProfile.email,
+          phone: userProfile.phone || '',
+          college: userProfile.college || '',
+          qualification: userProfile.qualification || ''
+        },
+        portfolioLink: userProfile.portfolioLink || ''
+      };
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('internshipId', internship._id);
+      formData.append('applicantDetails', JSON.stringify(applicationData.applicantDetails));
+      if (applicationData.portfolioLink) {
+        formData.append('portfolioLink', applicationData.portfolioLink);
+      }
+
+      // Note: Resume file would need to be handled separately in a real implementation
+      // For now, we assume the user has already uploaded a resume to their profile
+
+      const response = await fetch('/api/internships/apply', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Application Submitted",
+          description: `You have successfully applied for ${internship.title}`,
+        });
+        
+        // Refresh internships to reflect the application
+        fetchInternships();
+        fetchAPInternships();
+      } else {
+        throw new Error(result.message || 'Failed to apply for internship');
+      }
+    } catch (error: any) {
+      console.error('Error applying for internship:', error);
+      toast({
+        title: "Application Failed",
+        description: error.message || "Could not submit application. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setApplyLoading(false);
+      setApplyingInternship(null);
     }
   };
 
@@ -419,19 +530,8 @@ const StudentDashboard = () => {
       return;
     }
 
-    toast({
-      title: "Application Started",
-      description: `Redirecting to apply for ${internship.title}`,
-    });
-    
-    // Navigate to the respective internship page
-    if ('stream' in internship) {
-      // AP Internship
-      navigate('/ap-internships');
-    } else {
-      // Regular Internship
-      navigate('/internships');
-    }
+    // Apply directly to the internship
+    applyToInternship(internship);
   };
 
   const InternshipCard = ({ internship, isAP = false }: { internship: Internship | APInternship, isAP?: boolean }) => {
@@ -532,11 +632,16 @@ const StudentDashboard = () => {
           <Button 
             className="w-full" 
             onClick={() => handleInternshipApply(internship)}
-            disabled={deadlinePassed}
+            disabled={deadlinePassed || applyLoading}
             variant={deadlinePassed ? "outline" : "default"}
           >
-            {deadlinePassed ? 'Application Closed' : 
-             'mode' in internship && internship.mode === 'Free' ? 'Apply & Enroll' : 'Apply Now'}
+            {applyLoading && applyingInternship?._id === internship._id ? (
+              <>Applying...</>
+            ) : deadlinePassed ? (
+              'Application Closed'
+            ) : (
+              'Apply Now'
+            )}
           </Button>
         </CardFooter>
       </Card>
