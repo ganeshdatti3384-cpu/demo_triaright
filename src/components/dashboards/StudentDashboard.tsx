@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import APStudentDashboard from '@/components/student/APStudentDashboard';
+import ApplyInternshipDialog from '@/components/internships/ApplyInternshipDialog';
 
 interface Job {
   _id: string;
@@ -148,6 +149,11 @@ const StudentDashboard = () => {
   const [filteredAPInternships, setFilteredAPInternships] = useState<APInternship[]>([]);
   const [loadingAPInternships, setLoadingAPInternships] = useState(true);
 
+  // Internship Application state
+  const [selectedInternship, setSelectedInternship] = useState<Internship | APInternship | null>(null);
+  const [showApplyDialog, setShowApplyDialog] = useState(false);
+  const [applicationLoading, setApplicationLoading] = useState(false);
+
   useEffect(() => {
     const fetchEnrollments = async () => {
       const token = localStorage.getItem('token');
@@ -231,6 +237,105 @@ const StudentDashboard = () => {
     } finally {
       setLoadingAPInternships(false);
     }
+  };
+
+  const handleInternshipApplicationSubmit = async (applicationData: any) => {
+    if (!selectedInternship) return;
+
+    setApplicationLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('internshipId', selectedInternship._id);
+      formData.append('applicantDetails', JSON.stringify({
+        name: applicationData.fullName,
+        email: applicationData.email,
+        phone: applicationData.phone,
+        college: applicationData.education,
+        qualification: applicationData.education
+      }));
+      formData.append('portfolioLink', '');
+
+      // For now, we'll use a mock resume since file upload requires actual file input
+      // In a real implementation, you'd need a file input in the dialog
+      const mockResume = new File(['mock-resume'], 'resume.pdf', { type: 'application/pdf' });
+      formData.append('resume', mockResume);
+
+      const response = await fetch('/api/internships/applications/apply', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to apply for internship');
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Success!",
+        description: "Your internship application has been submitted successfully.",
+      });
+
+      setShowApplyDialog(false);
+      setSelectedInternship(null);
+
+      // Refresh internships to reflect the application
+      fetchInternships();
+
+    } catch (error: any) {
+      console.error('Error applying for internship:', error);
+      toast({
+        title: "Application Failed",
+        description: error.message || "Failed to submit application. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setApplicationLoading(false);
+    }
+  };
+
+  const handleInternshipApply = (internship: Internship | APInternship) => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please login to apply for internships',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (user?.role !== 'student' && user?.role !== 'jobseeker') {
+      toast({
+        title: 'Access Denied',
+        description: 'Only students and job seekers can apply for internships',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Check if application deadline has passed
+    if (isDeadlinePassed(internship.applicationDeadline)) {
+      toast({
+        title: 'Application Closed',
+        description: 'The application deadline for this internship has passed',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Set the selected internship and open the apply dialog
+    setSelectedInternship(internship);
+    setShowApplyDialog(true);
   };
 
   useEffect(() => {
@@ -390,50 +495,6 @@ const StudentDashboard = () => {
     }
   };
 
-  const handleInternshipApply = (internship: Internship | APInternship) => {
-    if (!user) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please login to apply for internships',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (user?.role !== 'student' && user?.role !== 'jobseeker') {
-      toast({
-        title: 'Access Denied',
-        description: 'Only students and job seekers can apply for internships',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Check if application deadline has passed
-    if (isDeadlinePassed(internship.applicationDeadline)) {
-      toast({
-        title: 'Application Closed',
-        description: 'The application deadline for this internship has passed',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    toast({
-      title: "Application Started",
-      description: `Redirecting to apply for ${internship.title}`,
-    });
-    
-    // Navigate to the respective internship page
-    if ('stream' in internship) {
-      // AP Internship
-      navigate('/ap-internships');
-    } else {
-      // Regular Internship
-      navigate('/internships');
-    }
-  };
-
   const InternshipCard = ({ internship, isAP = false }: { internship: Internship | APInternship, isAP?: boolean }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
     
@@ -535,8 +596,7 @@ const StudentDashboard = () => {
             disabled={deadlinePassed}
             variant={deadlinePassed ? "outline" : "default"}
           >
-            {deadlinePassed ? 'Application Closed' : 
-             'mode' in internship && internship.mode === 'Free' ? 'Apply & Enroll' : 'Apply Now'}
+            {deadlinePassed ? 'Application Closed' : 'Apply Now'}
           </Button>
         </CardFooter>
       </Card>
@@ -1817,6 +1877,15 @@ const StudentDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Apply Dialog for Regular Internships */}
+            <ApplyInternshipDialog
+              internship={selectedInternship}
+              open={showApplyDialog}
+              onOpenChange={setShowApplyDialog}
+              onSubmit={handleInternshipApplicationSubmit}
+              loading={applicationLoading}
+            />
           </div>
         );
 
