@@ -54,7 +54,6 @@ const RegularInternshipsPage = () => {
   });
   const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
-  const [applyLoading, setApplyLoading] = useState(false);
   
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -69,19 +68,10 @@ const RegularInternshipsPage = () => {
 
   const fetchInternships = async () => {
     try {
-      const response = await fetch('https://triaright.com/api/internships/');
+      const response = await fetch('/api/internships');
       const data = await response.json();
-      
       if (Array.isArray(data)) {
-        // Filter only open internships
-        const openInternships = data.filter((internship: Internship) => 
-          internship.status === 'Open' && 
-          new Date(internship.applicationDeadline) > new Date()
-        );
-        setInternships(openInternships);
-      } else {
-        console.error('Unexpected response format:', data);
-        setInternships([]);
+        setInternships(data.filter(internship => internship.status === 'Open'));
       }
     } catch (error) {
       console.error('Error fetching internships:', error);
@@ -90,7 +80,6 @@ const RegularInternshipsPage = () => {
         description: 'Failed to load internships',
         variant: 'destructive'
       });
-      setInternships([]);
     } finally {
       setLoading(false);
     }
@@ -102,17 +91,10 @@ const RegularInternshipsPage = () => {
                            internship.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            internship.description.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesType = filters.type === 'all' || 
-                         internship.internshipType.toLowerCase().replace('-', '') === filters.type;
-      
-      const matchesMode = filters.mode === 'all' || 
-                         internship.mode.toLowerCase() === filters.mode;
-      
-      const matchesLocation = filters.location === 'all' || 
-                             internship.location.toLowerCase().includes(filters.location);
-      
-      const matchesCategory = filters.category === 'all' || 
-                             internship.category?.toLowerCase().includes(filters.category);
+      const matchesType = filters.type === 'all' || internship.internshipType.toLowerCase() === filters.type;
+      const matchesMode = filters.mode === 'all' || internship.mode.toLowerCase() === filters.mode;
+      const matchesLocation = filters.location === 'all' || internship.location.toLowerCase().includes(filters.location);
+      const matchesCategory = filters.category === 'all' || internship.category?.toLowerCase().includes(filters.category);
 
       return matchesSearch && matchesType && matchesMode && matchesLocation && matchesCategory;
     });
@@ -152,14 +134,6 @@ const RegularInternshipsPage = () => {
     setShowApplyDialog(true);
   };
 
-  const handleApplySuccess = () => {
-    toast({
-      title: 'Success',
-      description: 'Application submitted successfully!'
-    });
-    fetchInternships(); // Refresh the list
-  };
-
   const isDeadlinePassed = (deadline: string) => {
     return new Date(deadline) < new Date();
   };
@@ -194,7 +168,6 @@ const RegularInternshipsPage = () => {
 
   const InternshipCard = ({ internship }: { internship: Internship }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
-    const isClosed = internship.status !== 'Open';
     
     return (
       <Card className="h-full flex flex-col">
@@ -232,7 +205,7 @@ const RegularInternshipsPage = () => {
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Start Date:</span>
               <span className="font-medium">
-                {internship.startDate ? new Date(internship.startDate).toLocaleDateString() : 'Flexible'}
+                {new Date(internship.startDate).toLocaleDateString()}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -264,10 +237,9 @@ const RegularInternshipsPage = () => {
           <Button 
             className="w-full" 
             onClick={() => handleApply(internship)}
-            disabled={deadlinePassed || isClosed}
+            disabled={deadlinePassed}
           >
-            {deadlinePassed ? 'Application Closed' : 
-             isClosed ? 'Not Accepting Applications' : 'Apply Now'}
+            {deadlinePassed ? 'Application Closed' : 'Apply Now'}
           </Button>
         </CardFooter>
       </Card>
@@ -324,7 +296,7 @@ const RegularInternshipsPage = () => {
                     <SelectContent>
                       <SelectItem value="all">All Types</SelectItem>
                       <SelectItem value="remote">Remote</SelectItem>
-                      <SelectItem value="onsite">On-Site</SelectItem>
+                      <SelectItem value="on-site">On-Site</SelectItem>
                       <SelectItem value="hybrid">Hybrid</SelectItem>
                     </SelectContent>
                   </Select>
@@ -336,6 +308,7 @@ const RegularInternshipsPage = () => {
                       <SelectItem value="all">All Modes</SelectItem>
                       <SelectItem value="paid">Paid</SelectItem>
                       <SelectItem value="unpaid">Unpaid</SelectItem>
+                      <SelectItem value="feebased">Fee Based</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -419,8 +392,10 @@ const RegularInternshipsPage = () => {
           internship={selectedInternship}
           open={showApplyDialog}
           onOpenChange={setShowApplyDialog}
-          onSuccess={handleApplySuccess}
-          loading={applyLoading}
+          onSuccess={() => {
+            setShowApplyDialog(false);
+            setSelectedInternship(null);
+          }}
         />
       </div>
       <Footer />
