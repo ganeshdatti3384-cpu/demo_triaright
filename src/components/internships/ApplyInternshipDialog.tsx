@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { IndianRupee, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface APInternship {
   _id: string;
@@ -19,7 +20,7 @@ interface ApplyInternshipDialogProps {
   internship: APInternship | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (applicationData: any) => void;
+  onSubmit: (applicationData: any) => Promise<void> | void;
   loading: boolean;
 }
 
@@ -40,9 +41,20 @@ const ApplyInternshipDialog = ({
     coverLetter: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    try {
+      await onSubmit(formData);
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to submit application. Please try again.',
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
