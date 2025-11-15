@@ -257,6 +257,82 @@ export const profileApi = {
   },
 };
 
+export const internshipsApi = {
+  // ✅ Get all internships (public endpoint)
+  getAllInternships: async (): Promise<{ success: boolean; data: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/internships`);
+    return res.data;
+  },
+
+  // ✅ Get AP internships (public endpoint)
+  getAPInternships: async (): Promise<{ success: boolean; internships: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/internships/ap-internships`);
+    return res.data;
+  },
+
+  // ✅ Apply to internship
+  applyToInternship: async (
+    token: string,
+    applicationData: {
+      internshipId: string;
+      applicantDetails: {
+        name: string;
+        email: string;
+        phone?: string;
+        college?: string;
+        qualification?: string;
+      };
+      portfolioLink?: string;
+    },
+    resumeFile?: File
+  ): Promise<{ success: boolean; message: string; applicationId?: string }> => {
+    const formData = new FormData();
+    formData.append('internshipId', applicationData.internshipId);
+    formData.append('applicantDetails', JSON.stringify(applicationData.applicantDetails));
+    
+    if (applicationData.portfolioLink) {
+      formData.append('portfolioLink', applicationData.portfolioLink);
+    }
+    
+    if (resumeFile) {
+      formData.append('resume', resumeFile);
+    }
+
+    const res = await axios.post(`${API_BASE_URL}/internships/apply`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+
+  // ✅ Get user's internship applications
+  getMyApplications: async (token: string): Promise<{ success: boolean; applications: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/internships/my-applications`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // ✅ Withdraw internship application
+  withdrawApplication: async (
+    token: string,
+    applicationId: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const res = await axios.delete(`${API_BASE_URL}/internships/withdraw/${applicationId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // ✅ Get internship by ID
+  getInternshipById: async (internshipId: string): Promise<{ success: boolean; internship: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/internships/${internshipId}`);
+    return res.data;
+  },
+};
+
 export const pack365Api = {
   getAllCourses: async (): Promise<{ success: boolean; data: Pack365Course[] }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/courses`);
@@ -715,12 +791,11 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint from /exam/upload to /pack365/exams/upload
   uploadExamFromExcel: async (
     token: string,
     formData: FormData
   ): Promise<{ success: boolean; message: string; exam: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/exams/upload`, formData, {
+    const res = await axios.post(`${API_BASE_URL}/exam/upload`, formData, {
       headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data'
