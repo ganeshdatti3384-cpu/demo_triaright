@@ -7,13 +7,38 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Building2, MapPin, Calendar, Clock, Users, IndianRupee, BookOpen, Award, FileText, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth'; // Fixed import path
+import { useAuth } from '@/hooks/useAuth';
 import ApplyInternshipDialog from './ApplyInternshipDialog';
+
+interface Internship {
+  _id: string;
+  title: string;
+  description: string;
+  companyName: string;
+  location: string;
+  internshipType: 'Remote' | 'On-Site' | 'Hybrid';
+  duration: string;
+  startDate: string;
+  applicationDeadline: string;
+  mode: 'Unpaid' | 'Paid';
+  stipendAmount?: number;
+  qualification: string;
+  experienceRequired?: string;
+  skills: string[];
+  openings: number;
+  perks: string[];
+  certificateProvided: boolean;
+  letterOfRecommendation: boolean;
+  status: 'Open' | 'Closed' | 'On Hold';
+  term: 'Shortterm' | 'Longterm' | 'others';
+  payFrequency: 'One-Time' | 'Monthly' | 'Weekly' | 'None';
+}
 
 const InternshipDetailsPage = () => {
   const { id } = useParams();
-  const [internship, setInternship] = useState<any>(null);
+  const [internship, setInternship] = useState<Internship | null>(null);
   const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   
   const { toast } = useToast();
@@ -25,22 +50,13 @@ const InternshipDetailsPage = () => {
 
   const fetchInternshipDetails = async () => {
     try {
-      // Try regular internships first
-      let response = await fetch(`/api/internships/${id}`);
-      let data = await response.json();
+      const response = await fetch(`/api/internships/getbyid/${id}`);
+      const data = await response.json();
 
-      if (!response.ok || data.error) {
-        // Try AP internships
-        response = await fetch(`/api/internships/ap-internships/${id}`);
-        const apData = await response.json();
-        
-        if (apData.success) {
-          setInternship(apData.internship);
-        } else {
-          throw new Error('Internship not found');
-        }
+      if (data.internship) {
+        setInternship(data.internship);
       } else {
-        setInternship(data);
+        throw new Error('Internship not found');
       }
     } catch (error) {
       console.error('Error fetching internship details:', error);
@@ -54,7 +70,72 @@ const InternshipDetailsPage = () => {
     }
   };
 
-  const handleApply = () => {
+  const handleApply = async (applicationData: any) => {
+    if (!isAuthenticated || !user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please login to apply for this internship',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (user.role !== 'student' && user.role !== 'jobseeker') {
+      toast({
+        title: 'Access Denied',
+        description: 'Only students and job seekers can apply for internships',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setApplying(true);
+    try {
+      const formData = new FormData();
+      formData.append('internshipId', internship!._id);
+      formData.append('applicantDetails', JSON.stringify({
+        name: applicationData.fullName,
+        email: applicationData.email,
+        phone: applicationData.phone,
+        college: applicationData.education,
+        qualification: applicationData.education
+      }));
+      formData.append('resume', applicationData.resume);
+      formData.append('portfolioLink', ''); // Optional
+
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/internships/applications/apply', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Application submitted successfully!'
+        });
+        setShowApplyDialog(false);
+      } else {
+        throw new Error(result.message || 'Failed to submit application');
+      }
+    } catch (error: any) {
+      console.error('Error applying for internship:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit application',
+        variant: 'destructive'
+      });
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleApplyClick = () => {
     if (!isAuthenticated) {
       toast({
         title: 'Authentication Required',
@@ -123,23 +204,16 @@ const InternshipDetailsPage = () => {
                       <span>{internship.companyName}</span>
                     </div>
                   </div>
-                  {'internshipId' in internship && internship.internshipId?.startsWith('APINT') && (
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                      AP Only
-                    </Badge>
-                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant={internship.mode === 'Paid' || internship.mode === 'FeeBased' ? 'default' : 'outline'}>
+                  <Badge variant={internship.mode === 'Paid' ? 'default' : 'outline'}>
                     {internship.mode}
                   </Badge>
                   <Badge variant="secondary">{internship.internshipType}</Badge>
-                  {'location' in internship && internship.location && (
-                    <Badge variant="outline" className="flex items-center">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      {internship.location}
-                    </Badge>
-                  )}
+                  <Badge variant="outline" className="flex items-center">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    {internship.location}
+                  </Badge>
                   {internship.status !== 'Open' && (
                     <Badge variant="destructive">Closed</Badge>
                   )}
@@ -160,13 +234,13 @@ const InternshipDetailsPage = () => {
                       <span className="text-gray-600">Qualification:</span>
                       <span className="font-medium">{internship.qualification || 'Not specified'}</span>
                     </div>
-                    {'experienceRequired' in internship && internship.experienceRequired && (
+                    {internship.experienceRequired && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Experience:</span>
                         <span className="font-medium">{internship.experienceRequired}</span>
                       </div>
                     )}
-                    {'skills' in internship && internship.skills && internship.skills.length > 0 && (
+                    {internship.skills && internship.skills.length > 0 && (
                       <div>
                         <span className="text-gray-600">Skills:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
@@ -176,16 +250,10 @@ const InternshipDetailsPage = () => {
                         </div>
                       </div>
                     )}
-                    {'stream' in internship && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Stream:</span>
-                        <span className="font-medium">{internship.stream}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                {'perks' in internship && internship.perks && internship.perks.length > 0 && (
+                {internship.perks && internship.perks.length > 0 && (
                   <>
                     <Separator />
                     <div>
@@ -256,7 +324,7 @@ const InternshipDetailsPage = () => {
                   </span>
                   <span className="font-medium">{internship.openings}</span>
                 </div>
-                {('stipendAmount' in internship && internship.stipendAmount > 0) && (
+                {internship.stipendAmount && internship.stipendAmount > 0 && (
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600 flex items-center">
                       <IndianRupee className="h-4 w-4 mr-2" />
@@ -267,26 +335,13 @@ const InternshipDetailsPage = () => {
                     </span>
                   </div>
                 )}
-                {('Amount' in internship && internship.Amount > 0) && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600 flex items-center">
-                      <IndianRupee className="h-4 w-4 mr-2" />
-                      Stipend:
-                    </span>
-                    <span className="font-medium text-green-600">
-                      ₹{internship.Amount.toLocaleString()}/month
-                    </span>
-                  </div>
-                )}
-                {'term' in internship && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600 flex items-center">
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      Term:
-                    </span>
-                    <span className="font-medium">{internship.term}</span>
-                  </div>
-                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600 flex items-center">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Term:
+                  </span>
+                  <span className="font-medium">{internship.term}</span>
+                </div>
               </CardContent>
             </Card>
 
@@ -295,7 +350,7 @@ const InternshipDetailsPage = () => {
                 <Button 
                   className="w-full" 
                   size="lg"
-                  onClick={handleApply}
+                  onClick={handleApplyClick}
                   disabled={isDeadlinePassed || internship.status !== 'Open'}
                 >
                   {isDeadlinePassed ? 'Application Closed' : 
@@ -322,13 +377,8 @@ const InternshipDetailsPage = () => {
         internship={internship}
         open={showApplyDialog}
         onOpenChange={setShowApplyDialog}
-        onSuccess={() => {
-          setShowApplyDialog(false);
-          toast({
-            title: 'Application Submitted',
-            description: 'Your application has been submitted successfully!'
-          });
-        }}
+        onSubmit={handleApply}
+        loading={applying}
       />
     </div>
   );
