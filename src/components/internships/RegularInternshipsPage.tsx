@@ -1,6 +1,5 @@
 // components/internships/RegularInternshipsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,7 +25,7 @@ interface Internship {
   duration: string;
   startDate: string;
   applicationDeadline: string;
-  mode: 'Unpaid' | 'Paid';
+  mode: 'Unpaid' | 'Paid' | 'FeeBased';
   stipendAmount?: number;
   currency: string;
   qualification: string;
@@ -39,7 +38,6 @@ interface Internship {
   status: 'Open' | 'Closed' | 'On Hold';
   postedBy: string;
   createdAt: string;
-  term: 'Shortterm' | 'Longterm' | 'others';
 }
 
 const RegularInternshipsPage = () => {
@@ -47,7 +45,6 @@ const RegularInternshipsPage = () => {
   const [internships, setInternships] = useState<Internship[]>([]);
   const [filteredInternships, setFilteredInternships] = useState<Internship[]>([]);
   const [loading, setLoading] = useState(true);
-  const [applying, setApplying] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     type: 'all',
@@ -57,6 +54,7 @@ const RegularInternshipsPage = () => {
   });
   const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
+  const [applyLoading, setApplyLoading] = useState(false);
   
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -71,10 +69,19 @@ const RegularInternshipsPage = () => {
 
   const fetchInternships = async () => {
     try {
-      const response = await fetch('/api/internships');
+      const response = await fetch('https://triaright.com/api/internships/');
       const data = await response.json();
+      
       if (Array.isArray(data)) {
-        setInternships(data.filter(internship => internship.status === 'Open'));
+        // Filter only open internships
+        const openInternships = data.filter((internship: Internship) => 
+          internship.status === 'Open' && 
+          new Date(internship.applicationDeadline) > new Date()
+        );
+        setInternships(openInternships);
+      } else {
+        console.error('Unexpected response format:', data);
+        setInternships([]);
       }
     } catch (error) {
       console.error('Error fetching internships:', error);
@@ -83,6 +90,7 @@ const RegularInternshipsPage = () => {
         description: 'Failed to load internships',
         variant: 'destructive'
       });
+      setInternships([]);
     } finally {
       setLoading(false);
     }
@@ -94,10 +102,17 @@ const RegularInternshipsPage = () => {
                            internship.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            internship.description.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesType = filters.type === 'all' || internship.internshipType.toLowerCase() === filters.type;
-      const matchesMode = filters.mode === 'all' || internship.mode.toLowerCase() === filters.mode;
-      const matchesLocation = filters.location === 'all' || internship.location.toLowerCase().includes(filters.location);
-      const matchesCategory = filters.category === 'all' || internship.category?.toLowerCase().includes(filters.category);
+      const matchesType = filters.type === 'all' || 
+                         internship.internshipType.toLowerCase().replace('-', '') === filters.type;
+      
+      const matchesMode = filters.mode === 'all' || 
+                         internship.mode.toLowerCase() === filters.mode;
+      
+      const matchesLocation = filters.location === 'all' || 
+                             internship.location.toLowerCase().includes(filters.location);
+      
+      const matchesCategory = filters.category === 'all' || 
+                             internship.category?.toLowerCase().includes(filters.category);
 
       return matchesSearch && matchesType && matchesMode && matchesLocation && matchesCategory;
     });
@@ -114,73 +129,7 @@ const RegularInternshipsPage = () => {
     setFilteredInternships(filtered);
   };
 
-  const handleApply = async (applicationData: any) => {
-    if (!isAuthenticated || !user) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please login to apply for internships',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (user.role !== 'student' && user.role !== 'jobseeker') {
-      toast({
-        title: 'Access Denied',
-        description: 'Only students and job seekers can apply for internships',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setApplying(true);
-    try {
-      const formData = new FormData();
-      formData.append('internshipId', selectedInternship!._id);
-      formData.append('applicantDetails', JSON.stringify({
-        name: applicationData.fullName,
-        email: applicationData.email,
-        phone: applicationData.phone,
-        college: applicationData.education,
-        qualification: applicationData.education
-      }));
-      formData.append('resume', applicationData.resume);
-      formData.append('portfolioLink', '');
-
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/internships/applications/apply', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast({
-          title: 'Success',
-          description: 'Application submitted successfully!'
-        });
-        setShowApplyDialog(false);
-        setSelectedInternship(null);
-      } else {
-        throw new Error(result.message || 'Failed to submit application');
-      }
-    } catch (error: any) {
-      console.error('Error applying for internship:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to submit application',
-        variant: 'destructive'
-      });
-    } finally {
-      setApplying(false);
-    }
-  };
-
-  const handleApplyClick = (internship: Internship) => {
+  const handleApply = (internship: Internship) => {
     if (!isAuthenticated) {
       toast({
         title: 'Authentication Required',
@@ -203,6 +152,14 @@ const RegularInternshipsPage = () => {
     setShowApplyDialog(true);
   };
 
+  const handleApplySuccess = () => {
+    toast({
+      title: 'Success',
+      description: 'Application submitted successfully!'
+    });
+    fetchInternships(); // Refresh the list
+  };
+
   const isDeadlinePassed = (deadline: string) => {
     return new Date(deadline) < new Date();
   };
@@ -210,7 +167,8 @@ const RegularInternshipsPage = () => {
   const getModeBadge = (mode: string) => {
     const variants = {
       Paid: 'default',
-      Unpaid: 'outline'
+      Unpaid: 'outline',
+      FeeBased: 'destructive'
     } as const;
 
     return (
@@ -236,12 +194,13 @@ const RegularInternshipsPage = () => {
 
   const InternshipCard = ({ internship }: { internship: Internship }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
+    const isClosed = internship.status !== 'Open';
     
     return (
       <Card className="h-full flex flex-col">
         <CardHeader>
           <div>
-            <CardTitle className="text-lg mb-1 line-clamp-2">{internship.title}</CardTitle>
+            <CardTitle className="text-lg mb-1">{internship.title}</CardTitle>
             <div className="flex items-center text-sm text-gray-600 mb-2">
               <Building2 className="h-4 w-4 mr-1" />
               <span>{internship.companyName}</span>
@@ -301,18 +260,14 @@ const RegularInternshipsPage = () => {
             )}
           </div>
         </CardContent>
-        <CardFooter className="flex gap-2">
-          <Link to={`/internships/${internship._id}`} className="flex-1">
-            <Button variant="outline" className="w-full">
-              View Details
-            </Button>
-          </Link>
+        <CardFooter>
           <Button 
-            className="flex-1" 
-            onClick={() => handleApplyClick(internship)}
-            disabled={deadlinePassed}
+            className="w-full" 
+            onClick={() => handleApply(internship)}
+            disabled={deadlinePassed || isClosed}
           >
-            {deadlinePassed ? 'Closed' : 'Apply Now'}
+            {deadlinePassed ? 'Application Closed' : 
+             isClosed ? 'Not Accepting Applications' : 'Apply Now'}
           </Button>
         </CardFooter>
       </Card>
@@ -369,7 +324,7 @@ const RegularInternshipsPage = () => {
                     <SelectContent>
                       <SelectItem value="all">All Types</SelectItem>
                       <SelectItem value="remote">Remote</SelectItem>
-                      <SelectItem value="on-site">On-Site</SelectItem>
+                      <SelectItem value="onsite">On-Site</SelectItem>
                       <SelectItem value="hybrid">Hybrid</SelectItem>
                     </SelectContent>
                   </Select>
@@ -464,8 +419,8 @@ const RegularInternshipsPage = () => {
           internship={selectedInternship}
           open={showApplyDialog}
           onOpenChange={setShowApplyDialog}
-          onSubmit={handleApply}
-          loading={applying}
+          onSuccess={handleApplySuccess}
+          loading={applyLoading}
         />
       </div>
       <Footer />
