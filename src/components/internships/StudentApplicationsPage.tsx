@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Download, Calendar, Building2, MapPin } from 'lucide-react';
+import { Download, Calendar, Building2, MapPin, Loader2 } from 'lucide-react';
 
 interface Application {
   _id: string;
@@ -17,6 +17,7 @@ interface Application {
     location: string;
     internshipType: string;
     duration: string;
+    applicationDeadline: string;
   };
   status: 'Applied' | 'Shortlisted' | 'Selected' | 'Rejected' | 'Withdrawn';
   applicantDetails: {
@@ -51,7 +52,7 @@ const StudentApplicationsPage = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/internships/applications/my', {
+      const response = await fetch('https://triaright.com/api/internships/applications/my', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -66,6 +67,8 @@ const StudentApplicationsPage = () => {
       
       if (data.success && Array.isArray(data.applications)) {
         setApplications(data.applications);
+      } else if (Array.isArray(data)) {
+        setApplications(data);
       } else {
         setApplications([]);
       }
@@ -87,7 +90,7 @@ const StudentApplicationsPage = () => {
 
     try {
       setWithdrawing(applicationId);
-      const response = await fetch(`/api/internships/applications/withdraw/${applicationId}`, {
+      const response = await fetch(`https://triaright.com/api/internships/applications/withdraw/${applicationId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -136,8 +139,12 @@ const StudentApplicationsPage = () => {
 
   const canWithdraw = (application: Application) => {
     // Can only withdraw if status is Applied and deadline hasn't passed
-    // Note: You might want to add deadline check from internship data
-    return application.status === 'Applied';
+    const deadlinePassed = new Date(application.internshipId.applicationDeadline) < new Date();
+    return application.status === 'Applied' && !deadlinePassed;
+  };
+
+  const isDeadlinePassed = (deadline: string) => {
+    return new Date(deadline) < new Date();
   };
 
   if (!isAuthenticated) {
@@ -163,7 +170,10 @@ const StudentApplicationsPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">Loading your applications...</div>
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin mr-2" />
+            <span>Loading your applications...</span>
+          </div>
         </div>
       </div>
     );
@@ -209,6 +219,7 @@ const StudentApplicationsPage = () => {
                     <TableHead>Company</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Applied Date</TableHead>
+                    <TableHead>Deadline</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -235,6 +246,12 @@ const StudentApplicationsPage = () => {
                           <span>{new Date(application.appliedAt).toLocaleDateString()}</span>
                         </div>
                       </TableCell>
+                      <TableCell>
+                        <div className={`flex items-center space-x-1 ${isDeadlinePassed(application.internshipId.applicationDeadline) ? 'text-red-600' : ''}`}>
+                          <Calendar className="h-3 w-3" />
+                          <span>{new Date(application.internshipId.applicationDeadline).toLocaleDateString()}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>{getStatusBadge(application.status)}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
@@ -245,7 +262,14 @@ const StudentApplicationsPage = () => {
                               onClick={() => withdrawApplication(application._id)}
                               disabled={withdrawing === application._id}
                             >
-                              {withdrawing === application._id ? 'Withdrawing...' : 'Withdraw'}
+                              {withdrawing === application._id ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                  Withdrawing...
+                                </>
+                              ) : (
+                                'Withdraw'
+                              )}
                             </Button>
                           )}
                           <Button
