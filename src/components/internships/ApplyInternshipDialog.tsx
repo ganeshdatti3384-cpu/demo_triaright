@@ -7,16 +7,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { IndianRupee, Loader2 } from 'lucide-react';
 
-interface APInternship {
+interface Internship {
   _id: string;
   title: string;
   companyName: string;
-  mode: 'Free' | 'Paid';
-  amount?: number;
+  mode: 'Unpaid' | 'Paid';
+  stipendAmount?: number;
 }
 
 interface ApplyInternshipDialogProps {
-  internship: APInternship | null;
+  internship: Internship | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (applicationData: any) => void;
@@ -40,9 +40,23 @@ const ApplyInternshipDialog = ({
     coverLetter: ''
   });
 
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    if (!resumeFile) {
+      alert('Please upload your resume');
+      return;
+    }
+
+    const applicationData = {
+      ...formData,
+      resume: resumeFile,
+      internshipId: internship?._id
+    };
+    
+    onSubmit(applicationData);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -50,6 +64,12 @@ const ApplyInternshipDialog = ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setResumeFile(e.target.files[0]);
+    }
   };
 
   if (!internship) return null;
@@ -72,19 +92,19 @@ const ApplyInternshipDialog = ({
                 <h4 className="font-semibold text-blue-900">{internship.title}</h4>
                 <p className="text-sm text-blue-700">{internship.companyName}</p>
               </div>
-              {internship.mode === 'Paid' && internship.amount && (
+              {internship.mode === 'Paid' && internship.stipendAmount && (
                 <div className="text-right">
-                  <p className="text-sm text-blue-600">Program Fee</p>
+                  <p className="text-sm text-blue-600">Stipend</p>
                   <p className="text-xl font-bold text-green-600 flex items-center">
                     <IndianRupee className="h-5 w-5" />
-                    {internship.amount.toLocaleString()}
+                    {internship.stipendAmount.toLocaleString()}/month
                   </p>
                 </div>
               )}
-              {internship.mode === 'Free' && (
+              {internship.mode === 'Unpaid' && (
                 <div className="text-right">
                   <p className="text-sm text-blue-600">Program Type</p>
-                  <p className="text-lg font-bold text-green-600">FREE</p>
+                  <p className="text-lg font-bold text-green-600">UNPAID</p>
                 </div>
               )}
             </div>
@@ -152,6 +172,18 @@ const ApplyInternshipDialog = ({
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="resume">Resume *</Label>
+            <Input
+              id="resume"
+              type="file"
+              accept=".pdf,.doc,.docx"
+              onChange={handleFileChange}
+              required
+            />
+            <p className="text-sm text-gray-500">Upload your resume (PDF, DOC, DOCX)</p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="experience">Previous Experience</Label>
             <Textarea
               id="experience"
@@ -191,12 +223,10 @@ const ApplyInternshipDialog = ({
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  {internship.mode === 'Free' ? 'Enrolling...' : 'Processing...'}
+                  Applying...
                 </>
-              ) : internship.mode === 'Free' ? (
-                'Enroll Now'
               ) : (
-                'Proceed to Payment'
+                'Apply Now'
               )}
             </Button>
           </DialogFooter>
