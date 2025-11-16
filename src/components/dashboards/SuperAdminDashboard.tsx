@@ -55,7 +55,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     { name: 'FINANCE', icon: Banknote, color: 'bg-emerald-500', description: 'Finance & Accounting Courses' }
   ];
 
-  // Fetch courses on component mount
+ 
   useEffect(() => {
     fetchCourses();
     fetchCoupons();
@@ -255,7 +255,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       await pack365Api.deactivateEnrollmentCode(token, couponId);
       toast.success(`Coupon ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
       
-      // Refresh coupons list
+    
       fetchCoupons();
     } catch (error) {
       console.error('Error updating coupon status:', error);
