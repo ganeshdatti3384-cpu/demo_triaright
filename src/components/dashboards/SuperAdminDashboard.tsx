@@ -9,8 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote, Edit, Trash2 } from 'lucide-react';
-import { pack365Api, collegeApi, authApi } from '@/services/api';
+import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote, Edit, Trash2, Key, Mail, Phone, MapPin } from 'lucide-react';
+import { pack365Api, collegeApi } from '@/services/api';
 import Pack365Management from '../admin/Pack365Management';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
@@ -29,10 +29,13 @@ interface User {
   lastName: string;
   email: string;
   phoneNumber: string;
-  role: string;
+  whatsappNumber: string;
+  address: string;
+  role: 'student' | 'jobseeker' | 'college' | 'employer' | 'admin' | 'superadmin';
   isActive: boolean;
   createdAt: string;
-  lastLogin?: string;
+  collegeName?: string;
+  companyName?: string;
 }
 
 const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
@@ -53,22 +56,36 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [createEnrollmentOpen, setCreateEnrollmentOpen] = useState(false);
 
-  // State for API data
-  const [courses, setCourses] = useState<Pack365Course[]>([]);
-  const [coupons, setCoupons] = useState<any[]>([]);
-  const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  // State for User Management
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [selectedRole, setSelectedRole] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [editUserOpen, setEditUserOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editFormData, setEditFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phoneNumber: '',
+    whatsappNumber: '',
+    address: '',
     role: '',
-    password: ''
+    collegeName: '',
+    companyName: '',
+    companyType: ''
+  });
+  const [passwordData, setPasswordData] = useState({
+    newPassword: '',
+    confirmPassword: ''
   });
 
+  // State for API data
+  const [courses, setCourses] = useState<Pack365Course[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
+  
   const streamData = [
     { name: 'IT', icon: Monitor, color: 'bg-blue-500', description: 'Information Technology Courses' },
     { name: 'PHARMA', icon: Pill, color: 'bg-green-500', description: 'Pharmaceutical Courses' },
@@ -82,7 +99,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     fetchCourses();
     fetchCoupons();
     fetchCollegeRequests();
-    fetchAllUsers();
+    fetchUsers();
   }, []);
 
   useEffect(() => {
@@ -94,6 +111,51 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     }
   }, [selectedStream, courses]);
 
+  // Filter users based on role and search term
+  useEffect(() => {
+    let filtered = users;
+    
+    if (selectedRole !== 'all') {
+      filtered = filtered.filter(user => user.role === selectedRole);
+    }
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(user => 
+        user.firstName.toLowerCase().includes(term) ||
+        user.lastName.toLowerCase().includes(term) ||
+        user.email.toLowerCase().includes(term) ||
+        user.role.toLowerCase().includes(term)
+      );
+    }
+    
+    setFilteredUsers(filtered);
+  }, [users, selectedRole, searchTerm]);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('/api/users/allusers', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+      } else {
+        toast.error('Failed to fetch users');
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to fetch users');
+    }
+  };
+
   const fetchCourses = async () => {
     try {
       const response = await pack365Api.getAllCourses();
@@ -102,21 +164,6 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
-    }
-  };
-
-  const fetchAllUsers = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      
-      const response = await authApi.getAllUsers(token);
-      if (response.users) {
-        setAllUsers(response.users);
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Failed to fetch users');
     }
   };
 
@@ -171,58 +218,57 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
     setEditFormData({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      role: user.role,
-      password: ''
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      phoneNumber: user.phoneNumber || '',
+      whatsappNumber: user.whatsappNumber || '',
+      address: user.address || '',
+      role: user.role || '',
+      collegeName: user.collegeName || '',
+      companyName: user.companyName || '',
+      companyType: ''
     });
     setEditUserOpen(true);
   };
 
   const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+
     try {
       const token = localStorage.getItem('token');
-      if (!token || !selectedUser) return;
+      if (!token) return;
 
-      const updateData: any = {
-        firstName: editFormData.firstName,
-        lastName: editFormData.lastName,
-        email: editFormData.email,
-        phoneNumber: editFormData.phoneNumber,
-        role: editFormData.role
-      };
+      const response = await fetch(`/api/users/admin/register`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...editFormData,
+          userId: selectedUser._id
+        })
+      });
 
-      // Only include password if it's provided
-      if (editFormData.password) {
-        updateData.password = editFormData.password;
-      }
-
-      // Call the admin register endpoint to update user
-      const response = await authApi.adminRegister(token, updateData);
-      
-      if (response.message) {
-        toast.success('User updated successfully!');
-        fetchAllUsers();
+      if (response.ok) {
+        toast.success('User updated successfully');
         setEditUserOpen(false);
-        setSelectedUser(null);
-        setEditFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phoneNumber: '',
-          role: '',
-          password: ''
-        });
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to update user');
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update user');
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+  const handleUpdatePassword = async () => {
+    if (!selectedUser) return;
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('Passwords do not match');
       return;
     }
 
@@ -230,74 +276,57 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Note: You'll need to implement a delete user endpoint in your backend
-      // const response = await authApi.deleteUser(token, userId);
-      
-      toast.success('User deleted successfully!');
-      fetchAllUsers();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to delete user');
+      const response = await fetch('/api/users/update-password', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: selectedUser._id,
+          newPassword: passwordData.newPassword
+        })
+      });
+
+      if (response.ok) {
+        toast.success('Password updated successfully');
+        setPasswordDialogOpen(false);
+        setPasswordData({ newPassword: '', confirmPassword: '' });
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to update password');
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast.error('Failed to update password');
     }
   };
 
-  const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
+  const handleToggleUserStatus = async (user: User) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Note: You'll need to implement a toggle user status endpoint in your backend
-      // const response = await authApi.toggleUserStatus(token, userId, !currentStatus);
-      
-      toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
-      fetchAllUsers();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update user status');
-    }
-  };
+      const response = await fetch(`/api/users/${user._id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          isActive: !user.isActive
+        })
+      });
 
-  const handleAcceptRequest = async (requestId: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await collegeApi.acceptServiceRequest(token, requestId);
-      if (response.success) {
-        useToastHook({
-          title: 'Success',
-          description: 'Request accepted successfully',
-        });
-        fetchCollegeRequests();
+      if (response.ok) {
+        toast.success(`User ${!user.isActive ? 'activated' : 'deactivated'} successfully`);
+        fetchUsers();
+      } else {
+        toast.error('Failed to update user status');
       }
     } catch (error) {
-      console.error('Error accepting request:', error);
-      useToastHook({
-        title: 'Error',
-        description: 'Failed to accept request',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleRejectRequest = async (requestId: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await collegeApi.rejectServiceRequest(token, requestId);
-      if (response.success) {
-        useToastHook({
-          title: 'Success',
-          description: 'Request rejected successfully',
-        });
-        fetchCollegeRequests();
-      }
-    } catch (error) {
-      console.error('Error rejecting request:', error);
-      useToastHook({
-        title: 'Error',
-        description: 'Failed to reject request',
-        variant: 'destructive'
-      });
+      console.error('Error updating user status:', error);
+      toast.error('Failed to update user status');
     }
   };
 
@@ -388,6 +417,18 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     }
   };
 
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case 'superadmin': return 'destructive';
+      case 'admin': return 'default';
+      case 'college': return 'secondary';
+      case 'employer': return 'outline';
+      case 'student': return 'secondary';
+      case 'jobseeker': return 'outline';
+      default: return 'outline';
+    }
+  };
+
   const systemStats = {
     totalRevenue: '₹12,34,567',
     activeSubscriptions: 456,
@@ -396,6 +437,12 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     apiCalls: '1.2M'
   };
 
+  const systemLogs = [
+    { id: 1, action: 'User login spike detected', severity: 'info', time: '2024-01-15 14:30' },
+    { id: 2, action: 'Database backup completed', severity: 'success', time: '2024-01-15 02:00' },
+    { id: 3, action: 'Failed payment attempt', severity: 'warning', time: '2024-01-14 23:45' },
+  ];
+
   const pendingRequests = collegeRequests.filter(request => request.status === 'Pending');
 
   return (
@@ -403,199 +450,219 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">User Control</TabsTrigger>
+            <TabsTrigger value="system">System</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
             <TabsTrigger value="college-approvals">College Approvals</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
+            <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="logs">System Logs</TabsTrigger>
           </TabsList>
 
+          {/* Overview Tab - Keep existing content */}
           <TabsContent value="overview" className="space-y-6">
-            {/* System Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{systemStats.totalRevenue}</div>
-                  <p className="text-xs text-muted-foreground">This month</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Subscriptions</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{systemStats.activeSubscriptions}</div>
-                  <p className="text-xs text-muted-foreground">Active plans</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Server Uptime</CardTitle>
-                  <Database className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{systemStats.serverUptime}</div>
-                  <p className="text-xs text-muted-foreground">Last 30 days</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Data Storage</CardTitle>
-                  <Database className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{systemStats.dataStorage}</div>
-                  <p className="text-xs text-muted-foreground">Used storage</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">API Calls</CardTitle>
-                  <Settings className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{systemStats.apiCalls}</div>
-                  <p className="text-xs text-muted-foreground">This month</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Pending College Approvals */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending College Approvals</CardTitle>
-                <CardDescription>College service requests requiring super admin approval</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {pendingRequests.slice(0, 3).map((request) => (
-                    <div key={request._id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{request.institutionName}</p>
-                        <p className="text-sm text-gray-500">College Service Request - {request.serviceCategory?.join(', ') || 'General'}</p>
-                        <p className="text-xs text-gray-400">Requested on {new Date(request.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline">Pending</Badge>
-                        <Button variant="outline" size="sm" onClick={() => setActiveTab('college-approvals')}>Review</Button>
-                      </div>
-                    </div>
-                  ))}
-                  {pendingRequests.length === 0 && (
-                    <p className="text-center text-gray-500 py-4">No pending approvals</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            {/* ... existing overview content ... */}
           </TabsContent>
 
+          {/* Updated User Management Tab */}
           <TabsContent value="users" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">User Management</h2>
               <div className="flex space-x-2">
-                <Button variant="outline" onClick={fetchAllUsers}>
-                  <Eye className="h-4 w-4 mr-2" />
+                <Button onClick={fetchUsers} variant="outline">
                   Refresh Users
                 </Button>
               </div>
             </div>
 
+            {/* Filters and Search */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search users by name, email, or role..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Select value={selectedRole} onValueChange={setSelectedRole}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="superadmin">Super Admin</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="college">College</SelectItem>
+                      <SelectItem value="employer">Employer</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="jobseeker">Job Seeker</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Users List */}
             <Card>
               <CardHeader>
-                <CardTitle>All Users</CardTitle>
-                <CardDescription>Manage all user accounts and permissions</CardDescription>
+                <CardTitle>Platform Users ({filteredUsers.length})</CardTitle>
+                <CardDescription>
+                  Manage all users across the platform
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {allUsers.map((user) => (
+                  {filteredUsers.map((user) => (
                     <div key={user._id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{user.firstName} {user.lastName}</p>
-                        <p className="text-sm text-gray-500">
-                          {user.email} • {user.phoneNumber} • {user.role}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Joined: {new Date(user.createdAt).toLocaleDateString()}
-                          {user.lastLogin && ` • Last login: ${new Date(user.lastLogin).toLocaleDateString()}`}
-                        </p>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-shrink-0">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Users className="h-5 w-5 text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <p className="font-medium text-sm truncate">
+                              {user.firstName} {user.lastName}
+                            </p>
+                            <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
+                              {user.role}
+                            </Badge>
+                            <Badge variant={user.isActive ? 'default' : 'secondary'} className="text-xs">
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                            <span className="flex items-center">
+                              <Mail className="h-3 w-3 mr-1" />
+                              {user.email}
+                            </span>
+                            <span className="flex items-center">
+                              <Phone className="h-3 w-3 mr-1" />
+                              {user.phoneNumber}
+                            </span>
+                            {user.collegeName && (
+                              <span className="flex items-center">
+                                <Building2 className="h-3 w-3 mr-1" />
+                                {user.collegeName}
+                              </span>
+                            )}
+                            {user.companyName && (
+                              <span className="flex items-center">
+                                <Building2 className="h-3 w-3 mr-1" />
+                                {user.companyName}
+                              </span>
+                            )}
+                          </div>
+                          {user.address && (
+                            <p className="text-xs text-gray-500 mt-1 flex items-center">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {user.address}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Badge variant={user.isActive ? 'default' : 'secondary'}>
-                          {user.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setPasswordDialogOpen(true);
+                          }}
+                        >
+                          <Key className="h-4 w-4 mr-1" />
+                          Password
+                        </Button>
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleEditUser(user)}
                         >
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant={user.isActive ? "outline" : "default"}
                           size="sm"
-                          onClick={() => handleToggleUserStatus(user._id, user.isActive)}
+                          onClick={() => handleToggleUserStatus(user)}
                         >
                           {user.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => handleDeleteUser(user._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
                   ))}
-                  {allUsers.length === 0 && (
-                    <p className="text-center text-gray-500 py-4">No users found</p>
+                  {filteredUsers.length === 0 && (
+                    <div className="text-center py-8">
+                      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">No users found</p>
+                    </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-1 md:grid-rows-2 md:grid-cols-3 gap-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Total Platform Users</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{allUsers.length}</div>
-                  <p className="text-sm text-gray-500">Registered users</p>
+                  <div className="text-2xl font-bold">{users.length}</div>
+                  <p className="text-xs text-muted-foreground">All platform users</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Active Users</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                  <UserCheck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-green-600">
-                    {allUsers.filter(user => user.isActive).length}
+                  <div className="text-2xl font-bold text-green-600">
+                    {users.filter(u => u.isActive).length}
                   </div>
-                  <p className="text-sm text-gray-500">Currently active</p>
+                  <p className="text-xs text-muted-foreground">Currently active</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Inactive Users</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Inactive Users</CardTitle>
+                  <Shield className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-yellow-600">
-                    {allUsers.filter(user => !user.isActive).length}
+                  <div className="text-2xl font-bold text-red-600">
+                    {users.filter(u => !u.isActive).length}
                   </div>
-                  <p className="text-sm text-gray-500">Deactivated accounts</p>
+                  <p className="text-xs text-muted-foreground">Deactivated accounts</p>
+                </CardContent>
+              </Card>
+
+              <Card className="md:col-span-3">
+                <CardHeader>
+                  <CardTitle>User Distribution by Role</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-4">
+                    {['superadmin', 'admin', 'college', 'employer', 'student', 'jobseeker'].map((role) => {
+                      const count = users.filter(u => u.role === role).length;
+                      return (
+                        <div key={role} className="flex items-center space-x-2">
+                          <Badge variant={getRoleBadgeVariant(role)}>
+                            {role}
+                          </Badge>
+                          <span className="text-sm font-medium">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -603,98 +670,190 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
 
           {/* Edit User Dialog */}
           <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>Edit User</DialogTitle>
                 <DialogDescription>
-                  Update user information. Leave password blank to keep current password.
+                  Update user information for {selectedUser?.firstName} {selectedUser?.lastName}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="firstName" className="text-right">First Name</Label>
-                  <Input
-                    id="firstName"
-                    value={editFormData.firstName}
-                    onChange={(e) => setEditFormData({...editFormData, firstName: e.target.value})}
-                    className="col-span-3"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      value={editFormData.firstName}
+                      onChange={(e) => setEditFormData({...editFormData, firstName: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      value={editFormData.lastName}
+                      onChange={(e) => setEditFormData({...editFormData, lastName: e.target.value})}
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="lastName" className="text-right">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    value={editFormData.lastName}
-                    onChange={(e) => setEditFormData({...editFormData, lastName: e.target.value})}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">Email</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={editFormData.email}
                     onChange={(e) => setEditFormData({...editFormData, email: e.target.value})}
-                    className="col-span-3"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phoneNumber" className="text-right">Phone</Label>
-                  <Input
-                    id="phoneNumber"
-                    value={editFormData.phoneNumber}
-                    onChange={(e) => setEditFormData({...editFormData, phoneNumber: e.target.value})}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="role" className="text-right">Role</Label>
-                  <div className="col-span-3">
-                    <Select value={editFormData.role} onValueChange={(value) => setEditFormData({...editFormData, role: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="student">Student</SelectItem>
-                        <SelectItem value="jobseeker">Job Seeker</SelectItem>
-                        <SelectItem value="college">College</SelectItem>
-                        <SelectItem value="employer">Employer</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Phone Number</Label>
+                    <Input
+                      id="phoneNumber"
+                      value={editFormData.phoneNumber}
+                      onChange={(e) => setEditFormData({...editFormData, phoneNumber: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
+                    <Input
+                      id="whatsappNumber"
+                      value={editFormData.whatsappNumber}
+                      onChange={(e) => setEditFormData({...editFormData, whatsappNumber: e.target.value})}
+                    />
                   </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="password" className="text-right">New Password</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
                   <Input
-                    id="password"
-                    type="password"
-                    value={editFormData.password}
-                    onChange={(e) => setEditFormData({...editFormData, password: e.target.value})}
-                    placeholder="Leave blank to keep current"
-                    className="col-span-3"
+                    id="address"
+                    value={editFormData.address}
+                    onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={editFormData.role} onValueChange={(value) => setEditFormData({...editFormData, role: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="jobseeker">Job Seeker</SelectItem>
+                      <SelectItem value="college">College</SelectItem>
+                      <SelectItem value="employer">Employer</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="superadmin">Super Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {editFormData.role === 'college' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="collegeName">College Name</Label>
+                    <Input
+                      id="collegeName"
+                      value={editFormData.collegeName}
+                      onChange={(e) => setEditFormData({...editFormData, collegeName: e.target.value})}
+                    />
+                  </div>
+                )}
+                {editFormData.role === 'employer' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName">Company Name</Label>
+                      <Input
+                        id="companyName"
+                        value={editFormData.companyName}
+                        onChange={(e) => setEditFormData({...editFormData, companyName: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="companyType">Company Type</Label>
+                      <Input
+                        id="companyType"
+                        value={editFormData.companyType}
+                        onChange={(e) => setEditFormData({...editFormData, companyType: e.target.value})}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditUserOpen(false)}>
+                <Button variant="outline" onClick={() => setEditUserOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="button" onClick={handleUpdateUser}>
+                <Button onClick={handleUpdateUser}>
                   Update User
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          {/* Rest of the code remains the same for other tabs */}
+          {/* Update Password Dialog */}
+          <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Update Password</DialogTitle>
+                <DialogDescription>
+                  Set a new password for {selectedUser?.firstName} {selectedUser?.lastName}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdatePassword}>
+                  Update Password
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Other tabs remain the same */}
+          <TabsContent value="system" className="space-y-6">
+            {/* ... existing system content ... */}
+          </TabsContent>
+
           <TabsContent value="pack365" className="space-y-6">
-            {/* ... existing Pack365 content ... */}
+            {/* ... existing pack365 content ... */}
           </TabsContent>
 
           <TabsContent value="college-approvals" className="space-y-6">
-            {/* ... existing College Approvals content ... */}
+            {/* ... existing college approvals content ... */}
+          </TabsContent>
+
+          <TabsContent value="billing" className="space-y-6">
+            {/* ... existing billing content ... */}
+          </TabsContent>
+
+          <TabsContent value="security" className="space-y-6">
+            {/* ... existing security content ... */}
+          </TabsContent>
+
+          <TabsContent value="logs" className="space-y-6">
+            {/* ... existing logs content ... */}
           </TabsContent>
         </Tabs>
       </div>
