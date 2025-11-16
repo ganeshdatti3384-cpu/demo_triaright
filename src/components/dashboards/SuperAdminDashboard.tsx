@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote } from 'lucide-react';
 import { pack365Api, collegeApi } from '@/services/api';
 import Pack365Management from '../admin/Pack365Management';
-import SuperUserManagement from './SuperUserManagement';
+import SuperUserManagement from '../admin/SuperUserManagement';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
 import type { Pack365Course } from '@/types/api';
@@ -55,7 +55,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     { name: 'FINANCE', icon: Banknote, color: 'bg-emerald-500', description: 'Finance & Accounting Courses' }
   ];
 
- 
+  // Fetch courses on component mount
   useEffect(() => {
     fetchCourses();
     fetchCoupons();
@@ -255,7 +255,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       await pack365Api.deactivateEnrollmentCode(token, couponId);
       toast.success(`Coupon ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
       
-    
+      // Refresh coupons list
       fetchCoupons();
     } catch (error) {
       console.error('Error updating coupon status:', error);
