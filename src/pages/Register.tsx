@@ -32,10 +32,12 @@ import {
   GraduationCap,
   Image as ImageIcon,
   Building2,
+  Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { authApi } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Eye, EyeOff } from 'lucide-react';
 
 // Base schema for all roles
 const baseSchema = z.object({
@@ -69,9 +71,14 @@ const Register = () => {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<'register' | 'terms' | 'privacy'>('register');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [collegeLogo, setCollegeLogo] = useState<File | null>(null);
   const [companyLogo, setCompanyLogo] = useState<File | null>(null);
+  const [collegeName, setCollegeName] = useState('');
+  const [collegeCode, setCollegeCode] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [companyType, setCompanyType] = useState('');
 
   const {
     register,
@@ -108,18 +115,12 @@ const Register = () => {
 
       // Add role-specific fields
       if (formData.role === 'college') {
-        const collegeName = (document.getElementById('collegeName') as HTMLInputElement)?.value;
-        const collegeCode = (document.getElementById('collegeCode') as HTMLInputElement)?.value;
-        
         if (collegeName) formDataToSend.append('collegeName', collegeName);
         if (collegeCode) formDataToSend.append('collegeCode', collegeCode);
         if (collegeLogo) {
           formDataToSend.append('collegeLogo', collegeLogo);
         }
       } else if (formData.role === 'employer') {
-        const companyName = (document.getElementById('companyName') as HTMLInputElement)?.value;
-        const companyType = (document.getElementById('companyType') as HTMLSelectElement)?.value;
-        
         if (companyName) formDataToSend.append('companyName', companyName);
         if (companyType) formDataToSend.append('companyType', companyType);
         if (companyLogo) {
@@ -130,7 +131,7 @@ const Register = () => {
       console.log('Sending registration data...');
       
       // Call the register API with FormData
-      await authApi.register(formDataToSend as any);
+      await authApi.register(formDataToSend);
 
       toast({ 
         title: 'Success', 
@@ -146,6 +147,18 @@ const Register = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCollegeLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setCollegeLogo(e.target.files[0]);
+    }
+  };
+
+  const handleCompanyLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setCompanyLogo(e.target.files[0]);
     }
   };
 
@@ -440,11 +453,19 @@ const Register = () => {
                           <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                           <Input
                             id="confirmPassword"
-                            type="password"
+                            type={showConfirmPassword ? 'text' : 'password'}
                             {...register('confirmPassword')}
                             placeholder="Confirm your password"
-                            className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                            className="pl-10 pr-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            aria-label="Toggle password visibility"
+                          >
+                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
                         </div>
                         {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
                       </div>
@@ -472,6 +493,8 @@ const Register = () => {
                               <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                               <Input
                                 id="collegeName"
+                                value={collegeName}
+                                onChange={(e) => setCollegeName(e.target.value)}
                                 placeholder="Enter college name"
                                 className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                               />
@@ -484,6 +507,8 @@ const Register = () => {
                               <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                               <Input
                                 id="collegeCode"
+                                value={collegeCode}
+                                onChange={(e) => setCollegeCode(e.target.value)}
                                 placeholder="Enter college code"
                                 className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                               />
@@ -498,7 +523,7 @@ const Register = () => {
                                 id="collegeLogo"
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) => setCollegeLogo(e.target.files?.[0] || null)}
+                                onChange={handleCollegeLogoChange}
                                 className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                               />
                             </div>
@@ -515,6 +540,8 @@ const Register = () => {
                               <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                               <Input
                                 id="companyName"
+                                value={companyName}
+                                onChange={(e) => setCompanyName(e.target.value)}
                                 placeholder="Enter company name"
                                 className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                               />
@@ -523,7 +550,7 @@ const Register = () => {
 
                           <div>
                             <Label htmlFor="companyType" className="text-gray-700 font-medium">Company Type *</Label>
-                            <Select>
+                            <Select onValueChange={setCompanyType} value={companyType}>
                               <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
                                 <SelectValue placeholder="Select company type" />
                               </SelectTrigger>
@@ -547,7 +574,7 @@ const Register = () => {
                                 id="companyLogo"
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) => setCompanyLogo(e.target.files?.[0] || null)}
+                                onChange={handleCompanyLogoChange}
                                 className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                               />
                             </div>
