@@ -35,6 +35,7 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Briefcase,
 } from 'lucide-react';
 import { authApi } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
@@ -85,6 +86,7 @@ const Register = () => {
     handleSubmit,
     control,
     watch,
+    setError,
     formState: { errors }
   } = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
@@ -113,7 +115,7 @@ const Register = () => {
       formDataToSend.append('password', formData.password);
       formDataToSend.append('role', formData.role);
 
-      // Add role-specific fields
+      // Add role-specific fields - FIXED FOR ALL ROLES
       if (formData.role === 'college') {
         if (!collegeName) {
           toast({
@@ -138,6 +140,7 @@ const Register = () => {
           formDataToSend.append('collegeLogo', collegeLogo);
         }
       } else if (formData.role === 'employer') {
+        // FIX: Send required fields for employer
         if (!companyName) {
           toast({
             title: 'Validation Error',
@@ -160,15 +163,18 @@ const Register = () => {
         if (companyLogo) {
           formDataToSend.append('companyLogo', companyLogo);
         }
+      } else if (formData.role === 'student') {
+        // FIX: Send collegeName for student (optional)
+        if (collegeName) {
+          formDataToSend.append('collegeName', collegeName);
+        }
+      } else if (formData.role === 'jobseeker') {
+        // FIX: Jobseeker doesn't need additional fields for registration
+        // The backend will create the profile with default values
+        console.log('Jobseeker registration - no additional fields needed');
       }
 
-      // Debug: Log FormData contents
-      console.log('FormData contents:');
-      for (const [key, value] of formDataToSend.entries()) {
-        console.log(key + ': ' + value);
-      }
-
-      console.log('Sending registration data...');
+      console.log('Sending registration data for role:', formData.role);
       
       // Call the register API with FormData
       await authApi.register(formDataToSend);
@@ -180,13 +186,37 @@ const Register = () => {
       navigate('/login');
     } catch (error: any) {
       console.error('Registration error:', error);
-      console.error('Error response:', error?.response?.data);
       
-      toast({
-        title: 'Registration Failed',
-        description: error?.response?.data?.error || error?.response?.data?.message || 'Something went wrong',
-        variant: 'destructive'
-      });
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'Something went wrong';
+      
+      // Handle specific error cases
+      if (errorMessage.includes('duplicate key') && errorMessage.includes('email')) {
+        setError('email', {
+          type: 'manual',
+          message: 'This email is already registered. Please use a different email or login.'
+        });
+        toast({
+          title: 'Email Already Exists',
+          description: 'This email address is already registered. Please use a different email or try logging in.',
+          variant: 'destructive'
+        });
+      } else if (errorMessage.includes('duplicate key') && errorMessage.includes('phoneNumber')) {
+        setError('phoneNumber', {
+          type: 'manual',
+          message: 'This phone number is already registered.'
+        });
+        toast({
+          title: 'Phone Number Already Exists',
+          description: 'This phone number is already registered. Please use a different phone number.',
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: 'Registration Failed',
+          description: errorMessage,
+          variant: 'destructive'
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -203,8 +233,6 @@ const Register = () => {
       setCompanyLogo(e.target.files[0]);
     }
   };
-
-  // ... (rest of the component remains the same, including renderTermsAndConditions and renderPrivacyPolicy)
 
   const renderTermsAndConditions = () => (
     <div className="min-h-screen flex flex-col">
@@ -528,6 +556,23 @@ const Register = () => {
                         {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
                       </div>
 
+                      {/* Student-specific fields */}
+                      {selectedRole === 'student' && (
+                        <div className="md:col-span-2">
+                          <Label htmlFor="collegeName" className="text-gray-700 font-medium">College/Institute Name (Optional)</Label>
+                          <div className="relative mt-1">
+                            <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                              id="collegeName"
+                              value={collegeName}
+                              onChange={(e) => setCollegeName(e.target.value)}
+                              placeholder="Enter your college or institute name"
+                              className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       {/* College-specific fields */}
                       {selectedRole === 'college' && (
                         <>
@@ -624,6 +669,24 @@ const Register = () => {
                             </div>
                           </div>
                         </>
+                      )}
+
+                      {/* Jobseeker-specific info */}
+                      {selectedRole === 'jobseeker' && (
+                        <div className="md:col-span-2">
+                          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <div className="flex items-start space-x-3">
+                              <Briefcase className="h-5 w-5 text-blue-600 mt-0.5" />
+                              <div>
+                                <h4 className="font-medium text-blue-800">Job Seeker Account</h4>
+                                <p className="text-sm text-blue-700 mt-1">
+                                  Your basic profile will be created. You can add your qualifications, 
+                                  work experience, skills, and upload your resume after registration.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
 
