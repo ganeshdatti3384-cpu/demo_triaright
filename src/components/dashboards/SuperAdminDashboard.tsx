@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote } from 'lucide-react';
 import { pack365Api, collegeApi } from '@/services/api';
 import Pack365Management from '../admin/Pack365Management';
+import SuperUserManagement from './SuperUserManagement';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
 import type { Pack365Course } from '@/types/api';
@@ -270,12 +271,6 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     apiCalls: '1.2M'
   };
 
-  const adminUsers = [
-    { id: 1, name: 'John Admin', role: 'Admin', lastLogin: '2024-01-15', status: 'active' },
-    { id: 2, name: 'Sarah Manager', role: 'Content Admin', lastLogin: '2024-01-14', status: 'active' },
-    { id: 3, name: 'Mike Support', role: 'Support Admin', lastLogin: '2024-01-13', status: 'inactive' },
-  ];
-
   const pendingRequests = collegeRequests.filter(request => request.status === 'Pending');
 
   return (
@@ -379,77 +374,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">User Management</h2>
-              <div className="flex space-x-2">
-                <Button variant="outline">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View All Users
-                </Button>
-                <Button>Create Admin</Button>
-              </div>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Admin Users</CardTitle>
-                <CardDescription>Manage admin accounts and permissions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {adminUsers.map((admin) => (
-                    <div key={admin.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{admin.name}</p>
-                        <p className="text-sm text-gray-500">{admin.role} • Last login: {admin.lastLogin}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant={admin.status === 'active' ? 'default' : 'secondary'}>
-                          {admin.status}
-                        </Badge>
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-1" />
-                          Impersonate
-                        </Button>
-                        <Button variant="outline" size="sm">Edit</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Platform Users</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">15,234</div>
-                  <Button variant="outline" className="w-full mt-4">Manage All Users</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Banned Users</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-red-600">23</div>
-                  <Button variant="outline" className="w-full mt-4">Review Bans</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Suspicious Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-yellow-600">5</div>
-                  <Button variant="outline" className="w-full mt-4">Investigate</Button>
-                </CardContent>
-              </Card>
-            </div>
+            <SuperUserManagement user={user} />
           </TabsContent>
 
           <TabsContent value="pack365" className="space-y-6">
