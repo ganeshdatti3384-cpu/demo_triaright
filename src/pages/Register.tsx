@@ -115,17 +115,57 @@ const Register = () => {
 
       // Add role-specific fields
       if (formData.role === 'college') {
-        if (collegeName) formDataToSend.append('collegeName', collegeName);
-        if (collegeCode) formDataToSend.append('collegeCode', collegeCode);
+        if (!collegeName) {
+          toast({
+            title: 'Validation Error',
+            description: 'College name is required',
+            variant: 'destructive'
+          });
+          return;
+        }
+        if (!collegeCode) {
+          toast({
+            title: 'Validation Error',
+            description: 'College code is required',
+            variant: 'destructive'
+          });
+          return;
+        }
+        
+        formDataToSend.append('collegeName', collegeName);
+        formDataToSend.append('collegeCode', collegeCode);
         if (collegeLogo) {
           formDataToSend.append('collegeLogo', collegeLogo);
         }
       } else if (formData.role === 'employer') {
-        if (companyName) formDataToSend.append('companyName', companyName);
-        if (companyType) formDataToSend.append('companyType', companyType);
+        if (!companyName) {
+          toast({
+            title: 'Validation Error',
+            description: 'Company name is required',
+            variant: 'destructive'
+          });
+          return;
+        }
+        if (!companyType) {
+          toast({
+            title: 'Validation Error',
+            description: 'Company type is required',
+            variant: 'destructive'
+          });
+          return;
+        }
+        
+        formDataToSend.append('companyName', companyName);
+        formDataToSend.append('companyType', companyType);
         if (companyLogo) {
           formDataToSend.append('companyLogo', companyLogo);
         }
+      }
+
+      // Debug: Log FormData contents
+      console.log('FormData contents:');
+      for (const [key, value] of formDataToSend.entries()) {
+        console.log(key + ': ' + value);
       }
 
       console.log('Sending registration data...');
@@ -140,6 +180,8 @@ const Register = () => {
       navigate('/login');
     } catch (error: any) {
       console.error('Registration error:', error);
+      console.error('Error response:', error?.response?.data);
+      
       toast({
         title: 'Registration Failed',
         description: error?.response?.data?.error || error?.response?.data?.message || 'Something went wrong',
@@ -161,6 +203,8 @@ const Register = () => {
       setCompanyLogo(e.target.files[0]);
     }
   };
+
+  // ... (rest of the component remains the same, including renderTermsAndConditions and renderPrivacyPolicy)
 
   const renderTermsAndConditions = () => (
     <div className="min-h-screen flex flex-col">
