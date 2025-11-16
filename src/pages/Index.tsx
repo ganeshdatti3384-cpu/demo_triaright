@@ -15,7 +15,7 @@ import RecordedCoursesList, { Course } from '../components/RecordedCoursesList';
 import ServicesOverview from '../components/ServicesOverview';
 import { courseApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Shield, Award, CheckCircle } from 'lucide-react';
+import { ArrowRight, Shield, Award, CheckCircle, Users } from 'lucide-react';
 
 // Import CubeAnimation component
 import CubeAnimation from '../components/CubeAnimation';
@@ -269,6 +269,18 @@ const Index = () => {
                 <div className="text-2xl font-bold text-green-600">95%</div>
                 <div className="text-sm text-gray-600">Success Rate</div>
               </div>
+            </div>
+
+            {/* Community CTA Button */}
+            <div className="mt-8">
+              <Button 
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                onClick={() => navigate('/community')}
+              >
+                <Users className="mr-2 h-5 w-5" />
+                Join Our Community
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
