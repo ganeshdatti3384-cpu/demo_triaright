@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen, Star, CheckCircle } from 'lucide-react';
+import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen, Star, CheckCircle, Shield, Award, Zap, TrendingUp, Globe, Bookmark, Eye, Share2, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
@@ -35,6 +35,9 @@ interface APInternship {
   status: 'Open' | 'Closed' | 'On Hold';
   postedBy: string;
   createdAt: string;
+  views?: number;
+  applications?: number;
+  rating?: number;
 }
 
 interface Enrollment {
@@ -43,6 +46,63 @@ interface Enrollment {
   status: 'active' | 'completed' | 'cancelled';
   enrolledAt: string;
 }
+
+const trustBadges = [
+  {
+    name: "Skill India",
+    image: "/lovable-uploads/skill-india-badge.png",
+    alt: "Skill India - Government of India",
+    category: "Government"
+  },
+  {
+    name: "Startup India",
+    image: "/lovable-uploads/startup-india-badge.png",
+    alt: "Startup India - Government of India",
+    category: "Government"
+  },
+  {
+    name: "AICTE",
+    image: "/lovable-uploads/aicte-badge.png",
+    alt: "AICTE Approved",
+    category: "Education"
+  },
+  {
+    name: "APSSDC",
+    image: "/lovable-uploads/apssdc-badge.png",
+    alt: "APSSDC Partner",
+    category: "Government"
+  },
+  {
+    name: "ISO 9001:2015",
+    image: "/lovable-uploads/iso-badge.png",
+    alt: "ISO 9001:2015 Certified",
+    category: "Quality"
+  },
+  {
+    name: "MSME",
+    image: "/lovable-uploads/msme-badge.png",
+    alt: "MSME Registered",
+    category: "Government"
+  },
+  {
+    name: "NASSCOM",
+    image: "/lovable-uploads/nasscom-badge.gif",
+    alt: "NASSCOM Partner",
+    category: "Industry"
+  },
+  {
+    name: "NSDC",
+    image: "/lovable-uploads/nsdc-badge.png",
+    alt: "NSDC Partner",
+    category: "Government"
+  },
+  {
+    name: "APSCHE",
+    image: "/lovable-uploads/apsche-badge.png",
+    alt: "APSCHE Affiliated",
+    category: "Education"
+  }
+];
 
 const APExclusiveInternshipsPage = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -54,12 +114,15 @@ const APExclusiveInternshipsPage = () => {
   const [filters, setFilters] = useState({
     type: 'all',
     mode: 'all',
-    stream: 'all'
+    stream: 'all',
+    sort: 'newest'
   });
   const [selectedInternship, setSelectedInternship] = useState<APInternship | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
   const [applicationId, setApplicationId] = useState<string>('');
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -73,13 +136,43 @@ const APExclusiveInternshipsPage = () => {
     filterInternships();
   }, [apInternships, searchTerm, filters, activeTab]);
 
+  // Auto-scroll effect for trust badges
+  useEffect(() => {
+    if (!autoScrollEnabled) return;
+
+    const container = document.getElementById('trust-badges-container');
+    if (!container) return;
+
+    const scrollInterval = setInterval(() => {
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      if (scrollPosition >= maxScroll) {
+        // Reset to start when reaching the end
+        container.scrollTo({ left: 0, behavior: 'smooth' });
+        setScrollPosition(0);
+      } else {
+        const newPosition = scrollPosition + 1;
+        container.scrollTo({ left: newPosition, behavior: 'smooth' });
+        setScrollPosition(newPosition);
+      }
+    }, 30); // Adjust speed as needed
+
+    return () => clearInterval(scrollInterval);
+  }, [scrollPosition, autoScrollEnabled]);
+
   const fetchAPInternships = async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/internships/ap-internships');
       const data = await response.json();
       if (data.success) {
-        setApInternships(data.internships.filter((internship: APInternship) => internship.status === 'Open'));
+        // Add some mock data for demo
+        const internshipsWithStats = data.internships.map((internship: APInternship) => ({
+          ...internship,
+          views: Math.floor(Math.random() * 1000) + 100,
+          applications: Math.floor(Math.random() * 200) + 50,
+          rating: (Math.random() * 1 + 4).toFixed(1) // Random rating between 4.0 and 5.0
+        }));
+        setApInternships(internshipsWithStats.filter((internship: APInternship) => internship.status === 'Open'));
       }
     } catch (error) {
       console.error('Error fetching AP internships:', error);
@@ -126,6 +219,22 @@ const APExclusiveInternshipsPage = () => {
 
       return matchesSearch && matchesType && matchesMode && matchesStream;
     });
+
+    // Apply sorting
+    switch (filters.sort) {
+      case 'newest':
+        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+      case 'popular':
+        filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+        break;
+      case 'applications':
+        filtered.sort((a, b) => (b.applications || 0) - (a.applications || 0));
+        break;
+      case 'rating':
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+    }
 
     // Apply tab-specific filtering
     if (activeTab === 'free') {
@@ -357,86 +466,162 @@ const APExclusiveInternshipsPage = () => {
     );
   };
 
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-3 w-3 ${
+              star <= Math.floor(rating)
+                ? 'text-yellow-400 fill-yellow-400'
+                : star === Math.ceil(rating) && rating % 1 !== 0
+                ? 'text-yellow-400 fill-yellow-400'
+                : 'text-gray-300'
+            }`}
+          />
+        ))}
+        <span className="text-sm font-medium ml-1">{rating}</span>
+      </div>
+    );
+  };
+
+  const handleTrustBadgeContainerHover = () => {
+    setAutoScrollEnabled(false);
+  };
+
+  const handleTrustBadgeContainerLeave = () => {
+    setAutoScrollEnabled(true);
+  };
+
   const InternshipCard = ({ internship }: { internship: APInternship }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
     const enrolled = isEnrolled(internship._id);
+    const daysLeft = Math.ceil((new Date(internship.applicationDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
     
     return (
-      <Card className="h-full flex flex-col border-2 border-blue-200 hover:border-blue-300 transition-colors">
-        <CardHeader>
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <CardTitle className="text-lg mb-1 line-clamp-2">{internship.title}</CardTitle>
+      <Card className="h-full flex flex-col border-2 border-blue-100 hover:border-blue-300 hover:shadow-xl transition-all duration-300 group overflow-hidden">
+        {/* Popular Badge */}
+        {internship.applications && internship.applications > 100 && (
+          <div className="absolute top-4 right-4 z-10">
+            <Badge className="bg-red-500 text-white hover:bg-red-600">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              Popular
+            </Badge>
+          </div>
+        )}
+        
+        {/* Card Header with Gradient */}
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 pb-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-blue-200 rounded-full -mr-10 -mt-10 opacity-50"></div>
+          <div className="absolute bottom-0 left-0 w-16 h-16 bg-indigo-200 rounded-full -ml-8 -mb-8 opacity-50"></div>
+          
+          <div className="flex justify-between items-start mb-2 relative z-10">
+            <div className="flex-1">
+              <CardTitle className="text-lg mb-1 line-clamp-2 group-hover:text-blue-700 transition-colors">
+                {internship.title}
+              </CardTitle>
               <div className="flex items-center text-sm text-gray-600 mb-2">
                 <Building2 className="h-4 w-4 mr-1" />
-                <span className="line-clamp-1">{internship.companyName}</span>
+                <span className="line-clamp-1 font-medium">{internship.companyName}</span>
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap shadow-sm">
                 <Star className="h-3 w-3 mr-1" />
                 AP Exclusive
               </Badge>
               {enrolled && (
-                <Badge variant="default" className="bg-green-500 text-white">
+                <Badge variant="default" className="bg-green-500 text-white shadow-sm">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Enrolled
                 </Badge>
               )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 mb-3">
+          
+          <div className="flex flex-wrap gap-2 mb-3 relative z-10">
             {getModeBadge(internship.mode)}
             {getTypeBadge(internship.internshipType)}
-            <Badge variant="outline" className="flex items-center">
+            <Badge variant="outline" className="flex items-center bg-white">
               <MapPin className="h-3 w-3 mr-1" />
               {internship.location}
             </Badge>
           </div>
-          <CardDescription className="line-clamp-3 text-sm">
+
+          {/* Rating and Stats */}
+          <div className="flex items-center justify-between text-sm relative z-10">
+            {internship.rating && renderStars(internship.rating)}
+            <div className="flex items-center gap-4 text-gray-500">
+              <div className="flex items-center">
+                <Eye className="h-3 w-3 mr-1" />
+                {internship.views}
+              </div>
+              <div className="flex items-center">
+                <Users className="h-3 w-3 mr-1" />
+                {internship.applications}
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="flex-grow pt-4">
+          <CardDescription className="line-clamp-3 text-sm mb-4">
             {internship.description}
           </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-grow">
-          <div className="space-y-2 text-sm">
+          
+          <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Duration:</span>
-              <span className="font-medium flex items-center">
-                <Clock className="h-3 w-3 mr-1" />
+              <span className="text-gray-600 flex items-center">
+                <Clock className="h-4 w-4 mr-2" />
+                Duration:
+              </span>
+              <span className="font-medium text-gray-900">
                 {internship.duration}
               </span>
             </div>
+            
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Start Date:</span>
-              <span className="font-medium">
+              <span className="text-gray-600 flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                Start Date:
+              </span>
+              <span className="font-medium text-gray-900">
                 {new Date(internship.startDate).toLocaleDateString()}
               </span>
             </div>
+            
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Apply Before:</span>
-              <span className={`font-medium flex items-center ${deadlinePassed ? 'text-red-600' : 'text-green-600'}`}>
-                <Calendar className="h-3 w-3 mr-1" />
+              <span className="text-gray-600 flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                Apply Before:
+              </span>
+              <span className={`font-medium flex items-center ${deadlinePassed ? 'text-red-600' : daysLeft <= 3 ? 'text-orange-600' : 'text-green-600'}`}>
                 {new Date(internship.applicationDeadline).toLocaleDateString()}
+                {!deadlinePassed && daysLeft <= 7 && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {daysLeft}d left
+                  </Badge>
+                )}
               </span>
             </div>
+            
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Openings:</span>
-              <span className="font-medium flex items-center">
-                <Users className="h-3 w-3 mr-1" />
-                {internship.openings}
+              <span className="text-gray-600 flex items-center">
+                <Users className="h-4 w-4 mr-2" />
+                Openings:
+              </span>
+              <span className="font-medium text-gray-900">
+                {internship.openings} seats
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Stream:</span>
-              <span className="font-medium">{internship.stream}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Term:</span>
-              <span className="font-medium">{internship.term}</span>
-            </div>
+            
             {internship.amount && internship.amount > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Stipend:</span>
+                <span className="text-gray-600 flex items-center">
+                  <IndianRupee className="h-4 w-4 mr-2" />
+                  Stipend:
+                </span>
                 <span className="font-medium flex items-center text-green-600">
                   <IndianRupee className="h-3 w-3 mr-1" />
                   {internship.amount.toLocaleString()}/month
@@ -445,27 +630,37 @@ const APExclusiveInternshipsPage = () => {
             )}
           </div>
         </CardContent>
-        <CardFooter>
+        
+        <CardFooter className="pt-4 border-t border-gray-100">
           {enrolled ? (
-            <Button className="w-full bg-green-600 hover:bg-green-700">
+            <Button className="w-full bg-green-600 hover:bg-green-700 shadow-sm">
               <BookOpen className="h-4 w-4 mr-2" />
               Go to Dashboard
             </Button>
           ) : (
             <Button 
-              className="w-full" 
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm transition-all duration-300"
               onClick={() => handleApply(internship)}
               disabled={deadlinePassed || loading}
               variant={deadlinePassed ? "outline" : "default"}
             >
               {loading ? (
-                'Processing...'
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing...
+                </div>
               ) : deadlinePassed ? (
                 'Application Closed'
               ) : internship.mode === 'Free' ? (
-                'Apply & Enroll Free'
+                <div className="flex items-center">
+                  <Zap className="h-4 w-4 mr-2" />
+                  Apply & Enroll Free
+                </div>
               ) : (
-                'Apply Now'
+                <div className="flex items-center">
+                  <Star className="h-4 w-4 mr-2" />
+                  Apply Now
+                </div>
               )}
             </Button>
           )}
@@ -492,7 +687,7 @@ const APExclusiveInternshipsPage = () => {
     return (
       <>
         <Navbar />
-        <div className="min-h-screen bg-gray-50 py-8">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -508,37 +703,93 @@ const APExclusiveInternshipsPage = () => {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="flex justify-center items-center mb-4">
-              <Star className="h-8 w-8 text-blue-600 mr-2" />
-              <h1 className="text-4xl font-bold text-gray-900">
-                AP Exclusive Internships
-              </h1>
+          {/* Enhanced Header */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-6">
+              <div className="flex items-center justify-center p-2 bg-blue-600 text-white rounded-full">
+                <Star className="h-8 w-8" />
+              </div>
             </div>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Special internship opportunities exclusively for Andhra Pradesh students. Get access to unique programs and government initiatives.
+            <h1 className="text-5xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              AP Exclusive Internships
+            </h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              Premium internship opportunities exclusively for Andhra Pradesh students. 
+              Access unique programs, government initiatives, and industry partnerships.
             </p>
           </div>
 
-          {/* Search and Filters */}
-          <Card className="mb-8 border-blue-200 bg-blue-50">
-            <CardContent className="pt-6">
-              <div className="flex flex-col lg:flex-row gap-4">
+          {/* Premium Trust Badges Section with Auto Scrolling Only */}
+          <Card className="mb-12 border-0 shadow-2xl bg-gradient-to-r from-white to-blue-50 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+            <CardHeader className="text-center pb-6 pt-8">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Shield className="h-8 w-8 text-blue-600" />
+                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Trusted & Recognized
+                </CardTitle>
+                <Award className="h-8 w-8 text-indigo-600" />
+              </div>
+            </CardHeader>
+            <CardContent className="pb-8">
+              {/* Trust Badges Auto Scroll Container */}
+              <div className="relative">
+                {/* Trust Badges Scroll Container - Auto Scroll Only */}
+                <div
+                  id="trust-badges-container"
+                  className="flex overflow-x-hidden gap-6 px-2 py-4"
+                  style={{ scrollBehavior: 'smooth' }}
+                  onMouseEnter={handleTrustBadgeContainerHover}
+                  onMouseLeave={handleTrustBadgeContainerLeave}
+                >
+                  {trustBadges.map((badge, index) => (
+                    <div 
+                      key={index} 
+                      className="group flex-shrink-0 flex flex-col items-center justify-center p-6 bg-white rounded-2xl border-2 border-blue-100 hover:border-blue-300 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 min-w-[180px]"
+                    >
+                      <div className="w-20 h-20 mb-4 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-3 group-hover:scale-110 transition-transform duration-300">
+                        <img 
+                          src={badge.image} 
+                          alt={badge.alt}
+                          className="max-w-full max-h-full object-contain filter group-hover:brightness-110 transition-all"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <div className="hidden text-xs text-center text-gray-500 font-medium">
+                          {badge.name}
+                        </div>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-800 text-center leading-tight">
+                        {badge.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Search and Filters */}
+          <Card className="mb-8 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-4 top-3 h-5 w-5 text-gray-400" />
                   <Input
                     placeholder="Search AP internships by title, company, or description..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white"
+                    className="pl-12 pr-4 py-3 bg-white border-2 border-gray-200 focus:border-blue-500 rounded-xl text-lg shadow-sm"
                   />
                 </div>
                 <div className="flex gap-4 flex-wrap">
                   <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
-                    <SelectTrigger className="w-40 bg-white">
+                    <SelectTrigger className="w-48 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
                       <SelectValue placeholder="Internship Type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -548,7 +799,7 @@ const APExclusiveInternshipsPage = () => {
                     </SelectContent>
                   </Select>
                   <Select value={filters.mode} onValueChange={(value) => setFilters({...filters, mode: value})}>
-                    <SelectTrigger className="w-32 bg-white">
+                    <SelectTrigger className="w-40 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
                       <SelectValue placeholder="Mode" />
                     </SelectTrigger>
                     <SelectContent>
@@ -557,19 +808,15 @@ const APExclusiveInternshipsPage = () => {
                       <SelectItem value="free">Free</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={filters.stream} onValueChange={(value) => setFilters({...filters, stream: value})}>
-                    <SelectTrigger className="w-40 bg-white">
-                      <SelectValue placeholder="Stream" />
+                  <Select value={filters.sort} onValueChange={(value) => setFilters({...filters, sort: value})}>
+                    <SelectTrigger className="w-44 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
+                      <SelectValue placeholder="Sort By" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Streams</SelectItem>
-                      <SelectItem value="engineering">Engineering</SelectItem>
-                      <SelectItem value="computer science">Computer Science</SelectItem>
-                      <SelectItem value="business">Business</SelectItem>
-                      <SelectItem value="arts">Arts</SelectItem>
-                      <SelectItem value="science">Science</SelectItem>
-                      <SelectItem value="medical">Medical</SelectItem>
-                      <SelectItem value="law">Law</SelectItem>
+                      <SelectItem value="newest">Newest First</SelectItem>
+                      <SelectItem value="popular">Most Popular</SelectItem>
+                      <SelectItem value="applications">Most Applications</SelectItem>
+                      <SelectItem value="rating">Highest Rated</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -577,118 +824,158 @@ const APExclusiveInternshipsPage = () => {
             </CardContent>
           </Card>
 
-          {/* Tabs and Content */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 bg-blue-50">
-              <TabsTrigger value="all" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+          {/* Enhanced Tabs and Content */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+            <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-2xl p-2 shadow-lg">
+              <TabsTrigger 
+                value="all" 
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+              >
+                <Globe className="h-4 w-4 mr-2" />
                 All Internships
               </TabsTrigger>
-              <TabsTrigger value="free" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+              <TabsTrigger 
+                value="free" 
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+              >
+                <Zap className="h-4 w-4 mr-2" />
                 Free
               </TabsTrigger>
-              <TabsTrigger value="paid" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+              <TabsTrigger 
+                value="paid" 
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+              >
+                <Star className="h-4 w-4 mr-2" />
                 Paid
               </TabsTrigger>
-              <TabsTrigger value="online" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+              <TabsTrigger 
+                value="online" 
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+              >
+                <Globe className="h-4 w-4 mr-2" />
                 Online
               </TabsTrigger>
             </TabsList>
 
             {/* All Internships */}
             <TabsContent value="all" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredAPInternships.map((internship) => (
                   <InternshipCard key={internship._id} internship={internship} />
                 ))}
               </div>
               {filteredAPInternships.length === 0 && (
-                <div className="text-center py-12">
-                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No AP internships found</h3>
-                  <p className="text-gray-600">Try adjusting your search criteria or check back later for new opportunities.</p>
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <BookOpen className="h-12 w-12 text-blue-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">No AP internships found</h3>
+                  <p className="text-gray-600 text-lg max-w-md mx-auto">
+                    Try adjusting your search criteria or check back later for new premium opportunities.
+                  </p>
                 </div>
               )}
             </TabsContent>
 
             {/* Free Internships */}
             <TabsContent value="free" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredAPInternships.map((internship) => (
                   <InternshipCard key={internship._id} internship={internship} />
                 ))}
               </div>
               {filteredAPInternships.length === 0 && (
-                <div className="text-center py-12">
-                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No free AP internships found</h3>
-                  <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Zap className="h-12 w-12 text-green-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">No free AP internships found</h3>
+                  <p className="text-gray-600 text-lg max-w-md mx-auto">
+                    Try adjusting your filters or check back later for new free opportunities.
+                  </p>
                 </div>
               )}
             </TabsContent>
 
             {/* Paid Internships */}
             <TabsContent value="paid" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredAPInternships.map((internship) => (
                   <InternshipCard key={internship._id} internship={internship} />
                 ))}
               </div>
               {filteredAPInternships.length === 0 && (
-                <div className="text-center py-12">
-                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No paid AP internships found</h3>
-                  <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Star className="h-12 w-12 text-purple-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">No paid AP internships found</h3>
+                  <p className="text-gray-600 text-lg max-w-md mx-auto">
+                    Try adjusting your filters or check back later for new paid opportunities.
+                  </p>
                 </div>
               )}
             </TabsContent>
 
             {/* Online Internships */}
             <TabsContent value="online" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredAPInternships.map((internship) => (
                   <InternshipCard key={internship._id} internship={internship} />
                 ))}
               </div>
               {filteredAPInternships.length === 0 && (
-                <div className="text-center py-12">
-                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No online AP internships found</h3>
-                  <p className="text-gray-600">Try adjusting your filters or check back later for new opportunities.</p>
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 bg-gradient-to-r from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Globe className="h-12 w-12 text-orange-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">No online AP internships found</h3>
+                  <p className="text-gray-600 text-lg max-w-md mx-auto">
+                    Try adjusting your filters or check back later for new online opportunities.
+                  </p>
                 </div>
               )}
             </TabsContent>
           </Tabs>
 
-          {/* Stats Section */}
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="pt-6 text-center">
-                <div className="text-2xl font-bold text-blue-600">{apInternships.length}</div>
-                <p className="text-sm text-gray-600">AP Exclusive Internships</p>
+          {/* Enhanced Stats Section */}
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white overflow-hidden">
+              <CardContent className="pt-8 pb-6 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                <div className="text-4xl font-bold mb-2">{apInternships.length}</div>
+                <p className="text-blue-100">AP Exclusive Internships</p>
+                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
               </CardContent>
             </Card>
-            <Card className="border-green-200 bg-green-50">
-              <CardContent className="pt-6 text-center">
-                <div className="text-2xl font-bold text-green-600">
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white overflow-hidden">
+              <CardContent className="pt-8 pb-6 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                <div className="text-4xl font-bold mb-2">
                   {apInternships.filter(i => i.mode === 'Free').length}
                 </div>
-                <p className="text-sm text-gray-600">Free Opportunities</p>
+                <p className="text-green-100">Free Opportunities</p>
+                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
               </CardContent>
             </Card>
-            <Card className="border-purple-200 bg-purple-50">
-              <CardContent className="pt-6 text-center">
-                <div className="text-2xl font-bold text-purple-600">
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white overflow-hidden">
+              <CardContent className="pt-8 pb-6 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                <div className="text-4xl font-bold mb-2">
                   {apInternships.filter(i => i.internshipType === 'Online').length}
                 </div>
-                <p className="text-sm text-gray-600">Online Programs</p>
+                <p className="text-purple-100">Online Programs</p>
+                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
               </CardContent>
             </Card>
-            <Card className="border-orange-200 bg-orange-50">
-              <CardContent className="pt-6 text-center">
-                <div className="text-2xl font-bold text-orange-600">
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-orange-500 to-red-600 text-white overflow-hidden">
+              <CardContent className="pt-8 pb-6 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                <div className="text-4xl font-bold mb-2">
                   {[...new Set(apInternships.map(i => i.stream))].length}
                 </div>
-                <p className="text-sm text-gray-600">Different Streams</p>
+                <p className="text-orange-100">Different Streams</p>
+                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
               </CardContent>
             </Card>
           </div>
