@@ -59,6 +59,7 @@ import RegularInternshipsPage from '@/components/internships/RegularInternshipsP
 import APExclusiveInternshipsPage from '@/components/internships/APExclusiveInternshipsPage';
 import JobsPage from '@/pages/JobsPage';
 import StreamLearningInterface from '@/components/pack365/StreamLearningInterface';
+import CommunityPage from '@/components/community/CommunityPage';
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,7 @@ const App = () => {
           <Route path="/recorded-courses" element={<RecordedCourses />} />
           <Route path="/pack365" element={<Pack365 />} />
           <Route path="/pack365/bundle/:streamName" element={<Pack365BundleDetail />} />
+          <Route path="/community" element={<CommunityPage />} />
           
           {/* Jobs Routes */}
           <Route path="/jobs" element={<JobsPage />} />
