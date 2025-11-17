@@ -830,6 +830,28 @@ export const pack365Api = {
     });
     return res.data;
   },
+
+  // NEW: Added updateTopicProgress method using fetch API as requested
+  updateTopicProgress: async (
+    token: string,
+    data: {
+      courseId: string;
+      topicName: string;
+      watchedDuration: number;
+      totalCourseDuration?: number;
+      totalWatchedPercentage?: number;
+    }
+  ) => {
+    const response = await fetch(`${API_BASE_URL}/pack365/topic/progress`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  },
 };
 
 export const collegeApi = {
