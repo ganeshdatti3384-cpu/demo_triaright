@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen } from 'lucide-react';
+import { Search, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import ApplyInternshipDialog from './ApplyInternshipDialog';
@@ -25,7 +25,7 @@ interface Internship {
   duration: string;
   startDate: string;
   applicationDeadline: string;
-  mode: 'Unpaid' | 'Paid' | 'FeeBased';
+  mode: 'Unpaid' | 'Paid';
   stipendAmount?: number;
   currency: string;
   qualification: string;
@@ -141,8 +141,7 @@ const RegularInternshipsPage = () => {
   const getModeBadge = (mode: string) => {
     const variants = {
       Paid: 'default',
-      Unpaid: 'outline',
-      FeeBased: 'destructive'
+      Unpaid: 'outline'
     } as const;
 
     return (
@@ -308,7 +307,6 @@ const RegularInternshipsPage = () => {
                       <SelectItem value="all">All Modes</SelectItem>
                       <SelectItem value="paid">Paid</SelectItem>
                       <SelectItem value="unpaid">Unpaid</SelectItem>
-                      <SelectItem value="feebased">Fee Based</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
