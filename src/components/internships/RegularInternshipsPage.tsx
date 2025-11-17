@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen } from 'lucide-react';
+import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import ApplyInternshipDialog from './ApplyInternshipDialog';
@@ -54,6 +54,7 @@ const RegularInternshipsPage = () => {
   });
   const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
+  const [applying, setApplying] = useState(false);
   
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -68,6 +69,7 @@ const RegularInternshipsPage = () => {
 
   const fetchInternships = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/internships');
       const data = await response.json();
       if (Array.isArray(data)) {
@@ -134,6 +136,65 @@ const RegularInternshipsPage = () => {
     setShowApplyDialog(true);
   };
 
+  const handleSubmitApplication = async (applicationData: any) => {
+    if (!selectedInternship) return;
+
+    try {
+      setApplying(true);
+      
+      const formData = new FormData();
+      
+      // Add application data
+      const applicantDetails = {
+        name: applicationData.fullName,
+        email: applicationData.email,
+        phone: applicationData.phone,
+        college: applicationData.education,
+        qualification: applicationData.education
+      };
+      
+      formData.append('internshipId', selectedInternship._id);
+      formData.append('applicantDetails', JSON.stringify(applicantDetails));
+      formData.append('portfolioLink', applicationData.portfolioLink || '');
+      
+      // Add resume file
+      if (applicationData.resume) {
+        formData.append('resume', applicationData.resume);
+      }
+
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/internships/applications/apply', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: 'Application Submitted',
+          description: 'Your internship application has been submitted successfully!'
+        });
+        setShowApplyDialog(false);
+        setSelectedInternship(null);
+      } else {
+        throw new Error(result.message || 'Failed to submit application');
+      }
+    } catch (error: any) {
+      console.error('Error submitting application:', error);
+      toast({
+        title: 'Application Failed',
+        description: error.message || 'Failed to submit application. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setApplying(false);
+    }
+  };
+
   const isDeadlinePassed = (deadline: string) => {
     return new Date(deadline) < new Date();
   };
@@ -167,6 +228,7 @@ const RegularInternshipsPage = () => {
 
   const InternshipCard = ({ internship }: { internship: Internship }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
+    const isClosed = internship.status !== 'Open';
     
     return (
       <Card className="h-full flex flex-col">
@@ -236,9 +298,10 @@ const RegularInternshipsPage = () => {
           <Button 
             className="w-full" 
             onClick={() => handleApply(internship)}
-            disabled={deadlinePassed}
+            disabled={deadlinePassed || isClosed}
           >
-            {deadlinePassed ? 'Application Closed' : 'Apply Now'}
+            {deadlinePassed ? 'Application Closed' : 
+             isClosed ? 'Not Accepting Applications' : 'Apply Now'}
           </Button>
         </CardFooter>
       </Card>
@@ -390,10 +453,8 @@ const RegularInternshipsPage = () => {
           internship={selectedInternship}
           open={showApplyDialog}
           onOpenChange={setShowApplyDialog}
-          onSuccess={() => {
-            setShowApplyDialog(false);
-            setSelectedInternship(null);
-          }}
+          onSubmit={handleSubmitApplication}
+          loading={applying}
         />
       </div>
       <Footer />
