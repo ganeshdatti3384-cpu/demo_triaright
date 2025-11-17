@@ -5,153 +5,64 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Upload, FileText, Building2, MapPin } from 'lucide-react';
+import { IndianRupee, Loader2, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Internship {
   _id: string;
   title: string;
   companyName: string;
-  location: string;
-  internshipType: string;
-  mode: string;
+  mode: 'Unpaid' | 'Paid';
+  stipendAmount?: number;
 }
 
 interface ApplyInternshipDialogProps {
   internship: Internship | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSubmit: (applicationData: any) => void;
+  loading: boolean;
 }
 
 const ApplyInternshipDialog = ({
   internship,
   open,
   onOpenChange,
-  onSuccess
+  onSubmit,
+  loading
 }: ApplyInternshipDialogProps) => {
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
     email: '',
     phone: '',
-    college: '',
-    qualification: '',
+    education: '',
+    skills: '',
+    experience: '',
+    coverLetter: '',
     portfolioLink: ''
   });
-  
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [coverLetter, setCoverLetter] = useState('');
-  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!internship) return;
-
-    // Validate required fields
-    if (!formData.name || !formData.email || !formData.phone) {
-      toast({
-        title: 'Error',
-        description: 'Name, email, and phone are required fields.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     if (!resumeFile) {
       toast({
-        title: 'Error',
-        description: 'Resume file is required.',
+        title: 'Resume Required',
+        description: 'Please upload your resume',
         variant: 'destructive'
       });
       return;
     }
 
-    try {
-      setLoading(true);
-      
-      // Create FormData for multipart upload
-      const submitData = new FormData();
-      
-      // Add internship ID
-      submitData.append('internshipId', internship._id);
-      
-      // Add applicant details as JSON string
-      const applicantDetails = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        college: formData.college,
-        qualification: formData.qualification
-      };
-      submitData.append('applicantDetails', JSON.stringify(applicantDetails));
-      
-      // Add portfolio link if provided
-      if (formData.portfolioLink) {
-        submitData.append('portfolioLink', formData.portfolioLink);
-      }
-      
-      // Add resume file
-      submitData.append('resume', resumeFile);
+    const applicationData = {
+      ...formData,
+      resume: resumeFile,
+      internshipId: internship?._id
+    };
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast({
-          title: 'Error',
-          description: 'Please login to apply',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // Use the correct API endpoint for regular internships
-      const response = await fetch('/api/internships/applications/apply', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: submitData
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to apply for internship');
-      }
-
-      if (data.success) {
-        toast({
-          title: 'Success',
-          description: data.message || 'Application submitted successfully!'
-        });
-        
-        // Reset form
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          college: '',
-          qualification: '',
-          portfolioLink: ''
-        });
-        setResumeFile(null);
-        setCoverLetter('');
-        
-        onSuccess();
-        onOpenChange(false);
-      }
-      
-    } catch (error: any) {
-      console.error('Error submitting application:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to submit application. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
+    onSubmit(applicationData);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -164,38 +75,29 @@ const ApplyInternshipDialog = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ];
-      
+      // Check file type (PDF, DOC, DOCX)
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
         toast({
-          title: 'Error',
-          description: 'Please upload a PDF or Word document.',
+          title: 'Invalid File Type',
+          description: 'Please upload a PDF or Word document',
           variant: 'destructive'
         });
         return;
       }
-
-      // Validate file size (5MB max)
+      
+      // Check file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
         toast({
-          title: 'Error',
-          description: 'File size must be less than 5MB.',
+          title: 'File Too Large',
+          description: 'Please upload a file smaller than 5MB',
           variant: 'destructive'
         });
         return;
       }
-
+      
       setResumeFile(file);
     }
-  };
-
-  const removeResume = () => {
-    setResumeFile(null);
   };
 
   if (!internship) return null;
@@ -206,43 +108,44 @@ const ApplyInternshipDialog = ({
         <DialogHeader>
           <DialogTitle>Apply for {internship.title}</DialogTitle>
           <DialogDescription>
-            Complete your application for this internship opportunity
+            Complete your application for this internship at {internship.companyName}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Internship Summary */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start space-x-3">
-            <Building2 className="h-5 w-5 text-blue-600 mt-1" />
-            <div className="flex-1">
-              <h4 className="font-semibold text-blue-900">{internship.title}</h4>
-              <p className="text-sm text-blue-700">{internship.companyName}</p>
-              <div className="flex items-center mt-1 text-sm text-blue-600">
-                <MapPin className="h-4 w-4 mr-1" />
-                {internship.location} • {internship.internshipType}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Internship Summary */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="font-semibold text-blue-900">{internship.title}</h4>
+                <p className="text-sm text-blue-700">{internship.companyName}</p>
               </div>
-              <div className="mt-2">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  internship.mode === 'Paid' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {internship.mode}
-                </span>
-              </div>
+              {internship.mode === 'Paid' && internship.stipendAmount && (
+                <div className="text-right">
+                  <p className="text-sm text-blue-600">Stipend</p>
+                  <p className="text-xl font-bold text-green-600 flex items-center">
+                    <IndianRupee className="h-5 w-5" />
+                    {internship.stipendAmount.toLocaleString()}/month
+                  </p>
+                </div>
+              )}
+              {internship.mode === 'Unpaid' && (
+                <div className="text-right">
+                  <p className="text-sm text-blue-600">Internship Type</p>
+                  <p className="text-lg font-bold text-green-600">UNPAID</p>
+                </div>
+              )}
             </div>
           </div>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Application Form */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name *</Label>
+              <Label htmlFor="fullName">Full Name *</Label>
               <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                id="fullName"
+                value={formData.fullName}
+                onChange={(e) => handleInputChange('fullName', e.target.value)}
                 required
                 placeholder="Enter your full name"
               />
@@ -273,93 +176,86 @@ const ApplyInternshipDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="college">College/University</Label>
+              <Label htmlFor="education">Education *</Label>
               <Input
-                id="college"
-                value={formData.college}
-                onChange={(e) => handleInputChange('college', e.target.value)}
-                placeholder="e.g., IIT Delhi"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="qualification">Qualification</Label>
-              <Input
-                id="qualification"
-                value={formData.qualification}
-                onChange={(e) => handleInputChange('qualification', e.target.value)}
+                id="education"
+                value={formData.education}
+                onChange={(e) => handleInputChange('education', e.target.value)}
+                required
                 placeholder="e.g., B.Tech Computer Science"
               />
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="portfolioLink">Portfolio Link</Label>
-              <Input
-                id="portfolioLink"
-                value={formData.portfolioLink}
-                onChange={(e) => handleInputChange('portfolioLink', e.target.value)}
-                placeholder="https://github.com/yourusername"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="skills">Skills *</Label>
+            <Input
+              id="skills"
+              value={formData.skills}
+              onChange={(e) => handleInputChange('skills', e.target.value)}
+              required
+              placeholder="e.g., JavaScript, React, Node.js, Python"
+            />
+            <p className="text-sm text-gray-500">Separate skills with commas</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="portfolioLink">Portfolio/GitHub Link (Optional)</Label>
+            <Input
+              id="portfolioLink"
+              value={formData.portfolioLink}
+              onChange={(e) => handleInputChange('portfolioLink', e.target.value)}
+              placeholder="https://github.com/yourusername"
+            />
           </div>
 
           {/* Resume Upload */}
           <div className="space-y-2">
             <Label htmlFor="resume">Resume *</Label>
-            {!resumeFile ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <input
+                type="file"
+                id="resume"
+                accept=".pdf,.doc,.docx"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <Label htmlFor="resume" className="cursor-pointer">
                 <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600 mb-2">
-                  Upload your resume (PDF or Word document)
+                <p className="text-sm font-medium text-gray-700">
+                  {resumeFile ? resumeFile.name : 'Upload your resume'}
                 </p>
-                <p className="text-xs text-gray-500 mb-4">
-                  Max file size: 5MB
+                <p className="text-xs text-gray-500 mt-1">
+                  PDF, DOC, DOCX up to 5MB
                 </p>
-                <Label htmlFor="resume-upload" className="cursor-pointer">
-                  <Button type="button" variant="outline">
-                    Choose File
-                  </Button>
-                  <Input
-                    id="resume-upload"
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                </Label>
-              </div>
-            ) : (
-              <div className="border border-green-200 bg-green-50 rounded-lg p-4 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <FileText className="h-8 w-8 text-green-600" />
-                  <div>
-                    <p className="font-medium text-green-900">{resumeFile.name}</p>
-                    <p className="text-sm text-green-700">
-                      {(resumeFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={removeResume}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  Remove
-                </Button>
-              </div>
+              </Label>
+            </div>
+            {resumeFile && (
+              <p className="text-sm text-green-600 flex items-center">
+                ✓ {resumeFile.name} selected
+              </p>
             )}
           </div>
 
-          {/* Cover Letter (Optional) */}
           <div className="space-y-2">
-            <Label htmlFor="coverLetter">Cover Letter (Optional)</Label>
+            <Label htmlFor="experience">Previous Experience</Label>
+            <Textarea
+              id="experience"
+              value={formData.experience}
+              onChange={(e) => handleInputChange('experience', e.target.value)}
+              placeholder="Describe your previous work experience or projects"
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="coverLetter">Cover Letter *</Label>
             <Textarea
               id="coverLetter"
-              value={coverLetter}
-              onChange={(e) => setCoverLetter(e.target.value)}
-              placeholder="Tell us why you're interested in this internship..."
+              value={formData.coverLetter}
+              onChange={(e) => handleInputChange('coverLetter', e.target.value)}
+              required
+              placeholder="Why are you interested in this internship and what makes you a good candidate?"
               rows={4}
             />
           </div>
@@ -375,7 +271,7 @@ const ApplyInternshipDialog = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={loading}
+              disabled={loading || !resumeFile}
               className="min-w-32"
             >
               {loading ? (
@@ -384,7 +280,7 @@ const ApplyInternshipDialog = ({
                   Applying...
                 </>
               ) : (
-                'Apply Now'
+                'Submit Application'
               )}
             </Button>
           </DialogFooter>
