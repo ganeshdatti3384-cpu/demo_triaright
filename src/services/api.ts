@@ -715,12 +715,12 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint from /exam/upload to /pack365/exams/upload
+  // FIXED: Correct exam endpoints
   uploadExamFromExcel: async (
     token: string,
     formData: FormData
   ): Promise<{ success: boolean; message: string; exam: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/exams/upload`, formData, {
+    const res = await axios.post(`${API_BASE_URL}/exam/upload`, formData, {
       headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data'
@@ -826,6 +826,54 @@ export const pack365Api = {
     data: { examId: string; maxAttempts: number }
   ): Promise<{ message: string; examId: string; maxAttempts: number }> => {
     const res = await axios.put(`${API_BASE_URL}/exam/update-max-attempts`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // NEW: Get exam by stream name
+  getExamByStream: async (
+    stream: string
+  ): Promise<{ success: boolean; exam: any; message?: string }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/stream/${stream}`);
+    return res.data;
+  },
+
+  // NEW: Get user's exam attempts for a specific exam
+  getExamAttempts: async (
+    token: string,
+    examId: string
+  ): Promise<{ success: boolean; attempts: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/attempts/${examId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // NEW: Submit exam with answers for evaluation
+  submitExamWithAnswers: async (
+    token: string,
+    data: {
+      examId: string;
+      answers: { [key: string]: string };
+      timeSpent: number;
+    }
+  ): Promise<{ 
+    success: boolean; 
+    result: {
+      score: number;
+      passed: boolean;
+      totalQuestions: number;
+      correctAnswers: number;
+      timeSpent: number;
+      attemptNumber: number;
+      submittedAt: string;
+      answers: { [key: string]: string };
+      correctAnswersMap: { [key: string]: string };
+    };
+    message?: string;
+  }> => {
+    const res = await axios.post(`${API_BASE_URL}/exam/submit-with-answers`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
