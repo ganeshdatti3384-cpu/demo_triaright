@@ -143,20 +143,47 @@ const ExamInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Fetch exam for this stream
-      // Note: You'll need to implement getExamByStream in your API service
-      const examResponse = await pack365Api.getExamByStream(stream || '');
-      if (!examResponse.success || !examResponse.exam) {
-        throw new Error('Exam not found for this stream');
+      // Get all available exams first
+      const availableExamsResponse = await pack365Api.getAvailableExams(token);
+      
+      if (!availableExamsResponse.success) {
+        throw new Error('Failed to load available exams');
       }
 
-      setExam(examResponse.exam);
-      setTimeLeft(examResponse.exam.timeLimit * 60); // Convert minutes to seconds
+      // Find exams for the current stream
+      const streamExams = availableExamsResponse.exams || [];
+      
+      if (streamExams.length === 0) {
+        throw new Error('No exams available for this stream yet');
+      }
 
-      // Load user's previous attempts
-      const attemptsResponse = await pack365Api.getExamAttempts(token, examResponse.exam._id);
-      if (attemptsResponse.success) {
-        setUserAttempts(attemptsResponse.attempts || []);
+      // For now, take the first available exam
+      // In a real scenario, you might want to show a list for user to choose
+      const firstExam = streamExams[0];
+      
+      // Get full exam details using the existing getExamDetails method
+      const examDetailsResponse = await pack365Api.getExamDetails(firstExam.examId);
+      
+      if (!examDetailsResponse.success || !examDetailsResponse.examDetails) {
+        throw new Error('Failed to load exam details');
+      }
+
+      setExam(examDetailsResponse.examDetails);
+      setTimeLeft(examDetailsResponse.examDetails.timeLimit * 60);
+
+      // Load user's previous attempts for this exam
+      const enrollmentResponse = await pack365Api.getMyEnrollments(token);
+      if (enrollmentResponse.success && enrollmentResponse.enrollments) {
+        const streamEnrollment = enrollmentResponse.enrollments.find(
+          (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
+        );
+        
+        if (streamEnrollment && streamEnrollment.examAttempts) {
+          const examAttempts = streamEnrollment.examAttempts.filter(
+            (attempt: any) => attempt.examId === firstExam.examId
+          );
+          setUserAttempts(examAttempts);
+        }
       }
 
     } catch (error: any) {
@@ -198,10 +225,22 @@ const ExamInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      // Calculate score
+      let correctAnswers = 0;
+      exam.questions.forEach(question => {
+        if (answers[question._id] === question.correctAnswer) {
+          correctAnswers++;
+        }
+      });
+
+      const score = Math.round((correctAnswers / exam.questions.length) * 100);
+      const timeSpent = (exam.timeLimit * 60) - timeLeft;
+
       const submission = {
-        examId: exam._id,
-        answers: answers,
-        timeSpent: (exam.timeLimit * 60) - timeLeft
+        examId: exam.examId,
+        courseId: exam.courseId,
+        marks: score,
+        timeTaken: timeSpent
       };
 
       const result = await pack365Api.submitExam(token, submission);
@@ -215,13 +254,31 @@ const ExamInterface = () => {
         
         navigate(`/exam-result/${stream}`, { 
           state: { 
-            result: result.result,
+            result: {
+              score,
+              passed: score >= exam.passingScore,
+              totalQuestions: exam.questions.length,
+              correctAnswers,
+              timeSpent,
+              attemptNumber: (userAttempts.length || 0) + 1,
+              submittedAt: new Date().toISOString(),
+              answers,
+              correctAnswersMap: exam.questions.reduce((acc: any, q) => {
+                acc[q._id] = q.correctAnswer;
+                return acc;
+              }, {})
+            },
             exam: exam
           } 
         });
       }
     } catch (error) {
       console.error('Error auto-submitting exam:', error);
+      toast({
+        title: 'Submission Error',
+        description: 'Failed to auto-submit exam. Please contact support.',
+        variant: 'destructive'
+      });
     } finally {
       setSubmitting(false);
     }
@@ -246,10 +303,22 @@ const ExamInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      // Calculate score
+      let correctAnswers = 0;
+      exam.questions.forEach(question => {
+        if (answers[question._id] === question.correctAnswer) {
+          correctAnswers++;
+        }
+      });
+
+      const score = Math.round((correctAnswers / exam.questions.length) * 100);
+      const timeSpent = (exam.timeLimit * 60) - timeLeft;
+
       const submission = {
-        examId: exam._id,
-        answers: answers,
-        timeSpent: (exam.timeLimit * 60) - timeLeft
+        examId: exam.examId,
+        courseId: exam.courseId,
+        marks: score,
+        timeTaken: timeSpent
       };
 
       const result = await pack365Api.submitExam(token, submission);
@@ -263,7 +332,20 @@ const ExamInterface = () => {
         
         navigate(`/exam-result/${stream}`, { 
           state: { 
-            result: result.result,
+            result: {
+              score,
+              passed: score >= exam.passingScore,
+              totalQuestions: exam.questions.length,
+              correctAnswers,
+              timeSpent,
+              attemptNumber: (userAttempts.length || 0) + 1,
+              submittedAt: new Date().toISOString(),
+              answers,
+              correctAnswersMap: exam.questions.reduce((acc: any, q) => {
+                acc[q._id] = q.correctAnswer;
+                return acc;
+              }, {})
+            },
             exam: exam
           } 
         });
