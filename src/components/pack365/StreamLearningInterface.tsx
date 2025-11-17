@@ -300,9 +300,9 @@ const StreamLearningInterface = () => {
       const newTotalWatchedPercentage = totalTopicsInStream > 0 ? 
         (currentWatchedTopics / totalTopicsInStream) * 100 : 0;
 
-      // Update progress via API
+      // ✅ FIXED: Use courseId string instead of _id
       await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId,
+        courseId: selectedCourse.courseId, // ✅ FIXED
         topicName: selectedTopic.name,
         watchedDuration: Math.floor(currentTime),
         totalCourseDuration: Math.floor(duration),
@@ -312,7 +312,7 @@ const StreamLearningInterface = () => {
       // Update local state
       setTopicProgress(prev => {
         const existingIndex = prev.findIndex(
-          tp => tp.topicName === selectedTopic.name && tp.courseId === selectedCourse._id
+          tp => tp.topicName === selectedTopic.name && tp.courseId === selectedCourse.courseId // ✅ FIXED
         );
         
         if (existingIndex >= 0) {
@@ -329,7 +329,7 @@ const StreamLearningInterface = () => {
           return [
             ...prev,
             {
-              courseId: selectedCourse._id,
+              courseId: selectedCourse.courseId, // ✅ FIXED
               topicName: selectedTopic.name,
               watched: false,
               watchedDuration: Math.floor(currentTime),
@@ -367,9 +367,9 @@ const StreamLearningInterface = () => {
       const finalDuration = playerRef.current ? 
         Math.floor(playerRef.current.getDuration()) : selectedTopic.duration;
 
-      // Update progress via API
+      // ✅ FIXED: Use courseId string instead of _id
       const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId,
+        courseId: selectedCourse.courseId, // ✅ FIXED
         topicName: selectedTopic.name,
         watchedDuration: finalDuration,
         totalCourseDuration: finalDuration,
@@ -380,7 +380,7 @@ const StreamLearningInterface = () => {
         // Update local state
         setTopicProgress(prev => {
           const existingIndex = prev.findIndex(
-            tp => tp.topicName === selectedTopic.name && tp.courseId === selectedCourse._id
+            tp => tp.topicName === selectedTopic.name && tp.courseId === selectedCourse.courseId // ✅ FIXED
           );
           
           if (existingIndex >= 0) {
@@ -398,7 +398,7 @@ const StreamLearningInterface = () => {
             return [
               ...prev,
               {
-                courseId: selectedCourse._id,
+                courseId: selectedCourse.courseId, // ✅ FIXED
                 topicName: selectedTopic.name,
                 watched: true,
                 watchedDuration: finalDuration,
@@ -488,14 +488,14 @@ const StreamLearningInterface = () => {
 
   const getTopicProgress = (courseId: string, topicName: string) => {
     return topicProgress.find(
-      tp => tp.courseId === courseId && tp.topicName === topicName
+      tp => tp.courseId === courseId && tp.topicName === topicName // ✅ FIXED
     );
   };
 
   const getCourseProgress = (courseId: string) => {
-    const courseTopics = topicProgress.filter(tp => tp.courseId === courseId);
+    const courseTopics = topicProgress.filter(tp => tp.courseId === courseId); // ✅ FIXED
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
-    const totalTopics = courses.find(c => c._id === courseId)?.topics.length || 1;
+    const totalTopics = courses.find(c => c.courseId === courseId)?.topics.length || 1; // ✅ FIXED
     return totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
   };
 
@@ -721,12 +721,12 @@ const StreamLearningInterface = () => {
                         </Badge>
                       </div>
                       <Progress 
-                        value={getCourseProgress(course._id)} 
+                        value={getCourseProgress(course.courseId)} // ✅ FIXED
                         className="h-2" 
                       />
                       <div className="flex justify-between text-xs text-gray-500 mt-1">
                         <span>Progress</span>
-                        <span>{Math.round(getCourseProgress(course._id))}%</span>
+                        <span>{Math.round(getCourseProgress(course.courseId))}%</span> {/* ✅ FIXED */}
                       </div>
                     </div>
                   ))}
@@ -818,7 +818,7 @@ const StreamLearningInterface = () => {
                     <div className="space-y-3">
                       <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
                       {selectedCourse.topics.map((topic, index) => {
-                        const progress = getTopicProgress(selectedCourse._id, topic.name);
+                        const progress = getTopicProgress(selectedCourse.courseId, topic.name); // ✅ FIXED
                         const isWatched = progress?.watched;
                         const watchedDuration = progress?.watchedDuration || 0;
 
