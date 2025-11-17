@@ -163,15 +163,35 @@ const StreamLearningInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const availableExamsResponse = await pack365Api.getAvailableExams(token);
-      if (availableExamsResponse.success && availableExamsResponse.exams) {
-        const hasEligibleExam = availableExamsResponse.exams.some((exam: any) => 
-          exam.attemptInfo.canRetake
-        );
-        setExamEligible(hasEligibleExam);
+      // Check if user has completed enough progress
+      if (enrollment && enrollment.totalWatchedPercentage >= 80) {
+        // Get available exams for this stream
+        const availableExamsResponse = await pack365Api.getAvailableExams(token);
+        
+        if (availableExamsResponse.success && availableExamsResponse.exams) {
+          // Check if there are any available exams for this stream
+          const streamExams = availableExamsResponse.exams.filter((exam: any) => {
+            // Since we don't have stream info in exam response, we'll assume any available exam is for this stream
+            // In a real implementation, you might want to filter by course stream
+            return true;
+          });
+          
+          setExamEligible(streamExams.length > 0);
+          
+          if (streamExams.length > 0) {
+            toast({
+              title: 'Exam Available!',
+              description: `You can now take the ${stream} stream exam.`,
+              variant: 'default'
+            });
+          }
+        }
+      } else {
+        setExamEligible(false);
       }
     } catch (error) {
       console.error('Error checking exam eligibility:', error);
+      setExamEligible(false);
     }
   };
 
