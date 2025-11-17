@@ -44,6 +44,7 @@ interface Course {
 }
 
 interface StreamEnrollment {
+  _id: string;
   stream: string;
   enrollmentDate: string;
   expiresAt: string;
@@ -240,9 +241,45 @@ const Pack365StreamLearning = () => {
     });
   };
 
-  const handleTakeExam = () => {
+  const handleTakeExam = async () => {
     if (enrollment && enrollment.totalWatchedPercentage >= 80) {
-      navigate(`/exam/${stream}`);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        // Check if exams are available for this stream
+        const availableExamsResponse = await pack365Api.getAvailableExams(token);
+        
+        if (availableExamsResponse.success && availableExamsResponse.exams) {
+          // Check if there are exams for courses in this stream
+          const streamExam = availableExamsResponse.exams.find((exam: any) => {
+            return enrollment.courses.some(course => course._id === exam.courseId);
+          });
+          
+          if (streamExam) {
+            navigate(`/exam/${stream}`);
+          } else {
+            toast({
+              title: 'No Exams Available',
+              description: 'No exams are available for this stream yet. Please check back later.',
+              variant: 'destructive'
+            });
+          }
+        } else {
+          toast({
+            title: 'No Exams Available',
+            description: 'No exams are available for this stream yet. Please check back later.',
+            variant: 'destructive'
+          });
+        }
+      } catch (error) {
+        console.error('Error checking exams:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to check exam availability. Please try again.',
+          variant: 'destructive'
+        });
+      }
     } else {
       toast({
         title: 'Not Eligible',
