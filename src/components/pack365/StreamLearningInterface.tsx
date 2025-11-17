@@ -46,6 +46,15 @@ interface TopicProgress {
   lastWatchedAt?: string;
 }
 
+interface Enrollment {
+  _id: string;
+  stream: string;
+  totalWatchedPercentage: number;
+  topicProgress: TopicProgress[];
+  isExamCompleted: boolean;
+  examScore: number | null;
+}
+
 const StreamLearningInterface = () => {
   const { stream } = useParams<{ stream: string }>();
   const location = useLocation();
@@ -56,7 +65,7 @@ const StreamLearningInterface = () => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [topicProgress, setTopicProgress] = useState<TopicProgress[]>([]);
   const [loading, setLoading] = useState(true);
-  const [enrollment, setEnrollment] = useState<any>(null);
+  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -165,20 +174,17 @@ const StreamLearningInterface = () => {
 
       // Check if user has completed enough progress
       if (enrollment && enrollment.totalWatchedPercentage >= 80) {
-        // Get available exams for this stream
         const availableExamsResponse = await pack365Api.getAvailableExams(token);
         
         if (availableExamsResponse.success && availableExamsResponse.exams) {
-          // Check if there are any available exams for this stream
-          const streamExams = availableExamsResponse.exams.filter((exam: any) => {
-            // Since we don't have stream info in exam response, we'll assume any available exam is for this stream
-            // In a real implementation, you might want to filter by course stream
-            return true;
+          // Check if there are any available exams for current courses
+          const eligibleExams = availableExamsResponse.exams.filter((exam: any) => {
+            return courses.some(course => course._id === exam.courseId);
           });
           
-          setExamEligible(streamExams.length > 0);
+          setExamEligible(eligibleExams.length > 0);
           
-          if (streamExams.length > 0) {
+          if (eligibleExams.length > 0) {
             toast({
               title: 'Exam Available!',
               description: `You can now take the ${stream} stream exam.`,
@@ -254,12 +260,16 @@ const StreamLearningInterface = () => {
         return;
       }
 
+      // Calculate total course duration for progress calculation
+      const totalCourseDuration = selectedCourse.topics.reduce((sum, t) => sum + t.duration, 0);
+      const newWatchedPercentage = calculateNewProgress();
+
       const response = await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse.courseId,
         topicName: topic.name,
-        watchedDuration: topic.duration,
-        totalWatchedPercentage: calculateNewProgress(topic),
-        lastWatchedAt: new Date().toISOString()
+        watchedDuration: topic.duration * 60, // Convert to seconds
+        totalCourseDuration: totalCourseDuration * 60, // Convert to seconds
+        totalWatchedPercentage: newWatchedPercentage
       });
 
       if (response.success) {
@@ -274,7 +284,7 @@ const StreamLearningInterface = () => {
                 ? { 
                     ...tp, 
                     watched: true, 
-                    watchedDuration: topic.duration,
+                    watchedDuration: topic.duration * 60,
                     lastWatchedAt: new Date().toISOString()
                   }
                 : tp
@@ -286,12 +296,20 @@ const StreamLearningInterface = () => {
                 courseId: selectedCourse._id,
                 topicName: topic.name,
                 watched: true,
-                watchedDuration: topic.duration,
+                watchedDuration: topic.duration * 60,
                 lastWatchedAt: new Date().toISOString()
               }
             ];
           }
         });
+
+        // Update enrollment progress
+        if (enrollment) {
+          setEnrollment({
+            ...enrollment,
+            totalWatchedPercentage: newWatchedPercentage
+          });
+        }
 
         setIsTrackingProgress(false);
         
@@ -313,10 +331,12 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const calculateNewProgress = (completedTopic: Topic): number => {
-    const courseTopics = selectedCourse?.topics || [];
+  const calculateNewProgress = (): number => {
+    if (!selectedCourse) return 0;
+    
+    const courseTopics = selectedCourse.topics || [];
     const currentWatched = topicProgress.filter(tp => 
-      tp.courseId === selectedCourse?._id && tp.watched
+      tp.courseId === selectedCourse._id && tp.watched
     ).length;
     
     const newWatchedCount = currentWatched + 1;
@@ -358,6 +378,18 @@ const StreamLearningInterface = () => {
 
   const handleOpenInNewTab = (topic: Topic) => {
     window.open(topic.link, '_blank');
+  };
+
+  const handleTakeExam = () => {
+    if (examEligible) {
+      navigate(`/exam/${stream}`);
+    } else {
+      toast({
+        title: 'Not Eligible',
+        description: 'You need to complete at least 80% of the stream and have available exams.',
+        variant: 'destructive'
+      });
+    }
   };
 
   if (error) {
@@ -569,7 +601,7 @@ const StreamLearningInterface = () => {
                       You've completed enough content to take the stream exam.
                     </p>
                     <Button 
-                      onClick={() => navigate(`/exam/${stream}`)}
+                      onClick={handleTakeExam}
                       className="w-full bg-green-600 hover:bg-green-700"
                     >
                       Take Stream Exam
