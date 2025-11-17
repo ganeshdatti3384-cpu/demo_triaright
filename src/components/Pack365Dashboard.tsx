@@ -182,10 +182,46 @@ const Pack365Dashboard = () => {
     navigate(`/pack365-learning/${stream.toLowerCase()}`);
   };
 
-  const handleTakeExam = (stream: string, enrollment: StreamEnrollment) => {
+  const handleTakeExam = async (stream: string, enrollment: StreamEnrollment) => {
     const progress = enrollment.totalWatchedPercentage || 0;
     if (progress >= 80) {
-      navigate(`/exam/${stream}`);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        // Check if exams are available for this stream
+        const availableExamsResponse = await pack365Api.getAvailableExams(token);
+        
+        if (availableExamsResponse.success && availableExamsResponse.exams) {
+          const streamExams = availableExamsResponse.exams.filter((exam: any) => {
+            // Since we don't have stream info in exam response, we'll assume any available exam is for this stream
+            return true;
+          });
+          
+          if (streamExams.length > 0) {
+            navigate(`/exam/${stream}`);
+          } else {
+            toast({
+              title: 'No Exams Available',
+              description: 'No exams are available for this stream yet. Please check back later.',
+              variant: 'destructive'
+            });
+          }
+        } else {
+          toast({
+            title: 'No Exams Available',
+            description: 'No exams are available for this stream yet. Please check back later.',
+            variant: 'destructive'
+          });
+        }
+      } catch (error) {
+        console.error('Error checking exams:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to check exam availability. Please try again.',
+          variant: 'destructive'
+        });
+      }
     } else {
       toast({
         title: 'Not Eligible',
