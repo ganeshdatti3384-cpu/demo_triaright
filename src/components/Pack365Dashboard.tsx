@@ -39,6 +39,7 @@ interface Course {
 }
 
 interface StreamEnrollment {
+  _id: string;
   stream: string;
   amountPaid: number;
   enrollmentDate: string;
@@ -100,9 +101,8 @@ const Pack365Dashboard = () => {
       if (response.success && response.enrollments) {
         const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
         
-        // Use backend calculated progress directly
+        // Calculate accurate progress based on topic progress
         const enhancedEnrollments = streamEnrollments.map(enrollment => {
-          // Calculate accurate progress based on topic progress
           const totalTopics = enrollment.topicProgress?.length || 0;
           const watchedTopics = enrollment.topicProgress?.filter(tp => tp.watched).length || 0;
           const accurateProgress = totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
@@ -193,12 +193,13 @@ const Pack365Dashboard = () => {
         const availableExamsResponse = await pack365Api.getAvailableExams(token);
         
         if (availableExamsResponse.success && availableExamsResponse.exams) {
-          const streamExams = availableExamsResponse.exams.filter((exam: any) => {
-            // Since we don't have stream info in exam response, we'll assume any available exam is for this stream
-            return true;
+          // Check if there are exams for courses in this stream
+          const streamCourses = enrollment.courses || [];
+          const streamExam = availableExamsResponse.exams.find((exam: any) => {
+            return streamCourses.some(course => course._id === exam.courseId);
           });
           
-          if (streamExams.length > 0) {
+          if (streamExam) {
             navigate(`/exam/${stream}`);
           } else {
             toast({
