@@ -21,7 +21,7 @@ import {
   BarChart2,
   Users,
   FileText,
-  RefreshCw
+  Target
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -44,7 +44,6 @@ interface Course {
 }
 
 interface StreamEnrollment {
-  _id: string;
   stream: string;
   enrollmentDate: string;
   expiresAt: string;
@@ -139,96 +138,90 @@ const Pack365StreamLearning = () => {
   const { toast } = useToast();
   const [enrollment, setEnrollment] = useState<StreamEnrollment | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
 
   useEffect(() => {
-    fetchStreamEnrollment();
-    
-    // Check for recent updates from exam completion
-    const checkForUpdates = () => {
-      const lastUpdate = localStorage.getItem('lastEnrollmentUpdate');
-      if (lastUpdate) {
-        const updateTime = new Date(lastUpdate);
-        const now = new Date();
-        const diffMinutes = (now.getTime() - updateTime.getTime()) / (1000 * 60);
-        
-        if (diffMinutes < 5) {
-          console.log('Auto-refreshing due to recent exam completion');
-          fetchStreamEnrollment();
-          localStorage.removeItem('lastEnrollmentUpdate');
-        }
+    const fetchStreamEnrollment = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({ title: 'Authentication Required', variant: 'destructive' });
+        navigate('/login');
+        return;
       }
-    };
 
-    checkForUpdates();
-  }, [stream]);
+      try {
+        setLoading(true);
+        
+        // Fetch enrollments
+        const response = await pack365Api.getMyEnrollments(token);
+        
+        if (response.success && response.enrollments) {
+          const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
+          const currentEnrollment = streamEnrollments.find(
+            (e) => e.stream.toLowerCase() === stream?.toLowerCase()
+          );
 
-  const fetchStreamEnrollment = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast({ title: 'Authentication Required', variant: 'destructive' });
-      navigate('/login');
-      return;
-    }
+          if (currentEnrollment) {
+            // Fetch all courses to get complete course data
+            const coursesResponse = await pack365Api.getAllCourses();
+            if (coursesResponse.success && coursesResponse.data) {
+              const streamCourses = coursesResponse.data.filter(
+                (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
+              );
+              setAllCourses(streamCourses);
+              
+              // Calculate accurate progress
+              let totalWatchedTopics = 0;
+              let totalTopicsInStream = 0;
 
-    try {
-      setLoading(true);
-      
-      // Fetch enrollments
-      const response = await pack365Api.getMyEnrollments(token);
-      
-      if (response.success && response.enrollments) {
-        const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
-        const currentEnrollment = streamEnrollments.find(
-          (e) => e.stream.toLowerCase() === stream?.toLowerCase()
-        );
+              streamCourses.forEach(course => {
+                const courseTopics = course.topics?.length || 0;
+                totalTopicsInStream += courseTopics;
+                
+                // Count watched topics for this course
+                const watchedInCourse = currentEnrollment.topicProgress?.filter(tp => 
+                  tp.courseId.toString() === course._id.toString() && tp.watched
+                ).length || 0;
+                
+                totalWatchedTopics += watchedInCourse;
+              });
 
-        if (currentEnrollment) {
-          // Fetch all courses to get complete course data
-          const coursesResponse = await pack365Api.getAllCourses();
-          if (coursesResponse.success && coursesResponse.data) {
-            const streamCourses = coursesResponse.data.filter(
-              (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
-            );
-            setAllCourses(streamCourses);
-            
-            // Enhance enrollment with complete course data
-            const enhancedEnrollment = {
-              ...currentEnrollment,
-              courses: streamCourses
-            };
-            setEnrollment(enhancedEnrollment);
+              const accurateProgress = totalTopicsInStream > 0 ? 
+                (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
+
+              // Enhance enrollment with accurate data
+              const enhancedEnrollment = {
+                ...currentEnrollment,
+                courses: streamCourses,
+                totalTopics: totalTopicsInStream,
+                watchedTopics: totalWatchedTopics,
+                totalWatchedPercentage: accurateProgress,
+                coursesCount: streamCourses.length
+              };
+              
+              setEnrollment(enhancedEnrollment);
+            } else {
+              setEnrollment(currentEnrollment);
+            }
           } else {
-            setEnrollment(currentEnrollment);
+            toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
+            navigate('/pack365');
           }
         } else {
           toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
           navigate('/pack365');
         }
-      } else {
-        toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
+      } catch (error: any) {
+        console.error('Error fetching stream enrollment:', error);
+        toast({ title: 'Error', description: 'Failed to load enrollment details.', variant: 'destructive' });
         navigate('/pack365');
+      } finally {
+        setLoading(false);
       }
-    } catch (error: any) {
-      console.error('Error fetching stream enrollment:', error);
-      toast({ title: 'Error', description: 'Failed to load enrollment details.', variant: 'destructive' });
-      navigate('/pack365');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+    };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchStreamEnrollment();
-    toast({
-      title: 'Refreshed',
-      description: 'Your progress has been updated.',
-      variant: 'default'
-    });
-  };
+    fetchStreamEnrollment();
+  }, [stream]);
 
   const handleCourseStart = (course: Course) => {
     navigate(`/pack365-learning/${stream}/course`, { 
@@ -241,49 +234,25 @@ const Pack365StreamLearning = () => {
     });
   };
 
-  const handleTakeExam = async () => {
+  const handleTakeExam = () => {
     if (enrollment && enrollment.totalWatchedPercentage >= 80) {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
-        // Check if exams are available for this stream
-        const availableExamsResponse = await pack365Api.getAvailableExams(token);
-        
-        if (availableExamsResponse.success && availableExamsResponse.exams) {
-          // Check if there are exams for courses in this stream
-          const streamExam = availableExamsResponse.exams.find((exam: any) => {
-            return enrollment.courses.some(course => course._id === exam.courseId);
-          });
-          
-          if (streamExam) {
-            navigate(`/exam/${stream}`);
-          } else {
-            toast({
-              title: 'No Exams Available',
-              description: 'No exams are available for this stream yet. Please check back later.',
-              variant: 'destructive'
-            });
-          }
-        } else {
-          toast({
-            title: 'No Exams Available',
-            description: 'No exams are available for this stream yet. Please check back later.',
-            variant: 'destructive'
-          });
-        }
-      } catch (error) {
-        console.error('Error checking exams:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to check exam availability. Please try again.',
-          variant: 'destructive'
-        });
-      }
+      navigate(`/exam/${stream}`);
     } else {
       toast({
         title: 'Not Eligible',
         description: 'You need to complete at least 80% of the stream to take the exam.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleTakeFinalExam = () => {
+    if (enrollment && enrollment.totalWatchedPercentage >= 100) {
+      navigate(`/exam/${stream}/final`);
+    } else {
+      toast({
+        title: 'Not Eligible',
+        description: 'You need to complete 100% of the stream to take the final exam.',
         variant: 'destructive'
       });
     }
@@ -296,7 +265,9 @@ const Pack365StreamLearning = () => {
   const getCourseProgress = (courseId: string) => {
     if (!enrollment?.topicProgress) return 0;
     
-    const courseTopics = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
+    const courseTopics = enrollment.topicProgress.filter(tp => 
+      tp.courseId.toString() === courseId.toString()
+    );
     if (courseTopics.length === 0) return 0;
     
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
@@ -327,24 +298,14 @@ const Pack365StreamLearning = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <Button 
-                onClick={() => navigate('/pack365-dashboard')}
-                variant="outline"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
-              <Button 
-                onClick={handleRefresh}
-                variant="outline"
-                disabled={refreshing}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Refreshing...' : 'Refresh'}
-              </Button>
-            </div>
+            <Button 
+              onClick={() => navigate('/pack365-dashboard')}
+              variant="outline"
+              className="mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
             <h1 className="text-3xl font-bold text-gray-900 capitalize">{stream} Stream</h1>
             <p className="text-gray-600 mt-2">Continue your learning journey</p>
           </div>
@@ -398,63 +359,52 @@ const Pack365StreamLearning = () => {
                 </CardContent>
               </Card>
               
-              {/* Exam Status Card */}
-              <Card className={`shadow-md ${
-                enrollment.isExamCompleted 
-                  ? 'bg-green-50 border-green-200' 
-                  : enrollment.totalWatchedPercentage >= 80 
-                    ? 'bg-gradient-to-r from-green-500 to-teal-500 text-white'
-                    : 'bg-yellow-50 border-yellow-200'
-              }`}>
+              {/* Exam Eligibility Cards */}
+              {enrollment.totalWatchedPercentage >= 80 && (
+                <Card className="shadow-md bg-gradient-to-r from-green-500 to-teal-500 text-white">
                   <CardHeader>
-                      <CardTitle className={`flex items-center gap-2 ${
-                        enrollment.isExamCompleted ? 'text-green-800' : 
-                        enrollment.totalWatchedPercentage >= 80 ? 'text-white' : 'text-yellow-800'
-                      }`}>
-                        <Award className="h-6 w-6"/>
-                        {enrollment.isExamCompleted ? 'Exam Completed' : 
-                         enrollment.totalWatchedPercentage >= 80 ? 'Ready for Exam' : 'Exam Status'}
-                      </CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-6 w-6"/>
+                      Ready for Exam!
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                      {enrollment.isExamCompleted ? (
-                        <>
-                          <p className="mb-2 text-green-700">
-                            Congratulations! You passed the exam with a score of {enrollment.examScore}%.
-                          </p>
-                          <Badge variant="default" className="bg-green-100 text-green-800">
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Exam Completed
-                          </Badge>
-                        </>
-                      ) : enrollment.totalWatchedPercentage >= 80 ? (
-                        <>
-                          <p className="mb-4 text-green-100">
-                            You've completed enough of the stream to take the final exam. Good luck!
-                          </p>
-                          <Button 
-                            variant="secondary" 
-                            className="w-full bg-white text-green-600 hover:bg-green-50"
-                            onClick={handleTakeExam}
-                          >
-                            Take Stream Exam
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <p className="mb-2 text-yellow-700">
-                            Complete {80 - Math.round(enrollment.totalWatchedPercentage)}% more to unlock the exam.
-                          </p>
-                          <div className="w-full bg-yellow-200 rounded-full h-2">
-                            <div 
-                              className="bg-yellow-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${enrollment.totalWatchedPercentage}%` }}
-                            />
-                          </div>
-                        </>
-                      )}
+                    <p className="mb-4 text-green-100">
+                      You've completed enough of the stream to take the exam.
+                    </p>
+                    <Button 
+                      variant="secondary" 
+                      className="w-full bg-white text-green-600 hover:bg-green-50"
+                      onClick={handleTakeExam}
+                    >
+                      Take Stream Exam
+                    </Button>
                   </CardContent>
-              </Card>
+                </Card>
+              )}
+
+              {enrollment.totalWatchedPercentage >= 100 && (
+                <Card className="shadow-md bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Award className="h-6 w-6"/>
+                      Final Exam Available
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="mb-4 text-purple-100">
+                      You've completed all courses! Take the final comprehensive exam.
+                    </p>
+                    <Button 
+                      variant="secondary" 
+                      className="w-full bg-white text-purple-600 hover:bg-purple-50"
+                      onClick={handleTakeFinalExam}
+                    >
+                      Take Final Exam
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </aside>
 
             {/* --- Right Content (Course List) --- */}
@@ -563,6 +513,12 @@ const Pack365StreamLearning = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Current progress:</span>
                       <span className="text-sm font-medium">{Math.round(enrollment.totalWatchedPercentage)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Final exam eligibility:</span>
+                      <Badge variant={enrollment.totalWatchedPercentage >= 100 ? "default" : "secondary"}>
+                        {enrollment.totalWatchedPercentage >= 100 ? 'Eligible' : '100% Required'}
+                      </Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Exam status:</span>
