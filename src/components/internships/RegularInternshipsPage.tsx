@@ -54,7 +54,6 @@ const RegularInternshipsPage = () => {
   });
   const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
-  const [applying, setApplying] = useState(false);
   
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -71,9 +70,22 @@ const RegularInternshipsPage = () => {
     try {
       setLoading(true);
       const response = await fetch('/api/internships');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      
       if (Array.isArray(data)) {
         setInternships(data.filter(internship => internship.status === 'Open'));
+      } else {
+        console.error('Unexpected response format:', data);
+        toast({
+          title: 'Error',
+          description: 'Unexpected response from server',
+          variant: 'destructive'
+        });
       }
     } catch (error) {
       console.error('Error fetching internships:', error);
@@ -136,63 +148,13 @@ const RegularInternshipsPage = () => {
     setShowApplyDialog(true);
   };
 
-  const handleSubmitApplication = async (applicationData: any) => {
-    if (!selectedInternship) return;
-
-    try {
-      setApplying(true);
-      
-      const formData = new FormData();
-      
-      // Add application data
-      const applicantDetails = {
-        name: applicationData.fullName,
-        email: applicationData.email,
-        phone: applicationData.phone,
-        college: applicationData.education,
-        qualification: applicationData.education
-      };
-      
-      formData.append('internshipId', selectedInternship._id);
-      formData.append('applicantDetails', JSON.stringify(applicantDetails));
-      formData.append('portfolioLink', applicationData.portfolioLink || '');
-      
-      // Add resume file
-      if (applicationData.resume) {
-        formData.append('resume', applicationData.resume);
-      }
-
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/internships/applications/apply', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast({
-          title: 'Application Submitted',
-          description: 'Your internship application has been submitted successfully!'
-        });
-        setShowApplyDialog(false);
-        setSelectedInternship(null);
-      } else {
-        throw new Error(result.message || 'Failed to submit application');
-      }
-    } catch (error: any) {
-      console.error('Error submitting application:', error);
-      toast({
-        title: 'Application Failed',
-        description: error.message || 'Failed to submit application. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setApplying(false);
-    }
+  const handleApplicationSuccess = () => {
+    toast({
+      title: 'Success!',
+      description: 'Your application has been submitted successfully.'
+    });
+    // Optionally refresh the internships list
+    fetchInternships();
   };
 
   const isDeadlinePassed = (deadline: string) => {
@@ -231,13 +193,13 @@ const RegularInternshipsPage = () => {
     const isClosed = internship.status !== 'Open';
     
     return (
-      <Card className="h-full flex flex-col">
+      <Card className="h-full flex flex-col hover:shadow-lg transition-shadow">
         <CardHeader>
           <div>
-            <CardTitle className="text-lg mb-1">{internship.title}</CardTitle>
+            <CardTitle className="text-lg mb-1 line-clamp-1">{internship.title}</CardTitle>
             <div className="flex items-center text-sm text-gray-600 mb-2">
               <Building2 className="h-4 w-4 mr-1" />
-              <span>{internship.companyName}</span>
+              <span className="line-clamp-1">{internship.companyName}</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-3">
@@ -246,7 +208,7 @@ const RegularInternshipsPage = () => {
             {internship.location && (
               <Badge variant="outline" className="flex items-center">
                 <MapPin className="h-3 w-3 mr-1" />
-                {internship.location}
+                <span className="line-clamp-1">{internship.location}</span>
               </Badge>
             )}
           </div>
@@ -271,7 +233,7 @@ const RegularInternshipsPage = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Apply Before:</span>
-              <span className={`font-medium flex items-center ${deadlinePassed ? 'text-red-600' : ''}`}>
+              <span className={`font-medium flex items-center ${deadlinePassed ? 'text-red-600' : 'text-green-600'}`}>
                 <Calendar className="h-3 w-3 mr-1" />
                 {new Date(internship.applicationDeadline).toLocaleDateString()}
               </span>
@@ -299,6 +261,7 @@ const RegularInternshipsPage = () => {
             className="w-full" 
             onClick={() => handleApply(internship)}
             disabled={deadlinePassed || isClosed}
+            size="lg"
           >
             {deadlinePassed ? 'Application Closed' : 
              isClosed ? 'Not Accepting Applications' : 'Apply Now'}
@@ -314,7 +277,10 @@ const RegularInternshipsPage = () => {
         <Navbar />
         <div className="min-h-screen bg-gray-50 py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">Loading internships...</div>
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading internships...</p>
+            </div>
           </div>
         </div>
         <Footer />
@@ -453,8 +419,7 @@ const RegularInternshipsPage = () => {
           internship={selectedInternship}
           open={showApplyDialog}
           onOpenChange={setShowApplyDialog}
-          onSubmit={handleSubmitApplication}
-          loading={applying}
+          onSuccess={handleApplicationSuccess}
         />
       </div>
       <Footer />
