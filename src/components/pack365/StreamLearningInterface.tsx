@@ -829,20 +829,6 @@ const StreamLearningInterface = () => {
             <p className="text-gray-600 mt-2">
               Complete all courses and topics to unlock the final exam
             </p>
-            
-            {/* Overall Progress */}
-            <div className="mt-4 bg-white p-4 rounded-lg border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium">Overall Stream Progress</span>
-                <span className="text-lg font-bold text-blue-600">{Math.round(totalWatchedPercentage)}%</span>
-              </div>
-              <Progress value={totalWatchedPercentage} className="h-3" />
-              <div className="flex justify-between text-sm text-gray-500 mt-1">
-                <span>0%</span>
-                <span>Exam: 80%</span>
-                <span>Final: 100%</span>
-              </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -869,10 +855,6 @@ const StreamLearningInterface = () => {
                           {course.topics.length} topics
                         </Badge>
                       </div>
-                      <Progress 
-                        value={getCourseProgress(course._id)} 
-                        className="h-2" 
-                      />
                       <div className="flex justify-between text-xs text-gray-500 mt-1">
                         <span>Progress</span>
                         <span>{Math.round(getCourseProgress(course._id))}%</span>
