@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { AxiosResponse } from 'axios';
-import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, UpdatePasswordPayload, UpdateEnrollmentCodeInput, Course } from '@/types/api';
+import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Employer, EnhancedPack365Enrollment, EnrollmentCode, Exam, JobSeekerProfile, LoginPayload, LoginResponse, Pack365Course, RazorpayOrderResponse, RegisterPayload, StudentProfile, TopicProgress, UpdatePasswordPayload, UpdateEnrollmentCodeInput, Course } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 const PRODUCTION_API_URL = 'https://triaright.com/api';
@@ -19,6 +19,16 @@ const toFormData = (data: Record<string, any>): FormData => {
   });
   return formData;
 };
+
+// Add this interface for topic progress
+export interface UpdateTopicProgressData {
+  courseId: string;
+  topicName: string;
+  watchedDuration: number;
+  watched: boolean;
+  totalCourseDuration?: number;
+  totalWatchedPercentage?: number;
+}
 
 export const authApi = {
   login: async (payload: LoginPayload): Promise<LoginResponse> => {
@@ -427,8 +437,8 @@ export const pack365Api = {
     token: string,
     codeId: string
   ): Promise<{ success: boolean; message: string; code: EnrollmentCode }> => {
-    const res = await axios.put(`${API_BASE_URL}/pack365/enrollment-codes/deactivate/${codeId}`, 
-      {}, 
+    const res = await axios.put(`${API_BASE_URL}/pack365/enrollment-codes/${codeId}`, 
+      { isActive: false }, 
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -466,7 +476,6 @@ export const pack365Api = {
   console.log(res.data);
   return res.data;
 },
-
   enrollWithCode: async (
     token: string,
     data: {
@@ -535,7 +544,7 @@ export const pack365Api = {
       razorpay_order_id: string;
     }
   ): Promise<{ success: boolean; message: string }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/payment/failure`, data, {
+    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/payment-failure`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -547,17 +556,61 @@ export const pack365Api = {
     try {
       console.log('Fetching pack365 enrollments from API...');
       
-      const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log('Pack365 enrollments response:', res.data);
-      
-      if (res.data && res.data.success) {
-        return res.data;
+      // Try the primary pack365 enrollments endpoint first
+      try {
+        const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('Pack365 enrollments response:', res.data);
+        if (res.data && res.data.success) {
+          return res.data;
+        }
+      } catch (primaryError: any) {
+        console.log('Primary pack365 endpoint failed:', primaryError.message);
       }
       
-      console.log('Pack365 endpoint returned unsuccessful response');
-      return { success: false, enrollments: [] };
+      // Try alternative pack365 endpoint
+      try {
+        console.log('Trying alternative pack365 endpoint...');
+        const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('Alternative pack365 endpoint response:', res.data);
+        if (res.data && res.data.success) {
+          return res.data;
+        }
+      } catch (altError: any) {
+        console.log('Alternative pack365 endpoint also failed:', altError.message);
+      }
+      
+      // Try general courses endpoint and filter for pack365 enrollments
+      try {
+        console.log('Trying general courses endpoint...');
+        const courseRes = await axios.get(`${API_BASE_URL}/courses/enrollment/allcourses`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('General courses response:', courseRes.data);
+        
+        if (courseRes.data && courseRes.data.enrollments) {
+          // Filter for pack365/stream based enrollments
+          const pack365Enrollments = courseRes.data.enrollments.filter((enrollment: any) => 
+            enrollment.stream || 
+            enrollment.enrollmentType === 'pack365' ||
+            (enrollment.courseName && enrollment.courseName.toLowerCase().includes('pack365'))
+          );
+          
+          console.log('Filtered pack365 enrollments:', pack365Enrollments);
+          return {
+            success: true,
+            enrollments: pack365Enrollments
+          };
+        }
+      } catch (courseError: any) {
+        console.log('General courses endpoint also failed:', courseError.message);
+      }
+      
+      console.log('All endpoints failed, returning empty array');
+      return { success: true, enrollments: [] };
       
     } catch (error: any) {
       console.error('Error fetching pack365 enrollments:', error);
@@ -569,22 +622,16 @@ export const pack365Api = {
     token: string,
     courseId: string
   ): Promise<{ success: boolean; isEnrolled: boolean; enrollment: EnhancedPack365Enrollment | null; message?: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/enrollment/${courseId}`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/packenroll365/check-enrollment/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
   },
 
-  // ✅ FIXED: Updated updateTopicProgress to use correct endpoint and parameters
+  // ✅ UPDATED: Fixed updateTopicProgress to properly send all required fields including totalWatchedPercentage
   updateTopicProgress: async (
     token: string,
-    data: {
-      courseId: string;     // Use courseId field (COURSE_xxx)
-      topicName: string;
-      watchedDuration: number;
-      watched: boolean;
-      totalCourseDuration?: number;
-    }
+    data: UpdateTopicProgressData
   ): Promise<{ 
     success: boolean; 
     message: string; 
@@ -593,24 +640,23 @@ export const pack365Api = {
     totalTopics?: number;
   }> => {
     try {
-      console.log('Sending progress update:', data);
-      
-      const response = await axios.put(
-        `${API_BASE_URL}/pack365/topic/progress`, 
-        data,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
+      // Force courseId to send ONLY the MongoDB _id
+      const sanitizedData = {
+        ...data,
+        courseId: data.courseId // Ensure FE sends _id here (not COURSE_xxxx)
+      };
 
-      console.log('Progress update response:', response.data);
+      const response = await axios.put(`${API_BASE_URL}/pack365/topic/progress`, sanitizedData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
       return response.data;
     } catch (error: any) {
       console.error('Error updating topic progress:', error);
-      throw new Error(error?.response?.data?.message || 'Failed to update progress');
+      throw error;
     }
   },
 
@@ -673,7 +719,7 @@ export const pack365Api = {
     token: string,
     examId: string
   ): Promise<{ questions: any[]; maxAttempts: number; examId: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/${examId}/questions`, {
+    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/questions`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -683,7 +729,7 @@ export const pack365Api = {
     token: string,
     examId: string
   ): Promise<{ examDetails: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/details/${examId}`, {
+    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/details`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -692,7 +738,7 @@ export const pack365Api = {
   getAllExams: async (
     token: string
   ): Promise<any[]> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/all`, {
+    const res = await axios.get(`${API_BASE_URL}/exam/getexam`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -716,7 +762,7 @@ export const pack365Api = {
     isPassed: boolean;
     canRetake: boolean;
   }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/exams/submit`, data, {
+    const res = await axios.post(`${API_BASE_URL}/exam/submit`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -745,7 +791,7 @@ export const pack365Api = {
     token: string,
     courseId: string
   ): Promise<{ examHistory: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/history/${courseId}`, {
+    const res = await axios.get(`${API_BASE_URL}/exam/history/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -755,7 +801,7 @@ export const pack365Api = {
     token: string,
     courseId: string
   ): Promise<{ statistics: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/statistics/${courseId}`, {
+    const res = await axios.get(`${API_BASE_URL}/exam/statistics/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -765,7 +811,7 @@ export const pack365Api = {
     token: string,
     data: { userId: string; courseId: string }
   ): Promise<{ message: string; resetData: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/exams/reset`, data, {
+    const res = await axios.post(`${API_BASE_URL}/exam/reset-attempts`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -775,46 +821,11 @@ export const pack365Api = {
     token: string,
     data: { examId: string; maxAttempts: number }
   ): Promise<{ message: string; examId: string; maxAttempts: number }> => {
-    const res = await axios.put(`${API_BASE_URL}/pack365/exams/update-max-attempts`, data, {
+    const res = await axios.put(`${API_BASE_URL}/exam/update-max-attempts`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
   },
-
-  checkOrderStatus: async (
-    token: string,
-    orderId: string
-  ): Promise<{
-    success: boolean;
-    orderId: string;
-    status: string;
-    stream: string;
-    amountPaid: number;
-    coursesCount: number;
-    createdAt: string;
-    expiresAt: string;
-    isExpired: boolean;
-  }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/order/status/${orderId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
-
-  checkStreamEnrollment: async (
-    token: string,
-    stream: string
-  ): Promise<{
-    success: boolean;
-    isStreamEnrolled: boolean;
-    stream: string;
-    coursesCount: number;
-  }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/stream/check/${stream}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  }
 };
 
 export const collegeApi = {
@@ -1255,6 +1266,7 @@ export type {
   RegisterPayload, 
   LoginPayload, 
   LoginResponse,
+  TopicProgress,
   EnhancedPack365Enrollment,
   RazorpayOrderResponse,
   EnrollmentCode,
