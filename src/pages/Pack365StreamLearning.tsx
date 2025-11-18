@@ -325,13 +325,6 @@ const Pack365StreamLearning = () => {
                 <CardContent className="flex flex-col items-center">
                   <CircularProgress percentage={enrollment.totalWatchedPercentage || 0} />
                   <p className="text-gray-600 mt-4">Overall Completion</p>
-                  <div className="w-full mt-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Topics Completed</span>
-                      <span>{enrollment.watchedTopics || 0} / {enrollment.totalTopics || 0}</span>
-                    </div>
-                    <Progress value={enrollment.totalTopics ? ((enrollment.watchedTopics / enrollment.totalTopics) * 100) : 0} className="h-2" />
-                  </div>
                 </CardContent>
               </Card>
 
@@ -446,15 +439,6 @@ const Pack365StreamLearning = () => {
                                     Resources
                                   </span>
                                 )}
-                              </div>
-
-                              {/* Course Progress */}
-                              <div className="w-full">
-                                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                  <span>Progress</span>
-                                  <span>{Math.round(courseProgress)}%</span>
-                                </div>
-                                <Progress value={courseProgress} className="h-2" />
                               </div>
                             </div>
                             
