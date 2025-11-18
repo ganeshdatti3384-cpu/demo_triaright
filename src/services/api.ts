@@ -25,7 +25,6 @@ export interface UpdateTopicProgressData {
   courseId: string;
   topicName: string;
   watchedDuration: number;
-  watched: boolean;
   totalCourseDuration?: number;
   totalWatchedPercentage?: number;
 }
