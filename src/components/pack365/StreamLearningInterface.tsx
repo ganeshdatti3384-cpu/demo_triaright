@@ -48,7 +48,7 @@ interface Course {
 }
 
 interface TopicProgress {
-  courseId: string; // will be ObjectId string or stringified
+  courseId: string;
   topicName: string;
   watched: boolean;
   watchedDuration: number;
@@ -72,6 +72,7 @@ const StreamLearningInterface = () => {
   const [videoProgress, setVideoProgress] = useState<number>(0);
   const [isTrackingProgress, setIsTrackingProgress] = useState(false);
   const [totalWatchedPercentage, setTotalWatchedPercentage] = useState<number>(0);
+  const [isPlayerInitializing, setIsPlayerInitializing] = useState(false);
   
   // YouTube Player Refs
   const playerRef = useRef<any>(null);
@@ -81,84 +82,166 @@ const StreamLearningInterface = () => {
   const ytApiLoadedRef = useRef<boolean>(false);
   const isPlayerReadyRef = useRef<boolean>(false);
   const currentVideoIdRef = useRef<string | null>(null);
+  const playerInitTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     loadStreamData();
     loadYouTubeAPI();
     
-    // Cleanup on unmount
     return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-      }
-      if (playerRef.current) {
-        try { playerRef.current.destroy(); } catch (e) {}
-      }
+      cleanupPlayer();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
-  // YouTube player creation effect - FIX: Wait for modal to be fully mounted
-  useEffect(() => {
-    if (isVideoModalOpen && selectedTopic && videoContainerRef.current && window.YT) {
-      const videoId = extractYouTubeVideoId(selectedTopic.link);
-      if (videoId && videoId !== currentVideoIdRef.current) {
-        console.log('Creating YouTube player for video:', videoId);
-        createYouTubePlayer(videoId);
-        currentVideoIdRef.current = videoId;
-      }
+  // Cleanup function for player
+  const cleanupPlayer = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
     }
+    
+    if (playerInitTimeoutRef.current) {
+      clearTimeout(playerInitTimeoutRef.current);
+    }
+    
+    if (playerRef.current) {
+      try { 
+        playerRef.current.stopVideo && playerRef.current.stopVideo();
+        playerRef.current.destroy && playerRef.current.destroy(); 
+      } catch (e) {
+        console.log('Error during player cleanup:', e);
+      }
+      playerRef.current = null;
+    }
+    
+    setIsTrackingProgress(false);
+    lastSavedProgressRef.current = 0;
+    isPlayerReadyRef.current = false;
+    currentVideoIdRef.current = null;
+    setIsPlayerInitializing(false);
+  };
+
+  // Handle modal open/close
+  useEffect(() => {
+    if (isVideoModalOpen && selectedTopic) {
+      // Small delay to ensure modal is fully rendered
+      playerInitTimeoutRef.current = setTimeout(() => {
+        initializePlayer();
+      }, 300);
+    } else {
+      cleanupPlayer();
+    }
+
+    return () => {
+      if (playerInitTimeoutRef.current) {
+        clearTimeout(playerInitTimeoutRef.current);
+      }
+    };
   }, [isVideoModalOpen, selectedTopic]);
 
+  const initializePlayer = () => {
+    if (!selectedTopic) return;
+
+    const videoId = extractYouTubeVideoId(selectedTopic.link);
+    if (!videoId) {
+      toast({
+        title: 'Invalid Video URL',
+        description: 'The video link appears to be invalid.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (videoId === currentVideoIdRef.current && playerRef.current) {
+      // Same video, no need to reinitialize
+      return;
+    }
+
+    currentVideoIdRef.current = videoId;
+    
+    if (window.YT && window.YT.Player) {
+      createYouTubePlayer(videoId);
+    } else {
+      // Wait for API to load
+      console.log('Waiting for YouTube API to load...');
+      setIsPlayerInitializing(true);
+      
+      const checkApiLoaded = setInterval(() => {
+        if (window.YT && window.YT.Player) {
+          clearInterval(checkApiLoaded);
+          createYouTubePlayer(videoId);
+        }
+      }, 100);
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkApiLoaded);
+        if (!window.YT) {
+          setIsPlayerInitializing(false);
+          toast({
+            title: 'YouTube Player Error',
+            description: 'Failed to load YouTube player. Please refresh the page.',
+            variant: 'destructive'
+          });
+        }
+      }, 10000);
+    }
+  };
+
   const loadYouTubeAPI = () => {
-    if (ytApiLoadedRef.current) return; // Already loaded
+    if (ytApiLoadedRef.current || window.YT) return;
+
+    ytApiLoadedRef.current = true;
+
+    // Check if already loaded
+    if (window.YT) {
+      console.log('YouTube API already loaded');
+      return;
+    }
 
     const tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
+    tag.async = true;
+    tag.defer = true;
+    
     const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    if (firstScriptTag && firstScriptTag.parentNode) {
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    } else {
+      document.head.appendChild(tag);
+    }
 
     window.onYouTubeIframeAPIReady = () => {
+      console.log('YouTube API ready callback triggered');
       ytApiLoadedRef.current = true;
-      console.log('YouTube API ready');
       
-      // If modal is already open, create player now that API is loaded
+      // If we have a pending video, initialize the player
       if (isVideoModalOpen && selectedTopic) {
-        const videoId = extractYouTubeVideoId(selectedTopic.link);
-        if (videoId) {
-          setTimeout(() => {
-            createYouTubePlayer(videoId);
-          }, 100);
-        }
+        initializePlayer();
       }
     };
   };
 
   const createYouTubePlayer = (videoId: string) => {
     if (!window.YT || !videoContainerRef.current) {
-      console.log('YouTube API or container not ready, retrying...');
-      setTimeout(() => {
-        if (videoContainerRef.current) {
-          createYouTubePlayer(videoId);
-        }
-      }, 100);
+      console.error('YouTube API or container not ready');
+      setTimeout(() => createYouTubePlayer(videoId), 100);
       return;
     }
 
-    // Reset player ready state
-    isPlayerReadyRef.current = false;
-
-    // Destroy existing player
+    // Cleanup existing player
     if (playerRef.current) {
-      try { 
-        playerRef.current.destroy(); 
+      try {
+        playerRef.current.destroy();
       } catch (e) {
         console.log('Error destroying previous player:', e);
       }
     }
 
-    console.log('Creating YouTube player with video ID:', videoId);
-    
+    console.log('Creating YouTube player for video:', videoId);
+    setIsPlayerInitializing(true);
+
     try {
       playerRef.current = new window.YT.Player(videoContainerRef.current, {
         height: '100%',
@@ -169,7 +252,8 @@ const StreamLearningInterface = () => {
           'controls': 1,
           'rel': 0,
           'modestbranding': 1,
-          'enablejsapi': 1
+          'enablejsapi': 1,
+          'origin': window.location.origin
         },
         events: {
           'onReady': onPlayerReady,
@@ -179,23 +263,44 @@ const StreamLearningInterface = () => {
       });
     } catch (error) {
       console.error('Error creating YouTube player:', error);
+      setIsPlayerInitializing(false);
+      toast({
+        title: 'Player Error',
+        description: 'Failed to create video player. Please try again.',
+        variant: 'destructive'
+      });
     }
   };
 
   const onPlayerReady = (event: any) => {
-    console.log('YouTube Player Ready - events should fire now');
+    console.log('YouTube Player Ready');
     isPlayerReadyRef.current = true;
+    setIsPlayerInitializing(false);
     
-    // Start tracking immediately if video is playing
-    if (playerRef.current && playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
-      setIsTrackingProgress(true);
-      startProgressTracking();
+    // Reset progress tracking
+    lastSavedProgressRef.current = 0;
+    setVideoProgress(0);
+    
+    // Load existing progress for this topic
+    if (selectedTopic && selectedCourse) {
+      const existingProgress = getTopicProgress(selectedCourse._id, selectedTopic.name);
+      if (existingProgress && existingProgress.watchedDuration > 0) {
+        // Seek to last watched position
+        event.target.seekTo(existingProgress.watchedDuration);
+        lastSavedProgressRef.current = existingProgress.watchedDuration;
+        
+        const duration = event.target.getDuration();
+        if (duration > 0) {
+          const progress = (existingProgress.watchedDuration / duration) * 100;
+          setVideoProgress(progress);
+        }
+      }
     }
   };
 
   const onPlayerStateChange = (event: any) => {
     const playerState = event.data;
-    console.log('YouTube Player State Change:', getPlayerStateName(playerState));
+    console.log('YouTube Player State:', getPlayerStateName(playerState));
     
     switch (playerState) {
       case window.YT.PlayerState.PLAYING:
@@ -210,7 +315,11 @@ const StreamLearningInterface = () => {
         setIsTrackingProgress(false);
         markTopicAsCompletedAutomatically();
         break;
+      case window.YT.PlayerState.BUFFERING:
+      case window.YT.PlayerState.CUED:
+        break;
       default:
+        setIsTrackingProgress(false);
         break;
     }
   };
@@ -229,6 +338,7 @@ const StreamLearningInterface = () => {
 
   const onPlayerError = (event: any) => {
     console.error('YouTube Player Error:', event.data);
+    setIsPlayerInitializing(false);
     toast({
       title: 'Video Error',
       description: 'Failed to load video. Please try again.',
@@ -237,27 +347,20 @@ const StreamLearningInterface = () => {
   };
 
   const startProgressTracking = () => {
-    // Clear existing interval
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
     }
 
-    // Start new progress tracking interval - save every 30 seconds
+    // Update progress more frequently for better UX
     progressIntervalRef.current = setInterval(() => {
       updateProgressToBackend();
-    }, 30000); // Update every 30 seconds
+    }, 10000); // Update every 10 seconds
     
     console.log('Progress tracking started');
   };
 
   const updateProgressToBackend = async () => {
     if (!selectedTopic || !selectedCourse || !playerRef.current || !isPlayerReadyRef.current) {
-      console.log('Cannot update progress: missing requirements', {
-        selectedTopic: !!selectedTopic,
-        selectedCourse: !!selectedCourse,
-        playerRef: !!playerRef.current,
-        isPlayerReady: isPlayerReadyRef.current
-      });
       return;
     }
 
@@ -268,18 +371,20 @@ const StreamLearningInterface = () => {
       const currentTime = playerRef.current.getCurrentTime();
       const duration = playerRef.current.getDuration();
       
-      // Only save if progress has meaningfully increased (at least 5 seconds)
-      if (Math.abs(currentTime - lastSavedProgressRef.current) < 5) {
+      if (duration <= 0) return;
+
+      const progress = (currentTime / duration) * 100;
+      
+      // Update UI immediately
+      setVideoProgress(progress);
+
+      // Only save if progress has meaningfully increased (at least 3 seconds)
+      if (Math.abs(currentTime - lastSavedProgressRef.current) < 3) {
         return;
       }
 
-      const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
       const shouldMarkAsWatched = progress >= 90;
 
-      // Update local progress immediately
-      setVideoProgress(progress);
-
-      // Send progress to backend with watched flag
       await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
@@ -303,15 +408,6 @@ const StreamLearningInterface = () => {
         };
         
         if (existingIndex >= 0) {
-          // Keep the longest watchedDuration
-          const existing = prev[existingIndex];
-          if (existing.watchedDuration > updatedProgress.watchedDuration) {
-            updatedProgress.watchedDuration = existing.watchedDuration;
-          }
-          if (existing.watched) {
-            updatedProgress.watched = true;
-          }
-          
           return prev.map((tp, index) => 
             index === existingIndex ? updatedProgress : tp
           );
@@ -335,13 +431,9 @@ const StreamLearningInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Get final duration from player
       const duration = playerRef.current ? 
         Math.floor(playerRef.current.getDuration()) : selectedTopic.duration;
-      const currentTime = playerRef.current ? 
-        Math.floor(playerRef.current.getCurrentTime()) : duration;
 
-      // Use _id for courseId and mark as watched
       const response = await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
@@ -351,7 +443,6 @@ const StreamLearningInterface = () => {
       });
 
       if (response.success) {
-        // Update local state
         setTopicProgress(prev => {
           const existingIndex = prev.findIndex(
             tp => String(tp.topicName) === String(selectedTopic.name) && String(tp.courseId) === String(selectedCourse._id)
@@ -383,7 +474,6 @@ const StreamLearningInterface = () => {
           variant: 'default'
         });
 
-        // Refresh enrollment data after a short delay without resetting local state
         setTimeout(() => {
           loadStreamData();
         }, 500);
@@ -425,7 +515,6 @@ const StreamLearningInterface = () => {
     isPlayerReadyRef.current = false;
     currentVideoIdRef.current = null;
 
-    // Clear any existing interval
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
@@ -448,27 +537,7 @@ const StreamLearningInterface = () => {
   const handleCloseModal = () => {
     setIsVideoModalOpen(false);
     setSelectedTopic(null);
-    
-    // Cleanup
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    
-    if (playerRef.current) {
-      try { 
-        playerRef.current.destroy(); 
-        console.log('YouTube player destroyed');
-      } catch (e) {
-        console.log('Error destroying player:', e);
-      }
-      playerRef.current = null;
-    }
-    
-    setIsTrackingProgress(false);
-    lastSavedProgressRef.current = 0;
-    isPlayerReadyRef.current = false;
-    currentVideoIdRef.current = null;
+    cleanupPlayer();
   };
 
   const loadStreamData = async () => {
@@ -650,9 +719,9 @@ const StreamLearningInterface = () => {
     <>
       <Navbar />
       
-      {/* Video Modal - FIX: Use modal={false} and forceMount */}
-      <Dialog modal={false} open={isVideoModalOpen} onOpenChange={handleCloseModal}>
-        <DialogContent forceMount className="max-w-4xl w-full h-[80vh]">
+      {/* Video Modal */}
+      <Dialog open={isVideoModalOpen} onOpenChange={(open) => !open && handleCloseModal()}>
+        <DialogContent className="max-w-4xl w-full h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>{selectedTopic?.name}</span>
@@ -679,18 +748,15 @@ const StreamLearningInterface = () => {
           <div className="flex-1 flex flex-col">
             {selectedTopic && (
               <>
-                {/* YouTube Video Container - FIX: This will now properly mount */}
+                {/* YouTube Video Container */}
                 <div 
                   ref={videoContainerRef}
-                  className="flex-1 bg-black rounded-lg mb-4"
+                  className="flex-1 bg-black rounded-lg mb-4 flex items-center justify-center"
                 >
-                  {/* YouTube Player will be injected here */}
-                  {!window.YT && (
-                    <div className="w-full h-full flex items-center justify-center text-white">
-                      <div className="text-center">
-                        <Video className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                        <p className="text-lg mb-2">Loading YouTube Player...</p>
-                      </div>
+                  {isPlayerInitializing && (
+                    <div className="text-center text-white">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                      <p className="text-lg">Loading video player...</p>
                     </div>
                   )}
                 </div>
@@ -705,7 +771,12 @@ const StreamLearningInterface = () => {
                   
                   <div className="flex justify-between items-center">
                     <div className="text-sm text-gray-600">
-                      {isTrackingProgress ? (
+                      {isPlayerInitializing ? (
+                        <span className="flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          Initializing player...
+                        </span>
+                      ) : isTrackingProgress ? (
                         <span className="flex items-center">
                           <Clock className="h-4 w-4 mr-1" />
                           Tracking your progress...
@@ -727,7 +798,7 @@ const StreamLearningInterface = () => {
                       onClick={handleManualComplete}
                       variant="default"
                       size="sm"
-                      disabled={!isTrackingProgress}
+                      disabled={!isPlayerReadyRef.current || isPlayerInitializing}
                     >
                       <CheckCircle2 className="h-4 w-4 mr-2" />
                       Mark as Completed
@@ -864,16 +935,10 @@ const StreamLearningInterface = () => {
                         <CardTitle className="text-2xl">{selectedCourse.courseName}</CardTitle>
                         <p className="text-gray-600 mt-1">{selectedCourse.description}</p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <Badge variant="outline">
-                          <Clock className="h-4 w-4 mr-1" />
-                          {selectedCourse.totalDuration} min
-                        </Badge>
-                        {/* Course Progress Badge */}
-                        <Badge variant={getCourseProgress(selectedCourse._id) === 100 ? "default" : "secondary"}>
-                          {Math.round(getCourseProgress(selectedCourse._id))}% Complete
-                        </Badge>
-                      </div>
+                      <Badge variant="outline">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {selectedCourse.totalDuration} min
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -940,7 +1005,7 @@ const StreamLearningInterface = () => {
                                     )}
                                     {watchedDuration > 0 && !isWatched && (
                                       <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                                        In Progress
+                                        In Progress ({Math.round((watchedDuration / topic.duration) * 100)}%)
                                       </Badge>
                                     )}
                                   </div>
