@@ -111,7 +111,7 @@ const Pack365Dashboard = () => {
               course.stream?.toLowerCase() === enrollment.stream.toLowerCase()
             );
             
-            // Calculate accurate progress based on actual watched topics
+            // Calculate accurate progress based on actual watched topics with watched=true
             let totalWatchedTopics = 0;
             let totalTopicsInStream = 0;
 
@@ -119,9 +119,9 @@ const Pack365Dashboard = () => {
               const courseTopics = course.topics?.length || 0;
               totalTopicsInStream += courseTopics;
               
-              // Count watched topics for this course
+              // Count watched topics for this course using watched=true
               const watchedInCourse = enrollment.topicProgress?.filter(tp => 
-                tp.courseId.toString() === course._id.toString() && tp.watched
+                tp.courseId.toString() === course._id.toString() && tp.watched === true
               ).length || 0;
               
               totalWatchedTopics += watchedInCourse;
@@ -237,7 +237,7 @@ const Pack365Dashboard = () => {
     );
     if (courseTopics.length === 0) return 0;
     
-    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
+    const watchedTopics = courseTopics.filter(tp => tp.watched === true).length;
     return (watchedTopics / courseTopics.length) * 100;
   };
 
