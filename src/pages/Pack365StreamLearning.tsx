@@ -179,8 +179,8 @@ const Pack365StreamLearning = () => {
                 totalTopicsInStream += courseTopics;
                 
                 // Count watched topics for this course
-                const watchedInCourse = currentEnrollment.topicProgress?.filter(tp => 
-                  tp.courseId.toString() === course._id.toString() && tp.watched
+                const watchedInCourse = (currentEnrollment.topicProgress || []).filter((tp: any) => 
+                  String(tp.courseId) === String(course._id) && tp.watched
                 ).length || 0;
                 
                 totalWatchedTopics += watchedInCourse;
@@ -265,8 +265,8 @@ const Pack365StreamLearning = () => {
   const getCourseProgress = (courseId: string) => {
     if (!enrollment?.topicProgress) return 0;
     
-    const courseTopics = enrollment.topicProgress.filter(tp => 
-      tp.courseId.toString() === courseId.toString()
+    const courseTopics = (enrollment.topicProgress || []).filter(tp => 
+      String(tp.courseId) === String(courseId)
     );
     if (courseTopics.length === 0) return 0;
     
@@ -330,7 +330,7 @@ const Pack365StreamLearning = () => {
                       <span>Topics Completed</span>
                       <span>{enrollment.watchedTopics || 0} / {enrollment.totalTopics || 0}</span>
                     </div>
-                    <Progress value={(enrollment.watchedTopics / enrollment.totalTopics) * 100} className="h-2" />
+                    <Progress value={enrollment.totalTopics ? ((enrollment.watchedTopics / enrollment.totalTopics) * 100) : 0} className="h-2" />
                   </div>
                 </CardContent>
               </Card>
