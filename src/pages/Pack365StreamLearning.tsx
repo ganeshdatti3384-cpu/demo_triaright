@@ -5,7 +5,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -262,18 +261,6 @@ const Pack365StreamLearning = () => {
     year: 'numeric', month: 'long', day: 'numeric'
   });
 
-  const getCourseProgress = (courseId: string) => {
-    if (!enrollment?.topicProgress) return 0;
-    
-    const courseTopics = (enrollment.topicProgress || []).filter(tp => 
-      String(tp.courseId) === String(courseId)
-    );
-    if (courseTopics.length === 0) return 0;
-    
-    const watchedTopics = courseTopics.filter(tp => tp.watched === true).length;
-    return (watchedTopics / courseTopics.length) * 100;
-  };
-
   if (loading) {
     return <SkeletonLoader />;
   }
@@ -325,13 +312,6 @@ const Pack365StreamLearning = () => {
                 <CardContent className="flex flex-col items-center">
                   <CircularProgress percentage={enrollment.totalWatchedPercentage || 0} />
                   <p className="text-gray-600 mt-4">Overall Completion</p>
-                  <div className="w-full mt-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Topics Completed</span>
-                      <span>{enrollment.watchedTopics || 0} / {enrollment.totalTopics || 0}</span>
-                    </div>
-                    <Progress value={enrollment.totalTopics ? ((enrollment.watchedTopics / enrollment.totalTopics) * 100) : 0} className="h-2" />
-                  </div>
                 </CardContent>
               </Card>
 
@@ -349,8 +329,8 @@ const Pack365StreamLearning = () => {
                       <span className="font-semibold text-gray-800">{enrollment.coursesCount}</span>
                    </div>
                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4"/>Topics Completed</span>
-                      <span className="font-semibold text-gray-800">{enrollment.watchedTopics} / {enrollment.totalTopics}</span>
+                      <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4"/>Topics</span>
+                      <span className="font-semibold text-gray-800">{enrollment.totalTopics}</span>
                    </div>
                    <div className="flex items-center justify-between">
                       <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4"/>Access Until</span>
@@ -416,74 +396,43 @@ const Pack365StreamLearning = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {enrollment.courses && enrollment.courses.length > 0 ? (
-                    enrollment.courses.map((course) => {
-                      const courseProgress = getCourseProgress(course._id);
-                      
-                      return (
-                        <div key={course.courseId} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
-                          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between mb-3">
-                                <h3 className="font-semibold text-gray-800 text-lg">{course.courseName}</h3>
-                                <Badge variant={courseProgress === 100 ? "default" : "secondary"}>
-                                  {courseProgress === 100 ? 'Completed' : `${Math.round(courseProgress)}%`}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
-                              
-                              <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
-                                <span className="flex items-center gap-1.5">
-                                  <Clock className="h-4 w-4" /> 
-                                  {course.totalDuration} minutes
-                                </span>
-                                <span className="flex items-center gap-1.5">
-                                  <BookOpen className="h-4 w-4" /> 
-                                  {course.topics?.length || 0} topics
-                                </span>
-                                {course.documentLink && (
-                                  <span className="flex items-center gap-1.5">
-                                    <FileText className="h-4 w-4" /> 
-                                    Resources
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Course Progress */}
-                              <div className="w-full">
-                                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                  <span>Progress</span>
-                                  <span>{Math.round(courseProgress)}%</span>
-                                </div>
-                                <Progress value={courseProgress} className="h-2" />
-                              </div>
+                    enrollment.courses.map((course) => (
+                      <div key={course.courseId} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between mb-3">
+                              <h3 className="font-semibold text-gray-800 text-lg">{course.courseName}</h3>
+                              <Badge variant="secondary">
+                                {course.topics?.length || 0} topics
+                              </Badge>
                             </div>
+                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
                             
-                            <Button 
-                              onClick={() => handleCourseStart(course)}
-                              className="w-full sm:w-auto flex-shrink-0"
-                              variant={courseProgress === 100 ? "outline" : "default"}
-                            >
-                              {courseProgress === 100 ? (
-                                <>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  Completed
-                                </>
-                              ) : courseProgress > 0 ? (
-                                <>
-                                  <Play className="h-4 w-4 mr-2" />
-                                  Continue
-                                </>
-                              ) : (
-                                <>
-                                  <Play className="h-4 w-4 mr-2" />
-                                  Start Learning
-                                </>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
+                              <span className="flex items-center gap-1.5">
+                                <Clock className="h-4 w-4" /> 
+                                {course.totalDuration} minutes
+                              </span>
+                              {course.documentLink && (
+                                <span className="flex items-center gap-1.5">
+                                  <FileText className="h-4 w-4" /> 
+                                  Resources
+                                </span>
                               )}
-                            </Button>
+                            </div>
                           </div>
+                          
+                          <Button 
+                            onClick={() => handleCourseStart(course)}
+                            className="w-full sm:w-auto flex-shrink-0"
+                            variant="default"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Start Learning
+                          </Button>
                         </div>
-                      );
-                    })
+                      </div>
+                    ))
                   ) : (
                     <div className="text-center py-8">
                       <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
