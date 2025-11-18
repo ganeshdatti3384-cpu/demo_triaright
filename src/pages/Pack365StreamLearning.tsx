@@ -32,7 +32,7 @@ interface Course {
   description: string;
   totalDuration: number;
   topicsCount: number;
-  _id?: string;
+  _id: string;
   stream: string;
   topics: Array<{
     name: string;
@@ -40,13 +40,6 @@ interface Course {
     duration: number;
   }>;
   documentLink?: string;
-}
-
-interface TopicProgressItem {
-  courseId: any; // could be ObjectId or string
-  topicName: string;
-  watched: boolean;
-  watchedDuration: number;
 }
 
 interface StreamEnrollment {
@@ -59,9 +52,13 @@ interface StreamEnrollment {
   coursesCount: number;
   totalTopics: number;
   watchedTopics: number;
-  courses: Course[]; // will be replaced with authoritative course objects from API
-  topicProgress: TopicProgressItem[];
-  totalCourseDuration?: number;
+  courses: Course[];
+  topicProgress: Array<{
+    courseId: string;
+    topicName: string;
+    watched: boolean;
+    watchedDuration: number;
+  }>;
 }
 
 // --- Helper Components ---
@@ -153,89 +150,66 @@ const Pack365StreamLearning = () => {
 
       try {
         setLoading(true);
-
-        // 1. Fetch enrollments
+        
+        // Fetch enrollments
         const response = await pack365Api.getMyEnrollments(token);
+        
+        if (response.success && response.enrollments) {
+          const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
+          const currentEnrollment = streamEnrollments.find(
+            (e) => e.stream.toLowerCase() === stream?.toLowerCase()
+          );
 
-        if (!response || !response.success) {
-          toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
-          navigate('/pack365');
-          return;
-        }
+          if (currentEnrollment) {
+            // Fetch all courses to get complete course data
+            const coursesResponse = await pack365Api.getAllCourses();
+            if (coursesResponse.success && coursesResponse.data) {
+              const streamCourses = coursesResponse.data.filter(
+                (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
+              );
+              setAllCourses(streamCourses);
+              
+              // Calculate accurate progress using watched flags
+              let totalWatchedTopics = 0;
+              let totalTopicsInStream = 0;
 
-        const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
-        const currentEnrollment = streamEnrollments.find(
-          (e) => e.stream && e.stream.toLowerCase() === stream?.toLowerCase()
-        );
+              streamCourses.forEach(course => {
+                const courseTopics = course.topics?.length || 0;
+                totalTopicsInStream += courseTopics;
+                
+                // Count watched topics for this course using watched=true
+                const watchedInCourse = (currentEnrollment.topicProgress || []).filter((tp: any) => 
+                  String(tp.courseId) === String(course._id) && tp.watched === true
+                ).length || 0;
+                
+                totalWatchedTopics += watchedInCourse;
+              });
 
-        if (!currentEnrollment) {
-          toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
-          navigate('/pack365');
-          return;
-        }
+              const accurateProgress = totalTopicsInStream > 0 ? 
+                (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
 
-        // 2. Fetch all courses and filter by stream (authoritative course data)
-        const coursesResponse = await pack365Api.getAllCourses();
-        if (!coursesResponse || !coursesResponse.success || !coursesResponse.data) {
-          // If unable to fetch courses, still show current enrollment (best-effort)
-          setEnrollment(currentEnrollment);
-          return;
-        }
-
-        const coursesData = coursesResponse.data as Course[];
-        // Normalize filter by stream case-insensitive
-        const streamCourses = coursesData.filter((course) =>
-          String(course.stream || '').toLowerCase() === stream?.toLowerCase()
-        );
-
-        setAllCourses(streamCourses);
-
-        // 3. Compute progress accurately using duration (preferred) and fallback to topic-count
-        const streamCourseIdSet = new Set(streamCourses.map((c) => String(c._id || c._id)));
-        const totalTopicsInStream = streamCourses.reduce((sum, c) => sum + (c.topics?.length || 0), 0);
-        const totalStreamDuration = streamCourses.reduce((sum, c) => sum + (c.totalDuration || 0), 0);
-
-        // Count watched topics that belong to this stream
-        const topicProgress = currentEnrollment.topicProgress || [];
-        let watchedTopicsInStream = 0;
-        let watchedDurationInStream = 0;
-
-        for (const tp of topicProgress) {
-          const tpCourseIdStr = String((tp.courseId && (tp.courseId._id || tp.courseId)) || tp.courseId);
-          if (streamCourseIdSet.has(tpCourseIdStr)) {
-            if (tp.watched) watchedTopicsInStream += 1;
-            watchedDurationInStream += Number(tp.watchedDuration || 0);
+              // Enhance enrollment with accurate data
+              const enhancedEnrollment = {
+                ...currentEnrollment,
+                courses: streamCourses,
+                totalTopics: totalTopicsInStream,
+                watchedTopics: totalWatchedTopics,
+                totalWatchedPercentage: accurateProgress,
+                coursesCount: streamCourses.length
+              };
+              
+              setEnrollment(enhancedEnrollment);
+            } else {
+              setEnrollment(currentEnrollment);
+            }
+          } else {
+            toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
+            navigate('/pack365');
           }
+        } else {
+          toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
+          navigate('/pack365');
         }
-
-        // Duration-based percentage (matches backend logic)
-        const durationPercent = totalStreamDuration > 0
-          ? (watchedDurationInStream / totalStreamDuration) * 100
-          : null;
-
-        // Topic-count-based percentage (fallback)
-        const topicPercent = totalTopicsInStream > 0
-          ? (watchedTopicsInStream / totalTopicsInStream) * 100
-          : 0;
-
-        // Prefer durationPercent when meaningful, else fallback to topicPercent
-        const accurateProgress = durationPercent !== null ? durationPercent : topicPercent;
-
-        // Ensure percentage within 0-100 bounds
-        const normalizedProgress = Math.max(0, Math.min(100, accurateProgress || 0));
-
-        // 4. Enhance enrollment object to reflect authoritative data
-        const enhancedEnrollment: StreamEnrollment = {
-          ...currentEnrollment,
-          courses: streamCourses,
-          totalTopics: totalTopicsInStream,
-          watchedTopics: watchedTopicsInStream,
-          totalWatchedPercentage: Math.round(normalizedProgress * 100) / 100, // keep two decimals max
-          coursesCount: streamCourses.length,
-          totalCourseDuration: totalStreamDuration
-        };
-
-        setEnrollment(enhancedEnrollment);
       } catch (error: any) {
         console.error('Error fetching stream enrollment:', error);
         toast({ title: 'Error', description: 'Failed to load enrollment details.', variant: 'destructive' });
@@ -249,13 +223,13 @@ const Pack365StreamLearning = () => {
   }, [stream]);
 
   const handleCourseStart = (course: Course) => {
-    navigate(`/pack365-learning/${stream}/course`, {
-      state: {
+    navigate(`/pack365-learning/${stream}/course`, { 
+      state: { 
         selectedCourse: course,
         selectedCourseId: course.courseId,
         streamName: stream,
         enrollment: enrollment
-      }
+      } 
     });
   };
 
@@ -311,7 +285,7 @@ const Pack365StreamLearning = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <Button
+            <Button 
               onClick={() => navigate('/pack365-dashboard')}
               variant="outline"
               className="mb-4"
@@ -325,7 +299,7 @@ const Pack365StreamLearning = () => {
 
           {/* --- Main Content Grid --- */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-
+            
             {/* --- Left Sidebar (Sticky) --- */}
             <aside className="lg:col-span-1 lg:sticky lg:top-24 space-y-6">
               <Card className="shadow-md">
@@ -337,40 +311,40 @@ const Pack365StreamLearning = () => {
                 </CardHeader>
                 <CardContent className="flex flex-col items-center">
                   <CircularProgress percentage={enrollment.totalWatchedPercentage || 0} />
-                  <p className="text-gray-600 mt-4">Overall Completion (duration-based)</p>
+                  <p className="text-gray-600 mt-4">Overall Completion</p>
                 </CardContent>
               </Card>
 
               <Card className="shadow-md">
                 <CardHeader>
-                  <CardTitle className="text-lg">Key Information</CardTitle>
+                   <CardTitle className="text-lg">Key Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500 flex items-center gap-2"><Calendar className="h-4 w-4" />Enrolled On</span>
-                    <span className="font-semibold text-gray-800">{formatDate(enrollment.enrollmentDate)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500 flex items-center gap-2"><BookOpen className="h-4 w-4" />Total Courses</span>
-                    <span className="font-semibold text-gray-800">{enrollment.coursesCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4" />Topics</span>
-                    <span className="font-semibold text-gray-800">{enrollment.totalTopics}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4" />Access Until</span>
-                    <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
-                  </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-gray-500 flex items-center gap-2"><Calendar className="h-4 w-4"/>Enrolled On</span>
+                      <span className="font-semibold text-gray-800">{formatDate(enrollment.enrollmentDate)}</span>
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-gray-500 flex items-center gap-2"><BookOpen className="h-4 w-4"/>Total Courses</span>
+                      <span className="font-semibold text-gray-800">{enrollment.coursesCount}</span>
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4"/>Topics</span>
+                      <span className="font-semibold text-gray-800">{enrollment.totalTopics}</span>
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4"/>Access Until</span>
+                      <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
+                   </div>
                 </CardContent>
               </Card>
-
+              
               {/* Exam Eligibility Cards */}
               {enrollment.totalWatchedPercentage >= 80 && (
                 <Card className="shadow-md bg-gradient-to-r from-green-500 to-teal-500 text-white">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Target className="h-6 w-6" />
+                      <Target className="h-6 w-6"/>
                       Ready for Exam!
                     </CardTitle>
                   </CardHeader>
@@ -378,8 +352,8 @@ const Pack365StreamLearning = () => {
                     <p className="mb-4 text-green-100">
                       You've completed enough of the stream to take the exam.
                     </p>
-                    <Button
-                      variant="secondary"
+                    <Button 
+                      variant="secondary" 
                       className="w-full bg-white text-green-600 hover:bg-green-50"
                       onClick={handleTakeExam}
                     >
@@ -393,7 +367,7 @@ const Pack365StreamLearning = () => {
                 <Card className="shadow-md bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Award className="h-6 w-6" />
+                      <Award className="h-6 w-6"/>
                       Final Exam Available
                     </CardTitle>
                   </CardHeader>
@@ -401,8 +375,8 @@ const Pack365StreamLearning = () => {
                     <p className="mb-4 text-purple-100">
                       You've completed all courses! Take the final comprehensive exam.
                     </p>
-                    <Button
-                      variant="secondary"
+                    <Button 
+                      variant="secondary" 
                       className="w-full bg-white text-purple-600 hover:bg-purple-50"
                       onClick={handleTakeFinalExam}
                     >
@@ -433,22 +407,22 @@ const Pack365StreamLearning = () => {
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
-
+                            
                             <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
                               <span className="flex items-center gap-1.5">
-                                <Clock className="h-4 w-4" />
+                                <Clock className="h-4 w-4" /> 
                                 {course.totalDuration} minutes
                               </span>
                               {course.documentLink && (
                                 <span className="flex items-center gap-1.5">
-                                  <FileText className="h-4 w-4" />
+                                  <FileText className="h-4 w-4" /> 
                                   Resources
                                 </span>
                               )}
                             </div>
                           </div>
-
-                          <Button
+                          
+                          <Button 
                             onClick={() => handleCourseStart(course)}
                             className="w-full sm:w-auto flex-shrink-0"
                             variant="default"
@@ -500,14 +474,6 @@ const Pack365StreamLearning = () => {
                       <Badge variant={enrollment.isExamCompleted ? "default" : "outline"}>
                         {enrollment.isExamCompleted ? `Completed (${enrollment.examScore}%)` : 'Not Taken'}
                       </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Topics completed:</span>
-                      <span className="text-sm font-medium">{enrollment.watchedTopics}/{enrollment.totalTopics}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Total stream duration (mins):</span>
-                      <span className="text-sm font-medium">{Math.round((enrollment.totalCourseDuration || 0))}</span>
                     </div>
                   </div>
                 </CardContent>
