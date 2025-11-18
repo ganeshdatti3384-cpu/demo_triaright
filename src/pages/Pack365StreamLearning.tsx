@@ -160,12 +160,16 @@ const VideoLearningModal = ({
   isOpen, 
   onClose, 
   selectedTopic, 
-  selectedCourse 
+  selectedCourse,
+  enrollment,
+  onProgressUpdate
 }: { 
   isOpen: boolean;
   onClose: () => void;
   selectedTopic: Topic | null;
   selectedCourse: Course | null;
+  enrollment: StreamEnrollment | null;
+  onProgressUpdate: () => void;
 }) => {
   const { toast } = useToast();
   const [videoProgress, setVideoProgress] = useState<number>(0);
@@ -181,6 +185,24 @@ const VideoLearningModal = ({
   const isPlayerReadyRef = useRef<boolean>(false);
   const currentVideoIdRef = useRef<string | null>(null);
   const playerInitTimeoutRef = useRef<any>(null);
+
+  // Calculate total course duration in seconds (convert minutes to seconds)
+  const calculateTotalCourseDuration = () => {
+    if (!selectedCourse || !enrollment) return 0;
+    
+    // Convert totalDuration from minutes to seconds
+    return selectedCourse.totalDuration * 60;
+  };
+
+  // Calculate total watched percentage across all courses
+  const calculateTotalWatchedPercentage = (newWatchedTopics: number = 0) => {
+    if (!enrollment) return 0;
+    
+    const totalWatchedTopics = enrollment.watchedTopics + newWatchedTopics;
+    const totalTopics = enrollment.totalTopics;
+    
+    return totalTopics > 0 ? (totalWatchedTopics / totalTopics) * 100 : 0;
+  };
 
   // Cleanup function for player
   const cleanupPlayer = () => {
@@ -370,12 +392,20 @@ const VideoLearningModal = ({
     setVideoProgress(0);
     
     // Load existing progress for this topic
-    if (selectedTopic && selectedCourse) {
-      const token = localStorage.getItem('token');
-      if (token) {
-        // In a real implementation, you would fetch the existing progress from the backend
-        // For now, we'll just start from the beginning
-        event.target.seekTo(0);
+    if (selectedTopic && selectedCourse && enrollment) {
+      const existingProgress = enrollment.topicProgress.find(
+        tp => String(tp.courseId) === String(selectedCourse._id) && 
+              String(tp.topicName) === String(selectedTopic.name)
+      );
+      
+      if (existingProgress && existingProgress.watchedDuration > 0) {
+        const duration = event.target.getDuration();
+        if (duration > 0) {
+          const seekTime = Math.min(existingProgress.watchedDuration, duration - 5); // Don't start at the very end
+          event.target.seekTo(seekTime);
+          const progress = (seekTime / duration) * 100;
+          setVideoProgress(progress);
+        }
       }
     }
   };
@@ -442,7 +472,7 @@ const VideoLearningModal = ({
   };
 
   const updateProgressToBackend = async () => {
-    if (!selectedTopic || !selectedCourse || !playerRef.current || !isPlayerReadyRef.current) {
+    if (!selectedTopic || !selectedCourse || !playerRef.current || !isPlayerReadyRef.current || !enrollment) {
       return;
     }
 
@@ -466,40 +496,65 @@ const VideoLearningModal = ({
       }
 
       const shouldMarkAsWatched = progress >= 90;
+      const totalCourseDuration = calculateTotalCourseDuration();
+      const totalWatchedPercentage = calculateTotalWatchedPercentage(shouldMarkAsWatched ? 1 : 0);
 
-      await pack365Api.updateTopicProgress(token, {
+      const updateData = {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
         watchedDuration: Math.floor(currentTime),
         watched: shouldMarkAsWatched,
-        totalCourseDuration: Math.floor(duration)
-      });
+        totalCourseDuration: totalCourseDuration,
+        totalWatchedPercentage: totalWatchedPercentage
+      };
 
-      lastSavedProgressRef.current = currentTime;
-      console.log('Progress updated:', progress.toFixed(2) + '%');
+      console.log('Sending progress update:', updateData);
+
+      const response = await pack365Api.updateTopicProgress(token, updateData);
+
+      if (response.success) {
+        lastSavedProgressRef.current = currentTime;
+        console.log('Progress updated successfully:', progress.toFixed(2) + '%');
+        
+        // Refresh progress data in parent component
+        onProgressUpdate();
+      }
 
     } catch (error: any) {
       console.error('Error updating progress:', error);
+      toast({
+        title: 'Progress Update Failed',
+        description: 'Could not save your progress. Please check your connection.',
+        variant: 'destructive'
+      });
     }
   };
 
   const markTopicAsCompletedAutomatically = async () => {
-    if (!selectedTopic || !selectedCourse) return;
+    if (!selectedTopic || !selectedCourse || !enrollment) return;
 
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
       const duration = playerRef.current ? 
-        Math.floor(playerRef.current.getDuration()) : selectedTopic.duration;
+        Math.floor(playerRef.current.getDuration()) : selectedTopic.duration * 60; // Convert minutes to seconds
 
-      const response = await pack365Api.updateTopicProgress(token, {
+      const totalCourseDuration = calculateTotalCourseDuration();
+      const totalWatchedPercentage = calculateTotalWatchedPercentage(1); // Add 1 watched topic
+
+      const updateData = {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
         watchedDuration: duration,
         watched: true,
-        totalCourseDuration: Math.floor(duration)
-      });
+        totalCourseDuration: totalCourseDuration,
+        totalWatchedPercentage: totalWatchedPercentage
+      };
+
+      console.log('Marking topic as completed:', updateData);
+
+      const response = await pack365Api.updateTopicProgress(token, updateData);
 
       if (response.success) {
         setIsTrackingProgress(false);
@@ -510,6 +565,9 @@ const VideoLearningModal = ({
           description: `"${selectedTopic.name}" has been marked as completed.`,
           variant: 'default'
         });
+
+        // Refresh progress data in parent component
+        onProgressUpdate();
 
         // Close modal after completion
         setTimeout(() => {
@@ -665,135 +723,107 @@ const Pack365StreamLearning = () => {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isLearningView, setIsLearningView] = useState(false);
 
-  // Calculate progress based on backend data structure
-  const calculateStreamProgress = (enrollmentData: any, streamCourses: Course[]) => {
-    let totalWatchedTopics = 0;
-    let totalTopicsInStream = 0;
+  const fetchStreamEnrollment = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({ title: 'Authentication Required', variant: 'destructive' });
+      navigate('/login');
+      return;
+    }
 
-    streamCourses.forEach(course => {
-      const courseTopics = course.topics?.length || 0;
-      totalTopicsInStream += courseTopics;
+    try {
+      setLoading(true);
       
-      // Count watched topics - match backend structure
-      const watchedInCourse = (enrollmentData.topicProgress || []).filter((tp: any) => {
-        // Match course by ID (check both _id and courseId)
-        const courseIdMatches = 
-          String(tp.courseId) === String(course._id) || 
-          String(tp.courseId) === String(course.courseId);
-        
-        // Check if topic is watched - use the correct field from backend
-        return courseIdMatches && (
-          tp.watched === true || 
-          (tp.watchedDuration > 0 && tp.watchedDuration >= (course.totalDuration * 0.9)) // 90% watched
+      // Fetch enrollments
+      const response = await pack365Api.getMyEnrollments(token);
+      
+      if (response.success && response.enrollments) {
+        const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
+        const currentEnrollment = streamEnrollments.find(
+          (e) => e.stream.toLowerCase() === stream?.toLowerCase()
         );
-      }).length;
-      
-      totalWatchedTopics += watchedInCourse;
-    });
 
-    return {
-      totalTopics: totalTopicsInStream,
-      watchedTopics: totalWatchedTopics,
-      progressPercentage: totalTopicsInStream > 0 ? 
-        (totalWatchedTopics / totalTopicsInStream) * 100 : 0
-    };
-  };
+        if (currentEnrollment) {
+          // Fetch all courses to get complete course data
+          const coursesResponse = await pack365Api.getAllCourses();
+          if (coursesResponse.success && coursesResponse.data) {
+            const streamCourses = coursesResponse.data.filter(
+              (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
+            );
+            setAllCourses(streamCourses);
+            
+            // Calculate accurate progress using watched flags
+            let totalWatchedTopics = 0;
+            let totalTopicsInStream = 0;
 
-  useEffect(() => {
-    const fetchStreamEnrollment = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast({ title: 'Authentication Required', variant: 'destructive' });
-        navigate('/login');
-        return;
-      }
-
-      try {
-        setLoading(true);
-        
-        // Fetch enrollments
-        const response = await pack365Api.getMyEnrollments(token);
-        
-        if (response.success && response.enrollments) {
-          const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
-          const currentEnrollment = streamEnrollments.find(
-            (e) => e.stream.toLowerCase() === stream?.toLowerCase()
-          );
-
-          console.log('🔍 Found enrollment:', currentEnrollment);
-          console.log('📊 All enrollments:', streamEnrollments);
-
-          if (currentEnrollment) {
-            // Fetch all courses to get complete course data
-            const coursesResponse = await pack365Api.getAllCourses();
-            if (coursesResponse.success && coursesResponse.data) {
-              const streamCourses = coursesResponse.data.filter(
-                (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
-              );
-              setAllCourses(streamCourses);
+            streamCourses.forEach(course => {
+              const courseTopics = course.topics?.length || 0;
+              totalTopicsInStream += courseTopics;
               
-              console.log('📚 Stream courses:', streamCourses);
-              console.log('🎯 Topic progress:', currentEnrollment.topicProgress);
-
-              // Calculate accurate progress using the helper function
-              const progressData = calculateStreamProgress(currentEnrollment, streamCourses);
-
-              console.log('📈 Calculated progress:', progressData);
-
-              // Enhance enrollment with accurate data
-              const enhancedEnrollment = {
-                ...currentEnrollment,
-                courses: streamCourses,
-                totalTopics: progressData.totalTopics,
-                watchedTopics: progressData.watchedTopics,
-                totalWatchedPercentage: progressData.progressPercentage,
-                coursesCount: streamCourses.length
-              };
+              // Count watched topics for this course using watched=true
+              const watchedInCourse = (currentEnrollment.topicProgress || []).filter((tp: any) => 
+                String(tp.courseId) === String(course._id) && tp.watched === true
+              ).length || 0;
               
-              setEnrollment(enhancedEnrollment);
+              totalWatchedTopics += watchedInCourse;
+            });
 
-              // Check if we're coming from course selection to open learning view
-              const selectedCourseFromState = (location.state as any)?.selectedCourse;
-              const selectedCourseId = (location.state as any)?.selectedCourseId;
-              
-              if (selectedCourseFromState || selectedCourseId) {
-                setIsLearningView(true);
-                if (selectedCourseFromState) {
-                  setSelectedCourse(selectedCourseFromState);
-                } else if (selectedCourseId) {
-                  const course = streamCourses.find((c: Course) => c.courseId === selectedCourseId);
-                  setSelectedCourse(course || streamCourses[0]);
-                }
+            const accurateProgress = totalTopicsInStream > 0 ? 
+              (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
+
+            // Enhance enrollment with accurate data
+            const enhancedEnrollment = {
+              ...currentEnrollment,
+              courses: streamCourses,
+              totalTopics: totalTopicsInStream,
+              watchedTopics: totalWatchedTopics,
+              totalWatchedPercentage: accurateProgress,
+              coursesCount: streamCourses.length
+            };
+            
+            setEnrollment(enhancedEnrollment);
+
+            // Check if we're coming from course selection to open learning view
+            const selectedCourseFromState = (location.state as any)?.selectedCourse;
+            const selectedCourseId = (location.state as any)?.selectedCourseId;
+            
+            if (selectedCourseFromState || selectedCourseId) {
+              setIsLearningView(true);
+              if (selectedCourseFromState) {
+                setSelectedCourse(selectedCourseFromState);
+              } else if (selectedCourseId) {
+                const course = streamCourses.find((c: Course) => c.courseId === selectedCourseId);
+                setSelectedCourse(course || streamCourses[0]);
               }
-
-              // Set topic progress
-              const normalizedTopicProgress = (currentEnrollment.topicProgress || []).map((tp: any) => ({
-                ...tp,
-                courseId: String(tp.courseId)
-              }));
-              setTopicProgress(normalizedTopicProgress);
-
-              console.log('✅ Enhanced enrollment:', enhancedEnrollment);
-            } else {
-              setEnrollment(currentEnrollment);
             }
+
+            // Set topic progress
+            const normalizedTopicProgress = (currentEnrollment.topicProgress || []).map((tp: any) => ({
+              ...tp,
+              courseId: String(tp.courseId)
+            }));
+            setTopicProgress(normalizedTopicProgress);
           } else {
-            toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
-            navigate('/pack365');
+            setEnrollment(currentEnrollment);
           }
         } else {
           toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
           navigate('/pack365');
         }
-      } catch (error: any) {
-        console.error('Error fetching stream enrollment:', error);
-        toast({ title: 'Error', description: 'Failed to load enrollment details.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
         navigate('/pack365');
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error: any) {
+      console.error('Error fetching stream enrollment:', error);
+      toast({ title: 'Error', description: 'Failed to load enrollment details.', variant: 'destructive' });
+      navigate('/pack365');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStreamEnrollment();
   }, [stream, location]);
 
@@ -851,6 +881,11 @@ const Pack365StreamLearning = () => {
     window.open(topic.link, '_blank');
   };
 
+  const handleProgressUpdate = () => {
+    // Refresh enrollment data when progress is updated
+    fetchStreamEnrollment();
+  };
+
   if (loading) {
     return <SkeletonLoader />;
   }
@@ -879,6 +914,8 @@ const Pack365StreamLearning = () => {
           onClose={() => setIsVideoModalOpen(false)}
           selectedTopic={selectedTopic}
           selectedCourse={selectedCourse}
+          enrollment={enrollment}
+          onProgressUpdate={handleProgressUpdate}
         />
 
         <div className="min-h-screen bg-gray-50">
@@ -980,7 +1017,7 @@ const Pack365StreamLearning = () => {
                                   )}
                                   {watchedDuration > 0 && !isWatched && (
                                     <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                                      In Progress ({Math.round((watchedDuration / topic.duration) * 100)}%)
+                                      In Progress ({Math.round((watchedDuration / (topic.duration * 60)) * 100)}%)
                                     </Badge>
                                   )}
                                 </div>
@@ -1052,8 +1089,7 @@ const Pack365StreamLearning = () => {
                 </CardHeader>
                 <CardContent className="flex flex-col items-center">
                   <CircularProgress percentage={enrollment.totalWatchedPercentage || 0} />
-                  <p className="text-gray-600 mt-4">Overall Completion</p>
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="text-gray-600 mt-4 text-center">
                     {enrollment.watchedTopics} of {enrollment.totalTopics} topics completed
                   </p>
                 </CardContent>
@@ -1206,10 +1242,6 @@ const Pack365StreamLearning = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Current progress:</span>
                       <span className="text-sm font-medium">{Math.round(enrollment.totalWatchedPercentage)}%</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Topics completed:</span>
-                      <span className="text-sm font-medium">{enrollment.watchedTopics} / {enrollment.totalTopics}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Final exam eligibility:</span>
