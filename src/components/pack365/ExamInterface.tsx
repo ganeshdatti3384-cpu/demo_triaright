@@ -90,7 +90,7 @@ const ExamInterface = () => {
         return;
       }
 
-      // Check if user is eligible
+      // Step 1: Get user enrollments to check eligibility and get courseId
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       if (!enrollmentResponse.success) {
         throw new Error('Failed to fetch enrollment data');
@@ -110,19 +110,59 @@ const ExamInterface = () => {
         return;
       }
 
-      // FIXED: Use correct endpoint to get exam by stream
-      const examResponse = await pack365Api.getExamByStream(stream || '');
-      if (!examResponse.success || !examResponse.exam) {
-        throw new Error('Exam not found for this stream');
+      // Step 2: Get available exams for user
+      const availableExamsResponse = await pack365Api.getAvailableExams(token);
+      if (!availableExamsResponse.success) {
+        throw new Error('Failed to fetch available exams');
       }
 
-      setExam(examResponse.exam);
-      setTimeLeft(examResponse.exam.timeLimit * 60); // Convert minutes to seconds
+      // Find exam for the current stream's course
+      const streamExam = availableExamsResponse.exams.find((exam: any) => 
+        exam.courseId === streamEnrollment.courseId
+      );
 
-      // FIXED: Load user's previous attempts using correct endpoint
-      const attemptsResponse = await pack365Api.getExamAttempts(token, examResponse.exam._id);
-      if (attemptsResponse.success) {
-        setUserAttempts(attemptsResponse.attempts || []);
+      if (!streamExam) {
+        throw new Error('No exam found for this stream');
+      }
+
+      // Step 3: Get exam details with the examId
+      const examDetailsResponse = await pack365Api.getExamDetails(token, streamExam.examId);
+      if (!examDetailsResponse.success || !examDetailsResponse.examDetails) {
+        throw new Error('Failed to fetch exam details');
+      }
+
+      // Step 4: Get questions for the exam
+      const questionsResponse = await pack365Api.getExamQuestions(token, streamExam.examId);
+      if (!questionsResponse.success) {
+        throw new Error('Failed to fetch exam questions');
+      }
+
+      // Combine exam details with questions
+      const fullExam: Exam = {
+        _id: streamExam.examId,
+        examId: streamExam.examId,
+        courseId: streamExam.courseId,
+        questions: questionsResponse.questions,
+        maxAttempts: streamExam.attemptInfo.maxAttempts,
+        passingScore: 50, // Default passing score
+        timeLimit: 60, // Default time limit in minutes
+        isActive: true
+      };
+
+      setExam(fullExam);
+      setTimeLeft(fullExam.timeLimit * 60); // Convert minutes to seconds
+
+      // Step 5: Load user's exam history
+      const historyResponse = await pack365Api.getExamHistory(token, streamEnrollment.courseId);
+      if (historyResponse.success && historyResponse.examHistory) {
+        const attempts: ExamAttempt[] = historyResponse.examHistory.attempts.map((attempt: any, index: number) => ({
+          attemptNumber: index + 1,
+          score: attempt.score,
+          passed: attempt.score >= 50,
+          completedAt: attempt.submittedAt,
+          answers: {} // You might need to store answers separately
+        }));
+        setUserAttempts(attempts);
       }
 
     } catch (error: any) {
@@ -175,53 +215,7 @@ const ExamInterface = () => {
     
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      // Calculate score based on answers
-      const score = calculateScore();
-      
-      // Submit to backend
-      const submission = {
-        examId: exam._id,
-        courseId: exam.courseId,
-        marks: score,
-        timeTaken: (exam.timeLimit * 60) - timeLeft
-      };
-
-      const result = await pack365Api.submitExam(token, submission);
-      
-      if (result.message) {
-        toast({
-          title: 'Exam Auto-Submitted',
-          description: 'Time is up! Your exam has been automatically submitted.',
-          variant: 'default'
-        });
-        
-        // Create result object for display
-        const examResult = {
-          score: score,
-          passed: score >= exam.passingScore,
-          totalQuestions: exam.questions.length,
-          correctAnswers: Math.round((score / 100) * exam.questions.length),
-          timeSpent: (exam.timeLimit * 60) - timeLeft,
-          attemptNumber: result.attemptNumber,
-          submittedAt: new Date().toISOString(),
-          answers: answers,
-          correctAnswersMap: exam.questions.reduce((acc, q) => {
-            acc[q._id] = q.correctAnswer;
-            return acc;
-          }, {} as { [key: string]: string })
-        };
-        
-        // Show results
-        navigate(`/exam-result/${stream}`, { 
-          state: { 
-            result: examResult,
-            exam: exam
-          } 
-        });
-      }
+      await submitExamToBackend();
     } catch (error: any) {
       console.error('Error auto-submitting exam:', error);
       toast({
@@ -232,6 +226,27 @@ const ExamInterface = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const submitExamToBackend = async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !exam) return;
+
+    const score = calculateScore();
+    
+    const submission = {
+      examId: exam.examId,
+      courseId: exam.courseId,
+      marks: score,
+      timeTaken: (exam.timeLimit * 60) - timeLeft
+    };
+
+    const result = await pack365Api.submitExam(token, submission);
+    
+    if (result.message) {
+      return result;
+    }
+    throw new Error('Submission failed');
   };
 
   const handleSubmit = async () => {
@@ -250,52 +265,36 @@ const ExamInterface = () => {
 
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      // Calculate score based on answers
-      const score = calculateScore();
+      const result = await submitExamToBackend();
       
-      // Submit to backend
-      const submission = {
-        examId: exam._id,
-        courseId: exam.courseId,
-        marks: score,
-        timeTaken: (exam.timeLimit * 60) - timeLeft
+      toast({
+        title: 'Exam Submitted',
+        description: 'Your exam has been submitted successfully!',
+        variant: 'default'
+      });
+      
+      // Create result object for display
+      const examResult = {
+        score: calculateScore(),
+        passed: calculateScore() >= exam.passingScore,
+        totalQuestions: exam.questions.length,
+        correctAnswers: Math.round((calculateScore() / 100) * exam.questions.length),
+        timeSpent: (exam.timeLimit * 60) - timeLeft,
+        attemptNumber: result.attemptNumber,
+        submittedAt: new Date().toISOString(),
+        answers: answers,
+        correctAnswersMap: exam.questions.reduce((acc, q) => {
+          acc[q._id] = q.correctAnswer;
+          return acc;
+        }, {} as { [key: string]: string })
       };
-
-      const result = await pack365Api.submitExam(token, submission);
       
-      if (result.message) {
-        toast({
-          title: 'Exam Submitted',
-          description: 'Your exam has been submitted successfully!',
-          variant: 'default'
-        });
-        
-        // Create result object for display
-        const examResult = {
-          score: score,
-          passed: score >= exam.passingScore,
-          totalQuestions: exam.questions.length,
-          correctAnswers: Math.round((score / 100) * exam.questions.length),
-          timeSpent: (exam.timeLimit * 60) - timeLeft,
-          attemptNumber: result.attemptNumber,
-          submittedAt: new Date().toISOString(),
-          answers: answers,
-          correctAnswersMap: exam.questions.reduce((acc, q) => {
-            acc[q._id] = q.correctAnswer;
-            return acc;
-          }, {} as { [key: string]: string })
-        };
-        
-        navigate(`/exam-result/${stream}`, { 
-          state: { 
-            result: examResult,
-            exam: exam
-          } 
-        });
-      }
+      navigate(`/exam-result/${stream}`, { 
+        state: { 
+          result: examResult,
+          exam: exam
+        } 
+      });
     } catch (error: any) {
       console.error('Error submitting exam:', error);
       toast({
