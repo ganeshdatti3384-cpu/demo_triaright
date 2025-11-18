@@ -391,8 +391,8 @@ const Pack365StreamLearning = () => {
             <main className="lg:col-span-2">
               <Card className="shadow-md">
                 <CardHeader>
-                  <CardTitle className="text-2xl">Courses in this Stream</CardTitle>
-                  <CardDescription>Select a course below to start learning.</CardDescription>
+                  <CardTitle className="text-2xl">Start Learning</CardTitle>
+                  <CardDescription>Select a course below to begin your learning journey.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {enrollment.courses && enrollment.courses.length > 0 ? (
