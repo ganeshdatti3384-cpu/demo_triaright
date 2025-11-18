@@ -6,33 +6,6 @@ import { College, CreateEnrollmentCodeInput, CreateEnrollmentCodeResponse, Emplo
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
 const PRODUCTION_API_URL = 'https://triaright.com/api';
 
-// Add request interceptor for better error handling
-// axios.interceptors.request.use(
-//   (config) => {
-//     console.log(`Making API request to: ${config.baseURL || ''}${config.url}`);
-//     return config;
-//   },
-//   (error) => {
-//     console.error('Request error:', error);
-//     return Promise.reject(error);
-//   }
-// );
-
-// // Add response interceptor for better error handling
-// axios.interceptors.response.use(
-//   (response) => response,
-//   (error) => {
-//     console.error('API Error:', {
-//       url: error.config?.url,
-//       method: error.config?.method,
-//       status: error.response?.status,
-//       message: error.message,
-//       data: error.response?.data
-//     });
-//     return Promise.reject(error);
-//   }
-// );
-
 const toFormData = (data: Record<string, any>): FormData => {
   const formData = new FormData();
   Object.entries(data).forEach(([key, value]) => {
@@ -645,13 +618,14 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ FIXED: Updated updateTopicProgress to ensure courseId is MongoDB _id
+  // ✅ FIXED: Updated updateTopicProgress to ensure courseId is MongoDB _id and includes watched flag
   updateTopicProgress: async (
     token: string,
     data: {
       courseId: string;     // MUST be MongoDB _id
       topicName: string;
       watchedDuration: number;
+      watched: boolean;
       totalCourseDuration?: number;
       totalWatchedPercentage?: number;
     }
