@@ -79,8 +79,6 @@ const StreamLearningInterface = () => {
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const lastSavedProgressRef = useRef<number>(0);
   const ytApiLoadedRef = useRef<boolean>(false);
-  const isPlayerReadyRef = useRef<boolean>(false);
-  const currentVideoIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     loadStreamData();
@@ -98,18 +96,6 @@ const StreamLearningInterface = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
-  // YouTube player creation effect - FIX: Wait for modal to be fully mounted
-  useEffect(() => {
-    if (isVideoModalOpen && selectedTopic && videoContainerRef.current && window.YT) {
-      const videoId = extractYouTubeVideoId(selectedTopic.link);
-      if (videoId && videoId !== currentVideoIdRef.current) {
-        console.log('Creating YouTube player for video:', videoId);
-        createYouTubePlayer(videoId);
-        currentVideoIdRef.current = videoId;
-      }
-    }
-  }, [isVideoModalOpen, selectedTopic]);
-
   const loadYouTubeAPI = () => {
     if (ytApiLoadedRef.current) return; // Already loaded
 
@@ -121,81 +107,42 @@ const StreamLearningInterface = () => {
     window.onYouTubeIframeAPIReady = () => {
       ytApiLoadedRef.current = true;
       console.log('YouTube API ready');
-      
-      // If modal is already open, create player now that API is loaded
-      if (isVideoModalOpen && selectedTopic) {
-        const videoId = extractYouTubeVideoId(selectedTopic.link);
-        if (videoId) {
-          setTimeout(() => {
-            createYouTubePlayer(videoId);
-          }, 100);
-        }
-      }
     };
   };
 
   const createYouTubePlayer = (videoId: string) => {
-    if (!window.YT || !videoContainerRef.current) {
-      console.log('YouTube API or container not ready, retrying...');
-      setTimeout(() => {
-        if (videoContainerRef.current) {
-          createYouTubePlayer(videoId);
-        }
-      }, 100);
-      return;
-    }
-
-    // Reset player ready state
-    isPlayerReadyRef.current = false;
+    if (!window.YT || !videoContainerRef.current) return;
 
     // Destroy existing player
     if (playerRef.current) {
-      try { 
-        playerRef.current.destroy(); 
-      } catch (e) {
-        console.log('Error destroying previous player:', e);
-      }
+      try { playerRef.current.destroy(); } catch (e) {}
     }
 
-    console.log('Creating YouTube player with video ID:', videoId);
-    
-    try {
-      playerRef.current = new window.YT.Player(videoContainerRef.current, {
-        height: '100%',
-        width: '100%',
-        videoId: videoId,
-        playerVars: {
-          'autoplay': 1,
-          'controls': 1,
-          'rel': 0,
-          'modestbranding': 1,
-          'enablejsapi': 1
-        },
-        events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange,
-          'onError': onPlayerError
-        }
-      });
-    } catch (error) {
-      console.error('Error creating YouTube player:', error);
-    }
+    playerRef.current = new window.YT.Player(videoContainerRef.current, {
+      height: '100%',
+      width: '100%',
+      videoId: videoId,
+      playerVars: {
+        'autoplay': 1,
+        'controls': 1,
+        'rel': 0,
+        'modestbranding': 1,
+        'enablejsapi': 1
+      },
+      events: {
+        'onReady': onPlayerReady,
+        'onStateChange': onPlayerStateChange,
+        'onError': onPlayerError
+      }
+    });
   };
 
   const onPlayerReady = (event: any) => {
-    console.log('YouTube Player Ready - events should fire now');
-    isPlayerReadyRef.current = true;
-    
-    // Start tracking immediately if video is playing
-    if (playerRef.current && playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
-      setIsTrackingProgress(true);
-      startProgressTracking();
-    }
+    console.log('YouTube Player Ready');
   };
 
   const onPlayerStateChange = (event: any) => {
     const playerState = event.data;
-    console.log('YouTube Player State Change:', getPlayerStateName(playerState));
     
     switch (playerState) {
       case window.YT.PlayerState.PLAYING:
@@ -212,18 +159,6 @@ const StreamLearningInterface = () => {
         break;
       default:
         break;
-    }
-  };
-
-  const getPlayerStateName = (state: number) => {
-    switch (state) {
-      case -1: return 'UNSTARTED';
-      case 0: return 'ENDED';
-      case 1: return 'PLAYING';
-      case 2: return 'PAUSED';
-      case 3: return 'BUFFERING';
-      case 5: return 'CUED';
-      default: return 'UNKNOWN';
     }
   };
 
@@ -246,20 +181,10 @@ const StreamLearningInterface = () => {
     progressIntervalRef.current = setInterval(() => {
       updateProgressToBackend();
     }, 30000); // Update every 30 seconds
-    
-    console.log('Progress tracking started');
   };
 
   const updateProgressToBackend = async () => {
-    if (!selectedTopic || !selectedCourse || !playerRef.current || !isPlayerReadyRef.current) {
-      console.log('Cannot update progress: missing requirements', {
-        selectedTopic: !!selectedTopic,
-        selectedCourse: !!selectedCourse,
-        playerRef: !!playerRef.current,
-        isPlayerReady: isPlayerReadyRef.current
-      });
-      return;
-    }
+    if (!selectedTopic || !selectedCourse || !playerRef.current) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -321,7 +246,6 @@ const StreamLearningInterface = () => {
       });
 
       lastSavedProgressRef.current = currentTime;
-      console.log('Progress updated:', progress.toFixed(2) + '%');
 
     } catch (error: any) {
       console.error('Error updating progress:', error);
@@ -422,14 +346,20 @@ const StreamLearningInterface = () => {
     setVideoProgress(0);
     setIsTrackingProgress(false);
     lastSavedProgressRef.current = 0;
-    isPlayerReadyRef.current = false;
-    currentVideoIdRef.current = null;
 
     // Clear any existing interval
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
+
+    // Create YouTube player when modal opens
+    setTimeout(() => {
+      const videoId = extractYouTubeVideoId(topic.link);
+      if (videoId && window.YT) {
+        createYouTubePlayer(videoId);
+      }
+    }, 100);
   };
 
   const extractYouTubeVideoId = (url: string): string | null => {
@@ -456,19 +386,12 @@ const StreamLearningInterface = () => {
     }
     
     if (playerRef.current) {
-      try { 
-        playerRef.current.destroy(); 
-        console.log('YouTube player destroyed');
-      } catch (e) {
-        console.log('Error destroying player:', e);
-      }
+      try { playerRef.current.destroy(); } catch (e) {}
       playerRef.current = null;
     }
     
     setIsTrackingProgress(false);
     lastSavedProgressRef.current = 0;
-    isPlayerReadyRef.current = false;
-    currentVideoIdRef.current = null;
   };
 
   const loadStreamData = async () => {
@@ -650,9 +573,9 @@ const StreamLearningInterface = () => {
     <>
       <Navbar />
       
-      {/* Video Modal - FIX: Use modal={false} and forceMount */}
-      <Dialog modal={false} open={isVideoModalOpen} onOpenChange={handleCloseModal}>
-        <DialogContent forceMount className="max-w-4xl w-full h-[80vh]">
+      {/* Video Modal */}
+      <Dialog open={isVideoModalOpen} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-4xl w-full h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>{selectedTopic?.name}</span>
@@ -679,7 +602,7 @@ const StreamLearningInterface = () => {
           <div className="flex-1 flex flex-col">
             {selectedTopic && (
               <>
-                {/* YouTube Video Container - FIX: This will now properly mount */}
+                {/* YouTube Video Container */}
                 <div 
                   ref={videoContainerRef}
                   className="flex-1 bg-black rounded-lg mb-4"
