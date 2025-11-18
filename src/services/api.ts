@@ -24,7 +24,7 @@ const toFormData = (data: Record<string, any>): FormData => {
 export interface UpdateTopicProgressData {
   courseId: string;
   topicName: string;
-  watchedDuration: number;
+  watchedDuration?: number;
   totalCourseDuration?: number;
   totalWatchedPercentage?: number;
 }
@@ -627,10 +627,16 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ UPDATED: Fixed updateTopicProgress to properly send all required fields including totalWatchedPercentage
+  // ✅ UPDATED: Fixed updateTopicProgress to match Swagger documentation
   updateTopicProgress: async (
     token: string,
-    data: UpdateTopicProgressData
+    data: {
+      courseId: string;
+      topicName: string;
+      watchedDuration?: number;
+      totalCourseDuration?: number;
+      totalWatchedPercentage?: number;
+    }
   ): Promise<{ 
     success: boolean; 
     message: string; 
@@ -639,23 +645,49 @@ export const pack365Api = {
     totalTopics?: number;
   }> => {
     try {
-      // Force courseId to send ONLY the MongoDB _id
-      const sanitizedData = {
-        ...data,
-        courseId: data.courseId // Ensure FE sends _id here (not COURSE_xxxx)
+      // Prepare the request payload according to Swagger spec
+      const requestPayload: any = {
+        courseId: data.courseId,
+        topicName: data.topicName
       };
 
-      const response = await axios.put(`${API_BASE_URL}/pack365/topic/progress`, sanitizedData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // Add optional fields if provided
+      if (data.watchedDuration !== undefined) {
+        requestPayload.watchedDuration = data.watchedDuration;
+      }
+      if (data.totalCourseDuration !== undefined) {
+        requestPayload.totalCourseDuration = data.totalCourseDuration;
+      }
+      if (data.totalWatchedPercentage !== undefined) {
+        requestPayload.totalWatchedPercentage = data.totalWatchedPercentage;
+      }
 
+      console.log('Sending topic progress update:', requestPayload);
+
+      const response = await axios.put(
+        `${API_BASE_URL}/pack365/topic/progress`, 
+        requestPayload, 
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      console.log('Topic progress update response:', response.data);
       return response.data;
+
     } catch (error: any) {
       console.error('Error updating topic progress:', error);
-      throw error;
+      
+      // Enhanced error logging
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+      }
+      
+      throw new Error(error.response?.data?.message || 'Failed to update topic progress');
     }
   },
 
