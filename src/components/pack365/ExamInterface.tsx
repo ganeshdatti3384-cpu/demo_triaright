@@ -22,7 +22,7 @@ interface Question {
   _id: string;
   questionText: string;
   options: string[];
-  correctAnswer: string;
+  correctAnswer?: string;
   type: 'easy' | 'medium' | 'hard';
   description?: string;
 }
@@ -62,6 +62,7 @@ const ExamInterface = () => {
 
   useEffect(() => {
     loadExamData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
   useEffect(() => {
@@ -97,6 +98,40 @@ const ExamInterface = () => {
       console.error('Debug error:', error);
       return null;
     }
+  };
+
+  const tryGetExamDetailsWithCandidates = async (token: string, candidates: Array<string | null | undefined>) => {
+    // Try each candidate id until one returns success
+    for (const c of candidates) {
+      if (!c) continue;
+      try {
+        const res = await pack365Api.getExamDetails(token, c);
+        if (res && res.success && res.examDetails) {
+          console.log('Found exam details with id candidate:', c);
+          return { res, usedId: c };
+        }
+      } catch (err) {
+        // try next
+        console.warn('getExamDetails failed for candidate:', c, err);
+      }
+    }
+    return null;
+  };
+
+  const tryGetExamQuestionsWithCandidates = async (token: string, candidates: Array<string | null | undefined>) => {
+    for (const c of candidates) {
+      if (!c) continue;
+      try {
+        const res = await pack365Api.getExamQuestions(token, c);
+        if (res && Array.isArray(res.questions)) {
+          console.log('Found exam questions with id candidate:', c);
+          return { res, usedId: c };
+        }
+      } catch (err) {
+        console.warn('getExamQuestions failed for candidate:', c, err);
+      }
+    }
+    return null;
   };
 
   const loadExamData = async () => {
@@ -145,77 +180,126 @@ const ExamInterface = () => {
 
       // Step 2: Get available exams for user
       const availableExamsResponse = await pack365Api.getAvailableExamsForUser(token);
-      if (!availableExamsResponse.success) {
+      if (!availableExamsResponse || !Array.isArray(availableExamsResponse.exams)) {
         throw new Error('Failed to fetch available exams');
       }
 
       console.log('Available exams:', availableExamsResponse.exams);
       console.log('Stream enrollment:', streamEnrollment);
 
-      // Step 3: Find exam for this stream
-      // Try multiple approaches to find the right exam
-      let streamExam = null;
-      
-      // Approach 1: Look for exam by stream name in enrollment
-      streamExam = availableExamsResponse.exams.find((exam: any) => 
-        exam.stream?.toLowerCase() === stream?.toLowerCase()
-      );
+      // Step 3: Find exam for this stream (robust matching)
+      let streamExam: any = null;
 
-      // Approach 2: If no direct match, get all courses in this stream and find associated exams
-      if (!streamExam) {
-        const allCourses = await pack365Api.getAllCourses();
-        const streamCourses = allCourses.data.filter(
-          (course: any) => course.stream?.toLowerCase() === stream?.toLowerCase()
-        );
-        
-        // Look for exams associated with any course in this stream
-        for (const course of streamCourses) {
-          const examForCourse = availableExamsResponse.exams.find((exam: any) => 
-            exam.courseId === course._id || exam.courseId === course.courseId
-          );
-          if (examForCourse) {
-            streamExam = examForCourse;
-            break;
+      // Preferred: match by courseId present in enrollment record
+      streamExam = availableExamsResponse.exams.find((exam: any) => {
+        try {
+          const examCourseId = exam.courseId || exam.course || exam.courseId?._id;
+          // compare strings safely
+          if (examCourseId && streamEnrollment.courseId) {
+            return String(examCourseId) === String(streamEnrollment.courseId);
           }
+          return false;
+        } catch (err) {
+          return false;
         }
+      });
+
+      // Fallback: match by stream property if backend included it (some backend versions include course.stream)
+      if (!streamExam) {
+        streamExam = availableExamsResponse.exams.find((exam: any) => {
+          return exam.stream && typeof exam.stream === 'string' && exam.stream.toLowerCase() === stream?.toLowerCase();
+        });
+      }
+
+      // Another fallback: match by courseId inside nested courses array / enrollment course list
+      if (!streamExam) {
+        streamExam = availableExamsResponse.exams.find((exam: any) => {
+          // try to match by any course id found on exam object
+          const possibleCourse = exam.courseId || exam.course || (exam.courseId && exam.courseId._id);
+          return possibleCourse && String(possibleCourse) === String(streamEnrollment.courseId);
+        });
       }
 
       if (!streamExam) {
+        // No exam found for stream
         throw new Error('No exam found for this stream. Please contact administrator.');
       }
 
-      // Step 4: Get exam details
-      const examDetailsResponse = await pack365Api.getExamDetails(token, streamExam.examId);
-      if (!examDetailsResponse.success || !examDetailsResponse.examDetails) {
-        throw new Error('Failed to fetch exam details');
+      // Prepare candidate ids to try with detail/questions endpoints.
+      // BACKEND VARIATION HACK: available-exams may use exam._id in examId or return both custom and mongo ids.
+      const candidates = [
+        // candidate order: examId (might be EXAM_..., or might be mongo _id), then any explicit mongoId field, then _id
+        streamExam.examId,
+        streamExam.mongoId,
+        streamExam._id,
+        streamExam.examMongoId,
+        streamExam.id
+      ].filter(Boolean) as string[];
+
+      // Step 4: Get exam details by trying candidate ids until success
+      const detailsResult = await tryGetExamDetailsWithCandidates(token, candidates);
+      if (!detailsResult) {
+        // If details couldn't be fetched by any candidate, still try to get questions directly (some backends may allow questions by mongo id)
+        const questionsDirectTry = await tryGetExamQuestionsWithCandidates(token, candidates);
+        if (!questionsDirectTry) {
+          throw new Error('Failed to fetch exam details or questions. The exam identifier returned by the server did not match the expected value.');
+        }
+        // If questions found but no details, craft minimal details
+        const questionsResponse = questionsDirectTry.res;
+        const usedId = questionsDirectTry.usedId;
+        const minimalDetails = {
+          examId: usedId,
+          courseName: streamExam.courseName || streamEnrollment.courseName || '',
+          maxAttempts: streamExam.attemptInfo?.maxAttempts || 3,
+          passingScore: 50,
+          timeLimit: 60
+        };
+        // Use questions
+        const fullExam: Exam = {
+          _id: streamExam.mongoId || usedId,
+          examId: usedId,
+          courseId: streamExam.courseId,
+          questions: questionsResponse.questions,
+          maxAttempts: minimalDetails.maxAttempts,
+          passingScore: minimalDetails.passingScore,
+          timeLimit: minimalDetails.timeLimit,
+          isActive: true
+        };
+        setExam(fullExam);
+        setTimeLeft(fullExam.timeLimit * 60);
+      } else {
+        const examDetailsResponse = detailsResult.res;
+        const usedId = detailsResult.usedId;
+
+        // Step 5: Get questions (do not request answers until submission)
+        const questionsResponse = await tryGetExamQuestionsWithCandidates(token, [usedId, ...candidates]);
+        if (!questionsResponse) {
+          throw new Error('Failed to fetch exam questions for the selected exam.');
+        }
+
+        const questions = questionsResponse.res.questions;
+
+        // Combine
+        const fullExam: Exam = {
+          _id: streamExam.mongoId || usedId,
+          examId: usedId,
+          courseId: streamExam.courseId,
+          questions: questions,
+          maxAttempts: examDetailsResponse.res.examDetails?.maxAttempts || streamExam.attemptInfo?.maxAttempts || 3,
+          passingScore: examDetailsResponse.res.examDetails?.passingScore || 50,
+          timeLimit: examDetailsResponse.res.examDetails?.timeLimit || 60,
+          isActive: true
+        };
+
+        setExam(fullExam);
+        setTimeLeft(fullExam.timeLimit * 60);
       }
-
-      // Step 5: Get questions for the exam
-      const questionsResponse = await pack365Api.getExamQuestions(token, streamExam.examId);
-      if (!questionsResponse.questions) {
-        throw new Error('Failed to fetch exam questions');
-      }
-
-      // Combine exam details with questions
-      const fullExam: Exam = {
-        _id: streamExam.examId,
-        examId: streamExam.examId,
-        courseId: streamExam.courseId,
-        questions: questionsResponse.questions,
-        maxAttempts: streamExam.attemptInfo?.maxAttempts || 3,
-        passingScore: 50,
-        timeLimit: 60, // 60 minutes default
-        isActive: true
-      };
-
-      setExam(fullExam);
-      setTimeLeft(fullExam.timeLimit * 60);
 
       // Step 6: Load user's exam history
       try {
         const historyResponse = await pack365Api.getExamHistory(token, streamEnrollment.courseId || streamExam.courseId);
         if (historyResponse.success && historyResponse.examHistory) {
-          const attempts: ExamAttempt[] = historyResponse.examHistory.attempts.map((attempt: any, index: number) => ({
+          const attempts: ExamAttempt[] = (historyResponse.examHistory.attempts || []).map((attempt: any, index: number) => ({
             attemptNumber: index + 1,
             score: attempt.score,
             passed: attempt.score >= 50,
@@ -307,7 +391,7 @@ const ExamInterface = () => {
 
     const result = await pack365Api.submitExam(token, submission);
     
-    if (result.message) {
+    if (result && result.message) {
       return result;
     }
     throw new Error('Submission failed');
