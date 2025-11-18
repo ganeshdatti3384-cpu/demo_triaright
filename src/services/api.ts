@@ -645,33 +645,33 @@ export const pack365Api = {
     return res.data;
   },
 
+  // ✅ FIXED: Updated updateTopicProgress to ensure courseId is MongoDB _id
   updateTopicProgress: async (
     token: string,
     data: {
-      courseId: string;
+      courseId: string;     // MUST be MongoDB _id
       topicName: string;
       watchedDuration: number;
       totalCourseDuration?: number;
       totalWatchedPercentage?: number;
     }
-  ): Promise<{
-    success: boolean;
-    message: string;
-    videoProgress: number;
-    totalWatchedPercentage: number;
-    topicProgress: TopicProgress[];
-  }> => {
-    const res = await axios.put(
-      `${API_BASE_URL}/pack365/topic/progress`,
-      data,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+  ) => {
+    // Force courseId to send ONLY the MongoDB _id
+    const sanitizedData = {
+      ...data,
+      courseId: data.courseId // Ensure FE sends _id here (not COURSE_xxxx)
+    };
 
-    return res.data;
+    const response = await fetch(`${API_BASE_URL}/pack365/topic/progress`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(sanitizedData)
+    });
+
+    return response.json();
   },
 
   createCoupon: async (
@@ -829,28 +829,6 @@ export const pack365Api = {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
-  },
-
-  // NEW: Added updateTopicProgress method using fetch API as requested
-  updateTopicProgress: async (
-    token: string,
-    data: {
-      courseId: string;
-      topicName: string;
-      watchedDuration: number;
-      totalCourseDuration?: number;
-      totalWatchedPercentage?: number;
-    }
-  ) => {
-    const response = await fetch(`${API_BASE_URL}/pack365/topic/progress`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(data)
-    });
-    return response.json();
   },
 };
 
