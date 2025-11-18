@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import {
   BookOpen,
@@ -21,33 +23,30 @@ import {
   Users,
   FileText,
   Target,
-  ChevronDown,
-  ChevronUp
+  Video,
+  X,
+  ExternalLink
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
 
 // --- Interfaces for Type Safety ---
+interface Topic {
+  name: string;
+  link: string;
+  duration: number;
+}
+
 interface Course {
-  _id?: string;
   courseId: string;
   courseName: string;
   description: string;
-  totalDuration: number; // in minutes or seconds depending on backend (frontend uses whatever backend provides)
-  topics: Array<{
-    name: string;
-    link: string;
-    duration: number;
-  }>;
+  totalDuration: number;
+  topicsCount: number;
+  _id: string;
   stream: string;
+  topics: Topic[];
   documentLink?: string;
-}
-
-interface TopicProgressItem {
-  courseId: any; // could be ObjectId or string
-  topicName: string;
-  watched: boolean;
-  watchedDuration: number;
 }
 
 interface StreamEnrollment {
@@ -60,9 +59,30 @@ interface StreamEnrollment {
   coursesCount: number;
   totalTopics: number;
   watchedTopics: number;
-  courses: Array<any>; // from backend summary; replaced by merged courses with topics
-  topicProgress: TopicProgressItem[];
-  totalCourseDuration?: number; // in same unit as course.totalDuration
+  courses: Course[];
+  topicProgress: Array<{
+    courseId: string;
+    topicName: string;
+    watched: boolean;
+    watchedDuration: number;
+    lastWatchedAt?: string;
+  }>;
+}
+
+interface TopicProgress {
+  courseId: string;
+  topicName: string;
+  watched: boolean;
+  watchedDuration: number;
+  lastWatchedAt?: string;
+}
+
+// YouTube Player types
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
 }
 
 // --- Helper Components ---
@@ -72,7 +92,7 @@ const CircularProgress = ({ percentage }: { percentage: number }) => {
   const radius = (sqSize - strokeWidth) / 2;
   const viewBox = `0 0 ${sqSize} ${sqSize}`;
   const dashArray = radius * Math.PI * 2;
-  const dashOffset = dashArray - (dashArray * Math.max(0, Math.min(100, percentage))) / 100;
+  const dashOffset = dashArray - (dashArray * percentage) / 100;
 
   return (
     <div className="relative w-32 h-32">
@@ -135,14 +155,515 @@ const SkeletonLoader = () => (
   </div>
 );
 
+// --- Video Modal Component ---
+const VideoLearningModal = ({ 
+  isOpen, 
+  onClose, 
+  selectedTopic, 
+  selectedCourse 
+}: { 
+  isOpen: boolean;
+  onClose: () => void;
+  selectedTopic: Topic | null;
+  selectedCourse: Course | null;
+}) => {
+  const { toast } = useToast();
+  const [videoProgress, setVideoProgress] = useState<number>(0);
+  const [isTrackingProgress, setIsTrackingProgress] = useState(false);
+  const [isPlayerInitializing, setIsPlayerInitializing] = useState(false);
+  
+  // YouTube Player Refs
+  const playerRef = useRef<any>(null);
+  const progressIntervalRef = useRef<any | null>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const lastSavedProgressRef = useRef<number>(0);
+  const ytApiLoadedRef = useRef<boolean>(false);
+  const isPlayerReadyRef = useRef<boolean>(false);
+  const currentVideoIdRef = useRef<string | null>(null);
+  const playerInitTimeoutRef = useRef<any>(null);
+
+  // Cleanup function for player
+  const cleanupPlayer = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    
+    if (playerInitTimeoutRef.current) {
+      clearTimeout(playerInitTimeoutRef.current);
+    }
+    
+    if (playerRef.current) {
+      try { 
+        playerRef.current.stopVideo && playerRef.current.stopVideo();
+        playerRef.current.destroy && playerRef.current.destroy(); 
+      } catch (e) {
+        console.log('Error during player cleanup:', e);
+      }
+      playerRef.current = null;
+    }
+    
+    setIsTrackingProgress(false);
+    lastSavedProgressRef.current = 0;
+    isPlayerReadyRef.current = false;
+    currentVideoIdRef.current = null;
+    setIsPlayerInitializing(false);
+  };
+
+  // Handle modal open/close
+  useEffect(() => {
+    if (isOpen && selectedTopic) {
+      // Small delay to ensure modal is fully rendered
+      playerInitTimeoutRef.current = setTimeout(() => {
+        initializePlayer();
+      }, 300);
+    } else {
+      cleanupPlayer();
+    }
+
+    return () => {
+      if (playerInitTimeoutRef.current) {
+        clearTimeout(playerInitTimeoutRef.current);
+      }
+    };
+  }, [isOpen, selectedTopic]);
+
+  const loadYouTubeAPI = () => {
+    if (ytApiLoadedRef.current || window.YT) return;
+
+    ytApiLoadedRef.current = true;
+
+    // Check if already loaded
+    if (window.YT) {
+      console.log('YouTube API already loaded');
+      return;
+    }
+
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    tag.async = true;
+    tag.defer = true;
+    
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    if (firstScriptTag && firstScriptTag.parentNode) {
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    } else {
+      document.head.appendChild(tag);
+    }
+
+    window.onYouTubeIframeAPIReady = () => {
+      console.log('YouTube API ready callback triggered');
+      ytApiLoadedRef.current = true;
+      
+      // If we have a pending video, initialize the player
+      if (isOpen && selectedTopic) {
+        initializePlayer();
+      }
+    };
+  };
+
+  const initializePlayer = () => {
+    if (!selectedTopic) return;
+
+    const videoId = extractYouTubeVideoId(selectedTopic.link);
+    if (!videoId) {
+      toast({
+        title: 'Invalid Video URL',
+        description: 'The video link appears to be invalid.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (videoId === currentVideoIdRef.current && playerRef.current) {
+      // Same video, no need to reinitialize
+      return;
+    }
+
+    currentVideoIdRef.current = videoId;
+    
+    if (window.YT && window.YT.Player) {
+      createYouTubePlayer(videoId);
+    } else {
+      // Wait for API to load
+      console.log('Waiting for YouTube API to load...');
+      setIsPlayerInitializing(true);
+      
+      const checkApiLoaded = setInterval(() => {
+        if (window.YT && window.YT.Player) {
+          clearInterval(checkApiLoaded);
+          createYouTubePlayer(videoId);
+        }
+      }, 100);
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkApiLoaded);
+        if (!window.YT) {
+          setIsPlayerInitializing(false);
+          toast({
+            title: 'YouTube Player Error',
+            description: 'Failed to load YouTube player. Please refresh the page.',
+            variant: 'destructive'
+          });
+        }
+      }, 10000);
+    }
+  };
+
+  const createYouTubePlayer = (videoId: string) => {
+    if (!window.YT || !videoContainerRef.current) {
+      console.error('YouTube API or container not ready');
+      setTimeout(() => createYouTubePlayer(videoId), 100);
+      return;
+    }
+
+    // Cleanup existing player
+    if (playerRef.current) {
+      try {
+        playerRef.current.destroy();
+      } catch (e) {
+        console.log('Error destroying previous player:', e);
+      }
+    }
+
+    console.log('Creating YouTube player for video:', videoId);
+    setIsPlayerInitializing(true);
+
+    try {
+      playerRef.current = new window.YT.Player(videoContainerRef.current, {
+        height: '100%',
+        width: '100%',
+        videoId: videoId,
+        playerVars: {
+          'autoplay': 1,
+          'controls': 1,
+          'rel': 0,
+          'modestbranding': 1,
+          'enablejsapi': 1,
+          'origin': window.location.origin
+        },
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange,
+          'onError': onPlayerError
+        }
+      });
+    } catch (error) {
+      console.error('Error creating YouTube player:', error);
+      setIsPlayerInitializing(false);
+      toast({
+        title: 'Player Error',
+        description: 'Failed to create video player. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const onPlayerReady = (event: any) => {
+    console.log('YouTube Player Ready');
+    isPlayerReadyRef.current = true;
+    setIsPlayerInitializing(false);
+    
+    // Reset progress tracking
+    lastSavedProgressRef.current = 0;
+    setVideoProgress(0);
+    
+    // Load existing progress for this topic
+    if (selectedTopic && selectedCourse) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        // In a real implementation, you would fetch the existing progress from the backend
+        // For now, we'll just start from the beginning
+        event.target.seekTo(0);
+      }
+    }
+  };
+
+  const onPlayerStateChange = (event: any) => {
+    const playerState = event.data;
+    console.log('YouTube Player State:', getPlayerStateName(playerState));
+    
+    switch (playerState) {
+      case window.YT.PlayerState.PLAYING:
+        setIsTrackingProgress(true);
+        startProgressTracking();
+        break;
+      case window.YT.PlayerState.PAUSED:
+        setIsTrackingProgress(false);
+        updateProgressToBackend();
+        break;
+      case window.YT.PlayerState.ENDED:
+        setIsTrackingProgress(false);
+        markTopicAsCompletedAutomatically();
+        break;
+      case window.YT.PlayerState.BUFFERING:
+      case window.YT.PlayerState.CUED:
+        break;
+      default:
+        setIsTrackingProgress(false);
+        break;
+    }
+  };
+
+  const getPlayerStateName = (state: number) => {
+    switch (state) {
+      case -1: return 'UNSTARTED';
+      case 0: return 'ENDED';
+      case 1: return 'PLAYING';
+      case 2: return 'PAUSED';
+      case 3: return 'BUFFERING';
+      case 5: return 'CUED';
+      default: return 'UNKNOWN';
+    }
+  };
+
+  const onPlayerError = (event: any) => {
+    console.error('YouTube Player Error:', event.data);
+    setIsPlayerInitializing(false);
+    toast({
+      title: 'Video Error',
+      description: 'Failed to load video. Please try again.',
+      variant: 'destructive'
+    });
+  };
+
+  const startProgressTracking = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
+    // Update progress more frequently for better UX
+    progressIntervalRef.current = setInterval(() => {
+      updateProgressToBackend();
+    }, 10000); // Update every 10 seconds
+    
+    console.log('Progress tracking started');
+  };
+
+  const updateProgressToBackend = async () => {
+    if (!selectedTopic || !selectedCourse || !playerRef.current || !isPlayerReadyRef.current) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const currentTime = playerRef.current.getCurrentTime();
+      const duration = playerRef.current.getDuration();
+      
+      if (duration <= 0) return;
+
+      const progress = (currentTime / duration) * 100;
+      
+      // Update UI immediately
+      setVideoProgress(progress);
+
+      // Only save if progress has meaningfully increased (at least 3 seconds)
+      if (Math.abs(currentTime - lastSavedProgressRef.current) < 3) {
+        return;
+      }
+
+      const shouldMarkAsWatched = progress >= 90;
+
+      await pack365Api.updateTopicProgress(token, {
+        courseId: selectedCourse._id,
+        topicName: selectedTopic.name,
+        watchedDuration: Math.floor(currentTime),
+        watched: shouldMarkAsWatched,
+        totalCourseDuration: Math.floor(duration)
+      });
+
+      lastSavedProgressRef.current = currentTime;
+      console.log('Progress updated:', progress.toFixed(2) + '%');
+
+    } catch (error: any) {
+      console.error('Error updating progress:', error);
+    }
+  };
+
+  const markTopicAsCompletedAutomatically = async () => {
+    if (!selectedTopic || !selectedCourse) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const duration = playerRef.current ? 
+        Math.floor(playerRef.current.getDuration()) : selectedTopic.duration;
+
+      const response = await pack365Api.updateTopicProgress(token, {
+        courseId: selectedCourse._id,
+        topicName: selectedTopic.name,
+        watchedDuration: duration,
+        watched: true,
+        totalCourseDuration: Math.floor(duration)
+      });
+
+      if (response.success) {
+        setIsTrackingProgress(false);
+        setVideoProgress(100);
+        
+        toast({
+          title: 'Topic Completed!',
+          description: `"${selectedTopic.name}" has been marked as completed.`,
+          variant: 'default'
+        });
+
+        // Close modal after completion
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+      }
+
+    } catch (error: any) {
+      console.error('Error marking topic as completed:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to update progress', 
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  const extractYouTubeVideoId = (url: string): string | null => {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  const handleManualComplete = async () => {
+    if (selectedTopic) {
+      await markTopicAsCompletedAutomatically();
+    }
+  };
+
+  const handleOpenInNewTab = () => {
+    if (selectedTopic) {
+      window.open(selectedTopic.link, '_blank');
+    }
+  };
+
+  // Load YouTube API when component mounts
+  useEffect(() => {
+    loadYouTubeAPI();
+    
+    return () => {
+      cleanupPlayer();
+    };
+  }, []);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl w-full h-[80vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between">
+            <span>{selectedTopic?.name}</span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenInNewTab}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                Open in New Tab
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="flex-1 flex flex-col">
+          {selectedTopic && (
+            <>
+              {/* YouTube Video Container */}
+              <div 
+                ref={videoContainerRef}
+                className="flex-1 bg-black rounded-lg mb-4 flex items-center justify-center"
+              >
+                {isPlayerInitializing && (
+                  <div className="text-center text-white">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                    <p className="text-lg">Loading video player...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress Tracking */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Watching Progress</span>
+                  <span className="text-sm text-gray-600">{Math.round(videoProgress)}%</span>
+                </div>
+                <Progress value={videoProgress} className="h-2 mb-4" />
+                
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-600">
+                    {isPlayerInitializing ? (
+                      <span className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        Initializing player...
+                      </span>
+                    ) : isTrackingProgress ? (
+                      <span className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        Tracking your progress...
+                      </span>
+                    ) : videoProgress >= 90 ? (
+                      <span className="flex items-center text-green-600">
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Ready to complete
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        <Play className="h-4 w-4 mr-1" />
+                        Start watching to track progress
+                      </span>
+                    )}
+                  </div>
+                  
+                  <Button
+                    onClick={handleManualComplete}
+                    variant="default"
+                    size="sm"
+                    disabled={!isPlayerReadyRef.current || isPlayerInitializing}
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Mark as Completed
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// --- Main Component ---
 const Pack365StreamLearning = () => {
   const { stream } = useParams<{ stream: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [enrollment, setEnrollment] = useState<StreamEnrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
-  const [expandedCourseIds, setExpandedCourseIds] = useState<Record<string, boolean>>({});
+  
+  // Learning interface states
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [topicProgress, setTopicProgress] = useState<TopicProgress[]>([]);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [isLearningView, setIsLearningView] = useState(false);
 
   useEffect(() => {
     const fetchStreamEnrollment = async () => {
@@ -155,99 +676,87 @@ const Pack365StreamLearning = () => {
 
       try {
         setLoading(true);
-
+        
         // Fetch enrollments
         const response = await pack365Api.getMyEnrollments(token);
+        
+        if (response.success && response.enrollments) {
+          const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
+          const currentEnrollment = streamEnrollments.find(
+            (e) => e.stream.toLowerCase() === stream?.toLowerCase()
+          );
 
-        if (!(response && response.success && response.enrollments)) {
-          toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
-          navigate('/pack365');
-          return;
-        }
+          if (currentEnrollment) {
+            // Fetch all courses to get complete course data
+            const coursesResponse = await pack365Api.getAllCourses();
+            if (coursesResponse.success && coursesResponse.data) {
+              const streamCourses = coursesResponse.data.filter(
+                (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
+              );
+              setAllCourses(streamCourses);
+              
+              // Calculate accurate progress using watched flags
+              let totalWatchedTopics = 0;
+              let totalTopicsInStream = 0;
 
-        const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
-        const currentEnrollment = streamEnrollments.find(
-          (e) => e.stream && e.stream.toLowerCase() === stream?.toLowerCase()
-        );
+              streamCourses.forEach(course => {
+                const courseTopics = course.topics?.length || 0;
+                totalTopicsInStream += courseTopics;
+                
+                // Count watched topics for this course using watched=true
+                const watchedInCourse = (currentEnrollment.topicProgress || []).filter((tp: any) => 
+                  String(tp.courseId) === String(course._id) && tp.watched === true
+                ).length || 0;
+                
+                totalWatchedTopics += watchedInCourse;
+              });
 
-        if (!currentEnrollment) {
-          toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
-          navigate('/pack365');
-          return;
-        }
+              const accurateProgress = totalTopicsInStream > 0 ? 
+                (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
 
-        // Fetch all courses (authoritative data with topics)
-        const coursesResponse = await pack365Api.getAllCourses();
-        const coursesData: Course[] = (coursesResponse && coursesResponse.success && coursesResponse.data) ? coursesResponse.data : [];
+              // Enhance enrollment with accurate data
+              const enhancedEnrollment = {
+                ...currentEnrollment,
+                courses: streamCourses,
+                totalTopics: totalTopicsInStream,
+                watchedTopics: totalWatchedTopics,
+                totalWatchedPercentage: accurateProgress,
+                coursesCount: streamCourses.length
+              };
+              
+              setEnrollment(enhancedEnrollment);
 
-        const streamCourses = coursesData.filter((c) => String(c.stream || '').toLowerCase() === stream?.toLowerCase());
-        setAllCourses(streamCourses);
+              // Check if we're coming from course selection to open learning view
+              const selectedCourseFromState = (location.state as any)?.selectedCourse;
+              const selectedCourseId = (location.state as any)?.selectedCourseId;
+              
+              if (selectedCourseFromState || selectedCourseId) {
+                setIsLearningView(true);
+                if (selectedCourseFromState) {
+                  setSelectedCourse(selectedCourseFromState);
+                } else if (selectedCourseId) {
+                  const course = streamCourses.find((c: Course) => c.courseId === selectedCourseId);
+                  setSelectedCourse(course || streamCourses[0]);
+                }
+              }
 
-        // Build mapping for course._id (or _id) -> course
-        const courseById = new Map<string, Course>();
-        streamCourses.forEach(c => {
-          const key = String(c._id || '');
-          courseById.set(key, c);
-        });
-
-        // Compute stream totals
-        const totalTopicsInStream = streamCourses.reduce((sum, c) => sum + (c.topics?.length || 0), 0);
-        const totalStreamDuration = streamCourses.reduce((sum, c) => sum + (c.totalDuration || 0), 0);
-
-        // Compute watched durations and watched topics from enrollment.topicProgress
-        const topicProgress = currentEnrollment.topicProgress || [];
-        let watchedTopicsInStream = 0;
-        let watchedDurationInStream = 0;
-
-        for (const tp of topicProgress) {
-          // tp.courseId may be object or string
-          const tpCourseId = String((tp.courseId && (tp.courseId._id || tp.courseId)) || tp.courseId || '');
-          if (courseById.has(tpCourseId)) {
-            if (tp.watched) watchedTopicsInStream += 1;
-            watchedDurationInStream += Number(tp.watchedDuration || 0);
+              // Set topic progress
+              const normalizedTopicProgress = (currentEnrollment.topicProgress || []).map((tp: any) => ({
+                ...tp,
+                courseId: String(tp.courseId)
+              }));
+              setTopicProgress(normalizedTopicProgress);
+            } else {
+              setEnrollment(currentEnrollment);
+            }
+          } else {
+            toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
+            navigate('/pack365');
           }
+        } else {
+          toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
+          navigate('/pack365');
         }
-
-        const durationPercent = totalStreamDuration > 0 ? (watchedDurationInStream / totalStreamDuration) * 100 : null;
-        const topicPercent = totalTopicsInStream > 0 ? (watchedTopicsInStream / totalTopicsInStream) * 100 : 0;
-        const accurateProgress = durationPercent !== null ? durationPercent : topicPercent;
-        const normalizedProgress = Math.max(0, Math.min(100, accurateProgress || 0));
-
-        // Merge course data so UI can show topics and per-course progress
-        const mergedCourses = streamCourses.map(course => {
-          const courseIdStr = String(course._id || '');
-          // Topic progress for this course
-          const courseTopicProgress = (topicProgress || []).filter(tp => {
-            const tpCourseId = String((tp.courseId && (tp.courseId._id || tp.courseId)) || tp.courseId || '');
-            return tpCourseId === courseIdStr;
-          });
-
-          const watchedTopics = courseTopicProgress.filter(tp => tp.watched).length;
-          const watchedDuration = courseTopicProgress.reduce((s, t) => s + (t.watchedDuration || 0), 0);
-          const courseDuration = course.totalDuration || 0;
-          const coursePercent = courseDuration > 0 ? (watchedDuration / courseDuration) * 100 : (course.topics?.length ? (watchedTopics / (course.topics.length || 1)) * 100 : 0);
-
-          return {
-            ...course,
-            _internalWatchedTopics: watchedTopics,
-            _internalWatchedDuration: watchedDuration,
-            _internalPercent: Math.max(0, Math.min(100, coursePercent || 0)),
-            _internalTotalTopics: course.topics?.length || 0
-          };
-        });
-
-        // Enhance enrollment for UI
-        const enhancedEnrollment: StreamEnrollment = {
-          ...currentEnrollment,
-          courses: mergedCourses,
-          totalTopics: totalTopicsInStream,
-          watchedTopics: watchedTopicsInStream,
-          totalWatchedPercentage: Math.round(normalizedProgress * 100) / 100,
-          coursesCount: streamCourses.length,
-          totalCourseDuration: totalStreamDuration
-        };
-
-        setEnrollment(enhancedEnrollment);
       } catch (error: any) {
         console.error('Error fetching stream enrollment:', error);
         toast({ title: 'Error', description: 'Failed to load enrollment details.', variant: 'destructive' });
@@ -258,189 +767,22 @@ const Pack365StreamLearning = () => {
     };
 
     fetchStreamEnrollment();
-  }, [stream]);
-
-  const refreshEnrollment = async () => {
-    // re-run the same logic to refresh enrollment after updates
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const response = await pack365Api.getMyEnrollments(token);
-      if (!(response && response.success && response.enrollments)) return;
-      const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
-      const currentEnrollment = streamEnrollments.find(
-        (e) => e.stream && e.stream.toLowerCase() === stream?.toLowerCase()
-      );
-      if (!currentEnrollment) return;
-
-      // get all courses
-      const coursesResponse = await pack365Api.getAllCourses();
-      const coursesData: Course[] = (coursesResponse && coursesResponse.success && coursesResponse.data) ? coursesResponse.data : [];
-      const streamCourses = coursesData.filter((c) => String(c.stream || '').toLowerCase() === stream?.toLowerCase());
-      setAllCourses(streamCourses);
-
-      const courseById = new Map<string, Course>();
-      streamCourses.forEach(c => {
-        const key = String(c._id || '');
-        courseById.set(key, c);
-      });
-
-      const totalTopicsInStream = streamCourses.reduce((sum, c) => sum + (c.topics?.length || 0), 0);
-      const totalStreamDuration = streamCourses.reduce((sum, c) => sum + (c.totalDuration || 0), 0);
-
-      // Compute watched durations and watched topics from enrollment.topicProgress
-      const topicProgress = currentEnrollment.topicProgress || [];
-      let watchedTopicsInStream = 0;
-      let watchedDurationInStream = 0;
-
-      for (const tp of topicProgress) {
-        const tpCourseId = String((tp.courseId && (tp.courseId._id || tp.courseId)) || tp.courseId || '');
-        if (courseById.has(tpCourseId)) {
-          if (tp.watched) watchedTopicsInStream += 1;
-          watchedDurationInStream += Number(tp.watchedDuration || 0);
-        }
-      }
-
-      const durationPercent = totalStreamDuration > 0 ? (watchedDurationInStream / totalStreamDuration) * 100 : null;
-      const topicPercent = totalTopicsInStream > 0 ? (watchedTopicsInStream / totalTopicsInStream) * 100 : 0;
-      const accurateProgress = durationPercent !== null ? durationPercent : topicPercent;
-      const normalizedProgress = Math.max(0, Math.min(100, accurateProgress || 0));
-
-      const mergedCourses = streamCourses.map(course => {
-        const courseIdStr = String(course._id || '');
-        const courseTopicProgress = (topicProgress || []).filter(tp => {
-          const tpCourseId = String((tp.courseId && (tp.courseId._id || tp.courseId)) || tp.courseId || '');
-          return tpCourseId === courseIdStr;
-        });
-
-        const watchedTopics = courseTopicProgress.filter(tp => tp.watched).length;
-        const watchedDuration = courseTopicProgress.reduce((s, t) => s + (t.watchedDuration || 0), 0);
-        const courseDuration = course.totalDuration || 0;
-        const coursePercent = courseDuration > 0 ? (watchedDuration / courseDuration) * 100 : (course.topics?.length ? (watchedTopics / (course.topics.length || 1)) * 100 : 0);
-
-        return {
-          ...course,
-          _internalWatchedTopics: watchedTopics,
-          _internalWatchedDuration: watchedDuration,
-          _internalPercent: Math.max(0, Math.min(100, coursePercent || 0)),
-          _internalTotalTopics: course.topics?.length || 0
-        };
-      });
-
-      const enhancedEnrollment: StreamEnrollment = {
-        ...currentEnrollment,
-        courses: mergedCourses,
-        totalTopics: totalTopicsInStream,
-        watchedTopics: watchedTopicsInStream,
-        totalWatchedPercentage: Math.round(normalizedProgress * 100) / 100,
-        coursesCount: streamCourses.length,
-        totalCourseDuration: totalStreamDuration
-      };
-
-      setEnrollment(enhancedEnrollment);
-    } catch (err) {
-      console.error('refreshEnrollment error', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [stream, location]);
 
   const handleCourseStart = (course: Course) => {
-    navigate(`/pack365-learning/${stream}/course`, {
-      state: {
-        selectedCourse: course,
-        selectedCourseId: course.courseId,
-        streamName: stream,
-        enrollment: enrollment
-      }
-    });
+    setSelectedCourse(course);
+    setIsLearningView(true);
   };
 
-  const handlePlayTopic = (course: Course, topicIndex: number) => {
-    // Navigate to course player and include topic index so player can start specific topic
-    navigate(`/pack365-learning/${stream}/course`, {
-      state: {
-        selectedCourse: course,
-        selectedCourseId: course.courseId,
-        streamName: stream,
-        startTopicIndex: topicIndex,
-        enrollment: enrollment
-      }
-    });
+  const handleBackToStream = () => {
+    setIsLearningView(false);
+    setSelectedCourse(null);
   };
 
-  const handleMarkTopicWatched = async (course: Course, topicName: string, topicDuration: number) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast({ title: 'Authentication Required', variant: 'destructive' });
-        navigate('/login');
-        return;
-      }
-
-      // Prepare payload expected by backend: courseId (custom courseId), topicName, watchedDuration, totalCourseDuration, totalWatchedPercentage
-      // Compute new watchedDuration and total watched across stream
-      const courseId = course.courseId; // backend expects custom courseId (string)
-      const totalCourseDuration = enrollment?.totalCourseDuration || 0;
-
-      // local compute new totals using existing enrollment data
-      const currentTopicProgress = enrollment?.topicProgress || [];
-      const streamCourseEntries = allCourses.filter(c => String(c.stream || '').toLowerCase() === stream?.toLowerCase());
-      const streamCourseIds = new Set(streamCourseEntries.map(c => String(c._id || '')));
-
-      // Calculate watchedDurationInStream currently
-      let watchedDurationInStream = 0;
-      for (const tp of currentTopicProgress) {
-        const tpCourseIdStr = String((tp.courseId && (tp.courseId._id || tp.courseId)) || tp.courseId || '');
-        if (streamCourseIds.has(tpCourseIdStr)) {
-          watchedDurationInStream += Number(tp.watchedDuration || 0);
-        }
-      }
-
-      // Add this topic's duration (but avoid double-counting if already watched)
-      const courseTopicEntry = currentTopicProgress.find(tp => {
-        const tpCourseIdStr = String((tp.courseId && (tp.courseId._id || tp.courseId)) || tp.courseId || '');
-        const courseObjId = String(course._id || '');
-        return tpCourseIdStr === courseObjId && tp.topicName === topicName;
-      });
-
-      let additional = topicDuration;
-      if (courseTopicEntry && courseTopicEntry.watched) {
-        additional = 0; // already watched
-      } else if (courseTopicEntry && !courseTopicEntry.watched) {
-        // If some watchedDuration exists, mark additional as remaining time
-        additional = Math.max(0, topicDuration - (courseTopicEntry.watchedDuration || 0));
-      }
-
-      const newWatchedDurationInStream = watchedDurationInStream + additional;
-      const newTotalWatchedPercent = totalCourseDuration > 0 ? (newWatchedDurationInStream / totalCourseDuration) * 100 : null;
-
-      const payload: any = {
-        courseId: courseId,
-        topicName,
-        watchedDuration: topicDuration, // server uses Math.max(existing, payload) for watchedDuration
-      };
-
-      if (typeof totalCourseDuration === 'number') {
-        payload.totalCourseDuration = totalCourseDuration;
-      }
-      if (typeof newTotalWatchedPercent === 'number') {
-        payload.totalWatchedPercentage = Math.round(Math.max(0, Math.min(100, newTotalWatchedPercent)) * 100) / 100;
-      }
-
-      const res = await pack365Api.updateTopicProgress(payload, token);
-      if (res && res.success) {
-        toast({ title: 'Marked as watched', description: 'Progress updated', variant: 'default' });
-        // Refresh enrollment to reflect backend-canonical state
-        await refreshEnrollment();
-      } else {
-        toast({ title: 'Could not update progress', description: res?.message || 'Try again later', variant: 'destructive' });
-      }
-    } catch (err: any) {
-      console.error('handleMarkTopicWatched error', err);
-      toast({ title: 'Error', description: 'Failed to update topic progress.', variant: 'destructive' });
-    }
+  const handleTopicClick = async (topic: Topic) => {
+    if (!selectedCourse) return;
+    setSelectedTopic(topic);
+    setIsVideoModalOpen(true);
   };
 
   const handleTakeExam = () => {
@@ -471,8 +813,14 @@ const Pack365StreamLearning = () => {
     year: 'numeric', month: 'long', day: 'numeric'
   });
 
-  const toggleCourseExpand = (courseId: string) => {
-    setExpandedCourseIds(prev => ({ ...prev, [courseId]: !prev[courseId] }));
+  const getTopicProgress = (courseId: string, topicName: string) => {
+    return topicProgress.find(
+      tp => String(tp.courseId) === String(courseId) && String(tp.topicName) === String(topicName)
+    );
+  };
+
+  const handleOpenInNewTab = (topic: Topic) => {
+    window.open(topic.link, '_blank');
   };
 
   if (loading) {
@@ -492,6 +840,157 @@ const Pack365StreamLearning = () => {
     );
   }
 
+  // Learning View (Course Details)
+  if (isLearningView && selectedCourse) {
+    return (
+      <>
+        <Navbar />
+        
+        <VideoLearningModal
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+          selectedTopic={selectedTopic}
+          selectedCourse={selectedCourse}
+        />
+
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            {/* Header */} 
+            <div className="mb-8">
+              <Button 
+                onClick={handleBackToStream}
+                variant="outline"
+                className="mb-4"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Stream
+              </Button>
+              <h1 className="text-3xl font-bold text-gray-900 capitalize">
+                {stream} Stream - Learning Portal
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Complete all courses and topics to unlock the final exam
+              </p>
+            </div>
+
+            {/* Course Content - Full width without sidebar */}
+            <div className="w-full">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-2xl">{selectedCourse.courseName}</CardTitle>
+                      <p className="text-gray-600 mt-1">{selectedCourse.description}</p>
+                    </div>
+                    <Badge variant="outline">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {selectedCourse.totalDuration} min
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Course Document */}
+                  {selectedCourse.documentLink && (
+                    <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="h-6 w-6 text-blue-600" />
+                          <div>
+                            <h4 className="font-medium">Course Materials</h4>
+                            <p className="text-sm text-gray-600">Download study materials</p>
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={() => window.open(selectedCourse.documentLink, '_blank')}
+                          variant="outline"
+                        >
+                          Download
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Topics List */}
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
+                    {selectedCourse.topics.map((topic, index) => {
+                      const progress = getTopicProgress(selectedCourse._id, topic.name);
+                      const isWatched = progress?.watched;
+                      const watchedDuration = progress?.watchedDuration || 0;
+
+                      return (
+                        <div
+                          key={index}
+                          className={`p-4 border rounded-lg transition-colors ${
+                            isWatched
+                              ? 'bg-green-50 border-green-200'
+                              : watchedDuration > 0
+                              ? 'bg-blue-50 border-blue-200'
+                              : 'bg-white border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              {isWatched ? (
+                                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              ) : watchedDuration > 0 ? (
+                                <Play className="h-5 w-5 text-blue-600" />
+                              ) : (
+                                <Play className="h-5 w-5 text-gray-400" />
+                              )}
+                              <div>
+                                <h4 className="font-medium">{topic.name}</h4>
+                                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                  <span className="flex items-center">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {topic.duration} min
+                                  </span>
+                                  {isWatched && (
+                                    <Badge variant="outline" className="bg-green-100 text-green-800">
+                                      Completed
+                                    </Badge>
+                                  )}
+                                  {watchedDuration > 0 && !isWatched && (
+                                    <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                                      In Progress ({Math.round((watchedDuration / topic.duration) * 100)}%)
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleOpenInNewTab(topic)}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                                New Tab
+                              </Button>
+                              <Button 
+                                variant={isWatched ? "outline" : "default"} 
+                                size="sm"
+                                onClick={() => handleTopicClick(topic)}
+                              >
+                                <Video className="h-4 w-4 mr-1" />
+                                {isWatched ? 'Watch Again' : 'Watch'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Stream Overview View
   return (
     <>
       <Navbar />
@@ -499,7 +998,7 @@ const Pack365StreamLearning = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <Button
+            <Button 
               onClick={() => navigate('/pack365-dashboard')}
               variant="outline"
               className="mb-4"
@@ -513,7 +1012,7 @@ const Pack365StreamLearning = () => {
 
           {/* --- Main Content Grid --- */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-
+            
             {/* --- Left Sidebar (Sticky) --- */}
             <aside className="lg:col-span-1 lg:sticky lg:top-24 space-y-6">
               <Card className="shadow-md">
@@ -525,40 +1024,40 @@ const Pack365StreamLearning = () => {
                 </CardHeader>
                 <CardContent className="flex flex-col items-center">
                   <CircularProgress percentage={enrollment.totalWatchedPercentage || 0} />
-                  <p className="text-gray-600 mt-4">Overall Completion (duration-based)</p>
+                  <p className="text-gray-600 mt-4">Overall Completion</p>
                 </CardContent>
               </Card>
 
               <Card className="shadow-md">
                 <CardHeader>
-                  <CardTitle className="text-lg">Key Information</CardTitle>
+                   <CardTitle className="text-lg">Key Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500 flex items-center gap-2"><Calendar className="h-4 w-4" />Enrolled On</span>
-                    <span className="font-semibold text-gray-800">{formatDate(enrollment.enrollmentDate)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500 flex items-center gap-2"><BookOpen className="h-4 w-4" />Total Courses</span>
-                    <span className="font-semibold text-gray-800">{enrollment.coursesCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4" />Topics</span>
-                    <span className="font-semibold text-gray-800">{enrollment.totalTopics}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4" />Access Until</span>
-                    <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
-                  </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-gray-500 flex items-center gap-2"><Calendar className="h-4 w-4"/>Enrolled On</span>
+                      <span className="font-semibold text-gray-800">{formatDate(enrollment.enrollmentDate)}</span>
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-gray-500 flex items-center gap-2"><BookOpen className="h-4 w-4"/>Total Courses</span>
+                      <span className="font-semibold text-gray-800">{enrollment.coursesCount}</span>
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4"/>Topics</span>
+                      <span className="font-semibold text-gray-800">{enrollment.totalTopics}</span>
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4"/>Access Until</span>
+                      <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
+                   </div>
                 </CardContent>
               </Card>
-
+              
               {/* Exam Eligibility Cards */}
               {enrollment.totalWatchedPercentage >= 80 && (
                 <Card className="shadow-md bg-gradient-to-r from-green-500 to-teal-500 text-white">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Target className="h-6 w-6" />
+                      <Target className="h-6 w-6"/>
                       Ready for Exam!
                     </CardTitle>
                   </CardHeader>
@@ -566,8 +1065,8 @@ const Pack365StreamLearning = () => {
                     <p className="mb-4 text-green-100">
                       You've completed enough of the stream to take the exam.
                     </p>
-                    <Button
-                      variant="secondary"
+                    <Button 
+                      variant="secondary" 
                       className="w-full bg-white text-green-600 hover:bg-green-50"
                       onClick={handleTakeExam}
                     >
@@ -581,7 +1080,7 @@ const Pack365StreamLearning = () => {
                 <Card className="shadow-md bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Award className="h-6 w-6" />
+                      <Award className="h-6 w-6"/>
                       Final Exam Available
                     </CardTitle>
                   </CardHeader>
@@ -589,8 +1088,8 @@ const Pack365StreamLearning = () => {
                     <p className="mb-4 text-purple-100">
                       You've completed all courses! Take the final comprehensive exam.
                     </p>
-                    <Button
-                      variant="secondary"
+                    <Button 
+                      variant="secondary" 
                       className="w-full bg-white text-purple-600 hover:bg-purple-50"
                       onClick={handleTakeFinalExam}
                     >
@@ -602,114 +1101,48 @@ const Pack365StreamLearning = () => {
             </aside>
 
             {/* --- Right Content (Course List) --- */}
-            <main className="lg:col-span-2 space-y-6">
+            <main className="lg:col-span-2">
               <Card className="shadow-md">
                 <CardHeader>
                   <CardTitle className="text-2xl">Courses in this Stream</CardTitle>
-                  <CardDescription>Select a course below to start learning or inspect topics.</CardDescription>
+                  <CardDescription>Select a course below to start learning.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   {enrollment.courses && enrollment.courses.length > 0 ? (
-                    enrollment.courses.map((course: any) => (
-                      <div key={course.courseId} className="border bg-white rounded-lg p-4 hover:border-blue-300 hover:shadow-sm transition-all">
+                    enrollment.courses.map((course) => (
+                      <div key={course.courseId} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
                         <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                           <div className="flex-1">
-                            <div className="flex items-start justify-between mb-2">
-                              <div>
-                                <h3 className="font-semibold text-gray-800 text-lg">{course.courseName}</h3>
-                                <p className="text-sm text-gray-500 mt-1">{course.description}</p>
-                              </div>
-                              <Badge variant="secondary" className="ml-4">
-                                {course._internalTotalTopics ?? course.topics?.length ?? 0} topics
+                            <div className="flex items-start justify-between mb-3">
+                              <h3 className="font-semibold text-gray-800 text-lg">{course.courseName}</h3>
+                              <Badge variant="secondary">
+                                {course.topics?.length || 0} topics
                               </Badge>
                             </div>
-
-                            {/* Per-course progress bar */}
-                            <div className="mt-3">
-                              <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                                <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4" />
-                                  <span>{course.totalDuration} minutes</span>
-                                </div>
-                                <div className="text-sm font-medium">
-                                  {Math.round(course._internalPercent ?? 0)}%
-                                </div>
-                              </div>
-                              <div className="w-full bg-gray-100 rounded-full h-2">
-                                <div
-                                  className="bg-blue-500 h-2 rounded-full transition-all"
-                                  style={{ width: `${Math.max(0, Math.min(100, course._internalPercent || 0))}%` }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Expand topics */}
-                            <div className="mt-4">
-                              <button
-                                onClick={() => toggleCourseExpand(String(course._id || course.courseId))}
-                                className="text-sm text-blue-600 hover:underline flex items-center gap-2"
-                              >
-                                {expandedCourseIds[String(course._id || course.courseId)] ? <><ChevronUp className="h-4 w-4" /> Hide topics</> : <><ChevronDown className="h-4 w-4" /> View topics</>}
-                              </button>
-
-                              {expandedCourseIds[String(course._id || course.courseId)] && (
-                                <div className="mt-3 space-y-2">
-                                  {course.topics && course.topics.length > 0 ? (
-                                    course.topics.map((topic: any, idx: number) => {
-                                      // Find topic progress
-                                      const topicProg = (enrollment.topicProgress || []).find((tp) => {
-                                        const tpCourseIdStr = String((tp.courseId && (tp.courseId._id || tp.courseId)) || tp.courseId || '');
-                                        const courseObjId = String(course._id || '');
-                                        return tpCourseIdStr === courseObjId && tp.topicName === topic.name;
-                                      });
-
-                                      const watched = !!(topicProg && topicProg.watched);
-                                      return (
-                                        <div key={`${course.courseId}-topic-${idx}`} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                                          <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${watched ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                                              {watched ? <CheckCircle2 className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                                            </div>
-                                            <div>
-                                              <div className="text-sm font-medium">{topic.name}</div>
-                                              <div className="text-xs text-gray-500">{topic.duration} mins</div>
-                                            </div>
-                                          </div>
-
-                                          <div className="flex items-center gap-2">
-                                            <Button size="sm" variant="ghost" onClick={() => handlePlayTopic(course, idx)}>
-                                              <Play className="h-4 w-4 mr-2" />
-                                              Play
-                                            </Button>
-                                            {!watched && (
-                                              <Button size="sm" variant="secondary" onClick={() => handleMarkTopicWatched(course, topic.name, Number(topic.duration || 0))}>
-                                                Mark Watched
-                                              </Button>
-                                            )}
-                                          </div>
-                                        </div>
-                                      );
-                                    })
-                                  ) : (
-                                    <div className="text-sm text-gray-500">No topics available for this course.</div>
-                                  )}
-                                </div>
+                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
+                            
+                            <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
+                              <span className="flex items-center gap-1.5">
+                                <Clock className="h-4 w-4" /> 
+                                {course.totalDuration} minutes
+                              </span>
+                              {course.documentLink && (
+                                <span className="flex items-center gap-1.5">
+                                  <FileText className="h-4 w-4" /> 
+                                  Resources
+                                </span>
                               )}
                             </div>
                           </div>
-
-                          <div className="flex-shrink-0 flex flex-col items-end gap-3">
-                            <Button onClick={() => handleCourseStart(course)} variant="default">
-                              <Play className="h-4 w-4 mr-2" />
-                              Start Learning
-                            </Button>
-                            {course.documentLink && (
-                              <a href={course.documentLink} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">
-                                <FileText className="h-4 w-4 inline mr-1" />
-                                Resources
-                              </a>
-                            )}
-                          </div>
+                          
+                          <Button 
+                            onClick={() => handleCourseStart(course)}
+                            className="w-full sm:w-auto flex-shrink-0"
+                            variant="default"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Start Learning
+                          </Button>
                         </div>
                       </div>
                     ))
@@ -754,14 +1187,6 @@ const Pack365StreamLearning = () => {
                       <Badge variant={enrollment.isExamCompleted ? "default" : "outline"}>
                         {enrollment.isExamCompleted ? `Completed (${enrollment.examScore}%)` : 'Not Taken'}
                       </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Topics completed:</span>
-                      <span className="text-sm font-medium">{enrollment.watchedTopics}/{enrollment.totalTopics}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Total stream duration (mins):</span>
-                      <span className="text-sm font-medium">{Math.round((enrollment.totalCourseDuration || 0))}</span>
                     </div>
                   </div>
                 </CardContent>
