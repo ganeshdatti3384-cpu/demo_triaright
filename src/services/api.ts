@@ -703,14 +703,11 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ FIXED: All exam endpoints now use correct /pack365/exams/ path
   getExamQuestions: async (
     token: string,
-    examId: string,
-    showAnswers: boolean = false
-  ): Promise<{ success: boolean; questions: any[] }> => {
-    const queryParams = showAnswers ? '?showAnswers=true' : '';
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/${examId}/questions${queryParams}`, {
+    examId: string
+  ): Promise<{ questions: any[]; maxAttempts: number; examId: string }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/questions`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -719,8 +716,8 @@ export const pack365Api = {
   getExamDetails: async (
     token: string,
     examId: string
-  ): Promise<{ success: boolean; examDetails: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/details/${examId}`, {
+  ): Promise<{ examDetails: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/details`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -728,8 +725,8 @@ export const pack365Api = {
 
   getAllExams: async (
     token: string
-  ): Promise<{ success: boolean; exams: any[] }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/all`, {
+  ): Promise<any[]> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/getexam`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -744,7 +741,6 @@ export const pack365Api = {
       timeTaken?: number;
     }
   ): Promise<{
-    success: boolean;
     message: string;
     currentScore: number;
     bestScore: number;
@@ -754,15 +750,25 @@ export const pack365Api = {
     isPassed: boolean;
     canRetake: boolean;
   }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/exams/submit`, data, {
+    const res = await axios.post(`${API_BASE_URL}/exam/submit`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
   },
 
+  getAvailableExamsForUser: async (
+    token: string
+  ): Promise<{ message?: string; exams: any[] }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exams/available`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // NEW: Added getAvailableExams method
   getAvailableExams: async (
     token: string
-  ): Promise<{ success: boolean; message?: string; exams: any[] }> => {
+  ): Promise<{ message?: string; exams: any[] }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/exams/available`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -772,8 +778,8 @@ export const pack365Api = {
   getExamHistory: async (
     token: string,
     courseId: string
-  ): Promise<{ success: boolean; examHistory: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/history/${courseId}`, {
+  ): Promise<{ examHistory: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/history/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -782,8 +788,8 @@ export const pack365Api = {
   getExamStatistics: async (
     token: string,
     courseId: string
-  ): Promise<{ success: boolean; statistics: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/statistics/${courseId}`, {
+  ): Promise<{ statistics: any }> => {
+    const res = await axios.get(`${API_BASE_URL}/exam/statistics/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -792,8 +798,8 @@ export const pack365Api = {
   resetExamAttempts: async (
     token: string,
     data: { userId: string; courseId: string }
-  ): Promise<{ success: boolean; message: string; resetData: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/exams/reset`, data, {
+  ): Promise<{ message: string; resetData: any }> => {
+    const res = await axios.post(`${API_BASE_URL}/exam/reset-attempts`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -802,28 +808,11 @@ export const pack365Api = {
   updateExamMaxAttempts: async (
     token: string,
     data: { examId: string; maxAttempts: number }
-  ): Promise<{ success: boolean; message: string; examId: string; maxAttempts: number }> => {
-    const res = await axios.put(`${API_BASE_URL}/pack365/exams/update-max-attempts`, data, {
+  ): Promise<{ message: string; examId: string; maxAttempts: number }> => {
+    const res = await axios.put(`${API_BASE_URL}/exam/update-max-attempts`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
-  },
-
-  // ✅ NEW: Get exam by stream (if needed)
-  getExamByStream: async (
-    token: string,
-    stream: string
-  ): Promise<{ success: boolean; exam: any }> => {
-    // This would need to be implemented in backend or handled through available exams
-    const availableExams = await pack365Api.getAvailableExams(token);
-    if (availableExams.success && availableExams.exams) {
-      // Find exam for the specific stream
-      const streamExam = availableExams.exams.find((exam: any) => 
-        exam.stream?.toLowerCase() === stream.toLowerCase()
-      );
-      return { success: true, exam: streamExam };
-    }
-    return { success: false, exam: null };
   },
 };
 
