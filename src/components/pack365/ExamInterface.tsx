@@ -80,6 +80,25 @@ const ExamInterface = () => {
     return () => clearInterval(timer);
   }, [timeLeft, exam]);
 
+  // Debug function to check exam availability
+  const checkExamAvailability = async (token: string, stream: string) => {
+    try {
+      const enrollments = await pack365Api.getMyEnrollments(token);
+      const availableExams = await pack365Api.getAvailableExamsForUser(token);
+      
+      console.log('=== DEBUG EXAM AVAILABILITY ===');
+      console.log('Stream:', stream);
+      console.log('Enrollments:', enrollments);
+      console.log('Available Exams:', availableExams);
+      console.log('===============================');
+      
+      return { enrollments, availableExams };
+    } catch (error) {
+      console.error('Debug error:', error);
+      return null;
+    }
+  };
+
   const loadExamData = async () => {
     try {
       setLoading(true);
@@ -90,7 +109,10 @@ const ExamInterface = () => {
         return;
       }
 
-      // Step 1: Get user enrollments to check eligibility and get courseId
+      // Debug: Check exam availability
+      await checkExamAvailability(token, stream || '');
+
+      // Step 1: Get user enrollments to check eligibility
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       if (!enrollmentResponse.success) {
         throw new Error('Failed to fetch enrollment data');
@@ -100,10 +122,21 @@ const ExamInterface = () => {
         (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
       );
 
-      if (!streamEnrollment || streamEnrollment.totalWatchedPercentage < 80) {
+      if (!streamEnrollment) {
+        toast({
+          title: 'Not Enrolled',
+          description: 'You are not enrolled in this stream.',
+          variant: 'destructive'
+        });
+        navigate(`/pack365-learning/${stream}`);
+        return;
+      }
+
+      // Check if user has completed at least 80%
+      if (streamEnrollment.totalWatchedPercentage < 80) {
         toast({
           title: 'Not Eligible',
-          description: 'You need to complete at least 80% of the stream to take the exam.',
+          description: `You need to complete at least 80% of the stream to take the exam. Current progress: ${Math.round(streamEnrollment.totalWatchedPercentage)}%`,
           variant: 'destructive'
         });
         navigate(`/pack365-learning/${stream}`);
@@ -111,29 +144,55 @@ const ExamInterface = () => {
       }
 
       // Step 2: Get available exams for user
-      const availableExamsResponse = await pack365Api.getAvailableExams(token);
+      const availableExamsResponse = await pack365Api.getAvailableExamsForUser(token);
       if (!availableExamsResponse.success) {
         throw new Error('Failed to fetch available exams');
       }
 
-      // Find exam for the current stream's course
-      const streamExam = availableExamsResponse.exams.find((exam: any) => 
-        exam.courseId === streamEnrollment.courseId
+      console.log('Available exams:', availableExamsResponse.exams);
+      console.log('Stream enrollment:', streamEnrollment);
+
+      // Step 3: Find exam for this stream
+      // Try multiple approaches to find the right exam
+      let streamExam = null;
+      
+      // Approach 1: Look for exam by stream name in enrollment
+      streamExam = availableExamsResponse.exams.find((exam: any) => 
+        exam.stream?.toLowerCase() === stream?.toLowerCase()
       );
 
+      // Approach 2: If no direct match, get all courses in this stream and find associated exams
       if (!streamExam) {
-        throw new Error('No exam found for this stream');
+        const allCourses = await pack365Api.getAllCourses();
+        const streamCourses = allCourses.data.filter(
+          (course: any) => course.stream?.toLowerCase() === stream?.toLowerCase()
+        );
+        
+        // Look for exams associated with any course in this stream
+        for (const course of streamCourses) {
+          const examForCourse = availableExamsResponse.exams.find((exam: any) => 
+            exam.courseId === course._id || exam.courseId === course.courseId
+          );
+          if (examForCourse) {
+            streamExam = examForCourse;
+            break;
+          }
+        }
       }
 
-      // Step 3: Get exam details with the examId
+      if (!streamExam) {
+        throw new Error('No exam found for this stream. Please contact administrator.');
+      }
+
+      // Step 4: Get exam details
       const examDetailsResponse = await pack365Api.getExamDetails(token, streamExam.examId);
       if (!examDetailsResponse.success || !examDetailsResponse.examDetails) {
         throw new Error('Failed to fetch exam details');
       }
 
-      // Step 4: Get questions for the exam
+      // Step 5: Get questions for the exam
       const questionsResponse = await pack365Api.getExamQuestions(token, streamExam.examId);
-      if (!questionsResponse.success) {
+      if (!questionsResponse.questions) {
         throw new Error('Failed to fetch exam questions');
       }
 
@@ -143,26 +202,31 @@ const ExamInterface = () => {
         examId: streamExam.examId,
         courseId: streamExam.courseId,
         questions: questionsResponse.questions,
-        maxAttempts: streamExam.attemptInfo.maxAttempts,
-        passingScore: 50, // Default passing score
-        timeLimit: 60, // Default time limit in minutes
+        maxAttempts: streamExam.attemptInfo?.maxAttempts || 3,
+        passingScore: 50,
+        timeLimit: 60, // 60 minutes default
         isActive: true
       };
 
       setExam(fullExam);
-      setTimeLeft(fullExam.timeLimit * 60); // Convert minutes to seconds
+      setTimeLeft(fullExam.timeLimit * 60);
 
-      // Step 5: Load user's exam history
-      const historyResponse = await pack365Api.getExamHistory(token, streamEnrollment.courseId);
-      if (historyResponse.success && historyResponse.examHistory) {
-        const attempts: ExamAttempt[] = historyResponse.examHistory.attempts.map((attempt: any, index: number) => ({
-          attemptNumber: index + 1,
-          score: attempt.score,
-          passed: attempt.score >= 50,
-          completedAt: attempt.submittedAt,
-          answers: {} // You might need to store answers separately
-        }));
-        setUserAttempts(attempts);
+      // Step 6: Load user's exam history
+      try {
+        const historyResponse = await pack365Api.getExamHistory(token, streamEnrollment.courseId || streamExam.courseId);
+        if (historyResponse.success && historyResponse.examHistory) {
+          const attempts: ExamAttempt[] = historyResponse.examHistory.attempts.map((attempt: any, index: number) => ({
+            attemptNumber: index + 1,
+            score: attempt.score,
+            passed: attempt.score >= 50,
+            completedAt: attempt.submittedAt,
+            answers: {}
+          }));
+          setUserAttempts(attempts);
+        }
+      } catch (historyError) {
+        console.log('Could not load exam history:', historyError);
+        // Continue without history
       }
 
     } catch (error: any) {
