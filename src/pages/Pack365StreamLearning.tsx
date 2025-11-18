@@ -190,10 +190,30 @@ const VideoLearningModal = ({
   const currentVideoIdRef = useRef<string | null>(null);
   const playerInitTimeoutRef = useRef<any>(null);
 
+  // Calculate local progress
+  const calculateLocalProgress = (): number => {
+    if (!enrollment || !enrollment.courses) return 0;
+    
+    let totalWatchedTopics = 0;
+    let totalTopicsInStream = 0;
+
+    enrollment.courses.forEach(course => {
+      const courseTopics = course.topics?.length || 0;
+      totalTopicsInStream += courseTopics;
+      
+      // Count watched topics for this course
+      const watchedInCourse = topicProgress.filter(tp => 
+        String(tp.courseId) === String(course._id) && tp.watched === true
+      ).length;
+      
+      totalWatchedTopics += watchedInCourse;
+    });
+
+    return totalTopicsInStream > 0 ? (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
+  };
+
   // Cleanup function for player
   const cleanupPlayer = () => {
-    console.log('🛑 Cleaning up player...');
-    
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
@@ -223,7 +243,6 @@ const VideoLearningModal = ({
   // Handle modal open/close
   useEffect(() => {
     if (isOpen && selectedTopic) {
-      console.log('🎬 Modal opened with topic:', selectedTopic.name);
       // Small delay to ensure modal is fully rendered
       playerInitTimeoutRef.current = setTimeout(() => {
         initializePlayer();
@@ -240,20 +259,16 @@ const VideoLearningModal = ({
   }, [isOpen, selectedTopic]);
 
   const loadYouTubeAPI = () => {
-    if (ytApiLoadedRef.current || window.YT) {
-      console.log('📺 YouTube API already loaded or loading');
-      return;
-    }
+    if (ytApiLoadedRef.current || window.YT) return;
 
     ytApiLoadedRef.current = true;
 
     // Check if already loaded
     if (window.YT) {
-      console.log('📺 YouTube API already loaded');
+      console.log('YouTube API already loaded');
       return;
     }
 
-    console.log('📺 Loading YouTube API...');
     const tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
     tag.async = true;
@@ -267,7 +282,7 @@ const VideoLearningModal = ({
     }
 
     window.onYouTubeIframeAPIReady = () => {
-      console.log('✅ YouTube API ready callback triggered');
+      console.log('YouTube API ready callback triggered');
       ytApiLoadedRef.current = true;
       
       // If we have a pending video, initialize the player
@@ -278,14 +293,10 @@ const VideoLearningModal = ({
   };
 
   const initializePlayer = () => {
-    if (!selectedTopic) {
-      console.log('🟡 No selected topic for player initialization');
-      return;
-    }
+    if (!selectedTopic) return;
 
     const videoId = extractYouTubeVideoId(selectedTopic.link);
     if (!videoId) {
-      console.log('🔴 Invalid video URL:', selectedTopic.link);
       toast({
         title: 'Invalid Video URL',
         description: 'The video link appears to be invalid.',
@@ -295,23 +306,21 @@ const VideoLearningModal = ({
     }
 
     if (videoId === currentVideoIdRef.current && playerRef.current) {
-      console.log('🟡 Same video, no need to reinitialize');
+      // Same video, no need to reinitialize
       return;
     }
 
     currentVideoIdRef.current = videoId;
     
     if (window.YT && window.YT.Player) {
-      console.log('🎮 Creating YouTube player for video:', videoId);
       createYouTubePlayer(videoId);
     } else {
       // Wait for API to load
-      console.log('⏳ Waiting for YouTube API to load...');
+      console.log('Waiting for YouTube API to load...');
       setIsPlayerInitializing(true);
       
       const checkApiLoaded = setInterval(() => {
         if (window.YT && window.YT.Player) {
-          console.log('✅ YouTube API loaded, creating player');
           clearInterval(checkApiLoaded);
           createYouTubePlayer(videoId);
         }
@@ -322,7 +331,6 @@ const VideoLearningModal = ({
         clearInterval(checkApiLoaded);
         if (!window.YT) {
           setIsPlayerInitializing(false);
-          console.log('🔴 YouTube API loading timeout');
           toast({
             title: 'YouTube Player Error',
             description: 'Failed to load YouTube player. Please refresh the page.',
@@ -335,7 +343,7 @@ const VideoLearningModal = ({
 
   const createYouTubePlayer = (videoId: string) => {
     if (!window.YT || !videoContainerRef.current) {
-      console.error('🔴 YouTube API or container not ready');
+      console.error('YouTube API or container not ready');
       setTimeout(() => createYouTubePlayer(videoId), 100);
       return;
     }
@@ -349,7 +357,7 @@ const VideoLearningModal = ({
       }
     }
 
-    console.log('🎮 Creating YouTube player for video:', videoId);
+    console.log('Creating YouTube player for video:', videoId);
     setIsPlayerInitializing(true);
 
     try {
@@ -372,7 +380,7 @@ const VideoLearningModal = ({
         }
       });
     } catch (error) {
-      console.error('🔴 Error creating YouTube player:', error);
+      console.error('Error creating YouTube player:', error);
       setIsPlayerInitializing(false);
       toast({
         title: 'Player Error',
@@ -383,7 +391,7 @@ const VideoLearningModal = ({
   };
 
   const onPlayerReady = (event: any) => {
-    console.log('✅ YouTube Player Ready');
+    console.log('YouTube Player Ready');
     isPlayerReadyRef.current = true;
     setIsPlayerInitializing(false);
     
@@ -391,35 +399,32 @@ const VideoLearningModal = ({
     lastSavedProgressRef.current = 0;
     setVideoProgress(0);
     
-    console.log('🎯 Player ready, starting progress tracking setup');
+    // Load existing progress for this topic
+    if (selectedTopic && selectedCourse) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        // In a real implementation, you would fetch the existing progress from the backend
+        // For now, we'll just start from the beginning
+        event.target.seekTo(0);
+      }
+    }
   };
 
   const onPlayerStateChange = (event: any) => {
     const playerState = event.data;
-    console.log('📊 YouTube Player State:', getPlayerStateName(playerState));
+    console.log('YouTube Player State:', getPlayerStateName(playerState));
     
     switch (playerState) {
       case window.YT.PlayerState.PLAYING:
-        console.log('▶️ Video playing, starting progress tracking');
         setIsTrackingProgress(true);
         startProgressTracking();
-        // Send immediate progress update when starting
-        setTimeout(() => updateProgressToBackend(), 2000);
         break;
       case window.YT.PlayerState.PAUSED:
-        console.log('⏸️ Video paused, stopping progress tracking');
         setIsTrackingProgress(false);
-        // Send final progress update when pausing
         updateProgressToBackend();
         break;
       case window.YT.PlayerState.ENDED:
-        console.log('⏹️ Video ended, marking as completed');
         setIsTrackingProgress(false);
-        // Clear interval when video ends
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-          progressIntervalRef.current = null;
-        }
         markTopicAsCompletedAutomatically();
         break;
       case window.YT.PlayerState.BUFFERING:
@@ -444,7 +449,7 @@ const VideoLearningModal = ({
   };
 
   const onPlayerError = (event: any) => {
-    console.error('🔴 YouTube Player Error:', event.data);
+    console.error('YouTube Player Error:', event.data);
     setIsPlayerInitializing(false);
     toast({
       title: 'Video Error',
@@ -460,80 +465,80 @@ const VideoLearningModal = ({
 
     // Update progress more frequently for better UX
     progressIntervalRef.current = setInterval(() => {
-      if (isTrackingProgress) {
-        console.log('🔄 Interval progress update');
-        updateProgressToBackend();
-      }
-    }, 15000); // Update every 15 seconds when playing
+      updateProgressToBackend();
+    }, 10000); // Update every 10 seconds
     
-    console.log('✅ Progress tracking started');
+    console.log('Progress tracking started');
   };
 
   const updateProgressToBackend = async () => {
     if (!selectedTopic || !selectedCourse || !playerRef.current || !isPlayerReadyRef.current) {
-      console.log('🟡 Skipping progress update - missing requirements');
       return;
     }
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.log('🟡 No token found');
-        return;
-      }
+      if (!token) return;
 
       const currentTime = playerRef.current.getCurrentTime();
       const duration = playerRef.current.getDuration();
       
-      if (duration <= 0) {
-        console.log('🟡 Invalid duration:', duration);
-        return;
-      }
+      if (duration <= 0) return;
 
       const progress = (currentTime / duration) * 100;
       
       // Update UI immediately
       setVideoProgress(progress);
 
-      // Only save if progress has meaningfully increased (at least 10 seconds or 5% progress)
-      const timeDifference = Math.abs(currentTime - lastSavedProgressRef.current);
-      const progressDifference = Math.abs(progress - (lastSavedProgressRef.current / duration * 100));
-      
-      if (timeDifference < 10 && progressDifference < 5) {
-        console.log('🟡 Progress change too small, skipping update');
+      // Only save if progress has meaningfully increased (at least 5 seconds)
+      if (Math.abs(currentTime - lastSavedProgressRef.current) < 5) {
         return;
       }
 
       const shouldMarkAsWatched = progress >= 90;
 
-      console.log('🟡 Progress update conditions met:', {
-        currentTime,
-        duration,
-        progress,
-        timeDifference,
-        progressDifference,
-        shouldMarkAsWatched
-      });
+      // Calculate total watched percentage for the entire stream
+      let totalWatchedPercentage = 0;
+      
+      if (enrollment) {
+        const totalTopics = enrollment.totalTopics || 1; // Avoid division by zero
+        const currentWatchedTopics = enrollment.watchedTopics || 0;
+        
+        // If marking as watched and it wasn't watched before, increment count
+        const isAlreadyWatched = topicProgress.find(tp => 
+          String(tp.courseId) === String(selectedCourse._id) && 
+          String(tp.topicName) === String(selectedTopic.name) && 
+          tp.watched
+        );
+        
+        const newWatchedTopics = shouldMarkAsWatched && !isAlreadyWatched ? 
+          currentWatchedTopics + 1 : currentWatchedTopics;
+        
+        totalWatchedPercentage = (newWatchedTopics / totalTopics) * 100;
+      }
 
       // Prepare data according to Swagger API specification
       const progressData: any = {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
-        watchedDuration: Math.floor(currentTime),
-        totalCourseDuration: Math.floor(duration)
+        watchedDuration: Math.floor(currentTime)
       };
 
-      console.log('📤 Sending progress data:', progressData);
+      // Add optional fields only if they have meaningful values
+      if (duration > 0) {
+        progressData.totalCourseDuration = Math.floor(duration);
+      }
+
+      if (totalWatchedPercentage > 0) {
+        progressData.totalWatchedPercentage = Math.round(totalWatchedPercentage);
+      }
+
+      console.log('Sending progress update:', progressData);
 
       const response = await pack365Api.updateTopicProgress(token, progressData);
 
-      // Update last saved progress
       lastSavedProgressRef.current = currentTime;
-      
-      console.log('✅ Progress updated successfully:', {
-        progress: progress.toFixed(2) + '%',
-        response: response
-      });
+      console.log('Progress updated successfully:', progress.toFixed(2) + '%');
 
       // Update local state with backend response
       if (response.success) {
@@ -548,7 +553,7 @@ const VideoLearningModal = ({
           courseId: selectedCourse._id,
           topicName: selectedTopic.name,
           watchedDuration: Math.floor(currentTime),
-          watched: shouldMarkAsWatched || (progress >= 90),
+          watched: shouldMarkAsWatched,
           lastWatchedAt: new Date().toISOString()
         };
 
@@ -571,49 +576,45 @@ const VideoLearningModal = ({
             watchedTopics: response.watchedTopics || prev.watchedTopics
           } : null);
         }
-
-        // Show success toast for significant progress
-        if (progressDifference >= 10) {
-          toast({
-            title: 'Progress Saved',
-            description: `Your progress (${Math.round(progress)}%) has been saved.`,
-            variant: 'default'
-          });
-        }
       }
 
     } catch (error: any) {
-      console.error('🔴 Error updating progress:', error);
-      
+      console.error('Error updating progress:', error);
       // Show user-friendly error message
       toast({
         title: 'Progress Update Failed',
-        description: error.message || 'Failed to save your progress. Please check your connection.',
+        description: error.message || 'Failed to save your progress',
         variant: 'destructive'
       });
     }
   };
 
   const markTopicAsCompletedAutomatically = async () => {
-    if (!selectedTopic || !selectedCourse) {
-      console.log('🟡 Cannot mark topic as completed - missing data');
-      return;
-    }
+    if (!selectedTopic || !selectedCourse) return;
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.log('🟡 No token found for completion');
-        return;
-      }
+      if (!token) return;
 
       const duration = playerRef.current ? 
         Math.floor(playerRef.current.getDuration()) : selectedTopic.duration;
 
-      console.log('🎯 Marking topic as completed:', {
-        topic: selectedTopic.name,
-        duration: duration
-      });
+      // Calculate total watched percentage
+      let totalWatchedPercentage = 0;
+      if (enrollment) {
+        const totalTopics = enrollment.totalTopics || 1;
+        const currentWatchedTopics = enrollment.watchedTopics || 0;
+        
+        // Check if this topic was already watched
+        const wasAlreadyWatched = topicProgress.find(tp => 
+          String(tp.courseId) === String(selectedCourse._id) && 
+          String(tp.topicName) === String(selectedTopic.name) && 
+          tp.watched
+        );
+        
+        const newWatchedTopics = wasAlreadyWatched ? currentWatchedTopics : currentWatchedTopics + 1;
+        totalWatchedPercentage = (newWatchedTopics / totalTopics) * 100;
+      }
 
       // Prepare completion data according to Swagger API
       const completionData: any = {
@@ -621,10 +622,10 @@ const VideoLearningModal = ({
         topicName: selectedTopic.name,
         watchedDuration: duration,
         totalCourseDuration: Math.floor(duration),
-        totalWatchedPercentage: 100 // Force completion
+        totalWatchedPercentage: Math.round(totalWatchedPercentage)
       };
 
-      console.log('📤 Sending completion data:', completionData);
+      console.log('Marking topic as completed:', completionData);
 
       const response = await pack365Api.updateTopicProgress(token, completionData);
 
@@ -659,7 +660,7 @@ const VideoLearningModal = ({
         if (response.totalWatchedPercentage !== undefined || response.watchedTopics !== undefined) {
           setEnrollment(prev => prev ? {
             ...prev,
-            totalWatchedPercentage: response.totalWatchedPercentage || 100,
+            totalWatchedPercentage: response.totalWatchedPercentage || prev.totalWatchedPercentage,
             watchedTopics: response.watchedTopics || ((prev.watchedTopics || 0) + 1)
           } : null);
         }
@@ -677,7 +678,7 @@ const VideoLearningModal = ({
       }
 
     } catch (error: any) {
-      console.error('🔴 Error marking topic as completed:', error);
+      console.error('Error marking topic as completed:', error);
       toast({ 
         title: 'Completion Error', 
         description: error.message || 'Failed to mark topic as completed', 
@@ -694,14 +695,12 @@ const VideoLearningModal = ({
 
   const handleManualComplete = async () => {
     if (selectedTopic) {
-      console.log('👤 Manual completion triggered');
       await markTopicAsCompletedAutomatically();
     }
   };
 
   const handleOpenInNewTab = () => {
     if (selectedTopic) {
-      console.log('🔗 Opening video in new tab');
       window.open(selectedTopic.link, '_blank');
     }
   };
@@ -826,22 +825,9 @@ const Pack365StreamLearning = () => {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isLearningView, setIsLearningView] = useState(false);
 
-  // Debug progress state
-  useEffect(() => {
-    console.log('🔄 Topic Progress Updated:', topicProgress);
-    console.log('🔄 Enrollment State:', enrollment);
-  }, [topicProgress, enrollment]);
-
-  useEffect(() => {
-    console.log('🔄 Current Progress Calculation:', calculateLocalProgress());
-  }, [topicProgress, enrollment]);
-
   // Calculate local progress
   const calculateLocalProgress = (): number => {
-    if (!enrollment || !enrollment.courses) {
-      console.log('🟡 No enrollment or courses found');
-      return 0;
-    }
+    if (!enrollment || !enrollment.courses) return 0;
     
     let totalWatchedTopics = 0;
     let totalTopicsInStream = 0;
@@ -856,32 +842,15 @@ const Pack365StreamLearning = () => {
       ).length;
       
       totalWatchedTopics += watchedInCourse;
-      
-      console.log('📊 Course Progress:', {
-        course: course.courseName,
-        totalTopics: courseTopics,
-        watched: watchedInCourse,
-        courseId: course._id
-      });
     });
 
-    const calculatedProgress = totalTopicsInStream > 0 ? 
-      (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
-
-    console.log('📊 Overall Progress Calculation:', {
-      totalWatchedTopics,
-      totalTopicsInStream,
-      calculatedProgress
-    });
-
-    return calculatedProgress;
+    return totalTopicsInStream > 0 ? (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
   };
 
   useEffect(() => {
     const fetchStreamEnrollment = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('🔴 No authentication token found');
         toast({ title: 'Authentication Required', variant: 'destructive' });
         navigate('/login');
         return;
@@ -889,11 +858,9 @@ const Pack365StreamLearning = () => {
 
       try {
         setLoading(true);
-        console.log('📥 Fetching stream enrollment for:', stream);
         
         // Fetch enrollments
         const response = await pack365Api.getMyEnrollments(token);
-        console.log('📥 Enrollment response:', response);
         
         if (response.success && response.enrollments) {
           const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
@@ -902,8 +869,6 @@ const Pack365StreamLearning = () => {
           );
 
           if (currentEnrollment) {
-            console.log('✅ Found enrollment:', currentEnrollment);
-            
             // Fetch all courses to get complete course data
             const coursesResponse = await pack365Api.getAllCourses();
             if (coursesResponse.success && coursesResponse.data) {
@@ -931,12 +896,6 @@ const Pack365StreamLearning = () => {
               const accurateProgress = totalTopicsInStream > 0 ? 
                 (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
 
-              console.log('📊 Calculated accurate progress:', {
-                totalWatchedTopics,
-                totalTopicsInStream,
-                accurateProgress
-              });
-
               // Enhance enrollment with accurate data
               const enhancedEnrollment = {
                 ...currentEnrollment,
@@ -954,7 +913,6 @@ const Pack365StreamLearning = () => {
               const selectedCourseId = (location.state as any)?.selectedCourseId;
               
               if (selectedCourseFromState || selectedCourseId) {
-                console.log('🎯 Opening learning view from navigation');
                 setIsLearningView(true);
                 if (selectedCourseFromState) {
                   setSelectedCourse(selectedCourseFromState);
@@ -970,23 +928,19 @@ const Pack365StreamLearning = () => {
                 courseId: String(tp.courseId)
               }));
               setTopicProgress(normalizedTopicProgress);
-              
-              console.log('✅ Enrollment data loaded successfully');
             } else {
               setEnrollment(currentEnrollment);
             }
           } else {
-            console.log('🔴 No enrollment found for stream:', stream);
             toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
             navigate('/pack365');
           }
         } else {
-          console.log('🔴 Invalid enrollment response');
           toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
           navigate('/pack365');
         }
       } catch (error: any) {
-        console.error('🔴 Error fetching stream enrollment:', error);
+        console.error('Error fetching stream enrollment:', error);
         toast({ title: 'Error', description: 'Failed to load enrollment details.', variant: 'destructive' });
         navigate('/pack365');
       } finally {
@@ -998,30 +952,25 @@ const Pack365StreamLearning = () => {
   }, [stream, location]);
 
   const handleCourseStart = (course: Course) => {
-    console.log('🎯 Starting course:', course.courseName);
     setSelectedCourse(course);
     setIsLearningView(true);
   };
 
   const handleBackToStream = () => {
-    console.log('🔙 Returning to stream overview');
     setIsLearningView(false);
     setSelectedCourse(null);
   };
 
   const handleTopicClick = async (topic: Topic) => {
     if (!selectedCourse) return;
-    console.log('🎬 Opening topic:', topic.name);
     setSelectedTopic(topic);
     setIsVideoModalOpen(true);
   };
 
   const handleTakeExam = () => {
     if (enrollment && enrollment.totalWatchedPercentage >= 80) {
-      console.log('📝 Taking stream exam');
       navigate(`/exam/${stream}`);
     } else {
-      console.log('🔴 Not eligible for exam');
       toast({
         title: 'Not Eligible',
         description: 'You need to complete at least 80% of the stream to take the exam.',
@@ -1032,10 +981,8 @@ const Pack365StreamLearning = () => {
 
   const handleTakeFinalExam = () => {
     if (enrollment && enrollment.totalWatchedPercentage >= 100) {
-      console.log('📝 Taking final exam');
       navigate(`/exam/${stream}/final`);
     } else {
-      console.log('🔴 Not eligible for final exam');
       toast({
         title: 'Not Eligible',
         description: 'You need to complete 100% of the stream to take the final exam.',
@@ -1049,15 +996,12 @@ const Pack365StreamLearning = () => {
   });
 
   const getTopicProgress = (courseId: string, topicName: string) => {
-    const progress = topicProgress.find(
+    return topicProgress.find(
       tp => String(tp.courseId) === String(courseId) && String(tp.topicName) === String(topicName)
     );
-    console.log('📊 Getting topic progress:', { courseId, topicName, progress });
-    return progress;
   };
 
   const handleOpenInNewTab = (topic: Topic) => {
-    console.log('🔗 Opening topic in new tab:', topic.name);
     window.open(topic.link, '_blank');
   };
 
@@ -1129,7 +1073,7 @@ const Pack365StreamLearning = () => {
                       {selectedCourse.totalDuration} min
                     </Badge>
                   </div>
-                </CardContent>
+                </CardHeader>
                 <CardContent>
                   {/* Course Document */}
                   {selectedCourse.documentLink && (
@@ -1302,7 +1246,7 @@ const Pack365StreamLearning = () => {
                       <Target className="h-6 w-6"/>
                       Ready for Exam!
                     </CardTitle>
-                  </CardContent>
+                  </CardHeader>
                   <CardContent>
                     <p className="mb-4 text-green-100">
                       You've completed enough of the stream to take the exam.
