@@ -72,6 +72,7 @@ interface StreamEnrollment {
 interface TopicProgress {
   courseId: string;
   topicName: string;
+  watched: boolean;
   watchedDuration: number;
   lastWatchedAt?: string;
 }
@@ -489,8 +490,8 @@ const VideoLearningModal = ({
       // Update UI immediately
       setVideoProgress(progress);
 
-      // Only save if progress has meaningfully increased (at least 3 seconds)
-      if (Math.abs(currentTime - lastSavedProgressRef.current) < 3) {
+      // Only save if progress has meaningfully increased (at least 5 seconds)
+      if (Math.abs(currentTime - lastSavedProgressRef.current) < 5) {
         return;
       }
 
@@ -504,26 +505,40 @@ const VideoLearningModal = ({
         const currentWatchedTopics = enrollment.watchedTopics || 0;
         
         // If marking as watched and it wasn't watched before, increment count
-        const newWatchedTopics = shouldMarkAsWatched && 
-          !topicProgress.find(tp => 
-            String(tp.courseId) === String(selectedCourse._id) && 
-            String(tp.topicName) === String(selectedTopic.name) && 
-            tp.watched
-          ) ? currentWatchedTopics + 1 : currentWatchedTopics;
+        const isAlreadyWatched = topicProgress.find(tp => 
+          String(tp.courseId) === String(selectedCourse._id) && 
+          String(tp.topicName) === String(selectedTopic.name) && 
+          tp.watched
+        );
+        
+        const newWatchedTopics = shouldMarkAsWatched && !isAlreadyWatched ? 
+          currentWatchedTopics + 1 : currentWatchedTopics;
         
         totalWatchedPercentage = (newWatchedTopics / totalTopics) * 100;
       }
 
-      const response = await pack365Api.updateTopicProgress(token, {
+      // Prepare data according to Swagger API specification
+      const progressData: any = {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
-        watchedDuration: Math.floor(currentTime),
-        totalCourseDuration: Math.floor(duration),
-        totalWatchedPercentage: Math.round(totalWatchedPercentage)
-      });
+        watchedDuration: Math.floor(currentTime)
+      };
+
+      // Add optional fields only if they have meaningful values
+      if (duration > 0) {
+        progressData.totalCourseDuration = Math.floor(duration);
+      }
+
+      if (totalWatchedPercentage > 0) {
+        progressData.totalWatchedPercentage = Math.round(totalWatchedPercentage);
+      }
+
+      console.log('Sending progress update:', progressData);
+
+      const response = await pack365Api.updateTopicProgress(token, progressData);
 
       lastSavedProgressRef.current = currentTime;
-      console.log('Progress updated:', progress.toFixed(2) + '%');
+      console.log('Progress updated successfully:', progress.toFixed(2) + '%');
 
       // Update local state with backend response
       if (response.success) {
@@ -534,30 +549,30 @@ const VideoLearningModal = ({
                 String(tp.topicName) === String(selectedTopic.name)
         );
 
+        const topicProgressUpdate = {
+          courseId: selectedCourse._id,
+          topicName: selectedTopic.name,
+          watchedDuration: Math.floor(currentTime),
+          watched: shouldMarkAsWatched,
+          lastWatchedAt: new Date().toISOString()
+        };
+
         if (existingIndex >= 0) {
           updatedTopicProgress[existingIndex] = {
             ...updatedTopicProgress[existingIndex],
-            watchedDuration: Math.floor(currentTime),
-            watched: shouldMarkAsWatched,
-            lastWatchedAt: new Date().toISOString()
+            ...topicProgressUpdate
           };
         } else {
-          updatedTopicProgress.push({
-            courseId: selectedCourse._id,
-            topicName: selectedTopic.name,
-            watchedDuration: Math.floor(currentTime),
-            watched: shouldMarkAsWatched,
-            lastWatchedAt: new Date().toISOString()
-          });
+          updatedTopicProgress.push(topicProgressUpdate);
         }
 
         setTopicProgress(updatedTopicProgress);
 
         // Update enrollment progress if response contains updated data
-        if (response.totalWatchedPercentage !== undefined) {
+        if (response.totalWatchedPercentage !== undefined || response.watchedTopics !== undefined) {
           setEnrollment(prev => prev ? {
             ...prev,
-            totalWatchedPercentage: response.totalWatchedPercentage,
+            totalWatchedPercentage: response.totalWatchedPercentage || prev.totalWatchedPercentage,
             watchedTopics: response.watchedTopics || prev.watchedTopics
           } : null);
         }
@@ -565,6 +580,12 @@ const VideoLearningModal = ({
 
     } catch (error: any) {
       console.error('Error updating progress:', error);
+      // Show user-friendly error message
+      toast({
+        title: 'Progress Update Failed',
+        description: error.message || 'Failed to save your progress',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -595,13 +616,18 @@ const VideoLearningModal = ({
         totalWatchedPercentage = (newWatchedTopics / totalTopics) * 100;
       }
 
-      const response = await pack365Api.updateTopicProgress(token, {
+      // Prepare completion data according to Swagger API
+      const completionData: any = {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
         watchedDuration: duration,
         totalCourseDuration: Math.floor(duration),
         totalWatchedPercentage: Math.round(totalWatchedPercentage)
-      });
+      };
+
+      console.log('Marking topic as completed:', completionData);
+
+      const response = await pack365Api.updateTopicProgress(token, completionData);
 
       if (response.success) {
         setIsTrackingProgress(false);
@@ -614,29 +640,27 @@ const VideoLearningModal = ({
                 String(tp.topicName) === String(selectedTopic.name)
         );
 
+        const completedProgress = {
+          courseId: selectedCourse._id,
+          topicName: selectedTopic.name,
+          watchedDuration: duration,
+          watched: true,
+          lastWatchedAt: new Date().toISOString()
+        };
+
         if (existingIndex >= 0) {
-          updatedTopicProgress[existingIndex] = {
-            ...updatedTopicProgress[existingIndex],
-            watchedDuration: duration,
-            lastWatchedAt: new Date().toISOString()
-          };
+          updatedTopicProgress[existingIndex] = completedProgress;
         } else {
-          updatedTopicProgress.push({
-            courseId: selectedCourse._id,
-            topicName: selectedTopic.name,
-            watchedDuration: duration,
-            watched: true,
-            lastWatchedAt: new Date().toISOString()
-          });
+          updatedTopicProgress.push(completedProgress);
         }
 
         setTopicProgress(updatedTopicProgress);
 
         // Update enrollment with backend response
-        if (response.totalWatchedPercentage !== undefined) {
+        if (response.totalWatchedPercentage !== undefined || response.watchedTopics !== undefined) {
           setEnrollment(prev => prev ? {
             ...prev,
-            totalWatchedPercentage: response.totalWatchedPercentage,
+            totalWatchedPercentage: response.totalWatchedPercentage || prev.totalWatchedPercentage,
             watchedTopics: response.watchedTopics || ((prev.watchedTopics || 0) + 1)
           } : null);
         }
@@ -656,8 +680,8 @@ const VideoLearningModal = ({
     } catch (error: any) {
       console.error('Error marking topic as completed:', error);
       toast({ 
-        title: 'Error', 
-        description: 'Failed to update progress', 
+        title: 'Completion Error', 
+        description: error.message || 'Failed to mark topic as completed', 
         variant: 'destructive' 
       });
     }
