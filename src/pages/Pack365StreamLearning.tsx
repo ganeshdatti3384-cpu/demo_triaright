@@ -72,7 +72,6 @@ interface StreamEnrollment {
 interface TopicProgress {
   courseId: string;
   topicName: string;
-  watched: boolean;
   watchedDuration: number;
   lastWatchedAt?: string;
 }
@@ -519,7 +518,6 @@ const VideoLearningModal = ({
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
         watchedDuration: Math.floor(currentTime),
-        watched: shouldMarkAsWatched,
         totalCourseDuration: Math.floor(duration),
         totalWatchedPercentage: Math.round(totalWatchedPercentage)
       });
@@ -601,7 +599,6 @@ const VideoLearningModal = ({
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
         watchedDuration: duration,
-        watched: true,
         totalCourseDuration: Math.floor(duration),
         totalWatchedPercentage: Math.round(totalWatchedPercentage)
       });
@@ -621,7 +618,6 @@ const VideoLearningModal = ({
           updatedTopicProgress[existingIndex] = {
             ...updatedTopicProgress[existingIndex],
             watchedDuration: duration,
-            watched: true,
             lastWatchedAt: new Date().toISOString()
           };
         } else {
