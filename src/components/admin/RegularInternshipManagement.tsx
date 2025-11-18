@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Eye, Users, FileText, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Users, FileText, Search, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Internship {
@@ -43,14 +43,18 @@ interface Internship {
 
 interface Application {
   _id: string;
-  internshipId: string | Internship;
-  userId: string | {
+  internshipId: {
+    _id: string;
+    title: string;
+    companyName: string;
+  };
+  userId: {
     _id: string;
     name: string;
     email: string;
   };
   status: 'Applied' | 'Shortlisted' | 'Selected' | 'Rejected' | 'Withdrawn';
-  applicantDetails?: {
+  applicantDetails: {
     name: string;
     email: string;
     phone: string;
@@ -62,13 +66,6 @@ interface Application {
   portfolioLink?: string;
   appliedAt: string;
   paymentStatus: 'pending' | 'completed' | 'failed' | 'not_required';
-  
-  // Fallback fields
-  name?: string;
-  email?: string;
-  phone?: string;
-  college?: string;
-  qualification?: string;
 }
 
 const RegularInternshipManagement = () => {
@@ -113,9 +110,7 @@ const RegularInternshipManagement = () => {
   
   const { toast } = useToast();
 
-  // Base URL - using the correct endpoint from network tab
   const API_BASE_URL = 'https://triaright.com/api/internships/';
-  const APPLICATIONS_API_URL = 'https://triaright.com/api/Internships/applications';
 
   useEffect(() => {
     fetchInternships();
@@ -177,7 +172,6 @@ const RegularInternshipManagement = () => {
     }
   };
 
-  // FIXED: Enhanced fetchApplications function with better error handling and response parsing
   const fetchApplications = async (internshipId?: string) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -192,56 +186,30 @@ const RegularInternshipManagement = () => {
     try {
       setApplicationsLoading(true);
       
-      // Use the exact endpoint from your network tab with cache busting
-      const response = await fetch(`${APPLICATIONS_API_URL}?t=${Date.now()}`, {
-        method: 'GET',
+      const response = await fetch(`${API_BASE_URL}applications`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include'
+          'Content-Type': 'application/json'
+        }
       });
       
       console.log('Fetch applications response status:', response.status);
       
-      if (response.status === 304) {
-        console.log('Applications not modified - using cached data');
-        toast({
-          title: 'Info',
-          description: 'Using cached applications data',
-        });
-        return;
-      }
-      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error Response:', errorText);
+        console.error('Applications fetch error:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('Raw applications response:', data);
+      console.log('Fetched applications raw data:', data);
       
-      // Handle different possible response formats
       let applicationsData: Application[] = [];
       
-      if (data && Array.isArray(data)) {
-        // Case 1: Direct array response
+      if (data.success && Array.isArray(data.applications)) {
+        applicationsData = data.applications;
+      } else if (Array.isArray(data)) {
         applicationsData = data;
-        console.log('Format: Direct array');
-      } else if (data && data.success && Array.isArray(data.applications)) {
-        // Case 2: { success: true, applications: [] }
-        applicationsData = data.applications;
-        console.log('Format: Success with applications array');
-      } else if (data && data.data && Array.isArray(data.data)) {
-        // Case 3: { data: [] }
-        applicationsData = data.data;
-        console.log('Format: Data array');
-      } else if (data && data.applications && Array.isArray(data.applications)) {
-        // Case 4: { applications: [] }
-        applicationsData = data.applications;
-        console.log('Format: Applications array');
       } else {
         console.error('Unexpected applications response format:', data);
         toast({
@@ -254,30 +222,27 @@ const RegularInternshipManagement = () => {
 
       console.log('Processed applications:', applicationsData);
 
-      // Filter by internshipId if provided
       if (internshipId) {
         applicationsData = applicationsData.filter((app: Application) => {
-          // Handle both string and object internshipId formats
           const appInternshipId = typeof app.internshipId === 'string' 
             ? app.internshipId 
             : app.internshipId?._id;
+          
           return appInternshipId === internshipId;
         });
-        console.log(`Filtered applications for internship ${internshipId}:`, applicationsData);
       }
       
       setApplications(applicationsData);
       
-      toast({
-        title: 'Success',
-        description: `Loaded ${applicationsData.length} applications`,
-      });
+      if (applicationsData.length === 0) {
+        console.log('No applications found for the current filters');
+      }
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching applications:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load applications. Please check console for details.',
+        description: 'Failed to load applications. Please check console for details.',
         variant: 'destructive'
       });
     } finally {
@@ -285,53 +250,15 @@ const RegularInternshipManagement = () => {
     }
   };
 
-  // Utility function to get applicant name safely
-  const getApplicantName = (application: Application): string => {
-    return application.applicantDetails?.name || application.name || 'N/A';
-  };
-
-  // Utility function to get applicant email safely
-  const getApplicantEmail = (application: Application): string => {
-    return application.applicantDetails?.email || application.email || 'N/A';
-  };
-
-  // Utility function to get applicant college safely
-  const getApplicantCollege = (application: Application): string => {
-    return application.applicantDetails?.college || application.college || 'N/A';
-  };
-
-  // Utility function to get applicant qualification safely
-  const getApplicantQualification = (application: Application): string => {
-    return application.applicantDetails?.qualification || application.qualification || 'N/A';
-  };
-
-  // Utility function to get internship title safely
-  const getInternshipTitle = (application: Application): string => {
-    if (typeof application.internshipId === 'string') {
-      // If internshipId is a string, we need to find the internship in our state
-      const internship = internships.find(i => i._id === application.internshipId);
-      return internship?.title || 'Unknown Internship';
-    } else {
-      return application.internshipId?.title || 'Unknown Internship';
-    }
-  };
-
-  // Utility function to get company name safely
-  const getCompanyName = (application: Application): string => {
-    if (typeof application.internshipId === 'string') {
-      const internship = internships.find(i => i._id === application.internshipId);
-      return internship?.companyName || 'Unknown Company';
-    } else {
-      return application.internshipId?.companyName || 'Unknown Company';
-    }
-  };
-
   const filterApplications = () => {
     let filtered = applications.filter(app => {
+      const searchLower = applicationSearch.toLowerCase();
+      
       const matchesSearch = 
-        getApplicantName(app).toLowerCase().includes(applicationSearch.toLowerCase()) ||
-        getApplicantEmail(app).toLowerCase().includes(applicationSearch.toLowerCase()) ||
-        getInternshipTitle(app).toLowerCase().includes(applicationSearch.toLowerCase());
+        app.applicantDetails?.name?.toLowerCase().includes(searchLower) ||
+        app.applicantDetails?.email?.toLowerCase().includes(searchLower) ||
+        (app.internshipId && typeof app.internshipId === 'object' && 
+         app.internshipId.title?.toLowerCase().includes(searchLower));
       
       const matchesStatus = applicationStatusFilter === 'all' || app.status === applicationStatusFilter;
       
@@ -354,7 +281,6 @@ const RegularInternshipManagement = () => {
       return false;
     }
 
-    // Validate application deadline is in the future
     if (formData.applicationDeadline) {
       const deadline = new Date(formData.applicationDeadline);
       const today = new Date();
@@ -388,7 +314,6 @@ const RegularInternshipManagement = () => {
     if (!validateFormData()) return;
 
     try {
-      // Prepare data according to backend schema
       const internshipData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
@@ -561,7 +486,14 @@ const RegularInternshipManagement = () => {
 
   const updateApplicationStatus = async (applicationId: string, status: string) => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      toast({
+        title: 'Error',
+        description: 'Please log in to update application status',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}applications/${applicationId}/status`, {
@@ -586,7 +518,6 @@ const RegularInternshipManagement = () => {
         description: 'Application status updated successfully'
       });
       
-      // Refresh applications
       if (selectedInternship) {
         fetchApplications(selectedInternship._id);
       } else {
@@ -636,10 +567,10 @@ const RegularInternshipManagement = () => {
     setShowViewDialog(true);
   };
 
-  const handleViewApplications = (internship: Internship) => {
+  const handleViewApplications = async (internship: Internship) => {
     setSelectedInternship(internship);
-    fetchApplications(internship._id);
     setShowApplicationsDialog(true);
+    await fetchApplications(internship._id);
   };
 
   const resetFormData = () => {
@@ -667,6 +598,24 @@ const RegularInternshipManagement = () => {
       letterOfRecommendation: false,
       experienceRequired: 'Fresher'
     });
+  };
+
+  const downloadResume = (resumeLink: string, applicantName: string) => {
+    if (resumeLink) {
+      const link = document.createElement('a');
+      link.href = resumeLink;
+      link.download = `${applicantName.replace(/\s+/g, '_')}_resume.pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      toast({
+        title: 'Error',
+        description: 'Resume not available',
+        variant: 'destructive'
+      });
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -697,306 +646,275 @@ const RegularInternshipManagement = () => {
   };
 
   const getApplicationStatusBadge = (status: string) => {
-    const colors = {
-      Applied: 'bg-blue-100 text-blue-800',
-      Shortlisted: 'bg-yellow-100 text-yellow-800',
-      Selected: 'bg-green-100 text-green-800',
-      Rejected: 'bg-red-100 text-red-800',
-      Withdrawn: 'bg-gray-100 text-gray-800'
+    const colors: { [key: string]: string } = {
+      Applied: 'bg-blue-100 text-blue-800 border-blue-200',
+      Shortlisted: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      Selected: 'bg-green-100 text-green-800 border-green-200',
+      Rejected: 'bg-red-100 text-red-800 border-red-200',
+      Withdrawn: 'bg-gray-100 text-gray-800 border-gray-200',
+      Accepted: 'bg-green-100 text-green-800 border-green-200'
     };
 
     return (
-      <Badge variant="outline" className={colors[status as keyof typeof colors]}>
+      <Badge 
+        variant="outline" 
+        className={`${colors[status] || 'bg-gray-100 text-gray-800 border-gray-200'} font-medium`}
+      >
         {status}
       </Badge>
     );
   };
 
-  // Debug function to test API
-  const testApplicationsAPI = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast({
-        title: 'Error',
-        description: 'No token found',
-        variant: 'destructive'
-      });
-      return;
+  const getInternshipTitle = (application: Application) => {
+    if (!application.internshipId) return 'Unknown Internship';
+    
+    if (typeof application.internshipId === 'string') {
+      const internship = internships.find(i => i._id === application.internshipId);
+      return internship?.title || 'Unknown Internship';
     }
+    
+    return application.internshipId.title || 'Unknown Internship';
+  };
 
-    try {
-      console.log('Testing applications API...');
-      const response = await fetch(APPLICATIONS_API_URL, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-      
-      console.log('Test Response status:', response.status);
-      console.log('Test Response headers:', Object.fromEntries(response.headers.entries()));
-      
-      const text = await response.text();
-      console.log('Test Response raw text:', text);
-      
-      try {
-        const json = JSON.parse(text);
-        console.log('Test Response JSON:', json);
-        
-        toast({
-          title: 'API Test Complete',
-          description: `Status: ${response.status}. Check console for details.`,
-        });
-      } catch (e) {
-        console.log('Test Response is not JSON:', text);
-        toast({
-          title: 'API Test Complete',
-          description: `Status: ${response.status}. Response is not JSON.`,
-        });
-      }
-    } catch (error) {
-      console.error('Test API error:', error);
-      toast({
-        title: 'API Test Failed',
-        description: 'Check console for error details',
-        variant: 'destructive'
-      });
+  const getCompanyName = (application: Application) => {
+    if (!application.internshipId) return 'Unknown Company';
+    
+    if (typeof application.internshipId === 'string') {
+      const internship = internships.find(i => i._id === application.internshipId);
+      return internship?.companyName || 'Unknown Company';
     }
+    
+    return application.internshipId.companyName || 'Unknown Company';
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Regular Internship Management</h2>
-        <div className="flex gap-2">
-          {/* Debug button - remove in production */}
-          <Button variant="outline" onClick={testApplicationsAPI}>
-            Test API
-          </Button>
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Regular Internship
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create New Internship</DialogTitle>
-                <DialogDescription>
-                  Fill in the details for the new internship opportunity. All fields marked with * are required.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={createInternship} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Title *</label>
-                    <Input
-                      value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
-                      placeholder="e.g., Frontend Developer Intern"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Company Name *</label>
-                    <Input
-                      value={formData.companyName}
-                      onChange={(e) => setFormData({...formData, companyName: e.target.value})}
-                      placeholder="e.g., Tech Solutions Inc."
-                      required
-                    />
-                  </div>
-                </div>
-
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Regular Internship
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Internship</DialogTitle>
+              <DialogDescription>
+                Fill in the details for the new internship opportunity. All fields marked with * are required.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={createInternship} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Description *</label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Describe the internship role, responsibilities, and learning opportunities..."
+                  <label className="text-sm font-medium">Title *</label>
+                  <Input
+                    value={formData.title}
+                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    placeholder="e.g., Frontend Developer Intern"
                     required
-                    rows={4}
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Location *</label>
-                    <Input
-                      value={formData.location}
-                      onChange={(e) => setFormData({...formData, location: e.target.value})}
-                      placeholder="e.g., Remote, Hyderabad, Bangalore"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Internship Type</label>
-                    <Select value={formData.internshipType} onValueChange={(value: any) => setFormData({...formData, internshipType: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Remote">Remote</SelectItem>
-                        <SelectItem value="On-Site">On-Site</SelectItem>
-                        <SelectItem value="Hybrid">Hybrid</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Company Name *</label>
+                  <Input
+                    value={formData.companyName}
+                    onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                    placeholder="e.g., Tech Solutions Inc."
+                    required
+                  />
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Category</label>
-                    <Input
-                      value={formData.category}
-                      onChange={(e) => setFormData({...formData, category: e.target.value})}
-                      placeholder="e.g., Web Development, Data Science"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Term *</label>
-                    <Select value={formData.term} onValueChange={(value: any) => setFormData({...formData, term: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Shortterm">Short Term</SelectItem>
-                        <SelectItem value="Longterm">Long Term</SelectItem>
-                        <SelectItem value="others">Others</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description *</label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  placeholder="Describe the internship role, responsibilities, and learning opportunities..."
+                  required
+                  rows={4}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Location *</label>
+                  <Input
+                    value={formData.location}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    placeholder="e.g., Remote, Hyderabad, Bangalore"
+                    required
+                  />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Duration *</label>
-                    <Input
-                      value={formData.duration}
-                      onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                      placeholder="e.g., 3 Months, 6 Months"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Mode *</label>
-                    <Select value={formData.mode} onValueChange={(value: any) => setFormData({...formData, mode: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Unpaid">Unpaid</SelectItem>
-                        <SelectItem value="Paid">Paid</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Internship Type</label>
+                  <Select value={formData.internshipType} onValueChange={(value: any) => setFormData({...formData, internshipType: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Remote">Remote</SelectItem>
+                      <SelectItem value="On-Site">On-Site</SelectItem>
+                      <SelectItem value="Hybrid">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
 
-                {formData.mode === 'Paid' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Stipend Amount (₹)</label>
-                      <Input
-                        type="number"
-                        value={formData.stipendAmount}
-                        onChange={(e) => setFormData({...formData, stipendAmount: Number(e.target.value)})}
-                        placeholder="e.g., 5000"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Pay Frequency</label>
-                      <Select value={formData.payFrequency} onValueChange={(value: any) => setFormData({...formData, payFrequency: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Monthly">Monthly</SelectItem>
-                          <SelectItem value="Weekly">Weekly</SelectItem>
-                          <SelectItem value="One-Time">One-Time</SelectItem>
-                          <SelectItem value="None">None</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Start Date</label>
-                    <Input
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Application Deadline *</label>
-                    <Input
-                      type="date"
-                      value={formData.applicationDeadline}
-                      onChange={(e) => setFormData({...formData, applicationDeadline: e.target.value})}
-                      required
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Category</label>
+                  <Input
+                    value={formData.category}
+                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    placeholder="e.g., Web Development, Data Science"
+                  />
                 </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Term *</label>
+                  <Select value={formData.term} onValueChange={(value: any) => setFormData({...formData, term: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Shortterm">Short Term</SelectItem>
+                      <SelectItem value="Longterm">Long Term</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Duration *</label>
+                  <Input
+                    value={formData.duration}
+                    onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                    placeholder="e.g., 3 Months, 6 Months"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Mode *</label>
+                  <Select value={formData.mode} onValueChange={(value: any) => setFormData({...formData, mode: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Unpaid">Unpaid</SelectItem>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {formData.mode === 'Paid' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Qualification</label>
-                    <Input
-                      value={formData.qualification}
-                      onChange={(e) => setFormData({...formData, qualification: e.target.value})}
-                      placeholder="e.g., Any Graduate, B.Tech"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Openings</label>
+                    <label className="text-sm font-medium">Stipend Amount (₹)</label>
                     <Input
                       type="number"
-                      value={formData.openings}
-                      onChange={(e) => setFormData({...formData, openings: Number(e.target.value)})}
-                      min="1"
+                      value={formData.stipendAmount}
+                      onChange={(e) => setFormData({...formData, stipendAmount: Number(e.target.value)})}
+                      placeholder="e.g., 5000"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Pay Frequency</label>
+                    <Select value={formData.payFrequency} onValueChange={(value: any) => setFormData({...formData, payFrequency: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Monthly">Monthly</SelectItem>
+                        <SelectItem value="Weekly">Weekly</SelectItem>
+                        <SelectItem value="One-Time">One-Time</SelectItem>
+                        <SelectItem value="None">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+              )}
 
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Experience Required</label>
+                  <label className="text-sm font-medium">Start Date</label>
                   <Input
-                    value={formData.experienceRequired}
-                    onChange={(e) => setFormData({...formData, experienceRequired: e.target.value})}
-                    placeholder="e.g., Fresher, 0-1 years"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
                   />
                 </div>
-
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.certificateProvided}
-                      onChange={(e) => setFormData({...formData, certificateProvided: e.target.checked})}
-                      className="rounded border-gray-300"
-                    />
-                    <label className="text-sm font-medium">Certificate Provided</label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.letterOfRecommendation}
-                      onChange={(e) => setFormData({...formData, letterOfRecommendation: e.target.checked})}
-                      className="rounded border-gray-300"
-                    />
-                    <label className="text-sm font-medium">Letter of Recommendation</label>
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Application Deadline *</label>
+                  <Input
+                    type="date"
+                    value={formData.applicationDeadline}
+                    onChange={(e) => setFormData({...formData, applicationDeadline: e.target.value})}
+                    required
+                  />
                 </div>
+              </div>
 
-                <DialogFooter>
-                  <Button type="submit">Create Internship</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Qualification</label>
+                  <Input
+                    value={formData.qualification}
+                    onChange={(e) => setFormData({...formData, qualification: e.target.value})}
+                    placeholder="e.g., Any Graduate, B.Tech"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Openings</label>
+                  <Input
+                    type="number"
+                    value={formData.openings}
+                    onChange={(e) => setFormData({...formData, openings: Number(e.target.value)})}
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Experience Required</label>
+                <Input
+                  value={formData.experienceRequired}
+                  onChange={(e) => setFormData({...formData, experienceRequired: e.target.value})}
+                  placeholder="e.g., Fresher, 0-1 years"
+                />
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.certificateProvided}
+                    onChange={(e) => setFormData({...formData, certificateProvided: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <label className="text-sm font-medium">Certificate Provided</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.letterOfRecommendation}
+                    onChange={(e) => setFormData({...formData, letterOfRecommendation: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <label className="text-sm font-medium">Letter of Recommendation</label>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button type="submit">Create Internship</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -1015,71 +933,79 @@ const RegularInternshipManagement = () => {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8">Loading internships...</div>
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Loading internships...</p>
+                </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Mode</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Openings</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Deadline</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {internships.map((internship) => (
-                      <TableRow key={internship._id}>
-                        <TableCell className="font-medium">{internship.title}</TableCell>
-                        <TableCell>{internship.companyName}</TableCell>
-                        <TableCell>{internship.internshipType}</TableCell>
-                        <TableCell>{getModeBadge(internship.mode)}</TableCell>
-                        <TableCell>{internship.duration}</TableCell>
-                        <TableCell>{internship.openings}</TableCell>
-                        <TableCell>{getStatusBadge(internship.status)}</TableCell>
-                        <TableCell>
-                          {new Date(internship.applicationDeadline).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleViewApplications(internship)}
-                            >
-                              <Users className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleEdit(internship)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="destructive" 
-                              size="sm"
-                              onClick={() => deleteInternship(internship._id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {internships.length === 0 && !loading && (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                          No internships found
-                        </TableCell>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Mode</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Openings</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Deadline</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {internships.map((internship) => (
+                        <TableRow key={internship._id}>
+                          <TableCell className="font-medium">{internship.title}</TableCell>
+                          <TableCell>{internship.companyName}</TableCell>
+                          <TableCell>{internship.internshipType}</TableCell>
+                          <TableCell>{getModeBadge(internship.mode)}</TableCell>
+                          <TableCell>{internship.duration}</TableCell>
+                          <TableCell>{internship.openings}</TableCell>
+                          <TableCell>{getStatusBadge(internship.status)}</TableCell>
+                          <TableCell>
+                            {new Date(internship.applicationDeadline).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleViewApplications(internship)}
+                                title="View Applications"
+                              >
+                                <Users className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleEdit(internship)}
+                                title="Edit Internship"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => deleteInternship(internship._id)}
+                                title="Delete Internship"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {internships.length === 0 && !loading && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                            No internships found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1098,7 +1024,7 @@ const RegularInternshipManagement = () => {
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search applications..."
+                    placeholder="Search applications by name, email, or internship title..."
                     value={applicationSearch}
                     onChange={(e) => setApplicationSearch(e.target.value)}
                     className="pl-10"
@@ -1122,72 +1048,84 @@ const RegularInternshipManagement = () => {
                   variant="outline"
                   disabled={applicationsLoading}
                 >
-                  {applicationsLoading ? 'Loading...' : 'Refresh'}
+                  {applicationsLoading ? 'Refreshing...' : 'Refresh'}
                 </Button>
               </div>
 
               {applicationsLoading ? (
-                <div className="text-center py-8">Loading applications...</div>
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Loading applications...</p>
+                </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Applicant</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Internship</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Applied Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredApplications.map((application) => (
-                      <TableRow key={application._id}>
-                        <TableCell className="font-medium">
-                          {getApplicantName(application)}
-                        </TableCell>
-                        <TableCell>{getApplicantEmail(application)}</TableCell>
-                        <TableCell>{getInternshipTitle(application)}</TableCell>
-                        <TableCell>{getCompanyName(application)}</TableCell>
-                        <TableCell>
-                          {new Date(application.appliedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {getApplicationStatusBadge(application.status)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Select
-                              value={application.status}
-                              onValueChange={(value) => updateApplicationStatus(application._id, value)}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Applied">Applied</SelectItem>
-                                <SelectItem value="Shortlisted">Shortlisted</SelectItem>
-                                <SelectItem value="Selected">Selected</SelectItem>
-                                <SelectItem value="Rejected">Rejected</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button variant="outline" size="sm">
-                              <FileText className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredApplications.length === 0 && !applicationsLoading && (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                          No applications found
-                        </TableCell>
+                        <TableHead>Applicant</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Internship</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Applied Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredApplications.map((application) => (
+                        <TableRow key={application._id}>
+                          <TableCell className="font-medium">
+                            {application.applicantDetails?.name || 'N/A'}
+                          </TableCell>
+                          <TableCell>{application.applicantDetails?.email || 'N/A'}</TableCell>
+                          <TableCell>{getInternshipTitle(application)}</TableCell>
+                          <TableCell>{getCompanyName(application)}</TableCell>
+                          <TableCell>
+                            {application.appliedAt ? new Date(application.appliedAt).toLocaleDateString() : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            {getApplicationStatusBadge(application.status)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Select
+                                value={application.status}
+                                onValueChange={(value) => updateApplicationStatus(application._id, value)}
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Applied">Applied</SelectItem>
+                                  <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                                  <SelectItem value="Selected">Selected</SelectItem>
+                                  <SelectItem value="Rejected">Rejected</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => downloadResume(application.resumeLink, application.applicantDetails?.name || 'resume')}
+                                title="Download Resume"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {filteredApplications.length === 0 && !applicationsLoading && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                            {applications.length === 0 
+                              ? 'No applications found. Click "Refresh" to load applications.' 
+                              : 'No applications match your search criteria.'}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1423,18 +1361,28 @@ const RegularInternshipManagement = () => {
 
       {/* View Applications Dialog */}
       <Dialog open={showApplicationsDialog} onOpenChange={setShowApplicationsDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Applications for {selectedInternship?.title}
             </DialogTitle>
             <DialogDescription>
               View and manage applications for this internship
+              {selectedInternship && (
+                <div className="mt-2 text-sm">
+                  <span className="font-medium">Company:</span> {selectedInternship.companyName} | 
+                  <span className="font-medium ml-2">Openings:</span> {selectedInternship.openings} | 
+                  <span className="font-medium ml-2">Deadline:</span> {new Date(selectedInternship.applicationDeadline).toLocaleDateString()}
+                </div>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {applicationsLoading ? (
-              <div className="text-center py-8">Loading applications...</div>
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Loading applications...</p>
+              </div>
             ) : (
               <>
                 {applications.filter(app => {
@@ -1447,65 +1395,74 @@ const RegularInternshipManagement = () => {
                     No applications found for this internship
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Applicant</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>College</TableHead>
-                        <TableHead>Qualification</TableHead>
-                        <TableHead>Applied Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {applications
-                        .filter(app => {
-                          const appInternshipId = typeof app.internshipId === 'string' 
-                            ? app.internshipId 
-                            : app.internshipId?._id;
-                          return appInternshipId === selectedInternship?._id;
-                        })
-                        .map((application) => (
-                          <TableRow key={application._id}>
-                            <TableCell className="font-medium">
-                              {getApplicantName(application)}
-                            </TableCell>
-                            <TableCell>{getApplicantEmail(application)}</TableCell>
-                            <TableCell>{getApplicantCollege(application)}</TableCell>
-                            <TableCell>{getApplicantQualification(application)}</TableCell>
-                            <TableCell>
-                              {new Date(application.appliedAt).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              {getApplicationStatusBadge(application.status)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Select
-                                  value={application.status}
-                                  onValueChange={(value) => updateApplicationStatus(application._id, value)}
-                                >
-                                  <SelectTrigger className="w-32">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Applied">Applied</SelectItem>
-                                    <SelectItem value="Shortlisted">Shortlisted</SelectItem>
-                                    <SelectItem value="Selected">Selected</SelectItem>
-                                    <SelectItem value="Rejected">Rejected</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Button variant="outline" size="sm">
-                                  <FileText className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Applicant</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>College</TableHead>
+                          <TableHead>Qualification</TableHead>
+                          <TableHead>Applied Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {applications
+                          .filter(app => {
+                            const appInternshipId = typeof app.internshipId === 'string' 
+                              ? app.internshipId 
+                              : app.internshipId?._id;
+                            return appInternshipId === selectedInternship?._id;
+                          })
+                          .map((application) => (
+                            <TableRow key={application._id}>
+                              <TableCell className="font-medium">
+                                {application.applicantDetails?.name}
+                              </TableCell>
+                              <TableCell>{application.applicantDetails?.email}</TableCell>
+                              <TableCell>{application.applicantDetails?.phone || 'N/A'}</TableCell>
+                              <TableCell>{application.applicantDetails?.college || 'N/A'}</TableCell>
+                              <TableCell>{application.applicantDetails?.qualification || 'N/A'}</TableCell>
+                              <TableCell>
+                                {new Date(application.appliedAt).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell>
+                                {getApplicationStatusBadge(application.status)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex space-x-2">
+                                  <Select
+                                    value={application.status}
+                                    onValueChange={(value) => updateApplicationStatus(application._id, value)}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Applied">Applied</SelectItem>
+                                      <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                                      <SelectItem value="Selected">Selected</SelectItem>
+                                      <SelectItem value="Rejected">Rejected</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => downloadResume(application.resumeLink, application.applicantDetails?.name || 'resume')}
+                                    title="Download Resume"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </>
             )}
