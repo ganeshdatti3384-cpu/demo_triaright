@@ -48,7 +48,7 @@ interface Course {
 }
 
 interface TopicProgress {
-  courseId: string;
+  courseId: string; // will be ObjectId string or stringified
   topicName: string;
   watched: boolean;
   watchedDuration: number;
@@ -75,7 +75,7 @@ const StreamLearningInterface = () => {
   
   // YouTube Player Refs
   const playerRef = useRef<any>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const progressIntervalRef = useRef<any | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,9 +88,10 @@ const StreamLearningInterface = () => {
         clearInterval(progressIntervalRef.current);
       }
       if (playerRef.current) {
-        playerRef.current.destroy();
+        try { playerRef.current.destroy(); } catch (e) {}
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
   const loadYouTubeAPI = () => {
@@ -99,7 +100,7 @@ const StreamLearningInterface = () => {
     const tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
     const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
 
     window.onYouTubeIframeAPIReady = initializeYouTubeAPI;
   };
@@ -142,7 +143,12 @@ const StreamLearningInterface = () => {
       }
 
       setEnrollment(streamEnrollment);
-      setTopicProgress(streamEnrollment.topicProgress || []);
+      // Ensure topicProgress is an array of objects with courseId as string
+      const normalizedTopicProgress = (streamEnrollment.topicProgress || []).map((tp: any) => ({
+        ...tp,
+        courseId: String(tp.courseId)
+      }));
+      setTopicProgress(normalizedTopicProgress);
       setTotalWatchedPercentage(streamEnrollment.totalWatchedPercentage || 0);
 
       // Get courses for this stream
@@ -167,8 +173,8 @@ const StreamLearningInterface = () => {
       setCourses(streamCourses);
 
       // Set selected course from location state or first course
-      const selectedCourseFromState = location.state?.selectedCourse;
-      const selectedCourseId = location.state?.selectedCourseId;
+      const selectedCourseFromState = (location.state as any)?.selectedCourse;
+      const selectedCourseId = (location.state as any)?.selectedCourseId;
       
       if (selectedCourseFromState) {
         setSelectedCourse(selectedCourseFromState);
@@ -222,7 +228,8 @@ const StreamLearningInterface = () => {
 
   const onPlayerReady = (event: any) => {
     console.log('YouTube Player Ready');
-    startProgressTracking();
+    // start tracking only when it actually plays
+    // startProgressTracking will be triggered on PLAY state
   };
 
   const onPlayerStateChange = (event: any) => {
@@ -231,12 +238,17 @@ const StreamLearningInterface = () => {
     switch (playerState) {
       case window.YT.PlayerState.PLAYING:
         setIsTrackingProgress(true);
+        startProgressTracking();
         break;
       case window.YT.PlayerState.PAUSED:
+        setIsTrackingProgress(false);
         updateProgressToBackend();
         break;
       case window.YT.PlayerState.ENDED:
+        setIsTrackingProgress(false);
         markTopicAsCompletedAutomatically();
+        break;
+      default:
         break;
     }
   };
@@ -267,7 +279,7 @@ const StreamLearningInterface = () => {
           setVideoProgress(progress);
 
           // Auto-save progress every 30 seconds
-          if (Math.floor(currentTime) % 30 === 0 && currentTime > 0) {
+          if (Math.floor(currentTime) > 0 && Math.floor(currentTime) % 30 === 0) {
             updateProgressToBackend();
           }
 
@@ -291,28 +303,28 @@ const StreamLearningInterface = () => {
       const duration = playerRef.current.getDuration();
       const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-      // Update total watched percentage for stream
+      // Update total watched percentage for stream (based on topicProgress local state)
       const totalTopicsInStream = courses.reduce((total, course) => 
         total + (course.topics?.length || 0), 0
       );
       
-      const currentWatchedTopics = topicProgress.filter(tp => tp.watched).length;
+      const currentWatchedTopics = (topicProgress || []).filter(tp => tp.watched).length;
       const newTotalWatchedPercentage = totalTopicsInStream > 0 ? 
         (currentWatchedTopics / totalTopicsInStream) * 100 : 0;
 
-      // ✅ FIXED: Use courseId string instead of _id
+      // Send the correct backend course id (_id)
       await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId, // ✅ FIXED
+        courseId: selectedCourse._id,
         topicName: selectedTopic.name,
         watchedDuration: Math.floor(currentTime),
         totalCourseDuration: Math.floor(duration),
-        totalWatchedPercentage: newTotalWatchedPercentage
+        totalWatchedPercentage: Math.floor(newTotalWatchedPercentage)
       });
 
-      // Update local state
+      // Update local state (normalize courseId as string)
       setTopicProgress(prev => {
         const existingIndex = prev.findIndex(
-          tp => tp.topicName === selectedTopic.name && tp.courseId === selectedCourse.courseId // ✅ FIXED
+          tp => String(tp.topicName) === String(selectedTopic.name) && String(tp.courseId) === String(selectedCourse._id)
         );
         
         if (existingIndex >= 0) {
@@ -329,7 +341,7 @@ const StreamLearningInterface = () => {
           return [
             ...prev,
             {
-              courseId: selectedCourse.courseId, // ✅ FIXED
+              courseId: String(selectedCourse._id),
               topicName: selectedTopic.name,
               watched: false,
               watchedDuration: Math.floor(currentTime),
@@ -358,7 +370,7 @@ const StreamLearningInterface = () => {
         total + (course.topics?.length || 0), 0
       );
       
-      const currentWatchedTopics = topicProgress.filter(tp => tp.watched).length;
+      const currentWatchedTopics = (topicProgress || []).filter(tp => tp.watched).length;
       const newWatchedTopics = currentWatchedTopics + 1;
       const newTotalWatchedPercentage = totalTopicsInStream > 0 ? 
         (newWatchedTopics / totalTopicsInStream) * 100 : 0;
@@ -367,20 +379,20 @@ const StreamLearningInterface = () => {
       const finalDuration = playerRef.current ? 
         Math.floor(playerRef.current.getDuration()) : selectedTopic.duration;
 
-      // ✅ FIXED: Use courseId string instead of _id
+      // Use _id for courseId
       const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId, // ✅ FIXED
+        courseId: selectedCourse._id,
         topicName: selectedTopic.name,
         watchedDuration: finalDuration,
         totalCourseDuration: finalDuration,
-        totalWatchedPercentage: newTotalWatchedPercentage
+        totalWatchedPercentage: Math.floor(newTotalWatchedPercentage)
       });
 
       if (response.success) {
         // Update local state
         setTopicProgress(prev => {
           const existingIndex = prev.findIndex(
-            tp => tp.topicName === selectedTopic.name && tp.courseId === selectedCourse.courseId // ✅ FIXED
+            tp => String(tp.topicName) === String(selectedTopic.name) && String(tp.courseId) === String(selectedCourse._id)
           );
           
           if (existingIndex >= 0) {
@@ -398,7 +410,7 @@ const StreamLearningInterface = () => {
             return [
               ...prev,
               {
-                courseId: selectedCourse.courseId, // ✅ FIXED
+                courseId: String(selectedCourse._id),
                 topicName: selectedTopic.name,
                 watched: true,
                 watchedDuration: finalDuration,
@@ -417,7 +429,7 @@ const StreamLearningInterface = () => {
           variant: 'default'
         });
 
-        // Refresh enrollment data
+        // Refresh enrollment data after a short delay
         setTimeout(() => {
           loadStreamData();
         }, 1000);
@@ -449,7 +461,8 @@ const StreamLearningInterface = () => {
 
     // Destroy existing player
     if (playerRef.current) {
-      playerRef.current.destroy();
+      try { playerRef.current.destroy(); } catch (e) {}
+      playerRef.current = null;
     }
 
     // Create YouTube player when modal opens
@@ -479,7 +492,7 @@ const StreamLearningInterface = () => {
     }
     
     if (playerRef.current) {
-      playerRef.current.destroy();
+      try { playerRef.current.destroy(); } catch (e) {}
       playerRef.current = null;
     }
     
@@ -488,14 +501,14 @@ const StreamLearningInterface = () => {
 
   const getTopicProgress = (courseId: string, topicName: string) => {
     return topicProgress.find(
-      tp => tp.courseId === courseId && tp.topicName === topicName // ✅ FIXED
+      tp => String(tp.courseId) === String(courseId) && String(tp.topicName) === String(topicName)
     );
   };
 
   const getCourseProgress = (courseId: string) => {
-    const courseTopics = topicProgress.filter(tp => tp.courseId === courseId); // ✅ FIXED
+    const courseTopics = topicProgress.filter(tp => String(tp.courseId) === String(courseId));
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
-    const totalTopics = courses.find(c => c.courseId === courseId)?.topics.length || 1; // ✅ FIXED
+    const totalTopics = courses.find(c => c._id === courseId)?.topics.length || 1;
     return totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
   };
 
@@ -664,7 +677,7 @@ const StreamLearningInterface = () => {
 
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Header */}
+          {/* Header */} 
           <div className="mb-8">
             <Button 
               onClick={() => navigate(`/pack365-learning/${stream}`)}
@@ -721,12 +734,12 @@ const StreamLearningInterface = () => {
                         </Badge>
                       </div>
                       <Progress 
-                        value={getCourseProgress(course.courseId)} // ✅ FIXED
+                        value={getCourseProgress(course._id)} 
                         className="h-2" 
                       />
                       <div className="flex justify-between text-xs text-gray-500 mt-1">
                         <span>Progress</span>
-                        <span>{Math.round(getCourseProgress(course.courseId))}%</span> {/* ✅ FIXED */}
+                        <span>{Math.round(getCourseProgress(course._id))}%</span>
                       </div>
                     </div>
                   ))}
@@ -818,7 +831,7 @@ const StreamLearningInterface = () => {
                     <div className="space-y-3">
                       <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
                       {selectedCourse.topics.map((topic, index) => {
-                        const progress = getTopicProgress(selectedCourse.courseId, topic.name); // ✅ FIXED
+                        const progress = getTopicProgress(selectedCourse._id, topic.name);
                         const isWatched = progress?.watched;
                         const watchedDuration = progress?.watchedDuration || 0;
 
