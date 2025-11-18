@@ -831,195 +831,118 @@ const StreamLearningInterface = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Courses Sidebar */}
-            <div className="lg:col-span-1 space-y-4">
+          {/* Course Content - Full width without sidebar */}
+          <div className="w-full">
+            {selectedCourse && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Courses in Stream</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-2xl">{selectedCourse.courseName}</CardTitle>
+                      <p className="text-gray-600 mt-1">{selectedCourse.description}</p>
+                    </div>
+                    <Badge variant="outline">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {selectedCourse.totalDuration} min
+                    </Badge>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {courses.map((course) => (
-                    <div
-                      key={course._id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedCourse?._id === course._id
-                          ? 'bg-blue-50 border-blue-200'
-                          : 'bg-white border-gray-200 hover:bg-gray-50'
-                      }`}
-                      onClick={() => setSelectedCourse(course)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-medium text-sm">{course.courseName}</h3>
-                        <Badge variant="secondary">
-                          {course.topics.length} topics
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>Progress</span>
-                        <span>{Math.round(getCourseProgress(course._id))}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Exam Eligibility */}
-              {totalWatchedPercentage >= 80 && (
-                <Card className="bg-green-50 border-green-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Target className="h-5 w-5 text-green-600" />
-                      <span className="font-medium text-green-800">Exam Ready!</span>
-                    </div>
-                    <p className="text-sm text-green-700 mb-3">
-                      You've completed enough content to take the stream exam.
-                    </p>
-                    <Button 
-                      onClick={handleTakeExam}
-                      className="w-full bg-green-600 hover:bg-green-700"
-                    >
-                      Take Stream Exam
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Final Exam Eligibility */}
-              {totalWatchedPercentage >= 100 && (
-                <Card className="bg-purple-50 border-purple-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Award className="h-5 w-5 text-purple-600" />
-                      <span className="font-medium text-purple-800">Final Exam Ready!</span>
-                    </div>
-                    <p className="text-sm text-purple-700 mb-3">
-                      You've completed all courses! Take the final comprehensive exam.
-                    </p>
-                    <Button 
-                      onClick={handleTakeFinalExam}
-                      className="w-full bg-purple-600 hover:bg-purple-700"
-                    >
-                      Take Final Exam
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Course Content */}
-            <div className="lg:col-span-3">
-              {selectedCourse && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-2xl">{selectedCourse.courseName}</CardTitle>
-                        <p className="text-gray-600 mt-1">{selectedCourse.description}</p>
-                      </div>
-                      <Badge variant="outline">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {selectedCourse.totalDuration} min
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Course Document */}
-                    {selectedCourse.documentLink && (
-                      <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <FileText className="h-6 w-6 text-blue-600" />
-                            <div>
-                              <h4 className="font-medium">Course Materials</h4>
-                              <p className="text-sm text-gray-600">Download study materials</p>
-                            </div>
+                <CardContent>
+                  {/* Course Document */}
+                  {selectedCourse.documentLink && (
+                    <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="h-6 w-6 text-blue-600" />
+                          <div>
+                            <h4 className="font-medium">Course Materials</h4>
+                            <p className="text-sm text-gray-600">Download study materials</p>
                           </div>
-                          <Button 
-                            onClick={() => window.open(selectedCourse.documentLink, '_blank')}
-                            variant="outline"
-                          >
-                            Download
-                          </Button>
                         </div>
+                        <Button 
+                          onClick={() => window.open(selectedCourse.documentLink, '_blank')}
+                          variant="outline"
+                        >
+                          Download
+                        </Button>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Topics List */}
-                    <div className="space-y-3">
-                      <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
-                      {selectedCourse.topics.map((topic, index) => {
-                        const progress = getTopicProgress(selectedCourse._id, topic.name);
-                        const isWatched = progress?.watched;
-                        const watchedDuration = progress?.watchedDuration || 0;
+                  {/* Topics List */}
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
+                    {selectedCourse.topics.map((topic, index) => {
+                      const progress = getTopicProgress(selectedCourse._id, topic.name);
+                      const isWatched = progress?.watched;
+                      const watchedDuration = progress?.watchedDuration || 0;
 
-                        return (
-                          <div
-                            key={index}
-                            className={`p-4 border rounded-lg transition-colors ${
-                              isWatched
-                                ? 'bg-green-50 border-green-200'
-                                : watchedDuration > 0
-                                ? 'bg-blue-50 border-blue-200'
-                                : 'bg-white border-gray-200 hover:bg-gray-50'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                {isWatched ? (
-                                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                ) : watchedDuration > 0 ? (
-                                  <Play className="h-5 w-5 text-blue-600" />
-                                ) : (
-                                  <Play className="h-5 w-5 text-gray-400" />
-                                )}
-                                <div>
-                                  <h4 className="font-medium">{topic.name}</h4>
-                                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                    <span className="flex items-center">
-                                      <Clock className="h-3 w-3 mr-1" />
-                                      {topic.duration} min
-                                    </span>
-                                    {isWatched && (
-                                      <Badge variant="outline" className="bg-green-100 text-green-800">
-                                        Completed
-                                      </Badge>
-                                    )}
-                                    {watchedDuration > 0 && !isWatched && (
-                                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                                        In Progress ({Math.round((watchedDuration / topic.duration) * 100)}%)
-                                      </Badge>
-                                    )}
-                                  </div>
+                      return (
+                        <div
+                          key={index}
+                          className={`p-4 border rounded-lg transition-colors ${
+                            isWatched
+                              ? 'bg-green-50 border-green-200'
+                              : watchedDuration > 0
+                              ? 'bg-blue-50 border-blue-200'
+                              : 'bg-white border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              {isWatched ? (
+                                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              ) : watchedDuration > 0 ? (
+                                <Play className="h-5 w-5 text-blue-600" />
+                              ) : (
+                                <Play className="h-5 w-5 text-gray-400" />
+                              )}
+                              <div>
+                                <h4 className="font-medium">{topic.name}</h4>
+                                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                  <span className="flex items-center">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {topic.duration} min
+                                  </span>
+                                  {isWatched && (
+                                    <Badge variant="outline" className="bg-green-100 text-green-800">
+                                      Completed
+                                    </Badge>
+                                  )}
+                                  {watchedDuration > 0 && !isWatched && (
+                                    <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                                      In Progress ({Math.round((watchedDuration / topic.duration) * 100)}%)
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => handleOpenInNewTab(topic)}
-                                >
-                                  <ExternalLink className="h-4 w-4 mr-1" />
-                                  New Tab
-                                </Button>
-                                <Button 
-                                  variant={isWatched ? "outline" : "default"} 
-                                  size="sm"
-                                  onClick={() => handleTopicClick(topic)}
-                                >
-                                  <Video className="h-4 w-4 mr-1" />
-                                  {isWatched ? 'Watch Again' : 'Watch'}
-                                </Button>
-                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleOpenInNewTab(topic)}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                                New Tab
+                              </Button>
+                              <Button 
+                                variant={isWatched ? "outline" : "default"} 
+                                size="sm"
+                                onClick={() => handleTopicClick(topic)}
+                              >
+                                <Video className="h-4 w-4 mr-1" />
+                                {isWatched ? 'Watch Again' : 'Watch'}
+                              </Button>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
