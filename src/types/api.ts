@@ -14,13 +14,11 @@ export interface AuthResponse {
 }
 
 export interface LoginPayload {
-  userId?: string;
-  email?: string;
+  email: string;
   password: string;
 }
 
 export interface RegisterPayload {
-  userId?: string;
   email: string;
   password: string;
   role: string;
@@ -48,44 +46,25 @@ export interface UpdatePasswordPayload {
   newPassword: string;
 }
 
-export interface User {
-  _id: string;
-  userId: string;
-  email: string;
-  role: string;
-  name: string;
-  profilePicture?: string;
-}
-
 export interface Course {
   _id: string;
-  courseId?: string;
-  title?: string;
-  courseName?: string;
-  description?: string;
-  instructor?: string;
-  duration?: string;
-  level?: string;
-  price?: string;
-  originalPrice?: string;
-  isPaid?: boolean;
-  image?: string;
-  skills?: string[];
-  rating?: number;
-  studentsEnrolled?: number;
-  stream?: string;
-  topics?: Array<{
-    name: string;
-    link: string;
-    duration: number;
-  }>;
-  totalDuration?: number;
+  title: string;
+  description: string;
+  instructor: string;
+  duration: string;
+  level: string;
+  price: string;
+  originalPrice: string;
+  isPaid: boolean;
+  image: string;
+  skills: string[];
+  rating: number;
+  studentsEnrolled: number;
 }
 
 export interface Pack365Course {
   _id: string;
   id?: string;
-  courseId: string;
   courseName: string;
   description?: string;
   stream: string;
@@ -99,6 +78,7 @@ export interface Pack365Course {
     duration: number;
   }[];
   documentLink?: string;
+  courseId?: string;
   examFile?: {
     filename: string;
     originalName: string;
@@ -107,47 +87,36 @@ export interface Pack365Course {
 }
 
 export interface TopicProgress {
-  courseId: string;
   topicName: string;
   watched: boolean;
   watchedDuration: number;
-  lastWatchedAt?: string;
 }
 
 export interface EnhancedPack365Enrollment {
   _id: string;
-  userId?: string;
+  userId: string;
+  courseId: string;
+  courseName: string;
   stream: string;
   enrollmentDate: string;
-  expiresAt: string;
   amountPaid: number;
   totalWatchedPercentage: number;
-  videoProgress?: number;
+  videoProgress: number;
   topicProgress: TopicProgress[];
   isExamCompleted: boolean;
-  examScore: number | null;
+  examScore: number;
   certificateGenerated?: boolean;
   certificateUrl?: string;
   status?: string;
   progress?: number;
   paymentStatus?: string;
-  coursesCount: number;
-  totalTopics: number;
-  watchedTopics: number;
-  courses: Pack365Course[];
-  enrollmentType?: string;
 }
 
 export interface RazorpayOrderResponse {
   orderId: string;
   key: string;
   amount: number;
-  currency?: string;
-  baseAmount?: number;
-  discount?: number;
-  gst?: number;
-  coursesCount?: number;
-  stream?: string;
+  currency: string;
 }
 
 export interface EnrollmentCode {
@@ -164,7 +133,7 @@ export interface EnrollmentCode {
 }
 
 export interface CreateEnrollmentCodeInput {
-  code?: string;
+  code: string;
   stream: string;
   discountAmount?: number;
   usageLimit?: number;
@@ -190,45 +159,31 @@ export interface CreateEnrollmentCodeResponse {
 
 export interface Exam {
   _id: string;
-  title?: string;
+  title: string;
   courseId: string;
-  courseName?: string;
-  examName?: string;
   questions: any[];
   maxAttempts: number;
   passingScore: number;
-  timeLimit?: number;
-  duration?: number;
+  timeLimit: number;
   isActive: boolean;
-  createdAt?: string;
-}
-
-export interface ExamResponse {
-  success: boolean;
-  message?: string;
-  exams: any[];
+  createdAt: string;
 }
 
 export interface College {
-  _id?: string;
-  name?: string;
-  collegeName?: string;
-  email?: string;
-  collegeEmail?: string;
+  _id: string;
+  name: string;
+  email: string;
   phone?: string;
-  collegePhone?: string;
   address?: string;
-  collegeAddress?: string;
-  collegeCity?: string;
-  collegeState?: string;
-  collegeZipCode?: string;
-  collegeWebsite?: string;
+  website?: string;
+  establishedYear?: number;
   type?: string;
   affiliation?: string;
   logo?: string;
   description?: string;
   contactPerson?: string;
   registrationNumber?: string;
+  collegeName?: string;
   university?: string;
   principalName?: string;
   principalEmail?: string;
@@ -241,43 +196,31 @@ export interface College {
   city?: string;
   state?: string;
   pincode?: string;
-  profilePicture?: string;
 }
 
 export interface Employer {
-  _id?: string;
+  _id: string;
   companyName: string;
-  email?: string;
-  companyEmail?: string;
+  email: string;
   phone?: string;
-  companyPhone?: string;
   address?: string;
-  companyAddress?: string;
-  companyCity?: string;
-  companyState?: string;
-  companyZipCode?: string;
   website?: string;
-  companyWebsite?: string;
   industry?: string;
   companySize?: string;
   logo?: string;
   description?: string;
   contactPerson?: string;
   establishedYear?: number;
-  profilePicture?: string;
 }
 
 export interface StudentProfile {
-  _id?: string;
+  _id: string;
   name: string;
   email: string;
   phone?: string;
   college?: string;
-  collegeName?: string;
   course?: string;
-  branch?: string;
   year?: string;
-  semester?: string;
   skills?: string[];
   resume?: string;
   profilePicture?: string;
@@ -289,11 +232,10 @@ export interface StudentProfile {
   maritalStatus?: string;
   nationality?: string;
   hobbies?: string[];
-  bio?: string;
 }
 
 export interface JobSeekerProfile {
-  _id?: string;
+  _id: string;
   name: string;
   email: string;
   phone?: string;
@@ -307,7 +249,6 @@ export interface JobSeekerProfile {
   gender?: string;
   expectedSalary?: string;
   jobPreferences?: string[];
-  bio?: string;
 }
 
 export interface Pack365Bundle {
@@ -380,11 +321,10 @@ export interface EnhancedCourse {
 
 // Question and Exam Types
 export interface Question {
-  questionText?: string;
-  question?: string;
-  options: string[] | [string, string, string, string];
-  correctAnswer: string | number;
-  type?: 'easy' | 'medium' | 'hard';
+  questionText: string;
+  options: [string, string, string, string];
+  correctAnswer: string;
+  type: 'easy' | 'medium' | 'hard';
   description?: string;
 }
 
