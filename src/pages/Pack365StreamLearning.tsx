@@ -193,8 +193,8 @@ const Pack365StreamLearning = () => {
             );
             setAllCourses(streamCourses);
             
-            // ✅ FIXED: Enhance enrollment with complete course data and fresh progress
-            const enhancedEnrollment = {
+            // ✅ FIXED: Enhance enrollment with complete course data and fresh progress (use backend topicProgress)
+            const enhancedEnrollment: StreamEnrollment = {
               ...currentEnrollment,
               courses: streamCourses,
               topicProgress: currentEnrollment.topicProgress || []
@@ -297,8 +297,8 @@ const Pack365StreamLearning = () => {
   const getCourseProgress = (courseId: string) => {
     if (!enrollment?.topicProgress) return 0;
     
-    // ✅ FIXED: Proper course progress calculation using topicProgress
-    const courseTopics = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
+    // ✅ FIXED: Proper course progress calculation using topicProgress (compare ObjectId strings)
+    const courseTopics = enrollment.topicProgress.filter(tp => String(tp.courseId) === String(courseId));
     if (courseTopics.length === 0) return 0;
     
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
