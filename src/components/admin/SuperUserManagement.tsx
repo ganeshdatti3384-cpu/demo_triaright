@@ -54,7 +54,10 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        toast.error('Not authenticated');
+        return;
+      }
       
       const response = await authApi.getAllUsers(token);
       if (response.users) {
@@ -94,9 +97,9 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
         phoneNumber: editFormData.phoneNumber,
         role: editFormData.role,
         // Add required fields for registration
-        address: "Updated via admin",
-        whatsappNumber: editFormData.phoneNumber,
-        password: "temporarypassword123"
+        address: "Updated via admin", // Default value since it's required
+        whatsappNumber: editFormData.phoneNumber, // Use phone number as default
+        password: "temporarypassword123" // We'll use a temporary password
       };
 
       // Add role-specific fields
@@ -125,32 +128,29 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
     }
   };
 
+  // FIXED: call backend delete endpoint (authenticated)
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this user? This will remove the user from the system.')) {
       return;
     }
 
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        toast.error('Not authenticated');
+        return;
+      }
 
-      // Try the corrected endpoint
       const response = await authApi.deleteUser(token, userId);
-      
-      if (response.message) {
-        toast.success('User deleted successfully!');
-        // Refresh the user list
-        fetchAllUsers();
-      }
+      toast.success(response.message || 'User deleted successfully');
+      // Remove from UI
+      setAllUsers(prevUsers => prevUsers.filter(u => u._id !== userId));
     } catch (error: any) {
-      console.error('Delete user error:', error);
-      
-      // If the first endpoint fails, try alternative endpoints
-      if (error.response?.status === 404) {
-        toast.error('Delete endpoint not found. Please check backend implementation.');
-      } else {
-        toast.error(error.response?.data?.message || error.message || 'Failed to delete user');
-      }
+      console.error('Delete error:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to delete user');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -164,6 +164,7 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
     setChangePasswordOpen(true);
   };
 
+  // FIXED: Use superadmin endpoint (authenticated) and include confirmPassword
   const handleUpdatePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('Passwords do not match');
@@ -177,9 +178,13 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        toast.error('Not authenticated');
+        return;
+      }
 
-      // Use the corrected superadmin password update endpoint
+      // If current logged-in user is a superadmin and wants to reset another user's password
+      // use the superadmin update-admin-password endpoint which requires auth + role check
       const response = await authApi.superadminUpdateAdminPassword(token, {
         email: passwordData.email,
         newPassword: passwordData.newPassword,
@@ -197,13 +202,8 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
         });
       }
     } catch (error: any) {
-      console.error('Update password error:', error);
-      
-      if (error.response?.status === 400) {
-        toast.error('Invalid request format. Please check the password requirements.');
-      } else {
-        toast.error(error.response?.data?.message || error.message || 'Failed to update password');
-      }
+      console.error('Password update error:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to update password');
     }
   };
 
@@ -381,7 +381,7 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
                       className="flex items-center space-x-1"
                     >
                       <Trash2 className="h-3 w-3" />
-                      <span>Delete</span>
+                      <span>Remove</span>
                     </Button>
                   </div>
                 </div>
