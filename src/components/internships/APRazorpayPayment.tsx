@@ -87,31 +87,40 @@ const APRazorpayPayment = ({
         return;
       }
 
-      // Create Razorpay order
-      const orderResponse = await fetch('/api/internships/ap-internship-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          internshipId,
-          amount: amount,
-          currency: 'INR',
-          applicationId
-        })
-      });
-
-      const orderData = await orderResponse.json();
-
-      if (!orderResponse.ok || !orderData.success) {
-        throw new Error(orderData.message || 'Failed to create payment order');
+      // The application is already created, we just need to get the Razorpay order from the application
+      // For AP internships, the order is created when the application is submitted
+      if (!applicationId) {
+        throw new Error('Application ID is required for payment');
       }
 
-      const razorpayOrder = orderData.order;
+      // Get application details to retrieve the Razorpay order
+      const applicationResponse = await fetch(`/api/internships/apinternshipapplications/${applicationId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const applicationData = await applicationResponse.json();
+
+      if (!applicationResponse.ok || !applicationData.success) {
+        throw new Error(applicationData.message || 'Failed to fetch application details');
+      }
+
+      const application = applicationData.application;
+      
+      if (!application.orderId) {
+        throw new Error('Payment order not found for this application');
+      }
+
+      // Use the existing Razorpay order from the application
+      const razorpayOrder = {
+        id: application.orderId,
+        amount: Math.round(Number(application.finalAmountPaid) * 100),
+        currency: "INR"
+      };
 
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY_ID', // Replace with your key
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
         name: 'Triaright Education',
@@ -168,7 +177,8 @@ const APRazorpayPayment = ({
     try {
       const token = localStorage.getItem('token');
       
-      const verifyResponse = await fetch('/api/internships/ap-internship-verify-payment', {
+      // Use the correct backend endpoint for AP internship payment verification
+      const verifyResponse = await fetch('/api/internships/apinternshipverify-payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,14 +188,19 @@ const APRazorpayPayment = ({
           razorpay_order_id: response.razorpay_order_id,
           razorpay_payment_id: response.razorpay_payment_id,
           razorpay_signature: response.razorpay_signature,
-          applicationId,
-          internshipId
+          applicationId: applicationId,
+          internshipId: internshipId
         })
       });
 
       const verifyData = await verifyResponse.json();
 
       if (verifyResponse.ok && verifyData.success) {
+        toast({
+          title: 'Payment Verified Successfully!',
+          description: 'Your payment has been verified and you are now enrolled in the internship.',
+          variant: 'default'
+        });
         onPaymentSuccess();
       } else {
         throw new Error(verifyData.message || 'Payment verification failed');
