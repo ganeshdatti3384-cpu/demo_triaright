@@ -97,24 +97,32 @@ export const authApi = {
     return res.data;
   },
 
-  // NEW: Delete user by ID
+  // NEW: Delete user by ID - FIXED endpoint
   deleteUser: async (token: string, userId: string): Promise<{ message: string }> => {
-    const res = await axios.delete(`${API_BASE_URL}/users/user/${userId}`, {
+    const res = await axios.delete(`${API_BASE_URL}/users/${userId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     return res.data;
   },
 
-  // NEW: Superadmin update admin password
+  // NEW: Superadmin update admin password - FIXED payload structure
   superadminUpdateAdminPassword: async (
     token: string, 
-    payload: { email: string; newPassword: string }
+    payload: { email: string; newPassword: string; confirmPassword?: string }
   ): Promise<{ message: string }> => {
-    const res = await axios.put(`${API_BASE_URL}/users/superadmin/update-admin-password`, payload, {
-      headers: {
-        Authorization: `Bearer ${token}`
+    const res = await axios.put(`${API_BASE_URL}/users/superadmin/update-admin-password`, 
+      {
+        email: payload.email,
+        newPassword: payload.newPassword,
+        confirmPassword: payload.confirmPassword || payload.newPassword
+      }, 
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
     return res.data;
   },
 
