@@ -40,6 +40,13 @@ export const authApi = {
     return res.data;
   },
 
+  adminRegister: async (token: string, payload: any): Promise<{ message: string }> => {
+    const res = await axios.post(`${API_BASE_URL}/users/admin/register`, payload, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  },
+
   getUserDetails: async (token: string): Promise<LoginResponse> => {
     const res = await axios.get(`${API_BASE_URL}/users/profile`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -86,6 +93,27 @@ export const authApi = {
   getAllUsers: async (token: string): Promise<{ success: boolean; users: any[] }> => {
     const res = await axios.get(`${API_BASE_URL}/users/allusers`, {
       headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  },
+
+  // NEW: Delete user by ID
+  deleteUser: async (token: string, userId: string): Promise<{ message: string }> => {
+    const res = await axios.delete(`${API_BASE_URL}/users/user/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  },
+
+  // NEW: Superadmin update admin password
+  superadminUpdateAdminPassword: async (
+    token: string, 
+    payload: { email: string; newPassword: string }
+  ): Promise<{ message: string }> => {
+    const res = await axios.put(`${API_BASE_URL}/users/superadmin/update-admin-password`, payload, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
     return res.data;
   },
@@ -627,7 +655,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ FIXED: Proper updateTopicProgress method
+  // ✅ UPDATED: Fixed updateTopicProgress to match Swagger documentation
   updateTopicProgress: async (
     token: string,
     data: {
@@ -645,11 +673,28 @@ export const pack365Api = {
     totalTopics?: number;
   }> => {
     try {
-      console.log('Sending topic progress update:', data);
+      // Prepare the request payload according to Swagger spec
+      const requestPayload: any = {
+        courseId: data.courseId,
+        topicName: data.topicName
+      };
+
+      // Add optional fields if provided
+      if (data.watchedDuration !== undefined) {
+        requestPayload.watchedDuration = data.watchedDuration;
+      }
+      if (data.totalCourseDuration !== undefined) {
+        requestPayload.totalCourseDuration = data.totalCourseDuration;
+      }
+      if (data.totalWatchedPercentage !== undefined) {
+        requestPayload.totalWatchedPercentage = data.totalWatchedPercentage;
+      }
+
+      console.log('Sending topic progress update:', requestPayload);
 
       const response = await axios.put(
         `${API_BASE_URL}/pack365/topic/progress`, 
-        data, 
+        requestPayload, 
         {
           headers: {
             'Content-Type': 'application/json',
@@ -664,6 +709,7 @@ export const pack365Api = {
     } catch (error: any) {
       console.error('Error updating topic progress:', error);
       
+      // Enhanced error logging
       if (error.response) {
         console.error('Error response data:', error.response.data);
         console.error('Error response status:', error.response.status);
