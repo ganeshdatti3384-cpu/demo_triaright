@@ -238,21 +238,21 @@ const StreamLearningInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // ✅ FIXED: Use _id instead of courseId for matching
+      // ✅ FIXED: Find the correct courseId from topicProgress (ObjectId)
       const currentTopicProgress = getTopicProgress(selectedCourse._id, topic.name);
       if (currentTopicProgress?.watched) {
         setIsTrackingProgress(false);
         return;
       }
 
-      // ✅ FIXED: Convert duration to seconds and use actual watched time
+      // ✅ FIXED: Use actual watched time in seconds
       const watchedDurationInSeconds = Math.min(actualWatchedSeconds, topic.duration * 60);
 
       const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId, // ✅ Backend expects courseId (string identifier)
+        courseId: selectedCourse._id, // ✅ Use MongoDB ObjectId, not custom courseId
         topicName: topic.name,
-        watchedDuration: watchedDurationInSeconds, // ✅ Now in seconds
-        totalWatchedPercentage: await calculateNewProgress(topic) // ✅ Let backend calculate this
+        watchedDuration: watchedDurationInSeconds,
+        totalWatchedPercentage: 0 // Let backend calculate this
       });
 
       if (response.success) {
@@ -277,12 +277,6 @@ const StreamLearningInterface = () => {
         variant: 'destructive' 
       });
     }
-  };
-
-  const calculateNewProgress = async (completedTopic: Topic): Promise<number> => {
-    // Let backend calculate the progress since it has the complete data
-    // This ensures stream-level progress is calculated correctly
-    return 0; // Backend will calculate this
   };
 
   const refreshEnrollmentData = async () => {
