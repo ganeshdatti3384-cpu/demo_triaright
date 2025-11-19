@@ -154,6 +154,7 @@ const Pack365StreamLearning = () => {
         const diffMinutes = (now.getTime() - updateTime.getTime()) / (1000 * 60);
         
         if (diffMinutes < 5) {
+          console.log('Auto-refreshing due to recent exam completion');
           fetchStreamEnrollment();
           localStorage.removeItem('lastEnrollmentUpdate');
         }
@@ -184,7 +185,7 @@ const Pack365StreamLearning = () => {
         );
 
         if (currentEnrollment) {
-          // Fetch all courses to get complete course data
+          // ✅ FIXED: Always fetch fresh course data
           const coursesResponse = await pack365Api.getAllCourses();
           if (coursesResponse.success && coursesResponse.data) {
             const streamCourses = coursesResponse.data.filter(
@@ -192,10 +193,11 @@ const Pack365StreamLearning = () => {
             );
             setAllCourses(streamCourses);
             
-            // Enhance enrollment with complete course data
+            // ✅ FIXED: Enhance enrollment with complete course data and fresh progress
             const enhancedEnrollment = {
               ...currentEnrollment,
-              courses: streamCourses
+              courses: streamCourses,
+              topicProgress: currentEnrollment.topicProgress || []
             };
             setEnrollment(enhancedEnrollment);
           } else {
@@ -295,7 +297,8 @@ const Pack365StreamLearning = () => {
   const getCourseProgress = (courseId: string) => {
     if (!enrollment?.topicProgress) return 0;
     
-    const courseTopics = enrollment.topicProgress.filter(tp => String(tp.courseId) === String(courseId));
+    // ✅ FIXED: Proper course progress calculation using topicProgress
+    const courseTopics = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
     if (courseTopics.length === 0) return 0;
     
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
@@ -368,7 +371,7 @@ const Pack365StreamLearning = () => {
                       <span>Topics Completed</span>
                       <span>{enrollment.watchedTopics || 0} / {enrollment.totalTopics || 0}</span>
                     </div>
-                    <Progress value={enrollment.totalTopics ? (enrollment.watchedTopics / enrollment.totalTopics) * 100 : 0} className="h-2" />
+                    <Progress value={(enrollment.watchedTopics / enrollment.totalTopics) * 100} className="h-2" />
                   </div>
                 </CardContent>
               </Card>
