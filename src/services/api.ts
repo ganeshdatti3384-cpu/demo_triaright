@@ -824,7 +824,7 @@ export const pack365Api = {
 
   getAvailableExams: async (
     token: string
-  ): Promise<{ message?: string; exams: any[] }> => {
+  ): Promise<{ success: boolean; message?: string; exams: any[] }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/exams/available`, {
       headers: { Authorization: `Bearer ${token}` },
     });
