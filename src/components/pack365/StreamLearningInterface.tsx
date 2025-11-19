@@ -238,8 +238,19 @@ const StreamLearningInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // ✅ FIXED: Use _id instead of courseId for matching
-      const currentTopicProgress = getTopicProgress(selectedCourse._id, topic.name);
+      // ✅ FIXED: Find the correct courseId from enrollment topicProgress
+      const enrollmentTopic = enrollment.topicProgress?.find(
+        (tp: TopicProgress) => 
+          tp.topicName === topic.name && 
+          courses.some(course => course._id === tp.courseId)
+      );
+
+      if (!enrollmentTopic) {
+        console.error('Topic not found in enrollment');
+        return;
+      }
+
+      const currentTopicProgress = getTopicProgress(enrollmentTopic.courseId, topic.name);
       if (currentTopicProgress?.watched) {
         setIsTrackingProgress(false);
         return;
@@ -249,10 +260,10 @@ const StreamLearningInterface = () => {
       const watchedDurationInSeconds = Math.min(actualWatchedSeconds, topic.duration * 60);
 
       const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId, // ✅ Backend expects courseId (string identifier)
+        courseId: enrollmentTopic.courseId, // ✅ Use ObjectId from enrollment
         topicName: topic.name,
-        watchedDuration: watchedDurationInSeconds, // ✅ Now in seconds
-        totalWatchedPercentage: await calculateNewProgress(topic) // ✅ Let backend calculate this
+        watchedDuration: watchedDurationInSeconds,
+        totalWatchedPercentage: enrollment.totalWatchedPercentage // Let backend calculate
       });
 
       if (response.success) {
@@ -277,12 +288,6 @@ const StreamLearningInterface = () => {
         variant: 'destructive' 
       });
     }
-  };
-
-  const calculateNewProgress = async (completedTopic: Topic): Promise<number> => {
-    // Let backend calculate the progress since it has the complete data
-    // This ensures stream-level progress is calculated correctly
-    return 0; // Backend will calculate this
   };
 
   const refreshEnrollmentData = async () => {
@@ -598,8 +603,14 @@ const StreamLearningInterface = () => {
                     <div className="space-y-3">
                       <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
                       {selectedCourse.topics.map((topic, index) => {
-                        // ✅ FIXED: Use _id for matching
-                        const progress = getTopicProgress(selectedCourse._id, topic.name);
+                        // ✅ FIXED: Find the correct courseId from enrollment
+                        const enrollmentTopic = enrollment.topicProgress?.find(
+                          (tp: TopicProgress) => 
+                            tp.topicName === topic.name && 
+                            courses.some(course => course._id === tp.courseId)
+                        );
+                        
+                        const progress = enrollmentTopic ? getTopicProgress(enrollmentTopic.courseId, topic.name) : null;
                         const isWatched = progress?.watched;
 
                         return (
