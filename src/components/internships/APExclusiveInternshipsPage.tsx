@@ -162,7 +162,7 @@ const APExclusiveInternshipsPage = () => {
   const fetchAPInternships = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/internships/ap-internships');
+      const response = await fetch('/api/internships/apinternships');
       const data = await response.json();
       if (data.success) {
         // Add some mock data for demo
@@ -193,7 +193,7 @@ const APExclusiveInternshipsPage = () => {
     if (!token) return;
 
     try {
-      const response = await fetch('/api/internships/ap-enrollments/my', {
+      const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -308,17 +308,16 @@ const APExclusiveInternshipsPage = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/internships/ap-internship-apply', {
+      
+      // Use the correct backend endpoint for AP internship application
+      const response = await fetch('/api/internships/apinternshipapply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          internshipId: internship._id,
-          amount: 0,
-          currency: 'INR',
-          mode: 'free'
+          internshipId: internship._id
         })
       });
 
@@ -362,26 +361,23 @@ const APExclusiveInternshipsPage = () => {
     try {
       setLoading(true);
       
-      // Submit application
-      const response = await fetch('/api/internships/ap-internship-apply', {
+      // Submit application using the correct backend endpoint
+      const response = await fetch('/api/internships/apinternshipapply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          internshipId: selectedInternship._id,
-          amount: selectedInternship.amount || 0,
-          currency: selectedInternship.currency,
-          mode: selectedInternship.mode,
-          applicationData: applicationData
+          internshipId: selectedInternship._id
         })
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setApplicationId(data.applicationId);
+        // Save the application ID from the response
+        setApplicationId(data.application?._id || data.applicationId);
         
         if (selectedInternship.mode === 'Free') {
           toast({
