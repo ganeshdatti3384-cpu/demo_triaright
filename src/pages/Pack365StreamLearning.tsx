@@ -189,28 +189,7 @@ const VideoLearningModal = ({
   const isPlayerReadyRef = useRef<boolean>(false);
   const currentVideoIdRef = useRef<string | null>(null);
   const playerInitTimeoutRef = useRef<any>(null);
-
-  // Calculate local progress
-  const calculateLocalProgress = (): number => {
-    if (!enrollment || !enrollment.courses) return 0;
-    
-    let totalWatchedTopics = 0;
-    let totalTopicsInStream = 0;
-
-    enrollment.courses.forEach(course => {
-      const courseTopics = course.topics?.length || 0;
-      totalTopicsInStream += courseTopics;
-      
-      // Count watched topics for this course
-      const watchedInCourse = topicProgress.filter(tp => 
-        String(tp.courseId) === String(course._id) && tp.watched === true
-      ).length;
-      
-      totalWatchedTopics += watchedInCourse;
-    });
-
-    return totalTopicsInStream > 0 ? (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
-  };
+  const accumulatedWatchTimeRef = useRef<number>(0);
 
   // Cleanup function for player
   const cleanupPlayer = () => {
@@ -235,6 +214,7 @@ const VideoLearningModal = ({
     
     setIsTrackingProgress(false);
     lastSavedProgressRef.current = 0;
+    accumulatedWatchTimeRef.current = 0;
     isPlayerReadyRef.current = false;
     currentVideoIdRef.current = null;
     setIsPlayerInitializing(false);
@@ -243,6 +223,9 @@ const VideoLearningModal = ({
   // Handle modal open/close
   useEffect(() => {
     if (isOpen && selectedTopic) {
+      // Reset accumulated watch time when opening a new topic
+      accumulatedWatchTimeRef.current = 0;
+      
       // Small delay to ensure modal is fully rendered
       playerInitTimeoutRef.current = setTimeout(() => {
         initializePlayer();
@@ -397,15 +380,22 @@ const VideoLearningModal = ({
     
     // Reset progress tracking
     lastSavedProgressRef.current = 0;
+    accumulatedWatchTimeRef.current = 0;
     setVideoProgress(0);
     
     // Load existing progress for this topic
     if (selectedTopic && selectedCourse) {
-      const token = localStorage.getItem('token');
-      if (token) {
-        // In a real implementation, you would fetch the existing progress from the backend
-        // For now, we'll just start from the beginning
-        event.target.seekTo(0);
+      const existingProgress = topicProgress.find(
+        tp => String(tp.courseId) === String(selectedCourse._id) && 
+              String(tp.topicName) === String(selectedTopic.name)
+      );
+      
+      if (existingProgress) {
+        accumulatedWatchTimeRef.current = existingProgress.watchedDuration || 0;
+        // Seek to last position if not completed
+        if (!existingProgress.watched && existingProgress.watchedDuration > 0) {
+          event.target.seekTo(existingProgress.watchedDuration);
+        }
       }
     }
   };
@@ -463,10 +453,10 @@ const VideoLearningModal = ({
       clearInterval(progressIntervalRef.current);
     }
 
-    // Update progress more frequently for better UX
+    // Update progress every 10 seconds while playing
     progressIntervalRef.current = setInterval(() => {
       updateProgressToBackend();
-    }, 10000); // Update every 10 seconds
+    }, 10000);
     
     console.log('Progress tracking started');
   };
@@ -485,6 +475,10 @@ const VideoLearningModal = ({
       
       if (duration <= 0) return;
 
+      // Calculate total accumulated watch time
+      const newWatchTime = Math.floor(currentTime);
+      accumulatedWatchTimeRef.current = Math.max(accumulatedWatchTimeRef.current, newWatchTime);
+
       const progress = (currentTime / duration) * 100;
       
       // Update UI immediately
@@ -495,43 +489,12 @@ const VideoLearningModal = ({
         return;
       }
 
-      const shouldMarkAsWatched = progress >= 90;
-
-      // Calculate total watched percentage for the entire stream
-      let totalWatchedPercentage = 0;
-      
-      if (enrollment) {
-        const totalTopics = enrollment.totalTopics || 1; // Avoid division by zero
-        const currentWatchedTopics = enrollment.watchedTopics || 0;
-        
-        // If marking as watched and it wasn't watched before, increment count
-        const isAlreadyWatched = topicProgress.find(tp => 
-          String(tp.courseId) === String(selectedCourse._id) && 
-          String(tp.topicName) === String(selectedTopic.name) && 
-          tp.watched
-        );
-        
-        const newWatchedTopics = shouldMarkAsWatched && !isAlreadyWatched ? 
-          currentWatchedTopics + 1 : currentWatchedTopics;
-        
-        totalWatchedPercentage = (newWatchedTopics / totalTopics) * 100;
-      }
-
-      // Prepare data according to Swagger API specification
-      const progressData: any = {
+      // Prepare data according to backend specification - ONLY required fields
+      const progressData = {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
-        watchedDuration: Math.floor(currentTime)
+        watchedDuration: accumulatedWatchTimeRef.current
       };
-
-      // Add optional fields only if they have meaningful values
-      if (duration > 0) {
-        progressData.totalCourseDuration = Math.floor(duration);
-      }
-
-      if (totalWatchedPercentage > 0) {
-        progressData.totalWatchedPercentage = Math.round(totalWatchedPercentage);
-      }
 
       console.log('Sending progress update:', progressData);
 
@@ -552,8 +515,8 @@ const VideoLearningModal = ({
         const topicProgressUpdate = {
           courseId: selectedCourse._id,
           topicName: selectedTopic.name,
-          watchedDuration: Math.floor(currentTime),
-          watched: shouldMarkAsWatched,
+          watchedDuration: accumulatedWatchTimeRef.current,
+          watched: response.watched || false, // Use backend response for watched status
           lastWatchedAt: new Date().toISOString()
         };
 
@@ -568,7 +531,7 @@ const VideoLearningModal = ({
 
         setTopicProgress(updatedTopicProgress);
 
-        // Update enrollment progress if response contains updated data
+        // Update enrollment progress with backend response
         if (response.totalWatchedPercentage !== undefined || response.watchedTopics !== undefined) {
           setEnrollment(prev => prev ? {
             ...prev,
@@ -580,7 +543,6 @@ const VideoLearningModal = ({
 
     } catch (error: any) {
       console.error('Error updating progress:', error);
-      // Show user-friendly error message
       toast({
         title: 'Progress Update Failed',
         description: error.message || 'Failed to save your progress',
@@ -597,32 +559,16 @@ const VideoLearningModal = ({
       if (!token) return;
 
       const duration = playerRef.current ? 
-        Math.floor(playerRef.current.getDuration()) : selectedTopic.duration;
+        Math.floor(playerRef.current.getDuration()) : selectedTopic.duration * 60; // Convert minutes to seconds
 
-      // Calculate total watched percentage
-      let totalWatchedPercentage = 0;
-      if (enrollment) {
-        const totalTopics = enrollment.totalTopics || 1;
-        const currentWatchedTopics = enrollment.watchedTopics || 0;
-        
-        // Check if this topic was already watched
-        const wasAlreadyWatched = topicProgress.find(tp => 
-          String(tp.courseId) === String(selectedCourse._id) && 
-          String(tp.topicName) === String(selectedTopic.name) && 
-          tp.watched
-        );
-        
-        const newWatchedTopics = wasAlreadyWatched ? currentWatchedTopics : currentWatchedTopics + 1;
-        totalWatchedPercentage = (newWatchedTopics / totalTopics) * 100;
-      }
+      // Set accumulated time to full duration
+      accumulatedWatchTimeRef.current = duration;
 
-      // Prepare completion data according to Swagger API
-      const completionData: any = {
+      // Prepare completion data - ONLY required fields
+      const completionData = {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
-        watchedDuration: duration,
-        totalCourseDuration: Math.floor(duration),
-        totalWatchedPercentage: Math.round(totalWatchedPercentage)
+        watchedDuration: duration
       };
 
       console.log('Marking topic as completed:', completionData);
@@ -633,7 +579,7 @@ const VideoLearningModal = ({
         setIsTrackingProgress(false);
         setVideoProgress(100);
         
-        // Update local state
+        // Update local state with backend response
         const updatedTopicProgress = [...topicProgress];
         const existingIndex = updatedTopicProgress.findIndex(
           tp => String(tp.courseId) === String(selectedCourse._id) && 
@@ -644,7 +590,7 @@ const VideoLearningModal = ({
           courseId: selectedCourse._id,
           topicName: selectedTopic.name,
           watchedDuration: duration,
-          watched: true,
+          watched: true, // Backend should mark as watched when duration is full
           lastWatchedAt: new Date().toISOString()
         };
 
@@ -661,7 +607,7 @@ const VideoLearningModal = ({
           setEnrollment(prev => prev ? {
             ...prev,
             totalWatchedPercentage: response.totalWatchedPercentage || prev.totalWatchedPercentage,
-            watchedTopics: response.watchedTopics || ((prev.watchedTopics || 0) + 1)
+            watchedTopics: response.watchedTopics || prev.watchedTopics
           } : null);
         }
 
@@ -824,28 +770,6 @@ const Pack365StreamLearning = () => {
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isLearningView, setIsLearningView] = useState(false);
-
-  // Calculate local progress
-  const calculateLocalProgress = (): number => {
-    if (!enrollment || !enrollment.courses) return 0;
-    
-    let totalWatchedTopics = 0;
-    let totalTopicsInStream = 0;
-
-    enrollment.courses.forEach(course => {
-      const courseTopics = course.topics?.length || 0;
-      totalTopicsInStream += courseTopics;
-      
-      // Count watched topics for this course
-      const watchedInCourse = topicProgress.filter(tp => 
-        String(tp.courseId) === String(course._id) && tp.watched === true
-      ).length;
-      
-      totalWatchedTopics += watchedInCourse;
-    });
-
-    return totalTopicsInStream > 0 ? (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
-  };
 
   useEffect(() => {
     const fetchStreamEnrollment = async () => {
@@ -1138,7 +1062,7 @@ const Pack365StreamLearning = () => {
                                   )}
                                   {watchedDuration > 0 && !isWatched && (
                                     <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                                      In Progress ({Math.round((watchedDuration / topic.duration) * 100)}%)
+                                      In Progress ({Math.round((watchedDuration / (topic.duration * 60)) * 100)}%)
                                     </Badge>
                                   )}
                                 </div>
@@ -1209,7 +1133,7 @@ const Pack365StreamLearning = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center">
-                  <CircularProgress percentage={enrollment.totalWatchedPercentage || calculateLocalProgress()} />
+                  <CircularProgress percentage={enrollment.totalWatchedPercentage} />
                   <p className="text-gray-600 mt-4">Overall Completion</p>
                 </CardContent>
               </Card>
