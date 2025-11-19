@@ -627,7 +627,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ UPDATED: Fixed updateTopicProgress to match Swagger documentation
+  // ✅ FIXED: Proper updateTopicProgress method
   updateTopicProgress: async (
     token: string,
     data: {
@@ -645,28 +645,11 @@ export const pack365Api = {
     totalTopics?: number;
   }> => {
     try {
-      // Prepare the request payload according to Swagger spec
-      const requestPayload: any = {
-        courseId: data.courseId,
-        topicName: data.topicName
-      };
-
-      // Add optional fields if provided
-      if (data.watchedDuration !== undefined) {
-        requestPayload.watchedDuration = data.watchedDuration;
-      }
-      if (data.totalCourseDuration !== undefined) {
-        requestPayload.totalCourseDuration = data.totalCourseDuration;
-      }
-      if (data.totalWatchedPercentage !== undefined) {
-        requestPayload.totalWatchedPercentage = data.totalWatchedPercentage;
-      }
-
-      console.log('Sending topic progress update:', requestPayload);
+      console.log('Sending topic progress update:', data);
 
       const response = await axios.put(
         `${API_BASE_URL}/pack365/topic/progress`, 
-        requestPayload, 
+        data, 
         {
           headers: {
             'Content-Type': 'application/json',
@@ -681,7 +664,6 @@ export const pack365Api = {
     } catch (error: any) {
       console.error('Error updating topic progress:', error);
       
-      // Enhanced error logging
       if (error.response) {
         console.error('Error response data:', error.response.data);
         console.error('Error response status:', error.response.status);
