@@ -101,11 +101,11 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
 
       // Add role-specific fields
       if (editFormData.role === 'college') {
-        updateData.collegeName = "Updated College";
-        updateData.collegeCode = "UPD001";
+        (updateData as any).collegeName = "Updated College";
+        (updateData as any).collegeCode = "UPD001";
       } else if (editFormData.role === 'employer') {
-        updateData.companyName = "Updated Company";
-        updateData.companyType = "Private Limited";
+        (updateData as any).companyName = "Updated Company";
+        (updateData as any).companyType = "Private Limited";
       }
 
       const response = await authApi.adminRegister(token, updateData);
@@ -126,17 +126,25 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user? This will remove the user from the system.')) {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       return;
     }
 
     try {
-      // Since we don't have a delete endpoint, we'll simulate deletion by filtering
-      // In a real scenario, you'd need a backend delete endpoint
-      setAllUsers(prevUsers => prevUsers.filter(user => user._id !== userId));
-      toast.success('User removed from view. Note: Backend deletion not implemented.');
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // Use the actual delete endpoint from your backend
+      const response = await authApi.deleteUser(token, userId);
+      
+      if (response.message) {
+        toast.success('User deleted successfully!');
+        // Refresh the user list
+        fetchAllUsers();
+      }
     } catch (error: any) {
-      toast.error('Delete functionality requires backend implementation');
+      console.error('Delete user error:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to delete user');
     }
   };
 
@@ -165,8 +173,8 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Use the forgot password endpoint to change password
-      const response = await authApi.changePasswordWithEmail({
+      // Use the superadmin password update endpoint
+      const response = await authApi.superadminUpdateAdminPassword(token, {
         email: passwordData.email,
         newPassword: passwordData.newPassword
       });
@@ -182,6 +190,7 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
         });
       }
     } catch (error: any) {
+      console.error('Update password error:', error);
       toast.error(error.response?.data?.message || error.message || 'Failed to update password');
     }
   };
@@ -360,7 +369,7 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
                       className="flex items-center space-x-1"
                     >
                       <Trash2 className="h-3 w-3" />
-                      <span>Remove</span>
+                      <span>Delete</span>
                     </Button>
                   </div>
                 </div>
