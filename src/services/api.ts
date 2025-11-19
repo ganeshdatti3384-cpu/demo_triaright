@@ -627,11 +627,11 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ FIXED: Proper updateTopicProgress method
+  // ✅ FIXED: Proper updateTopicProgress method with correct ObjectId handling
   updateTopicProgress: async (
     token: string,
     data: {
-      courseId: string;
+      courseId: string; // This should be MongoDB ObjectId string
       topicName: string;
       watchedDuration?: number;
       totalCourseDuration?: number;
