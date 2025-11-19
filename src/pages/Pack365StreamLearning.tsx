@@ -154,7 +154,6 @@ const Pack365StreamLearning = () => {
         const diffMinutes = (now.getTime() - updateTime.getTime()) / (1000 * 60);
         
         if (diffMinutes < 5) {
-          console.log('Auto-refreshing due to recent exam completion');
           fetchStreamEnrollment();
           localStorage.removeItem('lastEnrollmentUpdate');
         }
@@ -296,7 +295,7 @@ const Pack365StreamLearning = () => {
   const getCourseProgress = (courseId: string) => {
     if (!enrollment?.topicProgress) return 0;
     
-    const courseTopics = enrollment.topicProgress.filter(tp => tp.courseId === courseId);
+    const courseTopics = enrollment.topicProgress.filter(tp => String(tp.courseId) === String(courseId));
     if (courseTopics.length === 0) return 0;
     
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
@@ -369,7 +368,7 @@ const Pack365StreamLearning = () => {
                       <span>Topics Completed</span>
                       <span>{enrollment.watchedTopics || 0} / {enrollment.totalTopics || 0}</span>
                     </div>
-                    <Progress value={(enrollment.watchedTopics / enrollment.totalTopics) * 100} className="h-2" />
+                    <Progress value={enrollment.totalTopics ? (enrollment.watchedTopics / enrollment.totalTopics) * 100 : 0} className="h-2" />
                   </div>
                 </CardContent>
               </Card>
