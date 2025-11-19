@@ -497,15 +497,6 @@ const Pack365StreamLearning = () => {
                                   </span>
                                 )}
                               </div>
-
-                              {/* Course Progress */}
-                              <div className="w-full">
-                                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                  <span>Progress</span>
-                                  <span>{Math.round(courseProgress)}%</span>
-                                </div>
-                                <Progress value={courseProgress} className="h-2" />
-                              </div>
                             </div>
                             
                             <Button 
