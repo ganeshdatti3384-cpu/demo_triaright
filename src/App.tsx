@@ -58,6 +58,7 @@ import InternshipDetailsPage from '@/components/internships/InternshipDetailsPag
 import RegularInternshipsPage from '@/components/internships/RegularInternshipsPage';
 import APExclusiveInternshipsPage from '@/components/internships/APExclusiveInternshipsPage';
 import JobsPage from '@/pages/JobsPage';
+import StreamLearningInterface from '@/components/pack365/StreamLearningInterface';
 import CommunityPage from '@/components/community/CommunityPage';
 
 const queryClient = new QueryClient();
@@ -91,7 +92,7 @@ const App = () => {
           <Route path="/recorded-courses" element={<RecordedCourses />} />
           <Route path="/pack365" element={<Pack365 />} />
           <Route path="/pack365/bundle/:streamName" element={<Pack365BundleDetail />} />
-         <Route path="/community" element={<CommunityPage />} />
+          <Route path="/community" element={<CommunityPage />} />
           
           {/* Jobs Routes */}
           <Route path="/jobs" element={<JobsPage />} />
@@ -267,7 +268,16 @@ const App = () => {
                 <Pack365StreamLearning />
               </ProtectedRoute>
             }
-          />          
+          />
+          <Route
+            path="/pack365-learning/:stream/course/:courseId?"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <StreamLearningInterface />
+              </ProtectedRoute>
+            }
+          />
+          
           {/* Exam Routes */}
           <Route
             path="/exam/:stream"
