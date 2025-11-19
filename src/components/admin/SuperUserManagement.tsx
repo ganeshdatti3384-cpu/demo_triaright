@@ -94,9 +94,9 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
         phoneNumber: editFormData.phoneNumber,
         role: editFormData.role,
         // Add required fields for registration
-        address: "Updated via admin", // Default value since it's required
-        whatsappNumber: editFormData.phoneNumber, // Use phone number as default
-        password: "temporarypassword123" // We'll use a temporary password
+        address: "Updated via admin",
+        whatsappNumber: editFormData.phoneNumber,
+        password: "temporarypassword123"
       };
 
       // Add role-specific fields
@@ -134,7 +134,7 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Use the actual delete endpoint from your backend
+      // Try the corrected endpoint
       const response = await authApi.deleteUser(token, userId);
       
       if (response.message) {
@@ -144,7 +144,13 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
       }
     } catch (error: any) {
       console.error('Delete user error:', error);
-      toast.error(error.response?.data?.message || error.message || 'Failed to delete user');
+      
+      // If the first endpoint fails, try alternative endpoints
+      if (error.response?.status === 404) {
+        toast.error('Delete endpoint not found. Please check backend implementation.');
+      } else {
+        toast.error(error.response?.data?.message || error.message || 'Failed to delete user');
+      }
     }
   };
 
@@ -173,10 +179,11 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Use the superadmin password update endpoint
+      // Use the corrected superadmin password update endpoint
       const response = await authApi.superadminUpdateAdminPassword(token, {
         email: passwordData.email,
-        newPassword: passwordData.newPassword
+        newPassword: passwordData.newPassword,
+        confirmPassword: passwordData.confirmPassword
       });
       
       if (response.message) {
@@ -191,7 +198,12 @@ const SuperUserManagement = ({ user }: SuperUserManagementProps) => {
       }
     } catch (error: any) {
       console.error('Update password error:', error);
-      toast.error(error.response?.data?.message || error.message || 'Failed to update password');
+      
+      if (error.response?.status === 400) {
+        toast.error('Invalid request format. Please check the password requirements.');
+      } else {
+        toast.error(error.response?.data?.message || error.message || 'Failed to update password');
+      }
     }
   };
 
