@@ -549,68 +549,45 @@ export const pack365Api = {
     return res.data;
   },
 
+  // IMPORTANT: getMyEnrollments MUST return enrollments as the backend provides them.
+  // Ensure topicProgress.courseId is a string (ObjectId) so front-end matching works reliably.
   getMyEnrollments: async (
     token: string
   ): Promise<{ success: boolean; enrollments: EnhancedPack365Enrollment[] }> => {
     try {
-      console.log('Fetching pack365 enrollments from API...');
-      
-      // Try the primary pack365 enrollments endpoint first
-      try {
-        const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('Pack365 enrollments response:', res.data);
-        if (res.data && res.data.success) {
-          return res.data;
-        }
-      } catch (primaryError: any) {
-        console.log('Primary pack365 endpoint failed:', primaryError.message);
+      const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // If backend returns non-standard structure, pass it through
+      if (!res.data) {
+        return { success: false, enrollments: [] };
       }
-      
-      // Try alternative pack365 endpoint
-      try {
-        console.log('Trying alternative pack365 endpoint...');
-        const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('Alternative pack365 endpoint response:', res.data);
-        if (res.data && res.data.success) {
-          return res.data;
-        }
-      } catch (altError: any) {
-        console.log('Alternative pack365 endpoint also failed:', altError.message);
-      }
-      
-      // Try general courses endpoint and filter for pack365 enrollments
-      try {
-        console.log('Trying general courses endpoint...');
-        const courseRes = await axios.get(`${API_BASE_URL}/courses/enrollment/allcourses`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('General courses response:', courseRes.data);
-        
-        if (courseRes.data && courseRes.data.enrollments) {
-          // Filter for pack365/stream based enrollments
-          const pack365Enrollments = courseRes.data.enrollments.filter((enrollment: any) => 
-            enrollment.stream || 
-            enrollment.enrollmentType === 'pack365' ||
-            (enrollment.courseName && enrollment.courseName.toLowerCase().includes('pack365'))
-          );
-          
-          console.log('Filtered pack365 enrollments:', pack365Enrollments);
+
+      // Normalize enrollments: ensure topicProgress.courseId is a string
+      const rawEnrollments = res.data.enrollments || res.data;
+      const normalized = (Array.isArray(rawEnrollments) ? rawEnrollments : []).map((en: any) => {
+        const tp = (en.topicProgress || []).map((t: any) => {
+          let courseIdValue: any = t.courseId;
+          // If it's an object (Mongoose ObjectId may come as object), attempt to extract string
+          if (courseIdValue && typeof courseIdValue === 'object') {
+            if (courseIdValue._id) courseIdValue = courseIdValue._id;
+            else if (courseIdValue.toString) courseIdValue = courseIdValue.toString();
+          }
           return {
-            success: true,
-            enrollments: pack365Enrollments
+            ...t,
+            courseId: courseIdValue ? String(courseIdValue) : courseIdValue
           };
-        }
-      } catch (courseError: any) {
-        console.log('General courses endpoint also failed:', courseError.message);
-      }
-      
-      console.log('All endpoints failed, returning empty array');
-      return { success: true, enrollments: [] };
-      
+        });
+
+        return {
+          ...en,
+          topicProgress: tp,
+          totalWatchedPercentage: typeof en.totalWatchedPercentage === 'number' ? en.totalWatchedPercentage : (en.totalWatchedPercentage || 0)
+        };
+      });
+
+      return { success: true, enrollments: normalized };
     } catch (error: any) {
       console.error('Error fetching pack365 enrollments:', error);
       return { success: false, enrollments: [] };
@@ -627,11 +604,11 @@ export const pack365Api = {
     return res.data;
   },
 
-  // ✅ FIXED: Proper updateTopicProgress method with correct ObjectId handling
+  // ✅ FIXED: Proper updateTopicProgress method
   updateTopicProgress: async (
     token: string,
     data: {
-      courseId: string; // This should be MongoDB ObjectId string
+      courseId: string;
       topicName: string;
       watchedDuration?: number;
       totalCourseDuration?: number;
@@ -645,11 +622,17 @@ export const pack365Api = {
     totalTopics?: number;
   }> => {
     try {
-      console.log('Sending topic progress update:', data);
+      // Ensure the courseId is a string (ObjectId from enrollment)
+      const payload = {
+        ...data,
+        courseId: data.courseId ? String(data.courseId) : data.courseId
+      };
+
+      console.log('Sending topic progress update payload:', payload);
 
       const response = await axios.put(
         `${API_BASE_URL}/pack365/topic/progress`, 
-        data, 
+        payload, 
         {
           headers: {
             'Content-Type': 'application/json',
@@ -893,7 +876,7 @@ export const collegeApi = {
     token: string
   ): Promise<{ success: boolean; requests: any[] }> => {
     const res = await axios.get(`${API_BASE_URL}/colleges/admin/all`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: { Authorization: `Bearer ${token}` } as any },
     });
     return res.data;
   },
