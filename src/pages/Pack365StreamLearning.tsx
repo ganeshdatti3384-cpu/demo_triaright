@@ -26,13 +26,12 @@ import {
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
 
-// --- Interfaces for Type Safety ---
 interface Course {
   courseId: string;
   courseName: string;
   description: string;
   totalDuration: number;
-  topicsCount: number;
+  topicsCount?: number;
   _id: string;
   stream: string;
   topics: Array<{
@@ -63,7 +62,6 @@ interface StreamEnrollment {
   }>;
 }
 
-// --- Helper Components ---
 const CircularProgress = ({ percentage }: { percentage: number }) => {
   const sqSize = 120;
   const strokeWidth = 10;
@@ -111,19 +109,14 @@ const SkeletonLoader = () => (
   <div className="min-h-screen bg-gray-50 py-8 px-4">
     <div className="max-w-7xl mx-auto">
       <div className="animate-pulse">
-        {/* Header Skeleton */}
         <div className="h-10 bg-gray-200 rounded-lg w-1/3 mb-4"></div>
         <div className="h-6 bg-gray-200 rounded-lg w-1/2 mb-12"></div>
-        {/* Main Content Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          {/* Sidebar Skeleton */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white p-6 rounded-xl shadow-sm h-64"></div>
             <div className="bg-white p-6 rounded-xl shadow-sm h-48"></div>
           </div>
-          {/* Courses Skeleton */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm h-40"></div>
             <div className="bg-white p-6 rounded-xl shadow-sm h-40"></div>
             <div className="bg-white p-6 rounded-xl shadow-sm h-40"></div>
           </div>
@@ -137,66 +130,60 @@ const Pack365StreamLearning = () => {
   const { stream } = useParams<{ stream: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+
   const [enrollment, setEnrollment] = useState<StreamEnrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [allCourses, setAllCourses] = useState<Course[]>([]);
 
   useEffect(() => {
     fetchStreamEnrollment();
     
-    // Check for recent updates from exam completion
-    const checkForUpdates = () => {
-      const lastUpdate = localStorage.getItem('lastEnrollmentUpdate');
-      if (lastUpdate) {
-        const updateTime = new Date(lastUpdate);
-        const now = new Date();
-        const diffMinutes = (now.getTime() - updateTime.getTime()) / (1000 * 60);
-        
-        if (diffMinutes < 5) {
-          console.log('Auto-refreshing due to recent exam completion');
-          fetchStreamEnrollment();
-          localStorage.removeItem('lastEnrollmentUpdate');
-        }
+    // ✅ Add visibility change listener to refresh when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchStreamEnrollment();
       }
     };
-
-    checkForUpdates();
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [stream]);
 
   const fetchStreamEnrollment = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast({ title: 'Authentication Required', variant: 'destructive' });
-      navigate('/login');
-      return;
-    }
-
     try {
-      setLoading(true);
-      
-      // Fetch enrollments
-      const response = await pack365Api.getMyEnrollments(token);
-      
-      if (response.success && response.enrollments) {
-        const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
-        const currentEnrollment = streamEnrollments.find(
-          (e) => e.stream.toLowerCase() === stream?.toLowerCase()
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({ title: 'Authentication Required', variant: 'destructive' });
+        navigate('/login');
+        return;
+      }
+
+      // ✅ Fetch fresh enrollment data
+      const enrollmentsResponse = await pack365Api.getMyEnrollments(token);
+
+      if (enrollmentsResponse.success && enrollmentsResponse.enrollments) {
+        const currentEnrollment = enrollmentsResponse.enrollments.find(
+          (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
         );
 
         if (currentEnrollment) {
-          // ✅ FIXED: Always fetch fresh course data
-          const coursesResponse = await pack365Api.getAllCourses();
-          if (coursesResponse.success && coursesResponse.data) {
-            const streamCourses = coursesResponse.data.filter(
-              (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
-            );
-            setAllCourses(streamCourses);
-            
-            // ✅ FIXED: Enhance enrollment with complete course data and fresh progress (use backend topicProgress)
+          // ✅ Enhance with courses if needed
+          if (currentEnrollment.courses && currentEnrollment.courses.length > 0) {
             const enhancedEnrollment: StreamEnrollment = {
-              ...currentEnrollment,
-              courses: streamCourses,
+              _id: currentEnrollment._id,
+              stream: currentEnrollment.stream,
+              enrollmentDate: currentEnrollment.enrollmentDate,
+              expiresAt: currentEnrollment.expiresAt,
+              totalWatchedPercentage: currentEnrollment.totalWatchedPercentage || 0,
+              isExamCompleted: currentEnrollment.isExamCompleted || false,
+              examScore: currentEnrollment.examScore || null,
+              coursesCount: currentEnrollment.coursesCount || currentEnrollment.courses.length,
+              totalTopics: currentEnrollment.totalTopics || 0,
+              watchedTopics: currentEnrollment.watchedTopics || 0,
+              courses: currentEnrollment.courses,
               topicProgress: currentEnrollment.topicProgress || []
             };
             setEnrollment(enhancedEnrollment);
@@ -248,11 +235,9 @@ const Pack365StreamLearning = () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        // Check if exams are available for this stream
         const availableExamsResponse = await pack365Api.getAvailableExams(token);
         
         if (availableExamsResponse.success && availableExamsResponse.exams) {
-          // Check if there are exams for courses in this stream
           const streamExam = availableExamsResponse.exams.find((exam: any) => {
             return enrollment.courses.some(course => course._id === exam.courseId);
           });
@@ -297,8 +282,11 @@ const Pack365StreamLearning = () => {
   const getCourseProgress = (courseId: string) => {
     if (!enrollment?.topicProgress) return 0;
     
-    // ✅ FIXED: Proper course progress calculation using topicProgress (compare ObjectId strings)
-    const courseTopics = enrollment.topicProgress.filter(tp => String(tp.courseId) === String(courseId));
+    // ✅ FIXED: Compare ObjectId strings properly
+    const courseTopics = enrollment.topicProgress.filter(
+      tp => String(tp.courseId) === String(courseId)
+    );
+    
     if (courseTopics.length === 0) return 0;
     
     const watchedTopics = courseTopics.filter(tp => tp.watched).length;
@@ -312,95 +300,102 @@ const Pack365StreamLearning = () => {
   if (!enrollment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <GraduationCap className="h-20 w-20 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Enrollment Not Found</h2>
-          <p className="text-gray-500 mb-6">We couldn't find your enrollment details for this stream.</p>
-          <Button onClick={() => navigate('/pack365')}>Browse Streams</Button>
-        </div>
+        <Navbar />
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Not Enrolled</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600 mb-4">You are not enrolled in this stream.</p>
+            <Button onClick={() => navigate('/pack365')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Streams
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="py-8 px-4">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+          <div className="mb-8 flex items-center justify-between">
+            <div>
               <Button 
-                onClick={() => navigate('/pack365-dashboard')}
+                onClick={() => navigate('/pack365')}
                 variant="outline"
+                className="mb-4"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Button>
-              <Button 
-                onClick={handleRefresh}
-                variant="outline"
-                disabled={refreshing}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Refreshing...' : 'Refresh'}
-              </Button>
+              <h1 className="text-4xl font-bold text-gray-900 capitalize">{stream} Stream</h1>
+              <p className="text-gray-600 mt-2">Continue your learning journey</p>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 capitalize">{stream} Stream</h1>
-            <p className="text-gray-600 mt-2">Continue your learning journey</p>
+            <Button 
+              onClick={handleRefresh}
+              variant="outline"
+              disabled={refreshing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
 
-          {/* --- Main Content Grid --- */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            
-            {/* --- Left Sidebar (Sticky) --- */}
-            <aside className="lg:col-span-1 lg:sticky lg:top-24 space-y-6">
+            <aside className="lg:col-span-1 space-y-6">
               <Card className="shadow-md">
-                <CardHeader>
+                <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
                   <CardTitle className="flex items-center gap-2">
-                    <BarChart2 className="h-6 w-6 text-blue-600" />
+                    <BarChart2 className="h-6 w-6"/>
                     Stream Progress
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                  <CircularProgress percentage={enrollment.totalWatchedPercentage || 0} />
-                  <p className="text-gray-600 mt-4">Overall Completion</p>
-                  <div className="w-full mt-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Topics Completed</span>
-                      <span>{enrollment.watchedTopics || 0} / {enrollment.totalTopics || 0}</span>
+                <CardContent className="pt-6 flex flex-col items-center">
+                  <CircularProgress percentage={enrollment.totalWatchedPercentage} />
+                  <p className="text-center mt-4 text-sm text-gray-600">Overall Completion</p>
+                  <div className="w-full mt-6 space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="flex items-center gap-1 text-gray-600">
+                        <BookCopy className="h-4 w-4"/>
+                        Courses
+                      </span>
+                      <span className="font-medium">{enrollment.coursesCount}</span>
                     </div>
-                    <Progress value={(enrollment.watchedTopics / enrollment.totalTopics) * 100} className="h-2" />
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="flex items-center gap-1 text-gray-600">
+                        <FileText className="h-4 w-4"/>
+                        Topics
+                      </span>
+                      <span className="font-medium">{enrollment.watchedTopics} / {enrollment.totalTopics}</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-
+              
               <Card className="shadow-md">
                 <CardHeader>
-                   <CardTitle className="text-lg">Key Information</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-gray-800">
+                      <Calendar className="h-5 w-5"/>
+                      Enrollment Details
+                    </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 text-sm">
-                   <div className="flex items-center justify-between">
-                      <span className="text-gray-500 flex items-center gap-2"><Calendar className="h-4 w-4"/>Enrolled On</span>
-                      <span className="font-semibold text-gray-800">{formatDate(enrollment.enrollmentDate)}</span>
-                   </div>
-                   <div className="flex items-center justify-between">
-                      <span className="text-gray-500 flex items-center gap-2"><BookOpen className="h-4 w-4"/>Total Courses</span>
-                      <span className="font-semibold text-gray-800">{enrollment.coursesCount}</span>
-                   </div>
-                   <div className="flex items-center justify-between">
-                      <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4"/>Topics Completed</span>
-                      <span className="font-semibold text-gray-800">{enrollment.watchedTopics} / {enrollment.totalTopics}</span>
-                   </div>
-                   <div className="flex items-center justify-between">
-                      <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4"/>Access Until</span>
-                      <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
-                   </div>
+                <CardContent className="space-y-3 text-sm">
+                    <div>
+                      <p className="text-gray-600">Enrolled On</p>
+                      <p className="font-medium text-gray-800">{formatDate(enrollment.enrollmentDate)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Expires On</p>
+                      <p className="font-medium text-gray-800">{formatDate(enrollment.expiresAt)}</p>
+                    </div>
                 </CardContent>
               </Card>
               
-              {/* Exam Status Card */}
               <Card className={`shadow-md ${
                 enrollment.isExamCompleted 
                   ? 'bg-green-50 border-green-200' 
@@ -459,7 +454,6 @@ const Pack365StreamLearning = () => {
               </Card>
             </aside>
 
-            {/* --- Right Content (Course List) --- */}
             <main className="lg:col-span-2">
               <Card className="shadow-md">
                 <CardHeader>
@@ -475,102 +469,54 @@ const Pack365StreamLearning = () => {
                         <div key={course.courseId} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
                           <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                             <div className="flex-1">
-                              <div className="flex items-start justify-between mb-3">
-                                <h3 className="font-semibold text-gray-800 text-lg">{course.courseName}</h3>
-                                <Badge variant={courseProgress === 100 ? "default" : "secondary"}>
-                                  {courseProgress === 100 ? 'Completed' : `${Math.round(courseProgress)}%`}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
+                              <h3 className="text-xl font-bold text-gray-900 mb-2">{course.courseName}</h3>
+                              <p className="text-gray-600 mb-4">{course.description}</p>
                               
-                              <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
-                                <span className="flex items-center gap-1.5">
-                                  <Clock className="h-4 w-4" /> 
-                                  {course.totalDuration} minutes
-                                </span>
-                                <span className="flex items-center gap-1.5">
-                                  <BookOpen className="h-4 w-4" /> 
-                                  {course.topics?.length || 0} topics
-                                </span>
-                                {course.documentLink && (
-                                  <span className="flex items-center gap-1.5">
-                                    <FileText className="h-4 w-4" /> 
-                                    Resources
-                                  </span>
-                                )}
+                              <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
+                                <div className="flex items-center gap-1">
+                                  <BookOpen className="h-4 w-4"/>
+                                  <span>{course.topics?.length || 0} topics</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4"/>
+                                  <span>{course.totalDuration} minutes</span>
+                                </div>
+                              </div>
+
+                              <div className="mb-2">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-sm font-medium text-gray-700">Course Progress</span>
+                                  <span className="text-sm text-gray-600">{Math.round(courseProgress)}%</span>
+                                </div>
+                                <Progress value={courseProgress} className="h-2" />
                               </div>
                             </div>
-                            
+
                             <Button 
                               onClick={() => handleCourseStart(course)}
-                              className="w-full sm:w-auto flex-shrink-0"
-                              variant={courseProgress === 100 ? "outline" : "default"}
+                              className="w-full sm:w-auto"
                             >
-                              {courseProgress === 100 ? (
-                                <>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  Completed
-                                </>
-                              ) : courseProgress > 0 ? (
-                                <>
-                                  <Play className="h-4 w-4 mr-2" />
-                                  Continue
-                                </>
-                              ) : (
-                                <>
-                                  <Play className="h-4 w-4 mr-2" />
-                                  Start Learning
-                                </>
-                              )}
+                              <Play className="h-4 w-4 mr-2"/>
+                              {courseProgress > 0 ? 'Continue' : 'Start'} Learning
                             </Button>
                           </div>
                         </div>
                       );
                     })
                   ) : (
-                    <div className="text-center py-8">
-                      <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-600 mb-2">No Courses Available</h3>
-                      <p className="text-gray-500">Courses for this stream are being prepared.</p>
+                    <div className="text-center py-12 text-gray-500">
+                      <BookOpen className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg">No courses available yet</p>
+                      <p className="text-sm">Please check back later</p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-
-              {/* Stream Progress Summary */}
-              <Card className="shadow-md mt-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5" />
-                    Stream Completion Requirements
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Minimum completion for exam:</span>
-                      <Badge variant={enrollment.totalWatchedPercentage >= 80 ? "default" : "secondary"}>
-                        {enrollment.totalWatchedPercentage >= 80 ? 'Eligible' : '80% Required'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Current progress:</span>
-                      <span className="text-sm font-medium">{Math.round(enrollment.totalWatchedPercentage)}%</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Exam status:</span>
-                      <Badge variant={enrollment.isExamCompleted ? "default" : "outline"}>
-                        {enrollment.isExamCompleted ? `Completed (${enrollment.examScore}%)` : 'Not Taken'}
-                      </Badge>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </main>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
