@@ -142,6 +142,26 @@ const Pack365StreamLearning = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
 
+  // Calculate accurate progress based on actual courses and topic progress
+  const calculateAccurateProgress = (enrollmentData: StreamEnrollment, courses: Course[]) => {
+    if (!courses.length) return { totalTopics: 0, watchedTopics: 0, totalWatchedPercentage: 0 };
+    
+    // Calculate total topics from actual courses
+    const totalTopics = courses.reduce((total, course) => total + (course.topics?.length || 0), 0);
+    
+    // Calculate watched topics from topicProgress
+    const watchedTopics = enrollmentData.topicProgress?.filter(topic => topic.watched).length || 0;
+    
+    // Calculate accurate percentage
+    const totalWatchedPercentage = totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
+    
+    return {
+      totalTopics,
+      watchedTopics,
+      totalWatchedPercentage
+    };
+  };
+
   useEffect(() => {
     fetchStreamEnrollment();
     
@@ -193,14 +213,22 @@ const Pack365StreamLearning = () => {
             );
             setAllCourses(streamCourses);
             
-            // ✅ FIXED: Enhance enrollment with complete course data and fresh progress (use backend topicProgress)
+            // ✅ FIXED: Calculate accurate progress based on actual courses
+            const accurateProgress = calculateAccurateProgress(currentEnrollment, streamCourses);
+            
+            // ✅ FIXED: Enhance enrollment with accurate progress data
             const enhancedEnrollment: StreamEnrollment = {
               ...currentEnrollment,
               courses: streamCourses,
+              coursesCount: streamCourses.length,
+              totalTopics: accurateProgress.totalTopics,
+              watchedTopics: accurateProgress.watchedTopics,
+              totalWatchedPercentage: accurateProgress.totalWatchedPercentage,
               topicProgress: currentEnrollment.topicProgress || []
             };
             setEnrollment(enhancedEnrollment);
           } else {
+            // Fallback: use enrollment data as is if courses fetch fails
             setEnrollment(currentEnrollment);
           }
         } else {
@@ -371,7 +399,7 @@ const Pack365StreamLearning = () => {
                       <span>Topics Completed</span>
                       <span>{enrollment.watchedTopics || 0} / {enrollment.totalTopics || 0}</span>
                     </div>
-                    <Progress value={(enrollment.watchedTopics / enrollment.totalTopics) * 100} className="h-2" />
+                    <Progress value={enrollment.totalTopics > 0 ? (enrollment.watchedTopics / enrollment.totalTopics) * 100 : 0} className="h-2" />
                   </div>
                 </CardContent>
               </Card>
