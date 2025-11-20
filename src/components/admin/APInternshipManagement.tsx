@@ -102,6 +102,7 @@ const APInternshipManagement = () => {
     if (!token) return;
 
     try {
+      // Fixed endpoint: removed hyphen
       const response = await fetch('/api/internships/apinternships', {
         method: 'POST',
         headers: {
@@ -142,6 +143,7 @@ const APInternshipManagement = () => {
     if (!token) return;
 
     try {
+      // Fixed endpoint: removed hyphen
       const response = await fetch(`/api/internships/apinternships/${selectedAPInternship._id}`, {
         method: 'PUT',
         headers: {
@@ -181,6 +183,7 @@ const APInternshipManagement = () => {
     if (!token) return;
 
     try {
+      // Fixed endpoint: removed hyphen
       const response = await fetch(`/api/internships/apinternships/${id}`, {
         method: 'DELETE',
         headers: {
