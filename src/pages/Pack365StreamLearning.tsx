@@ -36,14 +36,14 @@ import Navbar from '@/components/Navbar';
 interface Topic {
   name: string;
   link: string;
-  duration: number; // duration as provided by backend (seconds preferred). UI will normalize.
+  duration: number; // can be seconds (preferred) or minutes for legacy data
 }
 
 interface Course {
   courseId: string;
   courseName: string;
   description: string;
-  totalDuration: number; // can be seconds or minutes from older data; normalize helpers will handle it
+  totalDuration: number; // may be seconds or minutes - normalize in UI
   topicsCount: number;
   _id: string;
   stream: string;
@@ -55,7 +55,7 @@ interface TopicProgress {
   courseId: string;
   topicName: string;
   watched: boolean;
-  watchedDuration: number; // in seconds
+  watchedDuration: number; // seconds
   lastWatchedAt?: string;
 }
 
@@ -91,7 +91,7 @@ declare global {
  * Heuristic: if value > 1000 => treat as seconds, else treat as minutes.
  */
 const normalizeToSeconds = (value?: number): number => {
-  if (!value) return 0;
+  if (!value && value !== 0) return 0;
   if (value > 1000) return Math.floor(value); // assume seconds
   return Math.floor(value * 60); // assume minutes
 };
@@ -113,7 +113,6 @@ const enqueueProgress = (item: any) => {
     arr.push(item);
     localStorage.setItem(PROGRESS_QUEUE_KEY, JSON.stringify(arr));
   } catch (e) {
-    // ignore storage errors
     console.error('enqueueProgress failed', e);
   }
 };
@@ -125,14 +124,13 @@ const drainProgressQueue = async (token: string, onSuccess?: (resp: any) => void
     if (!arr.length) return;
     // attempt send sequentially
     for (let i = 0; i < arr.length; i++) {
-      const item = arr[i];
+      const item = arr[0]; // always take first (we shift on success)
       try {
         const resp = await pack365Api.updateTopicProgress(token, item);
         onSuccess && onSuccess(resp);
-        // on success, remove item from queue
+        // on success, remove first item from queue
         const currentRaw = localStorage.getItem(PROGRESS_QUEUE_KEY);
         const currentArr = currentRaw ? JSON.parse(currentRaw) : [];
-        // find first matching by unique id if available, otherwise shift
         if (currentArr.length) {
           currentArr.shift();
           localStorage.setItem(PROGRESS_QUEUE_KEY, JSON.stringify(currentArr));
@@ -258,14 +256,13 @@ const VideoLearningModal = ({
   const currentVideoIdRef = useRef<string | null>(null);
   const accumulatedWatchTimeRef = useRef<number>(0);
   const unsentRetryCountRef = useRef<number>(0);
-  const pollingRef = useRef<any | null>(null);
+  const isSendingRef = useRef<boolean>(false); // prevent concurrent sends
 
   // compute durationSeconds for selected topic (prefer topic.duration if in seconds)
   const getTopicDurationSeconds = useCallback(() => {
     if (!selectedTopic || !selectedCourse) return 0;
-    // If topic.duration appears to be minutes (small number) convert to seconds heuristically
-    if (selectedTopic.duration > 1000) return Math.floor(selectedTopic.duration);
-    return Math.floor(selectedTopic.duration * 60);
+    const dur = selectedTopic.duration ?? 0;
+    return dur > 1000 ? Math.floor(dur) : Math.floor(dur * 60);
   }, [selectedTopic, selectedCourse]);
 
   // compute totalCourseDuration for this course in seconds
@@ -273,6 +270,30 @@ const VideoLearningModal = ({
     if (!selectedCourse) return 0;
     return normalizeToSeconds(selectedCourse.totalDuration);
   }, [selectedCourse]);
+
+  // refresh enrollment from backend and sync local state (ensures UI shows backend-authoritative progress)
+  const refreshEnrollmentFromServer = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token || !enrollment) return;
+      const res = await pack365Api.getMyEnrollments(token);
+      if (res && res.success && res.enrollments) {
+        const matched = (res.enrollments as StreamEnrollment[]).find(e => e.stream.toLowerCase() === enrollment.stream.toLowerCase());
+        if (matched) {
+          const normalized = (matched.topicProgress || []).map((tp: any) => ({
+            ...tp,
+            courseId: String(tp.courseId),
+            watchedDuration: Math.floor(tp.watchedDuration || 0)
+          }));
+          setEnrollment(prev => prev ? { ...prev, totalWatchedPercentage: matched.totalWatchedPercentage ?? prev.totalWatchedPercentage, watchedTopics: matched.watchedTopics ?? prev.watchedTopics, totalTopics: matched.totalTopics ?? prev.totalTopics, topicProgress: normalized } : prev);
+          setTopicProgress(normalized);
+        }
+      }
+    } catch (err) {
+      // ignore errors from polling refresh
+      console.error('refreshEnrollmentFromServer failed', err);
+    }
+  }, [enrollment, setEnrollment, setTopicProgress]);
 
   // cleanup function for player and intervals
   const cleanupPlayer = () => {
@@ -283,10 +304,6 @@ const VideoLearningModal = ({
     if (checkApiIntervalRef.current) {
       clearInterval(checkApiIntervalRef.current);
       checkApiIntervalRef.current = null;
-    }
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
     }
     if (playerRef.current) {
       try {
@@ -492,13 +509,25 @@ const VideoLearningModal = ({
   const updateProgressToBackend = async (immediate = false) => {
     if (!selectedCourse || !selectedTopic) return;
 
+    // prevent concurrent sends
+    if (isSendingRef.current) {
+      return;
+    }
+
     try {
       if (!playerRef.current || !isPlayerReadyRef.current) {
         return;
       }
       const token = localStorage.getItem('token');
+      // If no token, persist locally for later sync
       if (!token) {
-        // nothing to do offline: enqueue for later when user logs in
+        const dur = Math.floor(playerRef.current.getCurrentTime());
+        const payloadOffline = {
+          courseId: selectedCourse._id,
+          topicName: selectedTopic.name,
+          watchedDuration: dur
+        };
+        enqueueProgress(payloadOffline);
         return;
       }
 
@@ -520,7 +549,8 @@ const VideoLearningModal = ({
 
       // check thresholds:
       // send if immediate OR difference since last saved >= 5 seconds OR percent changed by >=5%
-      if (!immediate && Math.abs(accumulatedWatchTimeRef.current - lastSavedTimeRef.current) < 5 && Math.abs(progressPercent - (lastSavedTimeRef.current / Math.max(1, durationSeconds) * 100)) < 5) {
+      const lastSaved = lastSavedTimeRef.current || 0;
+      if (!immediate && Math.abs(accumulatedWatchTimeRef.current - lastSaved) < 5 && Math.abs(progressPercent - ((lastSaved / Math.max(1, durationSeconds)) * 100)) < 5) {
         return;
       }
 
@@ -529,38 +559,39 @@ const VideoLearningModal = ({
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
         watchedDuration: Math.floor(accumulatedWatchTimeRef.current),
-        totalCourseDuration: enrollment?.totalCourseDuration ?? undefined,
-        totalWatchedPercentage: enrollment?.totalWatchedPercentage ?? undefined
+        totalCourseDuration: enrollment?.totalCourseDuration ?? getCourseTotalSeconds()
       };
 
+      // Prevent concurrent sends
+      isSendingRef.current = true;
       setSyncing(true);
 
-      // try send with retry once; on failure enqueue to localStorage for later
       try {
-        const resp = await pack365Api.updateTopicProgress(token, payload);
+        const resp = await pack365Api.updateTopicProgress(localStorage.getItem('token') || '', payload);
         // update local lastSavedTime
         lastSavedTimeRef.current = accumulatedWatchTimeRef.current;
         setSyncing(false);
         setLastSyncAt(new Date().toISOString());
         unsentRetryCountRef.current = 0;
+        isSendingRef.current = false;
 
         // update local topicProgress with backend response best data
         setTopicProgress(prev => {
           const copy = [...prev];
-          const idx = copy.findIndex(tp => String(tp.courseId) === String(selectedCourse._id) && tp.topicName === selectedTopic.name);
+          const existingIndex = copy.findIndex(tp => String(tp.courseId) === String(selectedCourse._id) && tp.topicName === selectedTopic.name);
           const updated: TopicProgress = {
             courseId: String(selectedCourse._id),
             topicName: selectedTopic.name,
-            watched: resp.watched ?? (progressPercent >= 95), // backend guidance preferred
+            watched: resp.watched ?? (progressPercent >= 95),
             watchedDuration: Math.floor(accumulatedWatchTimeRef.current),
             lastWatchedAt: new Date().toISOString()
           };
-          if (idx >= 0) copy[idx] = { ...copy[idx], ...updated };
+          if (existingIndex >= 0) copy[existingIndex] = { ...copy[existingIndex], ...updated };
           else copy.push(updated);
           return copy;
         });
 
-        // if backend returned new totalWatchedPercentage, update enrollment
+        // If backend returned new totals, update enrollment
         if (typeof resp.totalWatchedPercentage === 'number' || typeof resp.watchedTopics === 'number') {
           setEnrollment(prev => prev ? {
             ...prev,
@@ -568,14 +599,17 @@ const VideoLearningModal = ({
             watchedTopics: typeof resp.watchedTopics === 'number' ? resp.watchedTopics : prev.watchedTopics,
             totalTopics: typeof resp.totalTopics === 'number' ? resp.totalTopics : prev.totalTopics
           } : prev);
+        } else {
+          // best-effort: refresh enrollment so UI shows authoritative value (fixes case where page refresh loses completion badge)
+          await refreshEnrollmentFromServer();
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to send progress, enqueueing for retry', err);
-        // enqueue for retry and persist
         enqueueProgress(payload);
         setSyncing(false);
         unsentRetryCountRef.current += 1;
-        // show small non-blocking toast once per failure
+        isSendingRef.current = false;
+        // non-blocking toast once
         if (unsentRetryCountRef.current <= 1) {
           toast({
             title: 'Progress Save Failed',
@@ -586,52 +620,73 @@ const VideoLearningModal = ({
       }
     } catch (err: any) {
       console.error('updateProgressToBackend error', err);
+      isSendingRef.current = false;
+      setSyncing(false);
     }
   };
 
   const markTopicAsCompletedAutomatically = async () => {
-    if (!selectedCourse || !selectedTopic) return;
+    if (!selectedTopic || !selectedCourse) return;
     try {
       const token = localStorage.getItem('token');
-      const durationSeconds = getTopicDurationSeconds();
-      accumulatedWatchTimeRef.current = durationSeconds; // mark full duration
+      const duration = getTopicDurationSeconds();
 
-      // immediate save with watchedDuration = full duration
-      await updateProgressToBackend(true);
+      // Set accumulated time to full duration
+      accumulatedWatchTimeRef.current = duration;
 
-      // optimistic UI update
-      setTopicProgress(prev => {
-        const copy = [...prev];
-        const idx = copy.findIndex(tp => String(tp.courseId) === String(selectedCourse._id) && tp.topicName === selectedTopic.name);
-        const completed: TopicProgress = {
-          courseId: String(selectedCourse._id),
-          topicName: selectedTopic.name,
-          watched: true,
-          watchedDuration: durationSeconds,
-          lastWatchedAt: new Date().toISOString()
-        };
-        if (idx >= 0) copy[idx] = { ...copy[idx], ...completed };
-        else copy.push(completed);
-        return copy;
-      });
+      const payload: UpdateTopicProgressData = {
+        courseId: selectedCourse._id,
+        topicName: selectedTopic.name,
+        watchedDuration: duration,
+        totalCourseDuration: enrollment?.totalCourseDuration ?? getCourseTotalSeconds()
+      };
 
-      toast({
-        title: 'Topic Completed!',
-        description: `"${selectedTopic.name}" marked as completed.`,
-        variant: 'default'
-      });
+      setSyncing(true);
+      try {
+        const response = await pack365Api.updateTopicProgress(token || '', payload);
+        setSyncing(false);
 
-      // briefly show before close
-      setTimeout(() => {
-        onClose();
-      }, 900);
+        // optimistic UI update
+        setTopicProgress(prev => {
+          const copy = [...prev];
+          const idx = copy.findIndex(tp => String(tp.courseId) === String(selectedCourse._id) && tp.topicName === selectedTopic.name);
+          const completedProgress: TopicProgress = {
+            courseId: String(selectedCourse._id),
+            topicName: selectedTopic.name,
+            watchedDuration: duration,
+            watched: true,
+            lastWatchedAt: new Date().toISOString()
+          };
+          if (idx >= 0) copy[idx] = { ...copy[idx], ...completedProgress };
+          else copy.push(completedProgress);
+          return copy;
+        });
+
+        // refresh server enrollment to get authoritative totals (prevents UI showing stale 0% after refresh)
+        await refreshEnrollmentFromServer();
+
+        toast({
+          title: 'Topic Completed!',
+          description: `"${selectedTopic.name}" has been marked as completed.`,
+          variant: 'default'
+        });
+
+        // Close modal after completion
+        setTimeout(() => {
+          onClose();
+        }, 900);
+      } catch (err: any) {
+        console.error('Error marking topic as completed:', err);
+        enqueueProgress(payload); // save for later
+        setSyncing(false);
+        toast({
+          title: 'Completion Error',
+          description: 'Failed to mark topic as completed. Progress saved for retry.',
+          variant: 'destructive'
+        });
+      }
     } catch (err: any) {
-      console.error('markTopicAsCompletedAutomatically error', err);
-      toast({
-        title: 'Completion Error',
-        description: 'Failed to mark topic as completed. Progress saved for retry.',
-        variant: 'destructive'
-      });
+      console.error('markTopicAsCompletedAutomatically outer error', err);
     }
   };
 
@@ -657,7 +712,6 @@ const VideoLearningModal = ({
       });
     };
     tryDrain();
-    // set interval to drain every 20s
     const drainInterval = setInterval(tryDrain, 20000);
     return () => clearInterval(drainInterval);
   }, []);
@@ -671,27 +725,13 @@ const VideoLearningModal = ({
         initializePlayer();
       }, 300);
       // also start polling enrollment progress (to reflect backend authoritative progress) every 30s
-      pollingRef.current = setInterval(async () => {
-        const token = localStorage.getItem('token');
-        if (!token || !enrollment) return;
-        try {
-          const resp = await pack365Api.getMyEnrollments(token);
-          if (resp && resp.success && resp.enrollments) {
-            const matched = (resp.enrollments as StreamEnrollment[]).find(e => e.stream.toLowerCase() === (enrollment.stream || '').toLowerCase());
-            if (matched) {
-              // normalize topicProgress ids to strings
-              const normalized = (matched.topicProgress || []).map((tp: any) => ({ ...tp, courseId: String(tp.courseId) }));
-              setEnrollment(prev => prev ? { ...prev, totalWatchedPercentage: matched.totalWatchedPercentage ?? prev.totalWatchedPercentage, watchedTopics: matched.watchedTopics ?? prev.watchedTopics, totalTopics: matched.totalTopics ?? prev.totalTopics } : prev);
-              setTopicProgress(normalized);
-            }
-          }
-        } catch (err) {
-          // ignore polling errors silently
-        }
+      const poll = setInterval(async () => {
+        await refreshEnrollmentFromServer();
       }, 30000);
 
       return () => {
         clearTimeout(t);
+        clearInterval(poll);
         cleanupPlayer();
       };
     } else {
@@ -861,7 +901,6 @@ const Pack365StreamLearning = () => {
               const streamCourses = coursesResponse.data
                 .map((course: any) => {
                   const normalizedTopics = (course.topics || []).map((t: any) => {
-                    // backend likely sends seconds; fallback if small number treat as minutes
                     const dur = t.duration ?? 0;
                     return { ...t, duration: dur > 1000 ? dur : dur * 60 };
                   });
@@ -979,10 +1018,19 @@ const Pack365StreamLearning = () => {
     setSelectedCourse(null);
   };
 
+  // Prevent duplicate modal openings causing duplicate requests
   const handleTopicClick = async (topic: Topic) => {
     if (!selectedCourse) return;
-    setSelectedTopic(topic);
-    setIsVideoModalOpen(true);
+    // open modal only once
+    setSelectedTopic(prev => {
+      if (prev && prev.name === topic.name) {
+        // already open for same topic
+        setIsVideoModalOpen(true);
+        return prev;
+      }
+      setIsVideoModalOpen(true);
+      return topic;
+    });
   };
 
   const handleTakeExam = () => {
