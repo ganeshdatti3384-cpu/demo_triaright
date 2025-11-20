@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen, Star, CheckCircle, Shield, Award, Zap, TrendingUp, Globe, Bookmark, Eye, Share2, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, MapPin, Building2, Calendar, IndianRupee, Clock, Users, BookOpen, Star, CheckCircle, Shield, Award, Zap, TrendingUp, Globe, Bookmark, Eye, Share2, Heart, ChevronLeft, ChevronRight, Tag, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
@@ -55,6 +55,18 @@ interface Application {
   paymentStatus: string;
   enrollmentId?: string;
   orderId?: string;
+}
+
+interface Coupon {
+  _id: string;
+  code: string;
+  discountAmount: number;
+  applicableInternship?: string;
+  usageLimit: number;
+  usedCount: number;
+  expiresAt: string;
+  isActive: boolean;
+  description: string;
 }
 
 const trustBadges = [
@@ -120,6 +132,7 @@ const APExclusiveInternshipsPage = () => {
   const [filteredAPInternships, setFilteredAPInternships] = useState<APInternship[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrollLoading, setEnrollLoading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,7 +145,12 @@ const APExclusiveInternshipsPage = () => {
   const [selectedInternship, setSelectedInternship] = useState<APInternship | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
+  const [showCouponDialog, setShowCouponDialog] = useState(false);
   const [applicationId, setApplicationId] = useState<string>('');
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
   const [scrollPosition, setScrollPosition] = useState(0);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   
@@ -145,6 +163,7 @@ const APExclusiveInternshipsPage = () => {
       fetchEnrollments();
       fetchApplications();
     }
+    fetchCoupons();
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -240,6 +259,25 @@ const APExclusiveInternshipsPage = () => {
       }
     } catch (error) {
       console.error('Error fetching applications:', error);
+    }
+  };
+
+  const fetchCoupons = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/internships/coupons', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCoupons(data.coupons.filter((coupon: Coupon) => 
+          coupon.isActive && 
+          new Date(coupon.expiresAt) > new Date() &&
+          coupon.usedCount < coupon.usageLimit
+        ));
+      }
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
     }
   };
 
@@ -358,16 +396,68 @@ const APExclusiveInternshipsPage = () => {
     }
 
     setSelectedInternship(internship);
-    setEnrollLoading(internship._id);
+
+    // For free internships, enroll directly
+    if (internship.mode === 'Free') {
+      setEnrollLoading(internship._id);
+      await enrollInFreeInternship(internship);
+    } else {
+      // For paid internships, show coupon dialog first
+      setShowCouponDialog(true);
+    }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim() || !selectedInternship) return;
+
+    setCouponLoading(true);
+    setCouponError('');
 
     try {
-      // For free internships, enroll directly
-      if (internship.mode === 'Free') {
-        await enrollInFreeInternship(internship);
-      } else {
-        // For paid internships, create application and proceed to payment
-        await createPaidApplication(internship);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setCouponError('Please login to apply coupon');
+        return;
       }
+
+      // Validate coupon by checking against active coupons
+      const validCoupon = coupons.find(coupon => 
+        coupon.code.toLowerCase() === couponCode.toLowerCase() &&
+        (!coupon.applicableInternship || coupon.applicableInternship === selectedInternship._id)
+      );
+
+      if (validCoupon) {
+        setAppliedCoupon(validCoupon);
+        setCouponError('');
+        toast({
+          title: 'Coupon Applied!',
+          description: `Discount of ₹${validCoupon.discountAmount} applied successfully`,
+          variant: 'default'
+        });
+      } else {
+        setCouponError('Invalid or expired coupon code');
+      }
+    } catch (error) {
+      setCouponError('Failed to apply coupon');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError('');
+  };
+
+  const proceedToPayment = async () => {
+    if (!selectedInternship) return;
+
+    setEnrollLoading(selectedInternship._id);
+    setShowCouponDialog(false);
+
+    try {
+      await createPaidApplication(selectedInternship);
     } catch (error) {
       console.error('Error during enrollment:', error);
       toast({
@@ -427,15 +517,22 @@ const APExclusiveInternshipsPage = () => {
     if (!token) return;
 
     try {
+      const requestBody: any = {
+        internshipId: internship._id
+      };
+
+      // Add coupon code if applied
+      if (appliedCoupon) {
+        requestBody.couponCode = appliedCoupon.code;
+      }
+
       const response = await fetch('/api/internships/apinternshipapply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          internshipId: internship._id
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
@@ -445,6 +542,10 @@ const APExclusiveInternshipsPage = () => {
         
         // For paid internships, proceed to payment
         setShowPaymentPage(true);
+        
+        // Reset coupon state
+        setAppliedCoupon(null);
+        setCouponCode('');
       } else {
         throw new Error(data.message || 'Failed to create application');
       }
@@ -532,6 +633,164 @@ const APExclusiveInternshipsPage = () => {
 
   const handleTrustBadgeContainerLeave = () => {
     setAutoScrollEnabled(true);
+  };
+
+  const calculateDiscountedAmount = (originalAmount: number) => {
+    if (!appliedCoupon) return originalAmount;
+    return Math.max(0, originalAmount - appliedCoupon.discountAmount);
+  };
+
+  const CouponDialog = () => {
+    if (!selectedInternship) return null;
+
+    const originalAmount = selectedInternship.amount || 0;
+    const discountedAmount = calculateDiscountedAmount(originalAmount);
+    const hasDiscount = appliedCoupon && discountedAmount < originalAmount;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Apply Coupon</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCouponDialog(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            {/* Price Summary */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-semibold text-blue-900 mb-2">Price Summary</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Original Price:</span>
+                  <span className="font-semibold">₹{originalAmount.toLocaleString()}</span>
+                </div>
+                {hasDiscount && (
+                  <>
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount:</span>
+                      <span>-₹{appliedCoupon.discountAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-blue-200 pt-2">
+                      <span className="font-semibold">Final Amount:</span>
+                      <span className="font-bold text-green-600 text-lg">
+                        ₹{discountedAmount.toLocaleString()}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Coupon Input */}
+            {!appliedCoupon && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Enter Coupon Code</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter coupon code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                  >
+                    {couponLoading ? 'Applying...' : 'Apply'}
+                  </Button>
+                </div>
+                {couponError && (
+                  <p className="text-sm text-red-600">{couponError}</p>
+                )}
+              </div>
+            )}
+
+            {/* Applied Coupon */}
+            {appliedCoupon && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-green-600" />
+                    <span className="font-medium">{appliedCoupon.code}</span>
+                    <Badge variant="outline" className="bg-green-100 text-green-700">
+                      -₹{appliedCoupon.discountAmount}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={removeCoupon}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                <p className="text-sm text-green-600 mt-1">
+                  {appliedCoupon.description}
+                </p>
+              </div>
+            )}
+
+            {/* Available Coupons */}
+            {coupons.length > 0 && !appliedCoupon && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Available Coupons</label>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {coupons.map((coupon) => (
+                    <div
+                      key={coupon._id}
+                      className="flex justify-between items-center p-2 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                      onClick={() => {
+                        setCouponCode(coupon.code);
+                        handleApplyCoupon();
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-3 w-3 text-blue-600" />
+                        <span className="font-medium text-sm">{coupon.code}</span>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        -₹{coupon.discountAmount}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowCouponDialog(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={proceedToPayment}
+                disabled={enrollLoading === selectedInternship._id}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                {enrollLoading === selectedInternship._id ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  `Proceed to Pay ₹${discountedAmount.toLocaleString()}`
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const InternshipCard = ({ internship }: { internship: APInternship }) => {
@@ -747,6 +1006,8 @@ const APExclusiveInternshipsPage = () => {
         internshipTitle={selectedInternship.title}
         amount={selectedInternship.amount || 0}
         applicationId={applicationId}
+        couponCode={appliedCoupon?.code}
+        discountAmount={appliedCoupon?.discountAmount || 0}
         onPaymentSuccess={handlePaymentSuccess}
         onBack={handlePaymentBack}
       />
@@ -1050,6 +1311,9 @@ const APExclusiveInternshipsPage = () => {
             </Card>
           </div>
         </div>
+
+        {/* Coupon Dialog */}
+        {showCouponDialog && <CouponDialog />}
       </div>
       <Footer />
     </>
