@@ -1,7 +1,7 @@
 // components/internships/APRazorpayPayment.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, ArrowLeft, Loader2, CheckCircle, CreditCard } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, CheckCircle, CreditCard, IndianRupee } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/hooks/use-toast';
@@ -85,12 +85,6 @@ const APRazorpayPayment = ({
           variant: 'destructive'
         });
         return;
-      }
-
-      // The application is already created, we just need to get the Razorpay order from the application
-      // For AP internships, the order is created when the application is submitted
-      if (!applicationId) {
-        throw new Error('Application ID is required for payment');
       }
 
       // Get application details to retrieve the Razorpay order
@@ -177,7 +171,6 @@ const APRazorpayPayment = ({
     try {
       const token = localStorage.getItem('token');
       
-      // Use the correct backend endpoint for AP internship payment verification
       const verifyResponse = await fetch('/api/internships/apinternshipverify-payment', {
         method: 'POST',
         headers: {
@@ -212,7 +205,6 @@ const APRazorpayPayment = ({
         description: error.message || 'Could not verify payment. Please contact support.',
         variant: 'destructive'
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -247,7 +239,7 @@ const APRazorpayPayment = ({
             disabled={loading}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Application
+            Back to Internship
           </Button>
 
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
@@ -256,7 +248,7 @@ const APRazorpayPayment = ({
                 <CreditCard className="h-8 w-8 text-blue-600" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Complete Your Payment
+                Complete Your Enrollment
               </h1>
               <p className="text-gray-600">
                 Secure payment for <strong>{internshipTitle}</strong>
@@ -270,8 +262,9 @@ const APRazorpayPayment = ({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Total Amount:</span>
-                <span className="text-2xl font-bold text-green-600">
-                  ₹{amount.toLocaleString()}
+                <span className="text-2xl font-bold text-green-600 flex items-center">
+                  <IndianRupee className="h-5 w-5 mr-1" />
+                  {amount.toLocaleString()}
                 </span>
               </div>
             </div>
