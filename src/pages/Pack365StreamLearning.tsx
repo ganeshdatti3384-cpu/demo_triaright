@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,8 @@ import {
   Target,
   Video,
   X,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -179,6 +180,7 @@ const VideoLearningModal = ({
   const [videoProgress, setVideoProgress] = useState<number>(0);
   const [isTrackingProgress, setIsTrackingProgress] = useState(false);
   const [isPlayerInitializing, setIsPlayerInitializing] = useState(false);
+  const [isSavingProgress, setIsSavingProgress] = useState(false);
   
   // YouTube Player Refs
   const playerRef = useRef<any>(null);
@@ -190,9 +192,28 @@ const VideoLearningModal = ({
   const currentVideoIdRef = useRef<string | null>(null);
   const playerInitTimeoutRef = useRef<any>(null);
   const accumulatedWatchTimeRef = useRef<number>(0);
+  const saveProgressTimeoutRef = useRef<any>(null);
+
+  // Calculate completion based on duration (matching backend logic)
+  const calculateTopicCompletion = useCallback((currentTime: number, totalDuration: number): boolean => {
+    // Mark as completed if watched 90% or more of the video
+    return (currentTime / totalDuration) >= 0.9;
+  }, []);
+
+  // Calculate overall progress percentage
+  const calculateOverallProgress = useCallback((currentTopicProgress: TopicProgress[]) => {
+    const totalTopics = currentTopicProgress.length;
+    if (totalTopics === 0) return 0;
+    
+    const completedTopics = currentTopicProgress.filter(tp => 
+      calculateTopicCompletion(tp.watchedDuration, selectedTopic?.duration ? selectedTopic.duration * 60 : 1)
+    ).length;
+    
+    return (completedTopics / totalTopics) * 100;
+  }, [selectedTopic, calculateTopicCompletion]);
 
   // Cleanup function for player
-  const cleanupPlayer = () => {
+  const cleanupPlayer = useCallback(() => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
@@ -200,6 +221,10 @@ const VideoLearningModal = ({
     
     if (playerInitTimeoutRef.current) {
       clearTimeout(playerInitTimeoutRef.current);
+    }
+
+    if (saveProgressTimeoutRef.current) {
+      clearTimeout(saveProgressTimeoutRef.current);
     }
     
     if (playerRef.current) {
@@ -218,7 +243,94 @@ const VideoLearningModal = ({
     isPlayerReadyRef.current = false;
     currentVideoIdRef.current = null;
     setIsPlayerInitializing(false);
-  };
+    setIsSavingProgress(false);
+  }, []);
+
+  // Save final progress before closing
+  const saveFinalProgress = useCallback(async () => {
+    if (!selectedTopic || !selectedCourse || !playerRef.current || !isPlayerReadyRef.current) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const currentTime = playerRef.current.getCurrentTime();
+      const duration = playerRef.current.getDuration();
+      
+      if (duration <= 0) return;
+
+      // Update accumulated watch time
+      accumulatedWatchTimeRef.current = Math.max(accumulatedWatchTimeRef.current, Math.floor(currentTime));
+
+      const isCompleted = calculateTopicCompletion(accumulatedWatchTimeRef.current, duration);
+
+      const progressData = {
+        courseId: selectedCourse._id,
+        topicName: selectedTopic.name,
+        watchedDuration: accumulatedWatchTimeRef.current,
+        totalCourseDuration: enrollment?.totalTopics || 0,
+        totalWatchedPercentage: calculateOverallProgress(topicProgress)
+      };
+
+      console.log('Saving final progress:', progressData);
+
+      const response = await pack365Api.updateTopicProgress(token, progressData);
+
+      if (response.success) {
+        // Update local state with backend response
+        const updatedTopicProgress = [...topicProgress];
+        const existingIndex = updatedTopicProgress.findIndex(
+          tp => String(tp.courseId) === String(selectedCourse._id) && 
+                String(tp.topicName) === String(selectedTopic.name)
+        );
+
+        const topicProgressUpdate = {
+          courseId: selectedCourse._id,
+          topicName: selectedTopic.name,
+          watchedDuration: accumulatedWatchTimeRef.current,
+          watched: isCompleted,
+          lastWatchedAt: new Date().toISOString()
+        };
+
+        if (existingIndex >= 0) {
+          updatedTopicProgress[existingIndex] = {
+            ...updatedTopicProgress[existingIndex],
+            ...topicProgressUpdate
+          };
+        } else {
+          updatedTopicProgress.push(topicProgressUpdate);
+        }
+
+        setTopicProgress(updatedTopicProgress);
+
+        // Update enrollment progress with backend response
+        if (response.totalWatchedPercentage !== undefined || response.watchedTopics !== undefined) {
+          setEnrollment(prev => prev ? {
+            ...prev,
+            totalWatchedPercentage: response.totalWatchedPercentage || prev.totalWatchedPercentage,
+            watchedTopics: response.watchedTopics || prev.watchedTopics
+          } : null);
+        }
+      }
+
+    } catch (error: any) {
+      console.error('Error saving final progress:', error);
+    }
+  }, [selectedTopic, selectedCourse, enrollment, topicProgress, setTopicProgress, setEnrollment, calculateTopicCompletion, calculateOverallProgress]);
+
+  // Handle modal close with progress save
+  const handleClose = useCallback(async () => {
+    if (isSavingProgress) {
+      // Wait for current save to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    await saveFinalProgress();
+    cleanupPlayer();
+    onClose();
+  }, [isSavingProgress, saveFinalProgress, cleanupPlayer, onClose]);
 
   // Handle modal open/close
   useEffect(() => {
@@ -239,7 +351,7 @@ const VideoLearningModal = ({
         clearTimeout(playerInitTimeoutRef.current);
       }
     };
-  }, [isOpen, selectedTopic]);
+  }, [isOpen, selectedTopic, cleanupPlayer]);
 
   const loadYouTubeAPI = () => {
     if (ytApiLoadedRef.current || window.YT) return;
@@ -394,7 +506,14 @@ const VideoLearningModal = ({
         accumulatedWatchTimeRef.current = existingProgress.watchedDuration || 0;
         // Seek to last position if not completed
         if (!existingProgress.watched && existingProgress.watchedDuration > 0) {
-          event.target.seekTo(existingProgress.watchedDuration);
+          const seekTime = Math.min(existingProgress.watchedDuration, event.target.getDuration() - 1);
+          event.target.seekTo(seekTime);
+        }
+        
+        // Calculate initial progress percentage
+        const duration = event.target.getDuration();
+        if (duration > 0) {
+          setVideoProgress((existingProgress.watchedDuration / duration) * 100);
         }
       }
     }
@@ -489,11 +608,15 @@ const VideoLearningModal = ({
         return;
       }
 
-      // Prepare data according to backend specification - ONLY required fields
+      setIsSavingProgress(true);
+
+      // Prepare data according to backend specification
       const progressData = {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
-        watchedDuration: accumulatedWatchTimeRef.current
+        watchedDuration: accumulatedWatchTimeRef.current,
+        totalCourseDuration: enrollment?.totalTopics || 0,
+        totalWatchedPercentage: calculateOverallProgress(topicProgress)
       };
 
       console.log('Sending progress update:', progressData);
@@ -505,6 +628,8 @@ const VideoLearningModal = ({
 
       // Update local state with backend response
       if (response.success) {
+        const isCompleted = calculateTopicCompletion(accumulatedWatchTimeRef.current, duration);
+        
         // Update topic progress locally
         const updatedTopicProgress = [...topicProgress];
         const existingIndex = updatedTopicProgress.findIndex(
@@ -516,7 +641,7 @@ const VideoLearningModal = ({
           courseId: selectedCourse._id,
           topicName: selectedTopic.name,
           watchedDuration: accumulatedWatchTimeRef.current,
-          watched: response.watched || false, // Use backend response for watched status
+          watched: isCompleted,
           lastWatchedAt: new Date().toISOString()
         };
 
@@ -541,8 +666,11 @@ const VideoLearningModal = ({
         }
       }
 
+      setIsSavingProgress(false);
+
     } catch (error: any) {
       console.error('Error updating progress:', error);
+      setIsSavingProgress(false);
       toast({
         title: 'Progress Update Failed',
         description: error.message || 'Failed to save your progress',
@@ -559,16 +687,21 @@ const VideoLearningModal = ({
       if (!token) return;
 
       const duration = playerRef.current ? 
-        Math.floor(playerRef.current.getDuration()) : selectedTopic.duration * 60; // Convert minutes to seconds
+        Math.floor(playerRef.current.getDuration()) : selectedTopic.duration * 60;
 
       // Set accumulated time to full duration
       accumulatedWatchTimeRef.current = duration;
+      setVideoProgress(100);
 
-      // Prepare completion data - ONLY required fields
+      setIsSavingProgress(true);
+
+      // Prepare completion data
       const completionData = {
         courseId: selectedCourse._id,
         topicName: selectedTopic.name,
-        watchedDuration: duration
+        watchedDuration: duration,
+        totalCourseDuration: enrollment?.totalTopics || 0,
+        totalWatchedPercentage: calculateOverallProgress(topicProgress)
       };
 
       console.log('Marking topic as completed:', completionData);
@@ -577,7 +710,6 @@ const VideoLearningModal = ({
 
       if (response.success) {
         setIsTrackingProgress(false);
-        setVideoProgress(100);
         
         // Update local state with backend response
         const updatedTopicProgress = [...topicProgress];
@@ -590,7 +722,7 @@ const VideoLearningModal = ({
           courseId: selectedCourse._id,
           topicName: selectedTopic.name,
           watchedDuration: duration,
-          watched: true, // Backend should mark as watched when duration is full
+          watched: true,
           lastWatchedAt: new Date().toISOString()
         };
 
@@ -619,12 +751,15 @@ const VideoLearningModal = ({
 
         // Close modal after completion
         setTimeout(() => {
-          onClose();
+          handleClose();
         }, 1500);
       }
 
+      setIsSavingProgress(false);
+
     } catch (error: any) {
       console.error('Error marking topic as completed:', error);
+      setIsSavingProgress(false);
       toast({ 
         title: 'Completion Error', 
         description: error.message || 'Failed to mark topic as completed', 
@@ -658,10 +793,10 @@ const VideoLearningModal = ({
     return () => {
       cleanupPlayer();
     };
-  }, []);
+  }, [cleanupPlayer]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-4xl w-full h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
@@ -678,9 +813,14 @@ const VideoLearningModal = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onClose}
+                onClick={handleClose}
+                disabled={isSavingProgress}
               >
-                <X className="h-4 w-4" />
+                {isSavingProgress ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </DialogTitle>
@@ -712,7 +852,12 @@ const VideoLearningModal = ({
                 
                 <div className="flex justify-between items-center">
                   <div className="text-sm text-gray-600">
-                    {isPlayerInitializing ? (
+                    {isSavingProgress ? (
+                      <span className="flex items-center">
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        Saving progress...
+                      </span>
+                    ) : isPlayerInitializing ? (
                       <span className="flex items-center">
                         <Clock className="h-4 w-4 mr-1" />
                         Initializing player...
@@ -739,9 +884,13 @@ const VideoLearningModal = ({
                     onClick={handleManualComplete}
                     variant="default"
                     size="sm"
-                    disabled={!isPlayerReadyRef.current || isPlayerInitializing}
+                    disabled={!isPlayerReadyRef.current || isPlayerInitializing || isSavingProgress}
                   >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    {isSavingProgress ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                    )}
                     Mark as Completed
                   </Button>
                 </div>
@@ -763,6 +912,7 @@ const Pack365StreamLearning = () => {
   const [enrollment, setEnrollment] = useState<StreamEnrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [courseLoading, setCourseLoading] = useState<string | null>(null);
   
   // Learning interface states
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -770,6 +920,26 @@ const Pack365StreamLearning = () => {
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isLearningView, setIsLearningView] = useState(false);
+
+  // Calculate accurate progress based on watchedDuration and topic duration
+  const calculateTopicCompletion = useCallback((watchedDuration: number, topicDuration: number): boolean => {
+    // Mark as completed if watched 90% or more of the video (convert topic duration from minutes to seconds)
+    return (watchedDuration / (topicDuration * 60)) >= 0.9;
+  }, []);
+
+  // Calculate overall progress percentage
+  const calculateOverallProgress = useCallback((currentEnrollment: StreamEnrollment | null): number => {
+    if (!currentEnrollment || !currentEnrollment.topicProgress.length) return 0;
+    
+    const totalTopics = currentEnrollment.topicProgress.length;
+    const completedTopics = currentEnrollment.topicProgress.filter(tp => {
+      const course = allCourses.find(c => String(c._id) === String(tp.courseId));
+      const topic = course?.topics.find(t => t.name === tp.topicName);
+      return topic && calculateTopicCompletion(tp.watchedDuration, topic.duration);
+    }).length;
+    
+    return (completedTopics / totalTopics) * 100;
+  }, [allCourses, calculateTopicCompletion]);
 
   useEffect(() => {
     const fetchStreamEnrollment = async () => {
@@ -801,7 +971,7 @@ const Pack365StreamLearning = () => {
               );
               setAllCourses(streamCourses);
               
-              // Calculate accurate progress using watched flags
+              // Calculate accurate progress using watchedDuration and topic duration
               let totalWatchedTopics = 0;
               let totalTopicsInStream = 0;
 
@@ -809,10 +979,11 @@ const Pack365StreamLearning = () => {
                 const courseTopics = course.topics?.length || 0;
                 totalTopicsInStream += courseTopics;
                 
-                // Count watched topics for this course using watched=true
-                const watchedInCourse = (currentEnrollment.topicProgress || []).filter((tp: any) => 
-                  String(tp.courseId) === String(course._id) && tp.watched === true
-                ).length || 0;
+                // Count watched topics for this course using duration-based completion
+                const watchedInCourse = (currentEnrollment.topicProgress || []).filter((tp: any) => {
+                  const topic = course.topics.find(t => t.name === tp.topicName);
+                  return topic && calculateTopicCompletion(tp.watchedDuration || 0, topic.duration);
+                }).length || 0;
                 
                 totalWatchedTopics += watchedInCourse;
               });
@@ -873,11 +1044,18 @@ const Pack365StreamLearning = () => {
     };
 
     fetchStreamEnrollment();
-  }, [stream, location]);
+  }, [stream, location, navigate, toast, calculateTopicCompletion]);
 
-  const handleCourseStart = (course: Course) => {
-    setSelectedCourse(course);
-    setIsLearningView(true);
+  const handleCourseStart = async (course: Course) => {
+    setCourseLoading(course._id);
+    try {
+      // Simulate loading for better UX
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setSelectedCourse(course);
+      setIsLearningView(true);
+    } finally {
+      setCourseLoading(null);
+    }
   };
 
   const handleBackToStream = () => {
@@ -928,6 +1106,17 @@ const Pack365StreamLearning = () => {
   const handleOpenInNewTab = (topic: Topic) => {
     window.open(topic.link, '_blank');
   };
+
+  // Update progress when topicProgress changes
+  useEffect(() => {
+    if (enrollment) {
+      const updatedProgress = calculateOverallProgress(enrollment);
+      setEnrollment(prev => prev ? {
+        ...prev,
+        totalWatchedPercentage: updatedProgress
+      } : null);
+    }
+  }, [topicProgress, enrollment, calculateOverallProgress]);
 
   if (loading) {
     return <SkeletonLoader />;
@@ -997,7 +1186,7 @@ const Pack365StreamLearning = () => {
                       {selectedCourse.totalDuration} min
                     </Badge>
                   </div>
-                </CardHeader>
+                </CardContent>
                 <CardContent>
                   {/* Course Document */}
                   {selectedCourse.documentLink && (
@@ -1025,8 +1214,10 @@ const Pack365StreamLearning = () => {
                     <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
                     {selectedCourse.topics.map((topic, index) => {
                       const progress = getTopicProgress(selectedCourse._id, topic.name);
-                      const isWatched = progress?.watched;
+                      const isWatched = progress ? calculateTopicCompletion(progress.watchedDuration, topic.duration) : false;
                       const watchedDuration = progress?.watchedDuration || 0;
+                      const progressPercentage = topic.duration > 0 ? 
+                        Math.min((watchedDuration / (topic.duration * 60)) * 100, 100) : 0;
 
                       return (
                         <div
@@ -1062,7 +1253,7 @@ const Pack365StreamLearning = () => {
                                   )}
                                   {watchedDuration > 0 && !isWatched && (
                                     <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                                      In Progress ({Math.round((watchedDuration / (topic.duration * 60)) * 100)}%)
+                                      In Progress ({Math.round(progressPercentage)}%)
                                     </Badge>
                                   )}
                                 </div>
@@ -1249,9 +1440,19 @@ const Pack365StreamLearning = () => {
                             onClick={() => handleCourseStart(course)}
                             className="w-full sm:w-auto flex-shrink-0"
                             variant="default"
+                            disabled={courseLoading === course._id}
                           >
-                            <Play className="h-4 w-4 mr-2" />
-                            Start Learning
+                            {courseLoading === course._id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Loading...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="h-4 w-4 mr-2" />
+                                Start Learning
+                              </>
+                            )}
                           </Button>
                         </div>
                       </div>
