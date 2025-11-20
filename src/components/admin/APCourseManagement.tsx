@@ -82,7 +82,6 @@ const APCourseManagement = () => {
     link: '',
     duration: 0
   });
-  const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -144,51 +143,7 @@ const APCourseManagement = () => {
   const createCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
-    if (!token) {
-      toast({
-        title: 'Error',
-        description: 'No authentication token found. Please login again.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Validate required fields
-    if (!formData.internshipId) {
-      toast({
-        title: 'Error',
-        description: 'Please select an internship',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!formData.title.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter course title',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!formData.stream.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter stream',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!formData.instructorName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter instructor name',
-        variant: 'destructive'
-      });
-      return;
-    }
+    if (!token) return;
 
     if (formData.curriculum.length === 0) {
       toast({
@@ -199,12 +154,8 @@ const APCourseManagement = () => {
       return;
     }
 
-    setIsCreating(true);
-
     try {
       const formDataToSend = new FormData();
-      
-      // Append all form fields
       formDataToSend.append('internshipId', formData.internshipId);
       formDataToSend.append('title', formData.title);
       formDataToSend.append('stream', formData.stream);
@@ -216,8 +167,8 @@ const APCourseManagement = () => {
       formDataToSend.append('curriculum', JSON.stringify(formData.curriculum));
 
       // Add topic exam files
-      formData.curriculum.forEach((topic) => {
-        const examFileInput = document.getElementById(`topicExam_${topic.topicName}`) as HTMLInputElement;
+      formData.curriculum.forEach((topic, index) => {
+        const examFileInput = document.getElementById(`topicExam_${index}`) as HTMLInputElement;
         if (examFileInput?.files?.[0]) {
           formDataToSend.append(`topicExam_${topic.topicName}`, examFileInput.files[0]);
         }
@@ -231,13 +182,6 @@ const APCourseManagement = () => {
         }
       }
 
-      console.log('Creating course with data:', {
-        internshipId: formData.internshipId,
-        title: formData.title,
-        stream: formData.stream,
-        curriculum: formData.curriculum
-      });
-
       const response = await fetch('/api/internships/apcourses', {
         method: 'POST',
         headers: {
@@ -247,7 +191,6 @@ const APCourseManagement = () => {
       });
 
       const data = await response.json();
-      console.log('Create course response:', data);
 
       if (response.ok && data.success) {
         toast({
@@ -258,17 +201,15 @@ const APCourseManagement = () => {
         resetForm();
         fetchCourses();
       } else {
-        throw new Error(data.message || `Failed to create course: ${response.status}`);
+        throw new Error(data.message || 'Failed to create course');
       }
     } catch (error: any) {
       console.error('Error creating course:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create course. Please try again.',
+        description: error.message || 'Failed to create course',
         variant: 'destructive'
       });
-    } finally {
-      setIsCreating(false);
     }
   };
 
@@ -359,28 +300,10 @@ const APCourseManagement = () => {
   };
 
   const addSubtopic = () => {
-    if (!currentSubtopic.name.trim()) {
+    if (!currentSubtopic.name || !currentSubtopic.link || !currentSubtopic.duration) {
       toast({
         title: 'Error',
-        description: 'Please enter subtopic name',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!currentSubtopic.link.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter video link',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!currentSubtopic.duration || currentSubtopic.duration <= 0) {
-      toast({
-        title: 'Error',
-        description: 'Please enter valid duration',
+        description: 'Please fill all subtopic fields',
         variant: 'destructive'
       });
       return;
@@ -400,19 +323,10 @@ const APCourseManagement = () => {
   };
 
   const addTopic = () => {
-    if (!currentTopic.topicName.trim()) {
+    if (!currentTopic.topicName || currentTopic.subtopics.length === 0) {
       toast({
         title: 'Error',
-        description: 'Please enter topic name',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (currentTopic.subtopics.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please add at least one subtopic',
+        description: 'Please add topic name and at least one subtopic',
         variant: 'destructive'
       });
       return;
@@ -470,11 +384,6 @@ const APCourseManagement = () => {
     setSelectedCourse(null);
   };
 
-  const handleCreateDialogOpen = () => {
-    resetForm();
-    setShowCreateDialog(true);
-  };
-
   const handleViewCourse = (course: APCourse) => {
     setSelectedCourse(course);
     setShowViewDialog(true);
@@ -516,7 +425,7 @@ const APCourseManagement = () => {
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
-            <Button onClick={handleCreateDialogOpen}>
+            <Button>
               <Plus className="h-4 w-4 mr-2" />
               Create Course
             </Button>
@@ -553,7 +462,6 @@ const APCourseManagement = () => {
                   <Input
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    placeholder="Enter course title"
                     required
                   />
                 </div>
@@ -565,7 +473,6 @@ const APCourseManagement = () => {
                   <Input
                     value={formData.stream}
                     onChange={(e) => setFormData({...formData, stream: e.target.value})}
-                    placeholder="e.g., Computer Science"
                     required
                   />
                 </div>
@@ -574,7 +481,6 @@ const APCourseManagement = () => {
                   <Input
                     value={formData.instructorName}
                     onChange={(e) => setFormData({...formData, instructorName: e.target.value})}
-                    placeholder="Enter instructor name"
                     required
                   />
                 </div>
@@ -695,7 +601,6 @@ const APCourseManagement = () => {
                             value={currentSubtopic.duration}
                             onChange={(e) => setCurrentSubtopic({...currentSubtopic, duration: Number(e.target.value)})}
                             min="1"
-                            placeholder="e.g., 30"
                           />
                         </div>
                       </div>
@@ -769,7 +674,7 @@ const APCourseManagement = () => {
                             <div className="mt-2">
                               <label className="text-sm font-medium">Topic Exam (Excel)</label>
                               <Input
-                                id={`topicExam_${topic.topicName}`}
+                                id={`topicExam_${index}`}
                                 type="file"
                                 accept=".xlsx,.xls"
                                 className="mt-1"
@@ -809,9 +714,7 @@ const APCourseManagement = () => {
                 <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isCreating}>
-                  {isCreating ? 'Creating...' : 'Create Course'}
-                </Button>
+                <Button type="submit">Create Course</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -1158,7 +1061,7 @@ const APCourseManagement = () => {
           <DialogHeader>
             <DialogTitle>Delete Course</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the course "{selectedCourse?.title}"? This action cannot be undone.
+              Are you sure you want to delete this course? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2">
