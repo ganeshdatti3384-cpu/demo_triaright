@@ -47,7 +47,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('users');
   const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
   const [internshipStats, setInternshipStats] = useState({
     totalInternships: 0,
@@ -59,28 +59,9 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
 
-  const platformStats = {
-    totalUsers: 15234,
-    activeStudents: 8967,
-    registeredEmployers: 456,
-    liveCourses: 89,
-    completedPlacements: 1234,
-    totalInternships: internshipStats.totalInternships,
-    activeInternships: internshipStats.activeInternships
-  };
-
-  const dailyNotices = [
-    { id: 1, title: 'Prelim Payment Due', content: 'Sorem ipsum dolor sit amet, consectetur adipiscing elit.', time: '2 hours ago' },
-    { id: 2, title: 'System Maintenance', content: 'Norem ipsum dolor sit amet, consectetur adipiscing elit.', time: '5 hours ago' },
-    { id: 3, title: 'New Features', content: 'Nine vulputate libero et velit interdum, ac aliquet odio mattis.', time: '1 day ago' }
-  ];
-
   useEffect(() => {
     if (activeTab === 'college-requests' || activeTab === 'approvals') {
       fetchCollegeRequests();
-    }
-    if (activeTab === 'overview') {
-      fetchInternshipStats();
     }
   }, [activeTab]);
 
@@ -103,56 +84,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchInternshipStats = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const internshipsResponse = await fetch('/api/internships', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const internships = await internshipsResponse.json();
-
-      const apInternshipsResponse = await fetch('/api/internships/ap-internships', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const apInternshipsData = await apInternshipsResponse.json();
-
-      const applicationsResponse = await fetch('/api/internships/ap-internshipsapplication/applications', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const applicationsData = await applicationsResponse.json();
-
-      const totalInternships = Array.isArray(internships) ? internships.length : 0;
-      const apInternships = apInternshipsData.success ? apInternshipsData.internships.length : 0;
-      const applications = applicationsData.success ? applicationsData.applications : [];
-
-      const activeInternships = [
-        ...(Array.isArray(internships) ? internships.filter((i: any) => i.status === 'Open') : []),
-        ...(apInternshipsData.success ? apInternshipsData.internships.filter((i: any) => i.status === 'Open') : [])
-      ].length;
-
-      const pendingApplications = applications.filter((app: any) => 
-        app.status === 'Applied' || app.status === 'Pending'
-      ).length;
-
-      setInternshipStats({
-        totalInternships: totalInternships + apInternships,
-        activeInternships,
-        totalApplications: applications.length,
-        pendingApplications
-      });
-    } catch (error) {
-      console.error('Error fetching internship stats:', error);
     }
   };
 
@@ -217,7 +148,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         </div>
         <div className="p-4 space-y-2">
           {[
-            { value: 'overview', label: 'Overview' },
             { value: 'users', label: 'Users' },
             { value: 'courses', label: 'Courses' },
             { value: 'regular-internships', label: 'Internships' },
@@ -302,8 +232,7 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           {/* Desktop Tabs */}
-          <TabsList className="hidden lg:grid w-full grid-cols-12 gap-1 mb-6">
-            <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
+          <TabsList className="hidden lg:grid w-full grid-cols-11 gap-1 mb-6">
             <TabsTrigger value="users" className="text-xs">Users</TabsTrigger>
             <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
             <TabsTrigger value="regular-internships" className="text-xs">Internships</TabsTrigger>
@@ -324,7 +253,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               onChange={(e) => setActiveTab(e.target.value)}
               className="w-full p-3 border border-gray-300 rounded-lg bg-white"
             >
-              <option value="overview">Overview</option>
               <option value="users">Users</option>
               <option value="courses">Courses</option>
               <option value="regular-internships">Internships</option>
@@ -338,95 +266,6 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               <option value="college-requests">Requests</option>
             </select>
           </div>
-
-          <TabsContent value="overview" className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-600">Number Students</p>
-                      <p className="text-2xl font-bold">{platformStats.activeStudents.toLocaleString()}</p>
-                    </div>
-                    <Users className="h-8 w-8 text-blue-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-green-50 border-green-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-green-600">Colleges</p>
-                      <p className="text-2xl font-bold">45</p>
-                    </div>
-                    <Building2 className="h-8 w-8 text-green-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-purple-50 border-purple-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-purple-600">Courses</p>
-                      <p className="text-2xl font-bold">{platformStats.liveCourses}</p>
-                    </div>
-                    <BookOpen className="h-8 w-8 text-purple-600" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Platform Statistics */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Platform Statistics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {[
-                    { label: 'Total Users', value: platformStats.totalUsers, icon: Users },
-                    { label: 'Registered Employers', value: platformStats.registeredEmployers, icon: Briefcase },
-                    { label: 'Total Internships', value: platformStats.totalInternships, icon: BriefcaseIcon },
-                    { label: 'Active Internships', value: platformStats.activeInternships, icon: BarChart3 }
-                  ].map((stat, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <stat.icon className="h-5 w-5 text-gray-500" />
-                        <span className="font-medium">{stat.label}</span>
-                      </div>
-                      <Badge variant="secondary">{stat.value.toLocaleString()}</Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Daily Notices */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Daily Notices</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {dailyNotices.map((notice) => (
-                    <div key={notice.id} className="p-3 border rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-sm">{notice.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{notice.content}</p>
-                        </div>
-                        <span className="text-xs text-gray-400 ml-2">{notice.time}</span>
-                      </div>
-                    </div>
-                  ))}
-                  <Button variant="ghost" className="w-full">
-                    See more
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
             <UserManagement />
