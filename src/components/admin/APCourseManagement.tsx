@@ -117,7 +117,8 @@ const APCourseManagement = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/internships/ap-courses', {
+      // Fixed endpoint: removed hyphen
+      const response = await fetch('/api/internships/apcourses', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -164,10 +165,11 @@ const APCourseManagement = () => {
       formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
       formDataToSend.append('curriculum', JSON.stringify(formData.curriculum));
 
-      // Add topic exam files
+      // Fixed: Use topic name instead of index for file field names
       formData.curriculum.forEach((topic, index) => {
         const examFileInput = document.getElementById(`topicExam_${index}`) as HTMLInputElement;
         if (examFileInput?.files?.[0]) {
+          // Fixed: Use topic name in field name to match backend
           formDataToSend.append(`topicExam_${topic.topicName}`, examFileInput.files[0]);
         }
       });
@@ -180,10 +182,12 @@ const APCourseManagement = () => {
         }
       }
 
-      const response = await fetch('/api/internships/ap-courses', {
+      // Fixed endpoint: removed hyphen
+      const response = await fetch('/api/internships/apcourses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
+          // Don't set Content-Type - let browser set it with boundary
         },
         body: formDataToSend
       });
