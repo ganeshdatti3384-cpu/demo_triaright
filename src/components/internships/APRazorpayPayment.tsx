@@ -1,7 +1,7 @@
 // components/internships/APRazorpayPayment.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, ArrowLeft, Loader2, CheckCircle, CreditCard, IndianRupee } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, CheckCircle, CreditCard, IndianRupee, Tag } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +11,8 @@ interface APRazorpayPaymentProps {
   internshipTitle: string;
   amount: number;
   applicationId: string;
+  couponCode?: string;
+  discountAmount?: number;
   onPaymentSuccess: () => void;
   onBack: () => void;
 }
@@ -20,12 +22,17 @@ const APRazorpayPayment = ({
   internshipTitle,
   amount,
   applicationId,
+  couponCode,
+  discountAmount = 0,
   onPaymentSuccess,
   onBack
 }: APRazorpayPaymentProps) => {
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const { toast } = useToast();
+
+  const finalAmount = Math.max(0, amount - discountAmount);
+  const hasDiscount = discountAmount > 0;
 
   useEffect(() => {
     // Load Razorpay script dynamically
@@ -255,17 +262,55 @@ const APRazorpayPayment = ({
               </p>
             </div>
 
+            {/* Price Breakdown */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-600">Internship Program:</span>
-                <span className="font-semibold text-blue-900">{internshipTitle}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Amount:</span>
-                <span className="text-2xl font-bold text-green-600 flex items-center">
-                  <IndianRupee className="h-5 w-5 mr-1" />
-                  {amount.toLocaleString()}
-                </span>
+              <h4 className="font-semibold text-blue-900 mb-3">Price Summary</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Internship Program:</span>
+                  <span className="font-semibold text-blue-900">{internshipTitle}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Original Amount:</span>
+                  <span className="font-semibold flex items-center">
+                    <IndianRupee className="h-4 w-4 mr-1" />
+                    {amount.toLocaleString()}
+                  </span>
+                </div>
+                
+                {hasDiscount && (
+                  <>
+                    <div className="flex justify-between items-center text-green-600">
+                      <span className="text-sm flex items-center">
+                        <Tag className="h-3 w-3 mr-1" />
+                        Discount ({couponCode}):
+                      </span>
+                      <span className="font-semibold flex items-center">
+                        - <IndianRupee className="h-4 w-4 mr-1" />
+                        {discountAmount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="border-t border-blue-200 pt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-gray-700">Final Amount:</span>
+                        <span className="text-2xl font-bold text-green-600 flex items-center">
+                          <IndianRupee className="h-5 w-5 mr-1" />
+                          {finalAmount.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {!hasDiscount && (
+                  <div className="flex justify-between items-center border-t border-blue-200 pt-2">
+                    <span className="text-sm font-semibold text-gray-700">Total Amount:</span>
+                    <span className="text-2xl font-bold text-green-600 flex items-center">
+                      <IndianRupee className="h-5 w-5 mr-1" />
+                      {finalAmount.toLocaleString()}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -302,7 +347,7 @@ const APRazorpayPayment = ({
               ) : (
                 <>
                   <CreditCard className="h-5 w-5 mr-2" />
-                  Pay ₹{amount.toLocaleString()} Securely
+                  Pay ₹{finalAmount.toLocaleString()} Securely
                 </>
               )}
             </Button>
