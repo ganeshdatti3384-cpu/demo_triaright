@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Ticket, Calendar, IndianRupee, Building2, Eye, Copy, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Trash2, Ticket, Calendar, IndianRupee, Building2, Copy, CheckCircle } from 'lucide-react';
 
 interface APInternshipCoupon {
   _id: string;
@@ -45,8 +45,6 @@ const APInternshipCouponManagement = () => {
   const [internships, setInternships] = useState<APInternship[]>([]);
   const [loading, setLoading] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedCoupon, setSelectedCoupon] = useState<APInternshipCoupon | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Form state
@@ -158,46 +156,6 @@ const APInternshipCouponManagement = () => {
     }
   };
 
-  const handleUpdateCoupon = async () => {
-    if (!selectedCoupon) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const payload = {
-        discountAmount: Number(formData.discountAmount),
-        discountType: formData.discountType,
-        applicableInternship: formData.applicableInternship === 'all' ? null : formData.applicableInternship,
-        usageLimit: Number(formData.usageLimit),
-        expiresAt: formData.expiresAt || undefined,
-        description: formData.description,
-        isActive: formData.isActive
-      };
-
-      const response = await fetch(`/api/internships/coupons/${selectedCoupon._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast.success('Coupon updated successfully!');
-        setEditDialogOpen(false);
-        resetForm();
-        fetchCoupons();
-      } else {
-        throw new Error(data.message || 'Failed to update coupon');
-      }
-    } catch (error: any) {
-      console.error('Error updating coupon:', error);
-      toast.error(error.message || 'Failed to update coupon');
-    }
-  };
-
   const handleDeleteCoupon = async (couponId: string) => {
     if (!confirm('Are you sure you want to delete this coupon? This action cannot be undone.')) {
       return;
@@ -226,30 +184,6 @@ const APInternshipCouponManagement = () => {
     }
   };
 
-  const handleToggleCouponStatus = async (couponId: string, currentStatus: boolean) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/internships/coupons/${couponId}/deactivate`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast.success(`Coupon ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
-        fetchCoupons();
-      } else {
-        throw new Error(data.message || 'Failed to update coupon status');
-      }
-    } catch (error: any) {
-      console.error('Error updating coupon status:', error);
-      toast.error(error.message || 'Failed to update coupon status');
-    }
-  };
-
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
@@ -268,37 +202,18 @@ const APInternshipCouponManagement = () => {
       description: '',
       isActive: true
     });
-    setSelectedCoupon(null);
   };
 
-  const openEditDialog = (coupon: APInternshipCoupon) => {
-    setSelectedCoupon(coupon);
-    setFormData({
-      code: coupon.code,
-      discountAmount: coupon.discountAmount.toString(),
-      discountType: coupon.discountType || 'fixed',
-      applicableInternship: coupon.applicableInternship || 'all',
-      usageLimit: coupon.usageLimit.toString(),
-      expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt).toISOString().split('T')[0] : '',
-      description: coupon.description || '',
-      isActive: coupon.isActive
-    });
-    setEditDialogOpen(true);
-  };
-
-  const getInternshipName = (internshipId: string | undefined) => {
-    if (!internshipId) return 'All Internships';
-    const internship = internships.find(i => i._id === internshipId);
-    return internship ? `${internship.title} - ${internship.companyName}` : 'Unknown Internship';
+  const getApplicableInternshipName = (coupon: APInternshipCoupon) => {
+    if (coupon.internshipDetails) {
+      return `${coupon.internshipDetails.title} - ${coupon.internshipDetails.companyName}`;
+    }
+    return 'All Internships';
   };
 
   const isExpired = (expiresAt: string | undefined) => {
     if (!expiresAt) return false;
     return new Date(expiresAt) < new Date();
-  };
-
-  const getUsagePercentage = (usedCount: number, usageLimit: number) => {
-    return (usedCount / usageLimit) * 100;
   };
 
   return (
@@ -426,121 +341,6 @@ const APInternshipCouponManagement = () => {
         </Dialog>
       </div>
 
-      {/* Edit Coupon Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Edit Coupon</DialogTitle>
-            <DialogDescription>
-              Update the coupon details below.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Coupon Code</Label>
-              <div className="col-span-3 font-mono font-bold text-lg">{formData.code}</div>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-discountType" className="text-right">Discount Type</Label>
-              <Select value={formData.discountType} onValueChange={(value: 'fixed' | 'percentage') => setFormData({...formData, discountType: value})}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select discount type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
-                  <SelectItem value="percentage">Percentage (%)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-discountAmount" className="text-right">
-                Discount {formData.discountType === 'percentage' ? '(%) *' : '(₹) *'}
-              </Label>
-              <Input
-                id="edit-discountAmount"
-                type="number"
-                value={formData.discountAmount}
-                onChange={(e) => setFormData({...formData, discountAmount: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-applicableInternship" className="text-right">Applicable To</Label>
-              <Select value={formData.applicableInternship} onValueChange={(value) => setFormData({...formData, applicableInternship: value})}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select internship" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Internships</SelectItem>
-                  {internships.map((internship) => (
-                    <SelectItem key={internship._id} value={internship._id}>
-                      {internship.title} - {internship.companyName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-usageLimit" className="text-right">Usage Limit *</Label>
-              <Input
-                id="edit-usageLimit"
-                type="number"
-                value={formData.usageLimit}
-                onChange={(e) => setFormData({...formData, usageLimit: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-expiresAt" className="text-right">Expiry Date</Label>
-              <Input
-                id="edit-expiresAt"
-                type="date"
-                value={formData.expiresAt}
-                onChange={(e) => setFormData({...formData, expiresAt: e.target.value})}
-                className="col-span-3"
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-description" className="text-right">Description</Label>
-              <Input
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="col-span-3"
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-isActive" className="text-right">Status</Label>
-              <Select value={formData.isActive.toString()} onValueChange={(value) => setFormData({...formData, isActive: value === 'true'})}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">Active</SelectItem>
-                  <SelectItem value="false">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateCoupon} disabled={loading}>
-              {loading ? 'Updating...' : 'Update Coupon'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Coupons Table */}
       <Card>
         <CardHeader>
@@ -572,7 +372,6 @@ const APInternshipCouponManagement = () => {
                     <TableHead>Coupon Code</TableHead>
                     <TableHead>Discount</TableHead>
                     <TableHead>Applicable To</TableHead>
-                    <TableHead>Usage</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -600,7 +399,7 @@ const APInternshipCouponManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center">
-                          <IndianRupee className="h-3 w-3 mr-1" />
+                          {coupon.discountType === 'fixed' && <IndianRupee className="h-3 w-3 mr-1" />}
                           <span className="font-medium">
                             {coupon.discountType === 'percentage' 
                               ? `${coupon.discountAmount}%` 
@@ -612,30 +411,8 @@ const APInternshipCouponManagement = () => {
                         <div className="flex items-center space-x-2">
                           <Building2 className="h-3 w-3 text-gray-500" />
                           <span className="text-sm">
-                            {getInternshipName(coupon.applicableInternship)}
+                            {getApplicableInternshipName(coupon)}
                           </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span>{coupon.usedCount} / {coupon.usageLimit}</span>
-                            <span>{Math.round(getUsagePercentage(coupon.usedCount, coupon.usageLimit))}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div
-                              className={`h-1.5 rounded-full ${
-                                getUsagePercentage(coupon.usedCount, coupon.usageLimit) >= 90
-                                  ? 'bg-red-600'
-                                  : getUsagePercentage(coupon.usedCount, coupon.usageLimit) >= 75
-                                  ? 'bg-yellow-600'
-                                  : 'bg-green-600'
-                              }`}
-                              style={{
-                                width: `${Math.min(getUsagePercentage(coupon.usedCount, coupon.usageLimit), 100)}%`
-                              }}
-                            ></div>
-                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -666,26 +443,6 @@ const APInternshipCouponManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditDialog(coupon)}
-                          >
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleCouponStatus(coupon._id, coupon.isActive)}
-                          >
-                            {coupon.isActive ? (
-                              <XCircle className="h-3 w-3 mr-1" />
-                            ) : (
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                            )}
-                            {coupon.isActive ? 'Deactivate' : 'Activate'}
-                          </Button>
                           <Button
                             variant="destructive"
                             size="sm"
