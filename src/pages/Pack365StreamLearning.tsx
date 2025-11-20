@@ -1186,7 +1186,7 @@ const Pack365StreamLearning = () => {
                       {selectedCourse.totalDuration} min
                     </Badge>
                   </div>
-                </CardContent>
+                </CardHeader>
                 <CardContent>
                   {/* Course Document */}
                   {selectedCourse.documentLink && (
