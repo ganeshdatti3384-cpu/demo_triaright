@@ -588,18 +588,6 @@ export const pack365Api = {
     const res = await axios.post(`${API_BASE_URL}/pack365/create-order`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    
-    // Handle free enrollment (amount 0) - backend automatically enrolls
-    if (res.data.success && res.data.enrollmentId) {
-      return {
-        status: 'success',
-        enrollment: res.data,
-        message: res.data.message,
-        orderId: `FREE_${Date.now()}`,
-        key: ''
-      };
-    }
-    
     return {
       status: res.data.status || 'success',
       enrollment: res.data.enrollment || null,
@@ -632,8 +620,7 @@ export const pack365Api = {
       razorpay_order_id: string;
     }
   ): Promise<{ success: boolean; message: string }> => {
-    // Fixed endpoint to match backend route
-    const res = await axios.post(`${API_BASE_URL}/pack365/payment/failure`, data, {
+    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/payment-failure`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -673,8 +660,7 @@ export const pack365Api = {
     token: string,
     courseId: string
   ): Promise<{ success: boolean; isEnrolled: boolean; enrollment: EnhancedPack365Enrollment | null; message?: string }> => {
-    // Fixed endpoint to match backend route
-    const res = await axios.get(`${API_BASE_URL}/pack365/enrollment/${courseId}`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/packenroll365/check-enrollment/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -715,22 +701,6 @@ export const pack365Api = {
       return response.data;
     } catch (error: any) {
       console.error('Error updating topic progress:', error);
-      // Retry logic for network failures
-      if (error.code === 'NETWORK_ERROR' || error.response?.status >= 500) {
-        console.log('Retrying progress update...');
-        try {
-          const retryResponse = await axios.put(`${API_BASE_URL}/pack365/topic/progress`, requestPayload, {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
-            timeout: 10000
-          });
-          return retryResponse.data;
-        } catch (retryError) {
-          console.error('Retry failed:', retryError);
-        }
-      }
       throw new Error(error.response?.data?.message || 'Failed to update topic progress');
     }
   },
