@@ -57,7 +57,9 @@ const APCourseManagement = () => {
   const [internships, setInternships] = useState<APInternship[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<APCourse | null>(null);
   const [formData, setFormData] = useState({
     internshipId: '',
@@ -117,7 +119,6 @@ const APCourseManagement = () => {
 
     try {
       setLoading(true);
-      // Fixed endpoint: removed hyphen
       const response = await fetch('/api/internships/apcourses', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -165,11 +166,10 @@ const APCourseManagement = () => {
       formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
       formDataToSend.append('curriculum', JSON.stringify(formData.curriculum));
 
-      // Fixed: Use topic name instead of index for file field names
+      // Add topic exam files
       formData.curriculum.forEach((topic, index) => {
         const examFileInput = document.getElementById(`topicExam_${index}`) as HTMLInputElement;
         if (examFileInput?.files?.[0]) {
-          // Fixed: Use topic name in field name to match backend
           formDataToSend.append(`topicExam_${topic.topicName}`, examFileInput.files[0]);
         }
       });
@@ -182,12 +182,10 @@ const APCourseManagement = () => {
         }
       }
 
-      // Fixed endpoint: removed hyphen
       const response = await fetch('/api/internships/apcourses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-          // Don't set Content-Type - let browser set it with boundary
         },
         body: formDataToSend
       });
@@ -210,6 +208,92 @@ const APCourseManagement = () => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to create course',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const updateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourse) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`/api/internships/apcourses/${selectedCourse._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          stream: formData.stream,
+          providerName: formData.providerName,
+          instructorName: formData.instructorName,
+          courseLanguage: formData.courseLanguage,
+          certificationProvided: formData.certificationProvided,
+          hasFinalExam: formData.hasFinalExam,
+          curriculum: formData.curriculum
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: 'Success',
+          description: 'Course updated successfully'
+        });
+        setShowEditDialog(false);
+        resetForm();
+        fetchCourses();
+      } else {
+        throw new Error(data.message || 'Failed to update course');
+      }
+    } catch (error: any) {
+      console.error('Error updating course:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update course',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const deleteCourse = async () => {
+    if (!selectedCourse) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`/api/internships/apcourses/${selectedCourse._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: 'Success',
+          description: 'Course deleted successfully'
+        });
+        setShowDeleteDialog(false);
+        setSelectedCourse(null);
+        fetchCourses();
+      } else {
+        throw new Error(data.message || 'Failed to delete course');
+      }
+    } catch (error: any) {
+      console.error('Error deleting course:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete course',
         variant: 'destructive'
       });
     }
@@ -297,11 +381,33 @@ const APCourseManagement = () => {
       link: '',
       duration: 0
     });
+    setSelectedCourse(null);
   };
 
   const handleViewCourse = (course: APCourse) => {
     setSelectedCourse(course);
     setShowViewDialog(true);
+  };
+
+  const handleEditCourse = (course: APCourse) => {
+    setSelectedCourse(course);
+    setFormData({
+      internshipId: course.internshipRef._id,
+      title: course.title,
+      stream: course.stream,
+      providerName: course.providerName,
+      instructorName: course.instructorName,
+      courseLanguage: course.courseLanguage,
+      certificationProvided: course.certificationProvided,
+      hasFinalExam: course.hasFinalExam,
+      curriculum: course.curriculum
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleDeleteCourse = (course: APCourse) => {
+    setSelectedCourse(course);
+    setShowDeleteDialog(true);
   };
 
   const calculateTotalDuration = (curriculum: Topic[]) => {
@@ -671,6 +777,20 @@ const APCourseManagement = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditCourse(course)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeleteCourse(course)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -774,6 +894,184 @@ const APCourseManagement = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Course Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Course</DialogTitle>
+            <DialogDescription>
+              Update course content and curriculum
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={updateCourse} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Course Title *</label>
+                <Input
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Stream *</label>
+                <Input
+                  value={formData.stream}
+                  onChange={(e) => setFormData({...formData, stream: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Instructor Name *</label>
+                <Input
+                  value={formData.instructorName}
+                  onChange={(e) => setFormData({...formData, instructorName: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Provider</label>
+                <Select
+                  value={formData.providerName}
+                  onValueChange={(value) => setFormData({...formData, providerName: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="triaright">Triaright Education</SelectItem>
+                    <SelectItem value="etv">ETV</SelectItem>
+                    <SelectItem value="kalasalingan">Kalasalingan</SelectItem>
+                    <SelectItem value="instructor">Instructor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Course Language</label>
+                <Select
+                  value={formData.courseLanguage}
+                  onValueChange={(value) => setFormData({...formData, courseLanguage: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="English">English</SelectItem>
+                    <SelectItem value="Telugu">Telugu</SelectItem>
+                    <SelectItem value="Hindi">Hindi</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Certification</label>
+                <Select
+                  value={formData.certificationProvided}
+                  onValueChange={(value: 'yes' | 'no') => setFormData({...formData, certificationProvided: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Final Exam</label>
+              <Select
+                value={formData.hasFinalExam ? 'yes' : 'no'}
+                onValueChange={(value) => setFormData({...formData, hasFinalExam: value === 'yes'})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Curriculum Preview for Edit */}
+            {formData.curriculum.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Curriculum</h3>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      Current Curriculum ({formData.curriculum.length} topics, {calculateTotalDuration(formData.curriculum)} minutes)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {formData.curriculum.map((topic, index) => (
+                        <div key={index} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-semibold">{topic.topicName}</h4>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeTopic(index)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {topic.subtopics.map((subtopic, subIndex) => (
+                              <div key={subIndex} className="flex justify-between text-sm">
+                                <span>{subtopic.name}</span>
+                                <span className="text-gray-600">{subtopic.duration} mins</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Update Course</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Course</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this course? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={deleteCourse}>
+              Delete Course
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
