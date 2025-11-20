@@ -669,7 +669,9 @@ export const pack365Api = {
   // Improved updateTopicProgress:
   // - ensures we always send durations in seconds
   // - includes optional totalCourseDuration and totalWatchedPercentage fields so backend can recalc/cap
-  // - returns the full backend response for UI sync
+  // - on 404 tries alternative base (removes '/api' prefix) since some deployments mount API differently
+  // - logs the request URL and server response for easier debugging
+  // - enqueues on network failure for later retry
   updateTopicProgress: async (
     token: string,
     data: UpdateTopicProgressData
@@ -681,7 +683,21 @@ export const pack365Api = {
     watchedTopics?: number;
     totalTopics?: number;
   }> => {
+    // local queue helpers (persist unsent updates)
+    const PROGRESS_QUEUE_KEY = 'pack365_progress_queue_v2';
+    const enqueueProgress = (item: any) => {
+      try {
+        const raw = localStorage.getItem(PROGRESS_QUEUE_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        arr.push(item);
+        localStorage.setItem(PROGRESS_QUEUE_KEY, JSON.stringify(arr));
+      } catch (e) {
+        console.error('enqueueProgress failed', e);
+      }
+    };
+
     try {
+      // Build canonical payload (durations in seconds)
       const requestPayload: any = {
         courseId: data.courseId,
         topicName: data.topicName
@@ -690,19 +706,75 @@ export const pack365Api = {
       if (data.totalCourseDuration !== undefined) requestPayload.totalCourseDuration = Math.floor(data.totalCourseDuration);
       if (data.totalWatchedPercentage !== undefined) requestPayload.totalWatchedPercentage = Number(data.totalWatchedPercentage);
 
-      const response = await axios.put(`${API_BASE_URL}/pack365/topic/progress`, requestPayload, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        }
-      });
+      // Candidate URLs to try (first = configured API_BASE_URL).
+      // If API_BASE_URL includes '/api' but production mounts at '/', the first will 404 — so try fallback.
+      const tryUrls: string[] = [];
+      const primary = `${API_BASE_URL.replace(/\/$/, '')}/pack365/topic/progress`;
+      tryUrls.push(primary);
 
-      return response.data;
+      // If API_BASE_URL ends with '/api' or contains '/api', try a variant without '/api'
+      const withoutApi = API_BASE_URL.replace(/\/api\/?$/i, '').replace(/\/$/, '');
+      const alt = `${withoutApi}/pack365/topic/progress`;
+      if (!tryUrls.includes(alt)) tryUrls.push(alt);
+
+      // Also try ensuring no double '/pack365' (rare) and trailing slash variants
+      const alt2 = `${API_BASE_URL.replace(/\/$/, '')}/pack365/topic/progress/`;
+      if (!tryUrls.includes(alt2)) tryUrls.push(alt2);
+
+      // Logging for debugging: show attempted URLs & payload
+      console.info('[pack365Api.updateTopicProgress] payload:', requestPayload);
+      let lastError: any = null;
+
+      for (const url of tryUrls) {
+        try {
+          console.info(`[pack365Api.updateTopicProgress] attempting PUT ${url}`);
+          const response = await axios.put(url, requestPayload, {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            timeout: 15000
+          });
+
+          console.info(`[pack365Api.updateTopicProgress] success ${url}`, response.data);
+          return response.data;
+        } catch (err: any) {
+          lastError = err;
+          // If server explicitly returned 404, try next fallback; log response if available
+          if (err?.response) {
+            console.warn(`[pack365Api.updateTopicProgress] ${url} -> status ${err.response.status}`, err.response.data);
+            // try next url on 404
+            if (err.response.status === 404) {
+              continue;
+            }
+            // For 401/403 bubble up with message
+            if (err.response.status === 401 || err.response.status === 403) {
+              const msg = err.response?.data?.message || 'Unauthorized';
+              throw new Error(msg);
+            }
+            // For other HTTP errors, throw to be handled by caller
+            const msg = err.response?.data?.message || `HTTP ${err.response.status}`;
+            throw new Error(msg);
+          } else {
+            // network error / timeout - enqueue payload for retry and break
+            console.error('[pack365Api.updateTopicProgress] network error, enqueueing payload for retry', err.message || err);
+            enqueueProgress(requestPayload);
+            throw new Error('Network error: progress saved locally and will be retried.');
+          }
+        }
+      }
+
+      // If we exit loop without returning, all attempts failed (likely 404 on all). Surface last server error if present.
+      if (lastError?.response) {
+        const status = lastError.response.status;
+        const serverMsg = lastError.response.data?.message || JSON.stringify(lastError.response.data || {});
+        throw new Error(`Server responded ${status}: ${serverMsg}`);
+      }
+      throw new Error('Failed to update topic progress (unknown error).');
     } catch (error: any) {
-      // Bubble up a normalized error
-      const message = error?.response?.data?.message || error.message || 'Failed to update topic progress';
-      console.error('pack365Api.updateTopicProgress error:', message);
-      throw new Error(message);
+      console.error('pack365Api.updateTopicProgress error:', error);
+      // Normalize error for caller
+      throw new Error(error?.message || 'Failed to update topic progress');
     }
   },
 
