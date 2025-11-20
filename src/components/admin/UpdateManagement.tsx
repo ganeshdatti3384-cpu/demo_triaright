@@ -289,35 +289,51 @@ const UpdateManagement = () => {
                     </Button>
                   </div>
 
-                  {/* Attachments */}
-                  <div className="flex flex-wrap gap-2 mt-3">
+                  {/* Attachments - Updated with Image Preview */}
+                  <div className="flex flex-wrap gap-4 mt-3">
                     {update.image && (
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <ImageIcon className="h-3 w-3" />
-                        Image
+                      <div className="flex flex-col">
+                        <Badge variant="secondary" className="flex items-center gap-1 mb-2">
+                          <ImageIcon className="h-3 w-3" />
+                          Image
+                        </Badge>
+                        <div className="border rounded-md p-2 bg-gray-50">
+                          <img 
+                            src={update.image} 
+                            alt="Update attachment" 
+                            className="h-32 w-auto object-contain rounded"
+                            onError={(e) => {
+                              // Fallback if image fails to load
+                              console.error('Image failed to load:', update.image);
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
                         <a 
                           href={update.image} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="ml-1 underline"
+                          className="text-xs text-blue-600 underline mt-1"
                         >
-                          View
+                          View Full Size
                         </a>
-                      </Badge>
+                      </div>
                     )}
                     {update.file && (
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <FileText className="h-3 w-3" />
-                        File
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
+                          File
+                        </Badge>
                         <a 
                           href={update.file} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="ml-1 underline"
+                          className="text-blue-600 underline text-sm"
                         >
                           Download
                         </a>
-                      </Badge>
+                      </div>
                     )}
                   </div>
                 </div>
