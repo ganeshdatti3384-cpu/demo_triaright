@@ -47,9 +47,9 @@ const toFormData = (data: Record<string, any>): FormData => {
 export interface UpdateTopicProgressData {
   courseId: string;
   topicName: string;
-  watchedDuration?: number;
-  totalCourseDuration?: number;
-  totalWatchedPercentage?: number;
+  watchedDuration?: number; // seconds
+  totalCourseDuration?: number; // seconds
+  totalWatchedPercentage?: number; // overall stream percent
 }
 
 /**
@@ -666,19 +666,18 @@ export const pack365Api = {
     return res.data;
   },
 
+  // Improved updateTopicProgress:
+  // - ensures we always send durations in seconds
+  // - includes optional totalCourseDuration and totalWatchedPercentage fields so backend can recalc/cap
+  // - returns the full backend response for UI sync
   updateTopicProgress: async (
     token: string,
-    data: {
-      courseId: string;
-      topicName: string;
-      watchedDuration?: number;
-      totalCourseDuration?: number;
-      totalWatchedPercentage?: number;
-    }
+    data: UpdateTopicProgressData
   ): Promise<{
     success: boolean;
-    message: string;
+    message?: string;
     totalWatchedPercentage?: number;
+    watched?: boolean;
     watchedTopics?: number;
     totalTopics?: number;
   }> => {
@@ -687,9 +686,9 @@ export const pack365Api = {
         courseId: data.courseId,
         topicName: data.topicName
       };
-      if (data.watchedDuration !== undefined) requestPayload.watchedDuration = data.watchedDuration;
-      if (data.totalCourseDuration !== undefined) requestPayload.totalCourseDuration = data.totalCourseDuration;
-      if (data.totalWatchedPercentage !== undefined) requestPayload.totalWatchedPercentage = data.totalWatchedPercentage;
+      if (data.watchedDuration !== undefined) requestPayload.watchedDuration = Math.floor(data.watchedDuration);
+      if (data.totalCourseDuration !== undefined) requestPayload.totalCourseDuration = Math.floor(data.totalCourseDuration);
+      if (data.totalWatchedPercentage !== undefined) requestPayload.totalWatchedPercentage = Number(data.totalWatchedPercentage);
 
       const response = await axios.put(`${API_BASE_URL}/pack365/topic/progress`, requestPayload, {
         headers: {
@@ -700,8 +699,10 @@ export const pack365Api = {
 
       return response.data;
     } catch (error: any) {
-      console.error('Error updating topic progress:', error);
-      throw new Error(error.response?.data?.message || 'Failed to update topic progress');
+      // Bubble up a normalized error
+      const message = error?.response?.data?.message || error.message || 'Failed to update topic progress';
+      console.error('pack365Api.updateTopicProgress error:', message);
+      throw new Error(message);
     }
   },
 
@@ -824,7 +825,7 @@ export const pack365Api = {
 
   getAvailableExams: async (
     token: string
-  ): Promise<{ success: boolean; message?: string; exams: any[] }> => {
+  ): Promise<{ message?: string; exams: any[] }> => {
     const res = await axios.get(`${API_BASE_URL}/pack365/exams/available`, {
       headers: { Authorization: `Bearer ${token}` },
     });
