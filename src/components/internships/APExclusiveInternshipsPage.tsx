@@ -47,6 +47,16 @@ interface Enrollment {
   enrolledAt: string;
 }
 
+interface Application {
+  _id: string;
+  internshipId: string;
+  userId: string;
+  status: string;
+  paymentStatus: string;
+  enrollmentId?: string;
+  orderId?: string;
+}
+
 const trustBadges = [
   {
     name: "Skill India",
@@ -109,7 +119,9 @@ const APExclusiveInternshipsPage = () => {
   const [apInternships, setApInternships] = useState<APInternship[]>([]);
   const [filteredAPInternships, setFilteredAPInternships] = useState<APInternship[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [enrollLoading, setEnrollLoading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     type: 'all',
@@ -129,8 +141,11 @@ const APExclusiveInternshipsPage = () => {
 
   useEffect(() => {
     fetchAPInternships();
-    fetchEnrollments();
-  }, []);
+    if (isAuthenticated) {
+      fetchEnrollments();
+      fetchApplications();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     filterInternships();
@@ -193,7 +208,7 @@ const APExclusiveInternshipsPage = () => {
     if (!token) return;
 
     try {
-      const response = await fetch('/api/internships/ap-enrollments/my', {
+      const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -204,6 +219,27 @@ const APExclusiveInternshipsPage = () => {
       }
     } catch (error) {
       console.error('Error fetching enrollments:', error);
+    }
+  };
+
+  const fetchApplications = async () => {
+    if (!isAuthenticated) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/internships/apinternshipmy-applications', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setApplications(data.applications);
+      }
+    } catch (error) {
+      console.error('Error fetching applications:', error);
     }
   };
 
@@ -252,11 +288,22 @@ const APExclusiveInternshipsPage = () => {
     return enrollments.some(enrollment => enrollment.internshipId === internshipId && enrollment.status === 'active');
   };
 
-  const handleApply = async (internship: APInternship) => {
+  const hasApplied = (internshipId: string) => {
+    return applications.some(application => 
+      application.internshipId === internshipId && 
+      application.status === 'Applied'
+    );
+  };
+
+  const getApplication = (internshipId: string) => {
+    return applications.find(application => application.internshipId === internshipId);
+  };
+
+  const handleEnroll = async (internship: APInternship) => {
     if (!isAuthenticated) {
       toast({
         title: 'Authentication Required',
-        description: 'Please login to apply for internships',
+        description: 'Please login to enroll in internships',
         variant: 'destructive'
       });
       return;
@@ -265,7 +312,7 @@ const APExclusiveInternshipsPage = () => {
     if (user?.role !== 'student' && user?.role !== 'jobseeker') {
       toast({
         title: 'Access Denied',
-        description: 'Only students and job seekers can apply for internships',
+        description: 'Only students and job seekers can enroll in internships',
         variant: 'destructive'
       });
       return;
@@ -281,24 +328,55 @@ const APExclusiveInternshipsPage = () => {
       return;
     }
 
+    // Check if already applied
+    const existingApplication = getApplication(internship._id);
+    if (existingApplication) {
+      if (existingApplication.paymentStatus === 'completed') {
+        toast({
+          title: 'Already Enrolled',
+          description: 'You are already enrolled in this internship',
+          variant: 'default'
+        });
+        return;
+      } else if (existingApplication.paymentStatus === 'pending' && internship.mode === 'Paid') {
+        // Show payment page for pending paid applications
+        setSelectedInternship(internship);
+        setApplicationId(existingApplication._id);
+        setShowPaymentPage(true);
+        return;
+      }
+    }
+
     // Check if application deadline has passed
     if (isDeadlinePassed(internship.applicationDeadline)) {
       toast({
-        title: 'Application Closed',
-        description: 'The application deadline for this internship has passed',
+        title: 'Enrollment Closed',
+        description: 'The enrollment deadline for this internship has passed',
         variant: 'destructive'
       });
       return;
     }
 
     setSelectedInternship(internship);
+    setEnrollLoading(internship._id);
 
-    // For free internships, enroll directly
-    if (internship.mode === 'Free') {
-      await enrollInFreeInternship(internship);
-    } else {
-      // For paid internships, show application dialog first
-      setShowApplyDialog(true);
+    try {
+      // For free internships, enroll directly
+      if (internship.mode === 'Free') {
+        await enrollInFreeInternship(internship);
+      } else {
+        // For paid internships, create application and proceed to payment
+        await createPaidApplication(internship);
+      }
+    } catch (error) {
+      console.error('Error during enrollment:', error);
+      toast({
+        title: 'Enrollment Failed',
+        description: 'Failed to process enrollment. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setEnrollLoading(null);
     }
   };
 
@@ -307,18 +385,14 @@ const APExclusiveInternshipsPage = () => {
     if (!token) return;
 
     try {
-      setLoading(true);
-      const response = await fetch('/api/internships/ap-internship-apply', {
+      const response = await fetch('/api/internships/apinternshipapply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          internshipId: internship._id,
-          amount: 0,
-          currency: 'INR',
-          mode: 'free'
+          internshipId: internship._id
         })
       });
 
@@ -331,8 +405,9 @@ const APExclusiveInternshipsPage = () => {
           variant: 'default'
         });
         
-        // Refresh enrollments
+        // Refresh enrollments and applications
         fetchEnrollments();
+        fetchApplications();
         
         // Redirect to student dashboard after a delay
         setTimeout(() => {
@@ -343,76 +418,39 @@ const APExclusiveInternshipsPage = () => {
       }
     } catch (error: any) {
       console.error('Error enrolling in free internship:', error);
-      toast({
-        title: 'Enrollment Failed',
-        description: error.message || 'Failed to enroll in internship',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
+      throw error;
     }
   };
 
-  const handleApplicationSubmit = async (applicationData: any) => {
-    if (!selectedInternship) return;
-
+  const createPaidApplication = async (internship: APInternship) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      setLoading(true);
-      
-      // Submit application
-      const response = await fetch('/api/internships/ap-internship-apply', {
+      const response = await fetch('/api/internships/apinternshipapply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          internshipId: selectedInternship._id,
-          amount: selectedInternship.amount || 0,
-          currency: selectedInternship.currency,
-          mode: selectedInternship.mode,
-          applicationData: applicationData
+          internshipId: internship._id
         })
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setApplicationId(data.applicationId);
+        setApplicationId(data.application._id);
         
-        if (selectedInternship.mode === 'Free') {
-          toast({
-            title: 'Successfully Enrolled!',
-            description: `You have been enrolled in ${selectedInternship.title}`,
-            variant: 'default'
-          });
-          
-          // Refresh enrollments
-          fetchEnrollments();
-          
-          setTimeout(() => {
-            window.location.href = '/student-dashboard?tab=trainings';
-          }, 2000);
-        } else {
-          // For paid internships, proceed to payment
-          setShowApplyDialog(false);
-          setShowPaymentPage(true);
-        }
+        // For paid internships, proceed to payment
+        setShowPaymentPage(true);
       } else {
-        throw new Error(data.message || 'Failed to submit application');
+        throw new Error(data.message || 'Failed to create application');
       }
     } catch (error: any) {
-      console.error('Error submitting application:', error);
-      toast({
-        title: 'Application Failed',
-        description: error.message || 'Failed to submit application',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
+      console.error('Error creating paid application:', error);
+      throw error;
     }
   };
 
@@ -423,8 +461,9 @@ const APExclusiveInternshipsPage = () => {
       variant: 'default'
     });
     
-    // Refresh enrollments
+    // Refresh enrollments and applications
     fetchEnrollments();
+    fetchApplications();
     
     setTimeout(() => {
       window.location.href = '/student-dashboard?tab=trainings';
@@ -434,6 +473,7 @@ const APExclusiveInternshipsPage = () => {
   const handlePaymentBack = () => {
     setShowPaymentPage(false);
     setSelectedInternship(null);
+    setApplicationId('');
   };
 
   const isDeadlinePassed = (deadline: string) => {
@@ -497,7 +537,10 @@ const APExclusiveInternshipsPage = () => {
   const InternshipCard = ({ internship }: { internship: APInternship }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
     const enrolled = isEnrolled(internship._id);
+    const applied = hasApplied(internship._id);
+    const application = getApplication(internship._id);
     const daysLeft = Math.ceil((new Date(internship.applicationDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    const isLoading = enrollLoading === internship._id;
     
     return (
       <Card className="h-full flex flex-col border-2 border-blue-100 hover:border-blue-300 hover:shadow-xl transition-all duration-300 group overflow-hidden">
@@ -535,6 +578,12 @@ const APExclusiveInternshipsPage = () => {
                 <Badge variant="default" className="bg-green-500 text-white shadow-sm">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Enrolled
+                </Badge>
+              )}
+              {applied && !enrolled && application?.paymentStatus === 'pending' && (
+                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 shadow-sm">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Payment Pending
                 </Badge>
               )}
             </div>
@@ -620,11 +669,11 @@ const APExclusiveInternshipsPage = () => {
               <div className="flex items-center justify-between">
                 <span className="text-gray-600 flex items-center">
                   <IndianRupee className="h-4 w-4 mr-2" />
-                  Stipend:
+                  Amount:
                 </span>
                 <span className="font-medium flex items-center text-green-600">
                   <IndianRupee className="h-3 w-3 mr-1" />
-                  {internship.amount.toLocaleString()}/month
+                  {internship.amount.toLocaleString()}
                 </span>
               </div>
             )}
@@ -633,33 +682,54 @@ const APExclusiveInternshipsPage = () => {
         
         <CardFooter className="pt-4 border-t border-gray-100">
           {enrolled ? (
-            <Button className="w-full bg-green-600 hover:bg-green-700 shadow-sm">
+            <Button 
+              className="w-full bg-green-600 hover:bg-green-700 shadow-sm"
+              onClick={() => window.location.href = '/student-dashboard?tab=trainings'}
+            >
               <BookOpen className="h-4 w-4 mr-2" />
               Go to Dashboard
+            </Button>
+          ) : applied && !enrolled && application?.paymentStatus === 'pending' ? (
+            <Button 
+              className="w-full bg-orange-600 hover:bg-orange-700 shadow-sm"
+              onClick={() => handleEnroll(internship)}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing...
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <IndianRupee className="h-4 w-4 mr-2" />
+                  Complete Payment
+                </div>
+              )}
             </Button>
           ) : (
             <Button 
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm transition-all duration-300"
-              onClick={() => handleApply(internship)}
-              disabled={deadlinePassed || loading}
+              onClick={() => handleEnroll(internship)}
+              disabled={deadlinePassed || isLoading}
               variant={deadlinePassed ? "outline" : "default"}
             >
-              {loading ? (
+              {isLoading ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Processing...
                 </div>
               ) : deadlinePassed ? (
-                'Application Closed'
+                'Enrollment Closed'
               ) : internship.mode === 'Free' ? (
                 <div className="flex items-center">
                   <Zap className="h-4 w-4 mr-2" />
-                  Apply & Enroll Free
+                  Enroll Free
                 </div>
               ) : (
                 <div className="flex items-center">
                   <Star className="h-4 w-4 mr-2" />
-                  Apply Now
+                  Enroll Now
                 </div>
               )}
             </Button>
@@ -980,15 +1050,6 @@ const APExclusiveInternshipsPage = () => {
             </Card>
           </div>
         </div>
-
-        {/* Apply Dialog */}
-        <ApplyInternshipDialog
-          internship={selectedInternship}
-          open={showApplyDialog}
-          onOpenChange={setShowApplyDialog}
-          onSubmit={handleApplicationSubmit}
-          loading={loading}
-        />
       </div>
       <Footer />
     </>
