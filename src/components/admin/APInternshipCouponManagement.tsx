@@ -16,7 +16,7 @@ interface APInternshipCoupon {
   code: string;
   discountAmount: number;
   discountType?: 'fixed' | 'percentage';
-  applicableInternship?: string;
+  applicableInternship?: string; // This contains the internship ID
   internshipDetails?: {
     _id: string;
     title: string;
@@ -204,10 +204,14 @@ const APInternshipCouponManagement = () => {
     });
   };
 
+  // FIXED: Get internship name by ID from local internships list
   const getApplicableInternshipName = (coupon: APInternshipCoupon) => {
-    if (coupon.internshipDetails) {
-      return `${coupon.internshipDetails.title} - ${coupon.internshipDetails.companyName}`;
+    // If coupon has a specific internship ID, find its name from our local list
+    if (coupon.applicableInternship) {
+      const internship = internships.find(intern => intern._id === coupon.applicableInternship);
+      return internship ? `${internship.title} - ${internship.companyName}` : 'Specific Internship';
     }
+    // If no specific internship, it applies to all
     return 'All Internships';
   };
 
@@ -411,6 +415,7 @@ const APInternshipCouponManagement = () => {
                         <div className="flex items-center space-x-2">
                           <Building2 className="h-3 w-3 text-gray-500" />
                           <span className="text-sm">
+                            {/* FIXED: Use the local internships list to get the name */}
                             {getApplicableInternshipName(coupon)}
                           </span>
                         </div>
