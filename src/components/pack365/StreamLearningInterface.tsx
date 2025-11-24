@@ -22,9 +22,7 @@ import {
   FileText,
   ExternalLink
 } from 'lucide-react';
-import { pack365Api } from '@/services/pack365Api';
 import Navbar from '@/components/Navbar';
-import VideoLearningModal from './VideoLearningModal';
 
 interface Topic {
   name: string;
@@ -419,3 +417,4 @@ const StreamLearningInterface = () => {
 };
 
 export default StreamLearningInterface;
+
