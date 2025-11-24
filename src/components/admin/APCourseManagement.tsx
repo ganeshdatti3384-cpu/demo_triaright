@@ -147,7 +147,7 @@ const APCourseManagement = () => {
   const createCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Create course function called');
+    console.log('🚀 Starting course creation...');
     
     const token = localStorage.getItem('token');
     if (!token) {
@@ -159,7 +159,7 @@ const APCourseManagement = () => {
       return;
     }
 
-    // Basic validation
+    // Enhanced validation
     if (!formData.internshipId) {
       toast({
         title: 'Error',
@@ -204,7 +204,7 @@ const APCourseManagement = () => {
     try {
       const formDataToSend = new FormData();
       
-      console.log('Creating course with data:', {
+      console.log('📦 Creating course with data:', {
         internshipId: formData.internshipId,
         title: formData.title,
         stream: formData.stream,
@@ -221,41 +221,73 @@ const APCourseManagement = () => {
       formDataToSend.append('certificationProvided', formData.certificationProvided);
       formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
       
-      // Stringify curriculum
-      const curriculumString = JSON.stringify(formData.curriculum);
-      console.log('Curriculum JSON:', curriculumString);
+      // Stringify curriculum - FIXED: Ensure proper formatting
+      const curriculumData = formData.curriculum.map(topic => ({
+        topicName: topic.topicName,
+        topicCount: topic.subtopics.length,
+        subtopics: topic.subtopics.map(subtopic => ({
+          name: subtopic.name,
+          link: subtopic.link,
+          duration: subtopic.duration
+        }))
+      }));
+      
+      const curriculumString = JSON.stringify(curriculumData);
+      console.log('📚 Curriculum JSON:', curriculumString);
       formDataToSend.append('curriculum', curriculumString);
 
       // Add curriculum document if provided
       if (curriculumDocFile) {
         formDataToSend.append('curriculumDoc', curriculumDocFile);
-        console.log('Added curriculum doc:', curriculumDocFile.name);
+        console.log('📄 Added curriculum doc:', curriculumDocFile.name);
       }
 
-      // Add topic exam files
+      // Add topic exam files - FIXED: Use proper field names
       Object.entries(topicExamFiles).forEach(([topicName, file]) => {
-        const fieldName = `topicExam_${topicName}`;
+        const fieldName = `topicExam_${topicName.replace(/\s+/g, ' ')}`; // Keep spaces as in backend
         formDataToSend.append(fieldName, file);
-        console.log('Added topic exam:', fieldName, file.name);
+        console.log('📝 Added topic exam:', fieldName, file.name);
       });
 
       // Add final exam file if exists
       if (formData.hasFinalExam && finalExamFile) {
         formDataToSend.append('finalExam', finalExamFile);
-        console.log('Added final exam:', finalExamFile.name);
+        console.log('🎯 Added final exam:', finalExamFile.name);
       }
 
+      // Debug: Log all FormData entries
+      console.log('📋 FormData entries:');
+      for (let [key, value] of formDataToSend.entries()) {
+        if (value instanceof File) {
+          console.log(`${key}: File - ${value.name} (${value.type})`);
+        } else {
+          console.log(`${key}:`, value);
+        }
+      }
+
+      // FIXED: Don't set Content-Type header - let browser set it with boundary
       const response = await fetch('/api/internships/apcourses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
+          // ⚠️ IMPORTANT: Don't set Content-Type for FormData
+          // Browser will automatically set it with multipart/form-data and boundary
         },
         body: formDataToSend
       });
 
-      const data = await response.json();
-      console.log('Backend response status:', response.status);
-      console.log('Backend response data:', data);
+      const responseText = await response.text();
+      console.log('📨 Backend response status:', response.status);
+      console.log('📨 Backend raw response:', responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('📨 Backend parsed response:', data);
+      } catch (parseError) {
+        console.error('❌ Failed to parse backend response:', parseError);
+        throw new Error('Invalid response from server');
+      }
 
       if (response.ok && data.success) {
         toast({
@@ -267,10 +299,11 @@ const APCourseManagement = () => {
         fetchCourses();
       } else {
         const errorMessage = data.message || data.error || `Server returned ${response.status}`;
+        console.error('❌ Backend error:', errorMessage);
         throw new Error(errorMessage);
       }
     } catch (error: any) {
-      console.error('Error creating course:', error);
+      console.error('❌ Error creating course:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to create course. Please check console for details.',
