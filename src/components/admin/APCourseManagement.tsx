@@ -85,6 +85,7 @@ const APCourseManagement = () => {
   const [topicExamFiles, setTopicExamFiles] = useState<{[key: string]: File}>({});
   const [finalExamFile, setFinalExamFile] = useState<File | null>(null);
   const [curriculumDocFile, setCurriculumDocFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -145,10 +146,20 @@ const APCourseManagement = () => {
 
   const createCourse = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('Create course function called');
+    
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      toast({
+        title: 'Error',
+        description: 'No authentication token found',
+        variant: 'destructive'
+      });
+      return;
+    }
 
-    // Validation
+    // Basic validation
     if (!formData.internshipId) {
       toast({
         title: 'Error',
@@ -158,10 +169,10 @@ const APCourseManagement = () => {
       return;
     }
 
-    if (!formData.title || !formData.stream || !formData.instructorName) {
+    if (!formData.title.trim() || !formData.stream.trim() || !formData.instructorName.trim()) {
       toast({
         title: 'Error',
-        description: 'Please fill all required fields',
+        description: 'Please fill all required fields (Title, Stream, Instructor)',
         variant: 'destructive'
       });
       return;
@@ -176,6 +187,20 @@ const APCourseManagement = () => {
       return;
     }
 
+    // Validate each topic has subtopics
+    for (const topic of formData.curriculum) {
+      if (topic.subtopics.length === 0) {
+        toast({
+          title: 'Error',
+          description: `Topic "${topic.topicName}" must have at least one subtopic`,
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
     try {
       const formDataToSend = new FormData();
       
@@ -183,10 +208,10 @@ const APCourseManagement = () => {
         internshipId: formData.internshipId,
         title: formData.title,
         stream: formData.stream,
-        curriculum: formData.curriculum
+        curriculumLength: formData.curriculum.length
       });
 
-      // Append all form fields - MAKE SURE THESE MATCH BACKEND EXPECTATIONS
+      // Append all required fields
       formDataToSend.append('internshipId', formData.internshipId);
       formDataToSend.append('title', formData.title);
       formDataToSend.append('stream', formData.stream);
@@ -196,7 +221,7 @@ const APCourseManagement = () => {
       formDataToSend.append('certificationProvided', formData.certificationProvided);
       formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
       
-      // Stringify curriculum - this is crucial
+      // Stringify curriculum
       const curriculumString = JSON.stringify(formData.curriculum);
       console.log('Curriculum JSON:', curriculumString);
       formDataToSend.append('curriculum', curriculumString);
@@ -204,50 +229,45 @@ const APCourseManagement = () => {
       // Add curriculum document if provided
       if (curriculumDocFile) {
         formDataToSend.append('curriculumDoc', curriculumDocFile);
+        console.log('Added curriculum doc:', curriculumDocFile.name);
       }
 
-      // Add topic exam files - use the exact field names backend expects
+      // Add topic exam files
       Object.entries(topicExamFiles).forEach(([topicName, file]) => {
-        // Backend expects: topicExam_{topicName}
-        const fieldName = `topicExam_${topicName.replace(/\s+/g, '_')}`;
+        const fieldName = `topicExam_${topicName}`;
         formDataToSend.append(fieldName, file);
-        console.log('Adding topic exam:', fieldName, file.name);
+        console.log('Added topic exam:', fieldName, file.name);
       });
 
       // Add final exam file if exists
       if (formData.hasFinalExam && finalExamFile) {
         formDataToSend.append('finalExam', finalExamFile);
-        console.log('Adding final exam:', finalExamFile.name);
-      }
-
-      // Log FormData contents for debugging
-      console.log('FormData entries:');
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log(key, value);
+        console.log('Added final exam:', finalExamFile.name);
       }
 
       const response = await fetch('/api/internships/apcourses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-          // Don't set Content-Type for FormData - browser will set it with boundary
         },
         body: formDataToSend
       });
 
       const data = await response.json();
-      console.log('Backend response:', data);
+      console.log('Backend response status:', response.status);
+      console.log('Backend response data:', data);
 
       if (response.ok && data.success) {
         toast({
           title: 'Success',
-          description: 'Course created successfully with exams'
+          description: 'Course created successfully!'
         });
         setShowCreateDialog(false);
         resetForm();
         fetchCourses();
       } else {
-        throw new Error(data.message || `Failed to create course: ${response.status}`);
+        const errorMessage = data.message || data.error || `Server returned ${response.status}`;
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error('Error creating course:', error);
@@ -256,6 +276,8 @@ const APCourseManagement = () => {
         description: error.message || 'Failed to create course. Please check console for details.',
         variant: 'destructive'
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -265,6 +287,8 @@ const APCourseManagement = () => {
 
     const token = localStorage.getItem('token');
     if (!token) return;
+
+    setIsSubmitting(true);
 
     try {
       const response = await fetch(`/api/internships/apcourses/${selectedCourse._id}`, {
@@ -305,6 +329,8 @@ const APCourseManagement = () => {
         description: error.message || 'Failed to update course',
         variant: 'destructive'
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -346,10 +372,10 @@ const APCourseManagement = () => {
   };
 
   const addSubtopic = () => {
-    if (!currentSubtopic.name || !currentSubtopic.link || !currentSubtopic.duration) {
+    if (!currentSubtopic.name.trim() || !currentSubtopic.link.trim() || currentSubtopic.duration <= 0) {
       toast({
         title: 'Error',
-        description: 'Please fill all subtopic fields',
+        description: 'Please fill all subtopic fields with valid values',
         variant: 'destructive'
       });
       return;
@@ -369,7 +395,7 @@ const APCourseManagement = () => {
   };
 
   const addTopic = () => {
-    if (!currentTopic.topicName || currentTopic.subtopics.length === 0) {
+    if (!currentTopic.topicName.trim() || currentTopic.subtopics.length === 0) {
       toast({
         title: 'Error',
         description: 'Please add topic name and at least one subtopic',
@@ -387,6 +413,11 @@ const APCourseManagement = () => {
       topicName: '',
       topicCount: 0,
       subtopics: []
+    });
+
+    toast({
+      title: 'Success',
+      description: 'Topic added to curriculum'
     });
   };
 
@@ -673,21 +704,27 @@ const APCourseManagement = () => {
                           <Input
                             value={currentSubtopic.link}
                             onChange={(e) => setCurrentSubtopic({...currentSubtopic, link: e.target.value})}
-                            placeholder="YouTube/Vimeo URL"
+                            placeholder="https://youtube.com/embed/..."
                           />
                         </div>
                         <div>
                           <label className="text-sm font-medium">Duration (minutes) *</label>
                           <Input
                             type="number"
-                            value={currentSubtopic.duration}
-                            onChange={(e) => setCurrentSubtopic({...currentSubtopic, duration: Number(e.target.value)})}
+                            value={currentSubtopic.duration || ''}
+                            onChange={(e) => setCurrentSubtopic({...currentSubtopic, duration: Number(e.target.value) || 0})}
                             min="1"
                             placeholder="e.g., 30"
                           />
                         </div>
                       </div>
-                      <Button type="button" onClick={addSubtopic} variant="outline" size="sm">
+                      <Button 
+                        type="button" 
+                        onClick={addSubtopic} 
+                        variant="outline" 
+                        size="sm"
+                        disabled={!currentSubtopic.name || !currentSubtopic.link || !currentSubtopic.duration}
+                      >
                         <Plus className="h-4 w-4 mr-1" />
                         Add Subtopic
                       </Button>
@@ -715,7 +752,12 @@ const APCourseManagement = () => {
                             </div>
                           ))}
                         </div>
-                        <Button type="button" onClick={addTopic} className="w-full">
+                        <Button 
+                          type="button" 
+                          onClick={addTopic} 
+                          className="w-full"
+                          disabled={!currentTopic.topicName}
+                        >
                           Add Topic to Curriculum
                         </Button>
                       </div>
@@ -802,10 +844,20 @@ const APCourseManagement = () => {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowCreateDialog(false)}
+                  disabled={isSubmitting}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">Create Course</Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting || formData.curriculum.length === 0}
+                >
+                  {isSubmitting ? 'Creating...' : 'Create Course'}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -1140,7 +1192,9 @@ const APCourseManagement = () => {
               <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Update Course</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Updating...' : 'Update Course'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
