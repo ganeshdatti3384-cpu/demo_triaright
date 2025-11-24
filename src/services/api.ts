@@ -27,7 +27,6 @@ const PRODUCTION_API_URL = 'https://triaright.com/api';
 
 /**
  * Helper: convert object -> FormData
- * - stringifies plain objects (except File)
  */
 const toFormData = (data: Record<string, any>): FormData => {
   const formData = new FormData();
@@ -43,13 +42,32 @@ const toFormData = (data: Record<string, any>): FormData => {
   return formData;
 };
 
-// Add this interface for topic progress
+// Progress queue utilities with deduplication
+const PROGRESS_QUEUE_KEY = 'pack365_progress_queue_v2';
+
+const enqueueProgress = (item: any) => {
+  try {
+    const raw = localStorage.getItem(PROGRESS_QUEUE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    
+    // Deduplication - remove existing entries for same topic
+    const filtered = arr.filter((existing: any) => 
+      !(existing.courseId === item.courseId && existing.topicName === item.topicName)
+    );
+    
+    filtered.push(item);
+    localStorage.setItem(PROGRESS_QUEUE_KEY, JSON.stringify(filtered));
+  } catch (e) {
+    console.error('enqueueProgress failed', e);
+  }
+};
+
 export interface UpdateTopicProgressData {
   courseId: string;
   topicName: string;
-  watchedDuration?: number; // seconds
-  totalCourseDuration?: number; // seconds
-  totalWatchedPercentage?: number; // overall stream percent
+  watchedDuration?: number;
+  totalCourseDuration?: number;
+  totalWatchedPercentage?: number;
 }
 
 /**
@@ -77,11 +95,9 @@ export const authApi = {
     const res = await axios.get(`${API_BASE_URL}/users/profile`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    // backend often returns the user object directly; unify shape
     return { success: true, user: res.data };
   },
 
-  // Authenticated user updating their own password
   updatePassword: async (
     token: string,
     payload: UpdatePasswordPayload
@@ -94,8 +110,6 @@ export const authApi = {
     return res.data;
   },
 
-  // Generic forgot/change password via email (public)
-  // Ensure confirmPassword present because some backends validate it
   changePasswordWithEmail: async (payload: {
     email: string;
     newPassword: string;
@@ -137,7 +151,6 @@ export const authApi = {
     return res.data;
   },
 
-  // DELETE user: match backend route defined as router.delete("/user/:userId", ...)
   deleteUser: async (token: string, userId: string): Promise<{ message: string }> => {
     const res = await axios.delete(`${API_BASE_URL}/users/user/${userId}`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -145,7 +158,6 @@ export const authApi = {
     return res.data;
   },
 
-  // Superadmin endpoint to update admin password (authenticated)
   superadminUpdateAdminPassword: async (
     token: string,
     payload: { email: string; newPassword: string; confirmPassword?: string }
@@ -164,7 +176,6 @@ export const authApi = {
     return res.data;
   },
 
-  // Statistics helper - note backend must implement /statistics/count/total if used
   getStatistics: async (token: string): Promise<{
     totalUsers: number;
     students: number;
@@ -201,8 +212,7 @@ export const authApi = {
 };
 
 /**
- * profileApi: profile related endpoints (students, colleges, employers, jobseekers)
- * Note: backend routes are under /users prefix (see authRoutes.js)
+ * profileApi: profile related endpoints
  */
 export const profileApi = {
   updateCollegeProfile: async (
@@ -229,7 +239,6 @@ export const profileApi = {
     token: string,
     data: Partial<Employer>
   ): Promise<{ message: string }> => {
-    // Match backend route: PUT /users/employers/profile
     const res = await axios.put(`${API_BASE_URL}/users/employers/profile`, toFormData(data), {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -303,7 +312,6 @@ export const profileApi = {
     return res.data;
   },
 
-  // alternate updatePassword for profile-related UI (calls same backend)
   updatePassword: async (
     token: string,
     payload: { currentPassword: string; newPassword: string }
@@ -321,7 +329,7 @@ export const profileApi = {
 };
 
 /**
- * pack365Api: Pack365-specific endpoints (keeps many helpers and fallbacks)
+ * pack365Api: Pack365-specific endpoints with FIXED progress tracking
  */
 export const pack365Api = {
   getAllCourses: async (): Promise<{ success: boolean; data: Pack365Course[] }> => {
@@ -335,7 +343,6 @@ export const pack365Api = {
       return res.data;
     } catch (error: any) {
       console.log('API endpoint unavailable, using fallback data');
-      // Return fallback data when API is unavailable
       return {
         success: true,
         streams: [
@@ -630,13 +637,11 @@ export const pack365Api = {
     token: string
   ): Promise<{ success: boolean; enrollments: EnhancedPack365Enrollment[] }> => {
     try {
-      // Try primary endpoint
       const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data && res.data.success) return res.data;
 
-      // fallback: try the general enrollments endpoint
       const courseRes = await axios.get(`${API_BASE_URL}/courses/enrollment/allcourses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -666,12 +671,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Improved updateTopicProgress:
-  // - ensures we always send durations in seconds
-  // - includes optional totalCourseDuration and totalWatchedPercentage fields so backend can recalc/cap
-  // - on 404 tries alternative base (removes '/api' prefix) since some deployments mount API differently
-  // - logs the request URL and server response for easier debugging
-  // - enqueues on network failure for later retry
+  // FIXED: Improved progress update with better error handling and simplified endpoint strategy
   updateTopicProgress: async (
     token: string,
     data: UpdateTopicProgressData
@@ -683,21 +683,8 @@ export const pack365Api = {
     watchedTopics?: number;
     totalTopics?: number;
   }> => {
-    // local queue helpers (persist unsent updates)
-    const PROGRESS_QUEUE_KEY = 'pack365_progress_queue_v2';
-    const enqueueProgress = (item: any) => {
-      try {
-        const raw = localStorage.getItem(PROGRESS_QUEUE_KEY);
-        const arr = raw ? JSON.parse(raw) : [];
-        arr.push(item);
-        localStorage.setItem(PROGRESS_QUEUE_KEY, JSON.stringify(arr));
-      } catch (e) {
-        console.error('enqueueProgress failed', e);
-      }
-    };
-
     try {
-      // Build canonical payload (durations in seconds)
+      // Build canonical payload
       const requestPayload: any = {
         courseId: data.courseId,
         topicName: data.topicName
@@ -706,75 +693,42 @@ export const pack365Api = {
       if (data.totalCourseDuration !== undefined) requestPayload.totalCourseDuration = Math.floor(data.totalCourseDuration);
       if (data.totalWatchedPercentage !== undefined) requestPayload.totalWatchedPercentage = Number(data.totalWatchedPercentage);
 
-      // Candidate URLs to try (first = configured API_BASE_URL).
-      // If API_BASE_URL includes '/api' but production mounts at '/', the first will 404 — so try fallback.
-      const tryUrls: string[] = [];
-      const primary = `${API_BASE_URL.replace(/\/$/, '')}/pack365/topic/progress`;
-      tryUrls.push(primary);
-
-      // If API_BASE_URL ends with '/api' or contains '/api', try a variant without '/api'
-      const withoutApi = API_BASE_URL.replace(/\/api\/?$/i, '').replace(/\/$/, '');
-      const alt = `${withoutApi}/pack365/topic/progress`;
-      if (!tryUrls.includes(alt)) tryUrls.push(alt);
-
-      // Also try ensuring no double '/pack365' (rare) and trailing slash variants
-      const alt2 = `${API_BASE_URL.replace(/\/$/, '')}/pack365/topic/progress/`;
-      if (!tryUrls.includes(alt2)) tryUrls.push(alt2);
-
-      // Logging for debugging: show attempted URLs & payload
+      // Use single endpoint - remove fallback confusion
+      const url = `${API_BASE_URL}/pack365/topic/progress`;
+      
       console.info('[pack365Api.updateTopicProgress] payload:', requestPayload);
-      let lastError: any = null;
+      
+      const response = await axios.put(url, requestPayload, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        timeout: 10000 // 10 second timeout
+      });
 
-      for (const url of tryUrls) {
-        try {
-          console.info(`[pack365Api.updateTopicProgress] attempting PUT ${url}`);
-          const response = await axios.put(url, requestPayload, {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
-            timeout: 15000
-          });
-
-          console.info(`[pack365Api.updateTopicProgress] success ${url}`, response.data);
-          return response.data;
-        } catch (err: any) {
-          lastError = err;
-          // If server explicitly returned 404, try next fallback; log response if available
-          if (err?.response) {
-            console.warn(`[pack365Api.updateTopicProgress] ${url} -> status ${err.response.status}`, err.response.data);
-            // try next url on 404
-            if (err.response.status === 404) {
-              continue;
-            }
-            // For 401/403 bubble up with message
-            if (err.response.status === 401 || err.response.status === 403) {
-              const msg = err.response?.data?.message || 'Unauthorized';
-              throw new Error(msg);
-            }
-            // For other HTTP errors, throw to be handled by caller
-            const msg = err.response?.data?.message || `HTTP ${err.response.status}`;
-            throw new Error(msg);
-          } else {
-            // network error / timeout - enqueue payload for retry and break
-            console.error('[pack365Api.updateTopicProgress] network error, enqueueing payload for retry', err.message || err);
-            enqueueProgress(requestPayload);
-            throw new Error('Network error: progress saved locally and will be retried.');
-          }
-        }
-      }
-
-      // If we exit loop without returning, all attempts failed (likely 404 on all). Surface last server error if present.
-      if (lastError?.response) {
-        const status = lastError.response.status;
-        const serverMsg = lastError.response.data?.message || JSON.stringify(lastError.response.data || {});
-        throw new Error(`Server responded ${status}: ${serverMsg}`);
-      }
-      throw new Error('Failed to update topic progress (unknown error).');
+      console.info('[pack365Api.updateTopicProgress] success', response.data);
+      return response.data;
+      
     } catch (error: any) {
       console.error('pack365Api.updateTopicProgress error:', error);
-      // Normalize error for caller
-      throw new Error(error?.message || 'Failed to update topic progress');
+      
+      // Handle specific error cases
+      if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+        // Network failure - enqueue for retry
+        enqueueProgress(requestPayload);
+        throw new Error('Network error: progress saved locally and will be retried.');
+      }
+      
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        throw new Error('Authentication failed. Please log in again.');
+      }
+      
+      if (error.response?.status === 404) {
+        throw new Error('Progress endpoint not found. Please contact support.');
+      }
+      
+      // Generic error
+      throw new Error(error.response?.data?.message || 'Failed to update topic progress');
     }
   },
 
@@ -819,7 +773,6 @@ export const pack365Api = {
     return res.data;
   },
 
-  // Fixed upload path
   uploadExamFromExcel: async (
     token: string,
     formData: FormData
@@ -837,7 +790,7 @@ export const pack365Api = {
     token: string,
     examId: string
   ): Promise<{ questions: any[]; maxAttempts: number; examId: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/questions`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exams/${examId}/questions`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -847,7 +800,7 @@ export const pack365Api = {
     token: string,
     examId: string
   ): Promise<{ examDetails: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/${examId}/details`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exams/details/${examId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -856,7 +809,7 @@ export const pack365Api = {
   getAllExams: async (
     token: string
   ): Promise<any[]> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/getexam`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exams/all`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -880,7 +833,7 @@ export const pack365Api = {
     isPassed: boolean;
     canRetake: boolean;
   }> => {
-    const res = await axios.post(`${API_BASE_URL}/exam/submit`, data, {
+    const res = await axios.post(`${API_BASE_URL}/pack365/exams/submit`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -908,7 +861,7 @@ export const pack365Api = {
     token: string,
     courseId: string
   ): Promise<{ examHistory: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/history/${courseId}`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exams/history/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -918,7 +871,7 @@ export const pack365Api = {
     token: string,
     courseId: string
   ): Promise<{ statistics: any }> => {
-    const res = await axios.get(`${API_BASE_URL}/exam/statistics/${courseId}`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exams/statistics/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -928,7 +881,7 @@ export const pack365Api = {
     token: string,
     data: { userId: string; courseId: string }
   ): Promise<{ message: string; resetData: any }> => {
-    const res = await axios.post(`${API_BASE_URL}/exam/reset-attempts`, data, {
+    const res = await axios.post(`${API_BASE_URL}/pack365/exams/reset`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -938,7 +891,7 @@ export const pack365Api = {
     token: string,
     data: { examId: string; maxAttempts: number }
   ): Promise<{ message: string; examId: string; maxAttempts: number }> => {
-    const res = await axios.put(`${API_BASE_URL}/exam/update-max-attempts`, data, {
+    const res = await axios.put(`${API_BASE_URL}/pack365/exams/update-max-attempts`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -1042,7 +995,7 @@ export const collegeApi = {
 };
 
 /**
- * courseApi: courses / enrollments / payments (various endpoints)
+ * courseApi: courses / enrollments / payments
  */
 export const courseApi = {
   createCourse: async (
