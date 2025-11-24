@@ -7,13 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Clock, 
-  AlertCircle, 
-  CheckCircle2, 
-  ArrowLeft,
-  BookOpen,
-  Award
+import {
+  Clock,
+  CheckCircle2,
+  ArrowLeft
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -22,38 +19,30 @@ interface Question {
   _id: string;
   questionText: string;
   options: string[];
+  correctAnswer?: string;
   type: 'easy' | 'medium' | 'hard';
-  description?: string;
 }
 
-interface ExamDetails {
+interface Exam {
+  _id: string;
   examId: string;
-  courseName: string;
+  questions: Question[];
   maxAttempts: number;
-  totalQuestions: number;
-  userAttemptInfo: {
-    totalAttempts: number;
-    remainingAttempts: number;
-    bestScore: number;
-    canTakeExam: boolean;
-    isPassed: boolean;
-    lastAttempt: string | null;
-  } | null;
+  passingScore: number;
+  timeLimit: number;
 }
 
 const ExamInterface = () => {
   const { stream } = useParams<{ stream: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [examDetails, setExamDetails] = useState<ExamDetails | null>(null);
+
+  const [exam, setExam] = useState<Exam | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
-  const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [examStarted, setExamStarted] = useState(false);
 
   useEffect(() => {
     loadExamData();
@@ -61,8 +50,7 @@ const ExamInterface = () => {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    
-    if (examStarted && timeLeft > 0) {
+    if (timeLeft > 0 && exam) {
       timer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -73,105 +61,51 @@ const ExamInterface = () => {
         });
       }, 1000);
     }
-    
     return () => clearInterval(timer);
-  }, [examStarted, timeLeft]);
+  }, [timeLeft, exam]);
 
   const loadExamData = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       if (!token) {
-        toast({ title: 'Authentication Required', variant: 'destructive' });
         navigate('/login');
         return;
       }
 
-      // Get user enrollments to check eligibility
-      const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-      if (!enrollmentResponse.success) {
-        throw new Error('Failed to fetch enrollment data');
-      }
-
-      const streamEnrollment = enrollmentResponse.enrollments.find(
-        (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
-      );
-
-      if (!streamEnrollment) {
-        toast({
-          title: 'Not Enrolled',
-          description: 'You are not enrolled in this stream.',
-          variant: 'destructive'
-        });
-        navigate(`/pack365-learning/${stream}`);
-        return;
-      }
-
-      // Check if user has completed at least 80%
-      if (streamEnrollment.totalWatchedPercentage < 80) {
-        toast({
-          title: 'Not Eligible',
-          description: `You need to complete at least 80% of the stream to take the exam. Current progress: ${Math.round(streamEnrollment.totalWatchedPercentage)}%`,
-          variant: 'destructive'
-        });
-        navigate(`/pack365-learning/${stream}`);
-        return;
-      }
-
       // Get available exams
-      const availableExamsResponse = await pack365Api.getAvailableExamsForUser(token);
-      if (!availableExamsResponse || !Array.isArray(availableExamsResponse.exams)) {
-        throw new Error('No exams available for this stream');
-      }
+      const examsResponse = await pack365Api.getAvailableExamsForUser(token);
+      if (examsResponse.exams && examsResponse.exams.length > 0) {
+        const streamExam = examsResponse.exams[0]; // Simplified - you might want better matching
+        
+        // Get exam questions
+        const questionsResponse = await pack365Api.getExamQuestions(token, streamExam.examId);
+        const examDetails = await pack365Api.getExamDetails(token, streamExam.examId);
 
-      // Find exam for current stream
-      const streamExam = availableExamsResponse.exams.find((exam: any) => {
-        // Match by stream or course ID
-        return exam.stream?.toLowerCase() === stream?.toLowerCase() || 
-               exam.courseId === streamEnrollment.courseId;
-      });
+        const fullExam: Exam = {
+          _id: streamExam.examId,
+          examId: streamExam.examId,
+          questions: questionsResponse.questions || [],
+          maxAttempts: streamExam.attemptInfo?.maxAttempts || 3,
+          passingScore: 50,
+          timeLimit: 60
+        };
 
-      if (!streamExam) {
-        throw new Error('No exam found for this stream');
-      }
-
-      // Get exam details
-      const examDetailsResponse = await pack365Api.getExamDetails(token, streamExam.examId);
-      if (!examDetailsResponse.success) {
-        throw new Error('Failed to load exam details');
-      }
-
-      setExamDetails(examDetailsResponse.examDetails);
-
-      // Check if user can take exam
-      if (examDetailsResponse.examDetails.userAttemptInfo && 
-          !examDetailsResponse.examDetails.userAttemptInfo.canTakeExam) {
+        setExam(fullExam);
+        setTimeLeft(fullExam.timeLimit * 60);
+      } else {
         toast({
-          title: 'Attempts Exhausted',
-          description: 'You have used all your attempts for this exam.',
+          title: 'No Exam Available',
+          description: 'No exam found for this stream.',
           variant: 'destructive'
         });
-        navigate(`/pack365-learning/${stream}`);
-        return;
       }
-
-      // Load questions (without answers)
-      const questionsResponse = await pack365Api.getExamQuestions(token, streamExam.examId);
-      if (!questionsResponse.questions) {
-        throw new Error('Failed to load exam questions');
-      }
-
-      setQuestions(questionsResponse.questions);
-      setExamStarted(true);
-
-    } catch (error: any) {
-      console.error('Error loading exam:', error);
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load exam',
+        description: 'Failed to load exam',
         variant: 'destructive'
       });
-      navigate(`/pack365-learning/${stream}`);
     } finally {
       setLoading(false);
     }
@@ -185,7 +119,7 @@ const ExamInterface = () => {
   };
 
   const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
+    if (exam && currentQuestion < exam.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
     }
   };
@@ -197,97 +131,59 @@ const ExamInterface = () => {
   };
 
   const calculateScore = () => {
-    if (!questions.length) return 0;
-    
-    // In a real implementation, this would be calculated on the backend
-    // For now, we'll return a placeholder
-    const answeredCount = Object.keys(answers).length;
-    return Math.round((answeredCount / questions.length) * 100);
-  };
-
-  const handleAutoSubmit = async () => {
-    if (!examDetails) return;
-    
-    setSubmitting(true);
-    try {
-      await submitExamToBackend();
-      toast({
-        title: 'Time Up!',
-        description: 'Exam automatically submitted due to time expiration.',
-        variant: 'default'
-      });
-    } catch (error: any) {
-      console.error('Error auto-submitting exam:', error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const submitExamToBackend = async () => {
-    const token = localStorage.getItem('token');
-    if (!token || !examDetails) return;
-
-    const score = calculateScore();
-    const timeTaken = 3600 - timeLeft; // Time spent in seconds
-
-    const submission = {
-      examId: examDetails.examId,
-      courseId: '', // This should come from enrollment
-      marks: score,
-      timeTaken: Math.floor(timeTaken / 60) // Convert to minutes
-    };
-
-    const result = await pack365Api.submitExam(token, submission);
-    
-    if (result && result.message) {
-      return result;
-    }
-    throw new Error('Submission failed');
+    if (!exam) return 0;
+    let correctCount = 0;
+    exam.questions.forEach(question => {
+      if (answers[question._id] === question.correctAnswer) {
+        correctCount++;
+      }
+    });
+    return Math.round((correctCount / exam.questions.length) * 100);
   };
 
   const handleSubmit = async () => {
-    if (!examDetails) return;
+    if (!exam) return;
 
-    const unansweredQuestions = questions.filter(q => !answers[q._id]).length;
-
-    if (unansweredQuestions > 0) {
-      const confirmSubmit = window.confirm(
-        `You have ${unansweredQuestions} unanswered questions. Are you sure you want to submit?`
-      );
-      if (!confirmSubmit) return;
+    const unanswered = exam.questions.filter(q => !answers[q._id]).length;
+    if (unanswered > 0) {
+      const confirm = window.confirm(`You have ${unanswered} unanswered questions. Submit anyway?`);
+      if (!confirm) return;
     }
 
     setSubmitting(true);
     try {
-      const result = await submitExamToBackend();
-      
-      const examResult = {
-        score: calculateScore(),
-        passed: calculateScore() >= 50, // Assuming 50% passing
-        totalQuestions: questions.length,
-        correctAnswers: Math.round((calculateScore() / 100) * questions.length),
-        timeSpent: 3600 - timeLeft,
-        attemptNumber: result.attemptNumber || 1,
-        submittedAt: new Date().toISOString(),
-        answers: answers
-      };
-      
-      navigate(`/exam-result/${stream}`, { 
-        state: { 
-          result: examResult,
-          examDetails: examDetails
-        } 
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const score = calculateScore();
+      await pack365Api.submitExam(token, {
+        examId: exam.examId,
+        courseId: exam._id, // This might need adjustment based on your backend
+        marks: score,
+        timeTaken: (exam.timeLimit * 60) - timeLeft
       });
-    } catch (error: any) {
-      console.error('Error submitting exam:', error);
+
+      navigate(`/exam-result/${stream}`, {
+        state: {
+          score,
+          passed: score >= exam.passingScore,
+          totalQuestions: exam.questions.length
+        }
+      });
+    } catch (error) {
       toast({
         title: 'Submission Failed',
-        description: error.message || 'Failed to submit exam',
+        description: 'Failed to submit exam',
         variant: 'destructive'
       });
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleAutoSubmit = async () => {
+    if (!exam) return;
+    await handleSubmit();
   };
 
   const formatTime = (seconds: number) => {
@@ -310,7 +206,7 @@ const ExamInterface = () => {
     );
   }
 
-  if (!examDetails || !questions.length) {
+  if (!exam) {
     return (
       <>
         <Navbar />
@@ -318,9 +214,8 @@ const ExamInterface = () => {
           <Card className="max-w-md w-full">
             <CardContent className="pt-6">
               <div className="text-center">
-                <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">Exam Not Available</h2>
-                <p className="text-gray-600 mb-4">The exam for this stream is not available at the moment.</p>
+                <p className="text-gray-600 mb-4">The exam for this stream is not available.</p>
                 <Button onClick={() => navigate(`/pack365-learning/${stream}`)}>
                   Back to Learning
                 </Button>
@@ -332,8 +227,8 @@ const ExamInterface = () => {
     );
   }
 
-  const currentQ = questions[currentQuestion];
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const currentQ = exam.questions[currentQuestion];
+  const progress = ((currentQuestion + 1) / exam.questions.length) * 100;
 
   return (
     <>
@@ -342,7 +237,7 @@ const ExamInterface = () => {
         <div className="max-w-4xl mx-auto px-4">
           {/* Header */}
           <div className="mb-6">
-            <Button 
+            <Button
               onClick={() => navigate(`/pack365-learning/${stream}`)}
               variant="outline"
               className="mb-4"
@@ -350,43 +245,37 @@ const ExamInterface = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Learning
             </Button>
-            
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 capitalize">
                   {stream} Stream Exam
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  Complete all {questions.length} questions to finish the exam
+                  Complete all {exam.questions.length} questions
                 </p>
               </div>
-              
+
               <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-                <Badge variant={timeLeft < 300 ? "destructive" : "secondary"} className="flex items-center">
+                <Badge variant={timeLeft < 300 ? 'destructive' : 'secondary'}>
                   <Clock className="h-4 w-4 mr-1" />
                   {formatTime(timeLeft)}
                 </Badge>
-                
-                {examDetails.userAttemptInfo && (
-                  <Badge variant="outline">
-                    {examDetails.userAttemptInfo.totalAttempts + 1}/{examDetails.maxAttempts} Attempts
-                  </Badge>
-                )}
               </div>
             </div>
           </div>
 
-          {/* Progress Bar */}
+          {/* Progress */}
           <div className="mb-6">
             <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Question {currentQuestion + 1} of {questions.length}</span>
+              <span>Question {currentQuestion + 1} of {exam.questions.length}</span>
               <span>{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="h-2" />
           </div>
 
+          {/* Question Navigation */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Questions Navigation */}
             <div className="lg:col-span-1">
               <Card>
                 <CardHeader>
@@ -394,15 +283,15 @@ const ExamInterface = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-5 gap-2">
-                    {questions.map((_, index) => (
+                    {exam.questions.map((_, index) => (
                       <Button
                         key={index}
                         variant={
-                          currentQuestion === index 
-                            ? "default" 
-                            : answers[questions[index]._id] 
-                              ? "secondary" 
-                              : "outline"
+                          currentQuestion === index
+                            ? 'default'
+                            : answers[exam.questions[index]._id]
+                            ? 'secondary'
+                            : 'outline'
                         }
                         size="sm"
                         className="h-8 w-8 p-0"
@@ -412,48 +301,6 @@ const ExamInterface = () => {
                       </Button>
                     ))}
                   </div>
-                  
-                  <div className="mt-4 space-y-2 text-xs">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-blue-600 rounded mr-2"></div>
-                      <span>Current</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-gray-300 rounded mr-2"></div>
-                      <span>Unanswered</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
-                      <span>Answered</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Exam Info */}
-              <Card className="mt-4">
-                <CardHeader>
-                  <CardTitle className="text-sm">Exam Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Passing Score:</span>
-                    <span className="font-medium">50%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Time Limit:</span>
-                    <span className="font-medium">60 min</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Questions:</span>
-                    <span className="font-medium">{questions.length}</span>
-                  </div>
-                  {examDetails.userAttemptInfo && (
-                    <div className="flex justify-between">
-                      <span>Best Score:</span>
-                      <span className="font-medium">{examDetails.userAttemptInfo.bestScore}%</span>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>
@@ -470,15 +317,10 @@ const ExamInterface = () => {
                     }>
                       {currentQ.type.charAt(0).toUpperCase() + currentQ.type.slice(1)}
                     </Badge>
-                    <span className="text-sm text-gray-500">
-                      Question {currentQuestion + 1}
-                    </span>
                   </div>
 
                   {/* Question Text */}
-                  <h2 className="text-lg font-semibold mb-6">
-                    {currentQ.questionText}
-                  </h2>
+                  <h2 className="text-lg font-semibold mb-6">{currentQ.questionText}</h2>
 
                   {/* Options */}
                   <RadioGroup
@@ -488,11 +330,8 @@ const ExamInterface = () => {
                   >
                     {currentQ.options.map((option, index) => (
                       <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                        <RadioGroupItem value={option} id={`option-${index}`} />
-                        <Label 
-                          htmlFor={`option-${index}`} 
-                          className="flex-1 cursor-pointer text-sm"
-                        >
+                        <RadioGroupItem value={option} id={`opt-${index}`} />
+                        <Label htmlFor={`opt-${index}`} className="flex-1 cursor-pointer">
                           {option}
                         </Label>
                       </div>
@@ -501,47 +340,18 @@ const ExamInterface = () => {
 
                   {/* Navigation Buttons */}
                   <div className="flex justify-between mt-8 pt-6 border-t">
-                    <Button
-                      onClick={handlePrevious}
-                      disabled={currentQuestion === 0}
-                      variant="outline"
-                    >
+                    <Button onClick={handlePrevious} disabled={currentQuestion === 0} variant="outline">
                       Previous
                     </Button>
-                    
-                    {currentQuestion === questions.length - 1 ? (
-                      <Button
-                        onClick={handleSubmit}
-                        disabled={submitting}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
+
+                    {currentQuestion === exam.questions.length - 1 ? (
+                      <Button onClick={handleSubmit} disabled={submitting}>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
                         {submitting ? 'Submitting...' : 'Submit Exam'}
                       </Button>
                     ) : (
-                      <Button onClick={handleNext}>
-                        Next Question
-                      </Button>
+                      <Button onClick={handleNext}>Next Question</Button>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Submit */}
-              <Card className="mt-4">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Ready to submit your exam? Make sure you've answered all questions.
-                    </p>
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={submitting}
-                      size="lg"
-                      className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {submitting ? 'Submitting...' : 'Submit Exam'}
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
