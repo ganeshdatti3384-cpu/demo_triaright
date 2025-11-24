@@ -84,6 +84,7 @@ const APCourseManagement = () => {
   });
   const [topicExamFiles, setTopicExamFiles] = useState<{[key: string]: File}>({});
   const [finalExamFile, setFinalExamFile] = useState<File | null>(null);
+  const [curriculumDocFile, setCurriculumDocFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -147,6 +148,25 @@ const APCourseManagement = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    // Validation
+    if (!formData.internshipId) {
+      toast({
+        title: 'Error',
+        description: 'Please select an internship',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!formData.title || !formData.stream || !formData.instructorName) {
+      toast({
+        title: 'Error',
+        description: 'Please fill all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     if (formData.curriculum.length === 0) {
       toast({
         title: 'Error',
@@ -159,7 +179,14 @@ const APCourseManagement = () => {
     try {
       const formDataToSend = new FormData();
       
-      // Append all form fields
+      console.log('Creating course with data:', {
+        internshipId: formData.internshipId,
+        title: formData.title,
+        stream: formData.stream,
+        curriculum: formData.curriculum
+      });
+
+      // Append all form fields - MAKE SURE THESE MATCH BACKEND EXPECTATIONS
       formDataToSend.append('internshipId', formData.internshipId);
       formDataToSend.append('title', formData.title);
       formDataToSend.append('stream', formData.stream);
@@ -168,27 +195,48 @@ const APCourseManagement = () => {
       formDataToSend.append('courseLanguage', formData.courseLanguage);
       formDataToSend.append('certificationProvided', formData.certificationProvided);
       formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
-      formDataToSend.append('curriculum', JSON.stringify(formData.curriculum));
+      
+      // Stringify curriculum - this is crucial
+      const curriculumString = JSON.stringify(formData.curriculum);
+      console.log('Curriculum JSON:', curriculumString);
+      formDataToSend.append('curriculum', curriculumString);
 
-      // Add topic exam files
+      // Add curriculum document if provided
+      if (curriculumDocFile) {
+        formDataToSend.append('curriculumDoc', curriculumDocFile);
+      }
+
+      // Add topic exam files - use the exact field names backend expects
       Object.entries(topicExamFiles).forEach(([topicName, file]) => {
-        formDataToSend.append(`topicExam_${topicName}`, file);
+        // Backend expects: topicExam_{topicName}
+        const fieldName = `topicExam_${topicName.replace(/\s+/g, '_')}`;
+        formDataToSend.append(fieldName, file);
+        console.log('Adding topic exam:', fieldName, file.name);
       });
 
       // Add final exam file if exists
       if (formData.hasFinalExam && finalExamFile) {
         formDataToSend.append('finalExam', finalExamFile);
+        console.log('Adding final exam:', finalExamFile.name);
+      }
+
+      // Log FormData contents for debugging
+      console.log('FormData entries:');
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(key, value);
       }
 
       const response = await fetch('/api/internships/apcourses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
+          // Don't set Content-Type for FormData - browser will set it with boundary
         },
         body: formDataToSend
       });
 
       const data = await response.json();
+      console.log('Backend response:', data);
 
       if (response.ok && data.success) {
         toast({
@@ -199,13 +247,13 @@ const APCourseManagement = () => {
         resetForm();
         fetchCourses();
       } else {
-        throw new Error(data.message || 'Failed to create course');
+        throw new Error(data.message || `Failed to create course: ${response.status}`);
       }
     } catch (error: any) {
       console.error('Error creating course:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create course',
+        description: error.message || 'Failed to create course. Please check console for details.',
         variant: 'destructive'
       });
     }
@@ -368,6 +416,10 @@ const APCourseManagement = () => {
     setFinalExamFile(file);
   };
 
+  const handleCurriculumDocChange = (file: File) => {
+    setCurriculumDocFile(file);
+  };
+
   const resetForm = () => {
     setFormData({
       internshipId: '',
@@ -392,6 +444,7 @@ const APCourseManagement = () => {
     });
     setTopicExamFiles({});
     setFinalExamFile(null);
+    setCurriculumDocFile(null);
     setSelectedCourse(null);
   };
 
@@ -474,6 +527,7 @@ const APCourseManagement = () => {
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
                     required
+                    placeholder="e.g., Full Stack Web Development"
                   />
                 </div>
               </div>
@@ -485,6 +539,7 @@ const APCourseManagement = () => {
                     value={formData.stream}
                     onChange={(e) => setFormData({...formData, stream: e.target.value})}
                     required
+                    placeholder="e.g., Computer Science"
                   />
                 </div>
                 <div className="space-y-2">
@@ -493,6 +548,7 @@ const APCourseManagement = () => {
                     value={formData.instructorName}
                     onChange={(e) => setFormData({...formData, instructorName: e.target.value})}
                     required
+                    placeholder="e.g., John Doe"
                   />
                 </div>
               </div>
@@ -566,9 +622,24 @@ const APCourseManagement = () => {
                 </div>
               </div>
 
+              {/* Curriculum Document Upload */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Curriculum Document (Optional)</label>
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      handleCurriculumDocChange(e.target.files[0]);
+                    }
+                  }}
+                />
+                <p className="text-sm text-gray-600">Upload PDF or Word document containing course curriculum</p>
+              </div>
+
               {/* Curriculum Builder */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Curriculum Builder</h3>
+                <h3 className="text-lg font-semibold">Curriculum Builder *</h3>
                 
                 {/* Current Topic */}
                 <Card>
@@ -587,7 +658,7 @@ const APCourseManagement = () => {
 
                     {/* Subtopic Builder */}
                     <div className="space-y-3">
-                      <h4 className="font-medium">Add Subtopic</h4>
+                      <h4 className="font-medium">Add Subtopic *</h4>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
                           <label className="text-sm font-medium">Subtopic Name *</label>
@@ -612,6 +683,7 @@ const APCourseManagement = () => {
                             value={currentSubtopic.duration}
                             onChange={(e) => setCurrentSubtopic({...currentSubtopic, duration: Number(e.target.value)})}
                             min="1"
+                            placeholder="e.g., 30"
                           />
                         </div>
                       </div>
@@ -683,7 +755,7 @@ const APCourseManagement = () => {
                               ))}
                             </div>
                             <div className="mt-2">
-                              <label className="text-sm font-medium">Topic Exam (Excel)</label>
+                              <label className="text-sm font-medium">Topic Exam (Excel - Optional)</label>
                               <Input
                                 type="file"
                                 accept=".xlsx,.xls"
@@ -710,7 +782,7 @@ const APCourseManagement = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Final Exam Excel File (60 questions)</label>
+                        <label className="text-sm font-medium">Final Exam Excel File (60 questions - Optional)</label>
                         <Input
                           type="file"
                           accept=".xlsx,.xls"
