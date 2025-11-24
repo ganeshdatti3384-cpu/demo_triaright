@@ -7,10 +7,13 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Video, Award, Clock, Play, CheckCircle, FileText, Search, MapPin, Building2, Calendar, IndianRupee, Users, Star, Eye, GraduationCap, BarChart3 } from 'lucide-react';
+import { BookOpen, Video, Award, Clock, Play, CheckCircle, FileText, Search, MapPin, Building2, Calendar, IndianRupee, Users, Star, Eye, GraduationCap, BarChart3, Zap, TrendingUp, Shield, Globe, CreditCard, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import APRazorpayPayment from '@/components/internships/APRazorpayPayment';
 
 interface APInternship {
   _id: string;
@@ -33,6 +36,9 @@ interface APInternship {
   status: 'Open' | 'Closed' | 'On Hold';
   postedBy: string;
   createdAt: string;
+  views?: number;
+  applications?: number;
+  rating?: number;
 }
 
 interface APEnrollment {
@@ -75,6 +81,18 @@ interface APCourse {
   createdAt: string;
 }
 
+interface Application {
+  _id: string;
+  internshipId: string;
+  userId: string;
+  status: string;
+  paymentStatus: string;
+  enrollmentId?: string;
+  orderId?: string;
+  enrollmentType?: string;
+  createdAt: string;
+}
+
 interface Topic {
   topicName: string;
   topicCount: number;
@@ -91,6 +109,7 @@ interface Subtopic {
 
 const APStudentDashboard = () => {
   const [enrollments, setEnrollments] = useState<APEnrollment[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [apInternships, setApInternships] = useState<APInternship[]>([]);
   const [courses, setCourses] = useState<APCourse[]>([]);
   const [filteredInternships, setFilteredInternships] = useState<APInternship[]>([]);
@@ -105,14 +124,19 @@ const APStudentDashboard = () => {
   const [filters, setFilters] = useState({
     type: 'all',
     mode: 'all',
-    stream: 'all'
+    stream: 'all',
+    sort: 'newest'
   });
+  const [showPaymentPage, setShowPaymentPage] = useState(false);
+  const [selectedInternship, setSelectedInternship] = useState<APInternship | null>(null);
+  const [applicationId, setApplicationId] = useState<string>('');
   
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     fetchEnrollments();
+    fetchApplications();
     fetchAPInternships();
     fetchCourses();
   }, []);
@@ -155,13 +179,41 @@ const APStudentDashboard = () => {
     }
   };
 
+  const fetchApplications = async () => {
+    if (!isAuthenticated) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/internships/apinternshipmy-applications', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setApplications(data.applications || []);
+      }
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+    }
+  };
+
   const fetchAPInternships = async () => {
     try {
       setLoadingInternships(true);
       const response = await fetch('/api/internships/ap-internships');
       const data = await response.json();
       if (data.success) {
-        const openInternships = data.internships.filter((internship: APInternship) => internship.status === 'Open');
+        // Add mock data for demo like in APExclusiveInternshipsPage
+        const internshipsWithStats = data.internships.map((internship: APInternship) => ({
+          ...internship,
+          views: Math.floor(Math.random() * 1000) + 100,
+          applications: Math.floor(Math.random() * 200) + 50,
+          rating: parseFloat((Math.random() * 1 + 4).toFixed(1)) // Random rating between 4.0 and 5.0
+        }));
+        const openInternships = internshipsWithStats.filter((internship: APInternship) => internship.status === 'Open');
         setApInternships(openInternships);
         setFilteredInternships(openInternships);
       } else {
@@ -207,6 +259,22 @@ const APStudentDashboard = () => {
       return matchesSearch && matchesType && matchesMode && matchesStream;
     });
 
+    // Apply sorting
+    switch (filters.sort) {
+      case 'newest':
+        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+      case 'popular':
+        filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+        break;
+      case 'applications':
+        filtered.sort((a, b) => (b.applications || 0) - (a.applications || 0));
+        break;
+      case 'rating':
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+    }
+
     setFilteredInternships(filtered);
   };
 
@@ -251,7 +319,32 @@ const APStudentDashboard = () => {
     }
   };
 
-  const handleApply = (internship: APInternship) => {
+  const isEnrolled = (internshipId: string) => {
+    return enrollments.some(enrollment => enrollment.internshipId._id === internshipId && enrollment.status === 'active');
+  };
+
+  const hasApplied = (internshipId: string) => {
+    return applications.some(application => 
+      application.internshipId === internshipId
+    );
+  };
+
+  const getApplication = (internshipId: string) => {
+    return applications.find(application => application.internshipId === internshipId);
+  };
+
+  const getApplicationStatus = (internshipId: string) => {
+    const application = getApplication(internshipId);
+    if (!application) return 'not_applied';
+    
+    if (application.enrollmentId) return 'enrolled';
+    if (application.paymentStatus === 'completed') return 'payment_completed';
+    if (application.paymentStatus === 'pending') return 'payment_pending';
+    
+    return 'applied';
+  };
+
+  const handleApply = async (internship: APInternship) => {
     if (!isAuthenticated) {
       toast({
         title: 'Authentication Required',
@@ -280,6 +373,27 @@ const APStudentDashboard = () => {
       return;
     }
 
+    // Check application status
+    const applicationStatus = getApplicationStatus(internship._id);
+    const existingApplication = getApplication(internship._id);
+
+    if (applicationStatus === 'enrolled') {
+      toast({
+        title: 'Already Enrolled',
+        description: 'You are already enrolled in this internship',
+        variant: 'default'
+      });
+      return;
+    }
+
+    if (applicationStatus === 'payment_pending' && internship.mode === 'Paid') {
+      // Show payment page for pending paid applications
+      setSelectedInternship(internship);
+      setApplicationId(existingApplication!._id);
+      setShowPaymentPage(true);
+      return;
+    }
+
     // Check if application deadline has passed
     if (isDeadlinePassed(internship.applicationDeadline)) {
       toast({
@@ -290,17 +404,120 @@ const APStudentDashboard = () => {
       return;
     }
 
-    toast({
-      title: "Application Started",
-      description: `Redirecting to apply for ${internship.title}`,
-    });
-    
-    // Navigate to the AP internships page
-    window.location.href = '/ap-internships';
+    setSelectedInternship(internship);
+
+    // For free internships, enroll directly
+    if (internship.mode === 'Free') {
+      await enrollInFreeInternship(internship);
+    } else {
+      // For paid internships, create application and proceed to payment
+      await createPaidApplication(internship);
+    }
   };
 
-  const isEnrolled = (internshipId: string) => {
-    return enrollments.some(enrollment => enrollment.internshipId._id === internshipId && enrollment.status === 'active');
+  const enrollInFreeInternship = async (internship: APInternship) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/internships/apinternshipapply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          internshipId: internship._id
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: 'Successfully Enrolled!',
+          description: `You have been enrolled in ${internship.title}`,
+          variant: 'default'
+        });
+        
+        // Refresh enrollments and applications
+        await fetchEnrollments();
+        await fetchApplications();
+        
+        // Redirect to enrolled tab
+        setActiveTab('enrolled');
+      } else {
+        throw new Error(data.message || 'Failed to enroll in internship');
+      }
+    } catch (error: any) {
+      console.error('Error enrolling in free internship:', error);
+      toast({
+        title: 'Enrollment Failed',
+        description: error.message || 'Failed to enroll in internship',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const createPaidApplication = async (internship: APInternship) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/internships/apinternshipapply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          internshipId: internship._id
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setApplicationId(data.application._id);
+        
+        // For paid internships, proceed to payment
+        setShowPaymentPage(true);
+        
+        // Refresh applications to get updated status
+        await fetchApplications();
+      } else {
+        throw new Error(data.message || 'Failed to create application');
+      }
+    } catch (error: any) {
+      console.error('Error creating paid application:', error);
+      toast({
+        title: 'Application Failed',
+        description: error.message || 'Failed to create application',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    toast({
+      title: 'Payment Successful!',
+      description: `You have been successfully enrolled in ${selectedInternship?.title}`,
+      variant: 'default'
+    });
+    
+    // Refresh enrollments and applications
+    fetchEnrollments();
+    fetchApplications();
+    
+    // Switch to enrolled tab
+    setActiveTab('enrolled');
+    setShowPaymentPage(false);
+  };
+
+  const handlePaymentBack = () => {
+    setShowPaymentPage(false);
+    setSelectedInternship(null);
+    setApplicationId('');
   };
 
   const isDeadlinePassed = (deadline: string) => {
@@ -351,515 +568,674 @@ const APStudentDashboard = () => {
     );
   };
 
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-3 w-3 ${
+              star <= Math.floor(rating)
+                ? 'text-yellow-400 fill-yellow-400'
+                : star === Math.ceil(rating) && rating % 1 !== 0
+                ? 'text-yellow-400 fill-yellow-400'
+                : 'text-gray-300'
+            }`}
+          />
+        ))}
+        <span className="text-sm font-medium ml-1">{rating}</span>
+      </div>
+    );
+  };
+
   const InternshipCard = ({ internship }: { internship: APInternship }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
     const enrolled = isEnrolled(internship._id);
+    const applicationStatus = getApplicationStatus(internship._id);
+    const application = getApplication(internship._id);
+    const daysLeft = Math.ceil((new Date(internship.applicationDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
     
+    const getButtonText = () => {
+      if (enrolled) return 'Go to Learning';
+      if (applicationStatus === 'payment_pending') return 'Complete Payment';
+      if (applicationStatus === 'payment_completed') return 'Processing...';
+      if (applicationStatus === 'applied') return 'Processing...';
+      if (internship.mode === 'Free') return 'Enroll Free';
+      return 'Enroll Now';
+    };
+
+    const getButtonVariant = () => {
+      if (enrolled) return 'default';
+      if (applicationStatus === 'payment_pending') return 'default';
+      if (deadlinePassed) return 'outline';
+      return 'default';
+    };
+
+    const getButtonStyle = () => {
+      if (enrolled) return 'bg-green-600 hover:bg-green-700';
+      if (applicationStatus === 'payment_pending') return 'bg-orange-600 hover:bg-orange-700';
+      if (deadlinePassed) return '';
+      return 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700';
+    };
+
     return (
-      <Card className="h-full flex flex-col border-2 border-blue-200 hover:border-blue-300 transition-colors">
-        <CardHeader>
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <CardTitle className="text-lg mb-1 line-clamp-2">{internship.title}</CardTitle>
+      <Card className="h-full flex flex-col border-2 border-blue-100 hover:border-blue-300 hover:shadow-xl transition-all duration-300 group overflow-hidden">
+        {/* Popular Badge */}
+        {internship.applications && internship.applications > 100 && (
+          <div className="absolute top-4 right-4 z-10">
+            <Badge className="bg-red-500 text-white hover:bg-red-600">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              Popular
+            </Badge>
+          </div>
+        )}
+        
+        {/* Card Header with Gradient */}
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 pb-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-blue-200 rounded-full -mr-10 -mt-10 opacity-50"></div>
+          <div className="absolute bottom-0 left-0 w-16 h-16 bg-indigo-200 rounded-full -ml-8 -mb-8 opacity-50"></div>
+          
+          <div className="flex justify-between items-start mb-2 relative z-10">
+            <div className="flex-1">
+              <CardTitle className="text-lg mb-1 line-clamp-2 group-hover:text-blue-700 transition-colors">
+                {internship.title}
+              </CardTitle>
               <div className="flex items-center text-sm text-gray-600 mb-2">
                 <Building2 className="h-4 w-4 mr-1" />
-                <span className="line-clamp-1">{internship.companyName}</span>
+                <span className="line-clamp-1 font-medium">{internship.companyName}</span>
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap shadow-sm">
                 <Star className="h-3 w-3 mr-1" />
                 AP Exclusive
               </Badge>
               {enrolled && (
-                <Badge variant="default" className="bg-green-500 text-white">
+                <Badge variant="default" className="bg-green-500 text-white shadow-sm">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Enrolled
                 </Badge>
               )}
+              {applicationStatus === 'payment_pending' && (
+                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 shadow-sm">
+                  <CreditCard className="h-3 w-3 mr-1" />
+                  Payment Pending
+                </Badge>
+              )}
+              {(applicationStatus === 'applied' || applicationStatus === 'payment_completed') && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 shadow-sm">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Processing
+                </Badge>
+              )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 mb-3">
+          
+          <div className="flex flex-wrap gap-2 mb-3 relative z-10">
             {getModeBadge(internship.mode)}
             {getTypeBadge(internship.internshipType)}
-            <Badge variant="outline" className="flex items-center">
+            <Badge variant="outline" className="flex items-center bg-white">
               <MapPin className="h-3 w-3 mr-1" />
               {internship.location}
             </Badge>
           </div>
-          <CardDescription className="line-clamp-3 text-sm">
+
+          {/* Rating and Stats */}
+          <div className="flex items-center justify-between text-sm relative z-10">
+            {internship.rating && renderStars(internship.rating)}
+            <div className="flex items-center gap-4 text-gray-500">
+              <div className="flex items-center">
+                <Eye className="h-3 w-3 mr-1" />
+                {internship.views}
+              </div>
+              <div className="flex items-center">
+                <Users className="h-3 w-3 mr-1" />
+                {internship.applications}
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="flex-grow pt-4">
+          <CardDescription className="line-clamp-3 text-sm mb-4">
             {internship.description}
           </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-grow">
-          <div className="space-y-2 text-sm">
+          
+          <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Duration:</span>
-              <span className="font-medium flex items-center">
-                <Clock className="h-3 w-3 mr-1" />
+              <span className="text-gray-600 flex items-center">
+                <Clock className="h-4 w-4 mr-2" />
+                Duration:
+              </span>
+              <span className="font-medium text-gray-900">
                 {internship.duration}
               </span>
             </div>
+            
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Start Date:</span>
-              <span className="font-medium">
+              <span className="text-gray-600 flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                Start Date:
+              </span>
+              <span className="font-medium text-gray-900">
                 {new Date(internship.startDate).toLocaleDateString()}
               </span>
             </div>
+            
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Apply Before:</span>
-              <span className={`font-medium flex items-center ${deadlinePassed ? 'text-red-600' : 'text-green-600'}`}>
-                <Calendar className="h-3 w-3 mr-1" />
+              <span className="text-gray-600 flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                Apply Before:
+              </span>
+              <span className={`font-medium flex items-center ${deadlinePassed ? 'text-red-600' : daysLeft <= 3 ? 'text-orange-600' : 'text-green-600'}`}>
                 {new Date(internship.applicationDeadline).toLocaleDateString()}
+                {!deadlinePassed && daysLeft <= 7 && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {daysLeft}d left
+                  </Badge>
+                )}
               </span>
             </div>
+            
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Openings:</span>
-              <span className="font-medium flex items-center">
-                <Users className="h-3 w-3 mr-1" />
-                {internship.openings}
+              <span className="text-gray-600 flex items-center">
+                <Users className="h-4 w-4 mr-2" />
+                Openings:
+              </span>
+              <span className="font-medium text-gray-900">
+                {internship.openings} seats
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Stream:</span>
-              <span className="font-medium">{internship.stream}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Term:</span>
-              <span className="font-medium">{internship.term}</span>
-            </div>
+            
             {internship.amount && internship.amount > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Stipend:</span>
+                <span className="text-gray-600 flex items-center">
+                  <IndianRupee className="h-4 w-4 mr-2" />
+                  Amount:
+                </span>
                 <span className="font-medium flex items-center text-green-600">
                   <IndianRupee className="h-3 w-3 mr-1" />
-                  {internship.amount.toLocaleString()}/month
+                  {internship.amount.toLocaleString()}
                 </span>
               </div>
             )}
           </div>
         </CardContent>
-        <CardFooter>
-          {enrolled ? (
-            <Button 
-              className="w-full bg-green-600 hover:bg-green-700" 
-              onClick={() => {
+        
+        <CardFooter className="pt-4 border-t border-gray-100">
+          <Button 
+            className={`w-full shadow-sm ${getButtonStyle()}`}
+            onClick={() => {
+              if (enrolled) {
+                // Find the enrollment and set it as selected, then switch to enrolled tab
                 const enrollment = enrollments.find(e => e.internshipId._id === internship._id);
                 if (enrollment) {
                   setSelectedEnrollment(enrollment);
                   setActiveTab('enrolled');
                 }
-              }}
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              Continue Learning
-            </Button>
-          ) : (
-            <Button 
-              className="w-full" 
-              onClick={() => handleApply(internship)}
-              disabled={deadlinePassed}
-              variant={deadlinePassed ? "outline" : "default"}
-            >
-              {deadlinePassed ? 'Application Closed' : 
-               internship.mode === 'Free' ? 'Apply & Enroll' : 'Apply Now'}
-            </Button>
-          )}
+              } else if (applicationStatus === 'payment_pending') {
+                // Complete payment
+                setSelectedInternship(internship);
+                setApplicationId(application!._id);
+                setShowPaymentPage(true);
+              } else {
+                handleApply(internship);
+              }
+            }}
+            disabled={deadlinePassed || applicationStatus === 'applied' || applicationStatus === 'payment_completed'}
+            variant={getButtonVariant()}
+          >
+            <div className="flex items-center">
+              {enrolled && <BookOpen className="h-4 w-4 mr-2" />}
+              {applicationStatus === 'payment_pending' && <CreditCard className="h-4 w-4 mr-2" />}
+              {internship.mode === 'Free' && !enrolled && applicationStatus !== 'payment_pending' && <Zap className="h-4 w-4 mr-2" />}
+              {internship.mode === 'Paid' && !enrolled && applicationStatus !== 'payment_pending' && <Star className="h-4 w-4 mr-2" />}
+              {getButtonText()}
+            </div>
+          </Button>
         </CardFooter>
       </Card>
     );
   };
 
-  if (loading && loadingInternships && loadingEnrollments) {
+  // Show payment page if applicable
+  if (showPaymentPage && selectedInternship) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <APRazorpayPayment
+        internshipId={selectedInternship._id}
+        internshipTitle={selectedInternship.title}
+        amount={selectedInternship.amount || 0}
+        applicationId={applicationId}
+        onPaymentSuccess={handlePaymentSuccess}
+        onBack={handlePaymentBack}
+      />
+    );
+  }
+
+  if (loading && loadingInternships && loadingEnrollments && !showPaymentPage) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+            <div className="text-center text-gray-600">Loading your dashboard...</div>
           </div>
-          <div className="text-center text-gray-600">Loading your dashboard...</div>
         </div>
-      </div>
+        <Footer />
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My AP Internships Dashboard</h1>
-          <p className="text-gray-600">Track your progress in AP exclusive internship programs</p>
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                  <BookOpen className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">{enrollments.length}</p>
-                  <p className="text-sm text-gray-600">Total Enrollments</p>
-                </div>
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Enhanced Header */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-6">
+              <div className="flex items-center justify-center p-2 bg-blue-600 text-white rounded-full">
+                <GraduationCap className="h-8 w-8" />
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {enrollments.filter(e => e.status === 'completed').length}
-                  </p>
-                  <p className="text-sm text-gray-600">Completed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
-                  <BarChart3 className="h-6 w-6 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {enrollments.length > 0 
-                      ? Math.round(enrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / enrollments.length)
-                      : 0
-                    }%
-                  </p>
-                  <p className="text-sm text-gray-600">Avg Progress</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-                  <Award className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {enrollments.filter(e => e.certificateIssued).length}
-                  </p>
-                  <p className="text-sm text-gray-600">Certificates</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            <h1 className="text-5xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              My AP Internships Dashboard
+            </h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              Track your progress, manage enrollments, and discover new AP exclusive internship opportunities.
+            </p>
+          </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="enrolled" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              My Enrolled Internships ({enrollments.length})
-            </TabsTrigger>
-            <TabsTrigger value="browse" className="flex items-center gap-2">
-              <Star className="h-4 w-4" />
-              Browse AP Internships ({apInternships.length})
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Enrolled Internships Tab */}
-          <TabsContent value="enrolled" className="space-y-6">
-            {loadingEnrollments ? (
-              <Card>
-                <CardContent className="flex justify-center items-center py-8">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                    <p>Loading your enrollments...</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : enrollments.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No enrollments yet</h3>
-                  <p className="text-gray-600 mb-6">You haven't enrolled in any AP internship programs.</p>
-                  <Button onClick={() => setActiveTab('browse')}>
-                    Browse AP Internships
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-6">
-                {enrollments.map((enrollment) => {
-                  const course = getCourseForEnrollment(enrollment);
-                  return (
-                    <Card key={enrollment._id} className="border-l-4 border-l-blue-500">
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle>{enrollment.internshipId.title}</CardTitle>
-                            <CardDescription>
-                              {enrollment.internshipId.companyName} • {enrollment.internshipId.duration}
-                              {enrollment.internshipId.mode === 'Paid' && ' • Paid Program'}
-                            </CardDescription>
-                          </div>
-                          <div className="text-right">
-                            {getStatusBadge(enrollment.status)}
-                            <div className="text-sm text-gray-500 mt-1">
-                              Enrolled: {new Date(enrollment.enrolledAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {/* Progress Bar */}
-                          {enrollment.progress !== undefined && (
-                            <div>
-                              <div className="flex justify-between text-sm mb-2">
-                                <span>Overall Progress</span>
-                                <span>{enrollment.progress}%</span>
-                              </div>
-                              <Progress value={enrollment.progress} className="h-2" />
-                            </div>
-                          )}
-
-                          {/* Course Content */}
-                          {course && (
-                            <div className="space-y-3">
-                              <h4 className="font-semibold">Course Content</h4>
-                              {course.curriculum.map((topic, index) => (
-                                <div key={index} className="border rounded-lg p-4">
-                                  <div className="flex justify-between items-center mb-3">
-                                    <h5 className="font-medium">{topic.topicName}</h5>
-                                    <Badge variant="outline" className="text-xs">
-                                      {topic.subtopics.length} lessons
-                                    </Badge>
-                                  </div>
-                                  
-                                  <div className="space-y-2">
-                                    {topic.subtopics.map((subtopic, subIndex) => (
-                                      <div
-                                        key={subIndex}
-                                        className="flex justify-between items-center p-2 rounded bg-gray-50"
-                                      >
-                                        <div className="flex items-center space-x-3">
-                                          <Play className="h-4 w-4 text-gray-400" />
-                                          <span className="text-sm">{subtopic.name}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-3">
-                                          <span className="text-xs text-gray-600">{subtopic.duration} mins</span>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => playVideo(enrollment, course, topic.topicName, subtopic)}
-                                          >
-                                            <Video className="h-3 w-3 mr-1" />
-                                            Watch
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Certificate Section */}
-                          {enrollment.certificateIssued && enrollment.certificateUrl && (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <Award className="h-5 w-5 text-green-600 mr-2" />
-                                  <div>
-                                    <p className="font-medium text-green-800">Certificate Available</p>
-                                    <p className="text-sm text-green-600">Download your completion certificate</p>
-                                  </div>
-                                </div>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => window.open(enrollment.certificateUrl, '_blank')}
-                                >
-                                  <FileText className="h-4 w-4 mr-1" />
-                                  View Certificate
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                      <CardFooter className="flex justify-between border-t pt-4">
-                        <div className="text-sm text-gray-600">
-                          Last accessed: {enrollment.lastAccessed ? new Date(enrollment.lastAccessed).toLocaleDateString() : 'Never'}
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_blank')}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View Details
-                          </Button>
-                          {enrollment.status === 'active' && (
-                            <Button 
-                              size="sm"
-                              onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_blank')}
-                            >
-                              <Play className="h-4 w-4 mr-1" />
-                              Continue Learning
-                            </Button>
-                          )}
-                        </div>
-                      </CardFooter>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Browse AP Internships Tab */}
-          <TabsContent value="browse" className="space-y-6">
-            {/* Search and Filters */}
-            <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="pt-6">
-                <div className="flex flex-col lg:flex-row gap-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Search AP internships by title, company, or description..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 bg-white"
-                    />
-                  </div>
-                  <div className="flex gap-4 flex-wrap">
-                    <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
-                      <SelectTrigger className="w-40 bg-white">
-                        <SelectValue placeholder="Internship Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="online">Online</SelectItem>
-                        <SelectItem value="offline">Offline</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={filters.mode} onValueChange={(value) => setFilters({...filters, mode: value})}>
-                      <SelectTrigger className="w-32 bg-white">
-                        <SelectValue placeholder="Mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Modes</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="free">Free</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={filters.stream} onValueChange={(value) => setFilters({...filters, stream: value})}>
-                      <SelectTrigger className="w-40 bg-white">
-                        <SelectValue placeholder="Stream" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Streams</SelectItem>
-                        <SelectItem value="engineering">Engineering</SelectItem>
-                        <SelectItem value="computer science">Computer Science</SelectItem>
-                        <SelectItem value="business">Business</SelectItem>
-                        <SelectItem value="arts">Arts</SelectItem>
-                        <SelectItem value="science">Science</SelectItem>
-                        <SelectItem value="medical">Medical</SelectItem>
-                        <SelectItem value="law">Law</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+          {/* Enhanced Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white overflow-hidden">
+              <CardContent className="pt-8 pb-6 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                <div className="text-4xl font-bold mb-2">{enrollments.length}</div>
+                <p className="text-blue-100">Total Enrollments</p>
+                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
               </CardContent>
             </Card>
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white overflow-hidden">
+              <CardContent className="pt-8 pb-6 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                <div className="text-4xl font-bold mb-2">
+                  {enrollments.filter(e => e.status === 'completed').length}
+                </div>
+                <p className="text-green-100">Completed</p>
+                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-orange-500 to-red-600 text-white overflow-hidden">
+              <CardContent className="pt-8 pb-6 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                <div className="text-4xl font-bold mb-2">
+                  {enrollments.length > 0 
+                    ? Math.round(enrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / enrollments.length)
+                    : 0
+                  }%
+                </div>
+                <p className="text-orange-100">Avg Progress</p>
+                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white overflow-hidden">
+              <CardContent className="pt-8 pb-6 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                <div className="text-4xl font-bold mb-2">
+                  {enrollments.filter(e => e.certificateIssued).length}
+                </div>
+                <p className="text-purple-100">Certificates</p>
+                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
+              </CardContent>
+            </Card>
+          </div>
 
-            {/* Internships Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredInternships.map((internship) => (
-                <InternshipCard key={internship._id} internship={internship} />
-              ))}
-            </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+            <TabsList className="grid w-full grid-cols-2 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-2xl p-2 shadow-lg">
+              <TabsTrigger 
+                value="enrolled" 
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+              >
+                <BookOpen className="h-4 w-4 mr-2" />
+                My Enrolled Internships ({enrollments.length})
+              </TabsTrigger>
+              <TabsTrigger 
+                value="browse" 
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+              >
+                <Star className="h-4 w-4 mr-2" />
+                Browse AP Internships ({apInternships.length})
+              </TabsTrigger>
+            </TabsList>
 
-            {filteredInternships.length === 0 && (
-              <div className="text-center py-12">
-                <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No AP internships found</h3>
-                <p className="text-gray-600">Try adjusting your search criteria or check back later for new opportunities.</p>
-              </div>
-            )}
-
-            {/* Stats Section */}
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="border-blue-200 bg-blue-50">
-                <CardContent className="pt-6 text-center">
-                  <div className="text-2xl font-bold text-blue-600">{apInternships.length}</div>
-                  <p className="text-sm text-gray-600">AP Exclusive Internships</p>
-                </CardContent>
-              </Card>
-              <Card className="border-green-200 bg-green-50">
-                <CardContent className="pt-6 text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {apInternships.filter(i => i.mode === 'Free').length}
-                  </div>
-                  <p className="text-sm text-gray-600">Free Opportunities</p>
-                </CardContent>
-              </Card>
-              <Card className="border-purple-200 bg-purple-50">
-                <CardContent className="pt-6 text-center">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {apInternships.filter(i => i.internshipType === 'Online').length}
-                  </div>
-                  <p className="text-sm text-gray-600">Online Programs</p>
-                </CardContent>
-              </Card>
-              <Card className="border-orange-200 bg-orange-50">
-                <CardContent className="pt-6 text-center">
-                  <div className="text-2xl font-bold text-orange-600">
-                    {[...new Set(apInternships.map(i => i.stream))].length}
-                  </div>
-                  <p className="text-sm text-gray-600">Different Streams</p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Video Player Dialog */}
-        {showVideoPlayer && currentVideo && (
-          <Dialog open={showVideoPlayer} onOpenChange={setShowVideoPlayer}>
-            <DialogContent className="max-w-4xl">
-              <DialogHeader>
-                <DialogTitle>{currentVideo.title}</DialogTitle>
-              </DialogHeader>
-              <div className="aspect-video bg-black rounded-lg">
-                <div className="w-full h-full flex items-center justify-center text-white">
-                  <div className="text-center">
-                    <Video className="h-16 w-16 mx-auto mb-4" />
-                    <p>Video Player - {currentVideo.title}</p>
-                    <p className="text-sm text-gray-400 mt-2">Video URL: {currentVideo.link}</p>
+            {/* Enrolled Internships Tab */}
+            <TabsContent value="enrolled" className="space-y-6">
+              {loadingEnrollments ? (
+                <Card className="border-0 shadow-xl">
+                  <CardContent className="flex justify-center items-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p>Loading your enrollments...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : enrollments.length === 0 ? (
+                <Card className="border-0 shadow-xl text-center py-16">
+                  <CardContent>
+                    <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <BookOpen className="h-12 w-12 text-blue-600" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">No enrollments yet</h3>
+                    <p className="text-gray-600 text-lg mb-6 max-w-md mx-auto">
+                      You haven't enrolled in any AP internship programs yet.
+                    </p>
                     <Button 
-                      className="mt-4" 
-                      onClick={() => window.open(currentVideo.link, '_blank')}
+                      onClick={() => setActiveTab('browse')}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                     >
-                      Open Video in New Tab
+                      <Star className="h-4 w-4 mr-2" />
+                      Browse AP Internships
                     </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-6">
+                  {enrollments.map((enrollment) => {
+                    const course = getCourseForEnrollment(enrollment);
+                    return (
+                      <Card key={enrollment._id} className="border-l-4 border-l-blue-500 border-0 shadow-lg hover:shadow-xl transition-all">
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-xl">{enrollment.internshipId.title}</CardTitle>
+                              <CardDescription className="text-base">
+                                {enrollment.internshipId.companyName} • {enrollment.internshipId.duration}
+                                {enrollment.internshipId.mode === 'Paid' && ' • Paid Program'}
+                              </CardDescription>
+                            </div>
+                            <div className="text-right">
+                              {getStatusBadge(enrollment.status)}
+                              <div className="text-sm text-gray-500 mt-1">
+                                Enrolled: {new Date(enrollment.enrolledAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {/* Progress Bar */}
+                            {enrollment.progress !== undefined && (
+                              <div>
+                                <div className="flex justify-between text-sm mb-2">
+                                  <span>Overall Progress</span>
+                                  <span>{enrollment.progress}%</span>
+                                </div>
+                                <Progress value={enrollment.progress} className="h-3 bg-gray-200">
+                                  <div 
+                                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" 
+                                    style={{ width: `${enrollment.progress}%` }}
+                                  />
+                                </Progress>
+                              </div>
+                            )}
+
+                            {/* Course Content */}
+                            {course && (
+                              <div className="space-y-3">
+                                <h4 className="font-semibold text-lg">Course Content</h4>
+                                {course.curriculum.map((topic, index) => (
+                                  <div key={index} className="border-2 border-gray-100 rounded-xl p-4 hover:border-blue-200 transition-colors">
+                                    <div className="flex justify-between items-center mb-3">
+                                      <h5 className="font-medium text-base">{topic.topicName}</h5>
+                                      <Badge variant="outline" className="text-xs bg-blue-50">
+                                        {topic.subtopics.length} lessons
+                                      </Badge>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      {topic.subtopics.map((subtopic, subIndex) => (
+                                        <div
+                                          key={subIndex}
+                                          className="flex justify-between items-center p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors"
+                                        >
+                                          <div className="flex items-center space-x-3">
+                                            <Play className="h-4 w-4 text-gray-400" />
+                                            <span className="text-sm">{subtopic.name}</span>
+                                          </div>
+                                          <div className="flex items-center space-x-3">
+                                            <span className="text-xs text-gray-600">{subtopic.duration} mins</span>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => playVideo(enrollment, course, topic.topicName, subtopic)}
+                                              className="bg-white hover:bg-blue-50"
+                                            >
+                                              <Video className="h-3 w-3 mr-1" />
+                                              Watch
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Certificate Section */}
+                            {enrollment.certificateIssued && enrollment.certificateUrl && (
+                              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    <Award className="h-6 w-6 text-green-600 mr-3" />
+                                    <div>
+                                      <p className="font-medium text-green-800 text-lg">Certificate Available</p>
+                                      <p className="text-sm text-green-600">Download your completion certificate</p>
+                                    </div>
+                                  </div>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => window.open(enrollment.certificateUrl, '_blank')}
+                                    className="border-green-300 text-green-700 hover:bg-green-50"
+                                  >
+                                    <FileText className="h-4 w-4 mr-1" />
+                                    View Certificate
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                        <CardFooter className="flex justify-between border-t border-gray-100 pt-4">
+                          <div className="text-sm text-gray-600">
+                            Last accessed: {enrollment.lastAccessed ? new Date(enrollment.lastAccessed).toLocaleDateString() : 'Never'}
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_blank')}
+                              className="border-gray-300"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Details
+                            </Button>
+                            {enrollment.status === 'active' && (
+                              <Button 
+                                size="sm"
+                                onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_blank')}
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                              >
+                                <Play className="h-4 w-4 mr-1" />
+                                Continue Learning
+                              </Button>
+                            )}
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Browse AP Internships Tab */}
+            <TabsContent value="browse" className="space-y-6">
+              {/* Enhanced Search and Filters */}
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-4 top-3 h-5 w-5 text-gray-400" />
+                      <Input
+                        placeholder="Search AP internships by title, company, or description..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-12 pr-4 py-3 bg-white border-2 border-gray-200 focus:border-blue-500 rounded-xl text-lg shadow-sm"
+                      />
+                    </div>
+                    <div className="flex gap-4 flex-wrap">
+                      <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
+                        <SelectTrigger className="w-48 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
+                          <SelectValue placeholder="Internship Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="online">Online</SelectItem>
+                          <SelectItem value="offline">Offline</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filters.mode} onValueChange={(value) => setFilters({...filters, mode: value})}>
+                        <SelectTrigger className="w-40 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
+                          <SelectValue placeholder="Mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Modes</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="free">Free</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filters.sort} onValueChange={(value) => setFilters({...filters, sort: value})}>
+                        <SelectTrigger className="w-44 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
+                          <SelectValue placeholder="Sort By" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="newest">Newest First</SelectItem>
+                          <SelectItem value="popular">Most Popular</SelectItem>
+                          <SelectItem value="applications">Most Applications</SelectItem>
+                          <SelectItem value="rating">Highest Rated</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Internships Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredInternships.map((internship) => (
+                  <InternshipCard key={internship._id} internship={internship} />
+                ))}
+              </div>
+
+              {filteredInternships.length === 0 && (
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <BookOpen className="h-12 w-12 text-blue-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">No AP internships found</h3>
+                  <p className="text-gray-600 text-lg max-w-md mx-auto">
+                    Try adjusting your search criteria or check back later for new opportunities.
+                  </p>
+                </div>
+              )}
+
+              {/* Enhanced Stats Section */}
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white overflow-hidden">
+                  <CardContent className="pt-8 pb-6 text-center relative">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                    <div className="text-4xl font-bold">{apInternships.length}</div>
+                    <p className="text-blue-100">AP Exclusive Internships</p>
+                    <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
+                  </CardContent>
+                </Card>
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white overflow-hidden">
+                  <CardContent className="pt-8 pb-6 text-center relative">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                    <div className="text-4xl font-bold">
+                      {apInternships.filter(i => i.mode === 'Free').length}
+                    </div>
+                    <p className="text-green-100">Free Opportunities</p>
+                    <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
+                  </CardContent>
+                </Card>
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white overflow-hidden">
+                  <CardContent className="pt-8 pb-6 text-center relative">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                    <div className="text-4xl font-bold">
+                      {apInternships.filter(i => i.internshipType === 'Online').length}
+                    </div>
+                    <p className="text-purple-100">Online Programs</p>
+                    <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
+                  </CardContent>
+                </Card>
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-orange-500 to-red-600 text-white overflow-hidden">
+                  <CardContent className="pt-8 pb-6 text-center relative">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                    <div className="text-4xl font-bold">
+                      {[...new Set(apInternships.map(i => i.stream))].length}
+                    </div>
+                    <p className="text-orange-100">Different Streams</p>
+                    <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* Video Player Dialog */}
+          {showVideoPlayer && currentVideo && (
+            <Dialog open={showVideoPlayer} onOpenChange={setShowVideoPlayer}>
+              <DialogContent className="max-w-4xl bg-white rounded-2xl">
+                <DialogHeader>
+                  <DialogTitle className="text-xl">{currentVideo.title}</DialogTitle>
+                </DialogHeader>
+                <div className="aspect-video bg-black rounded-xl">
+                  <div className="w-full h-full flex items-center justify-center text-white">
+                    <div className="text-center">
+                      <Video className="h-16 w-16 mx-auto mb-4" />
+                      <p>Video Player - {currentVideo.title}</p>
+                      <p className="text-sm text-gray-400 mt-2">Video URL: {currentVideo.link}</p>
+                      <Button 
+                        className="mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                        onClick={() => window.open(currentVideo.link, '_blank')}
+                      >
+                        Open Video in New Tab
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={() => setShowVideoPlayer(false)}>Close</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={() => setShowVideoPlayer(false)}
+                    variant="outline"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 };
 
