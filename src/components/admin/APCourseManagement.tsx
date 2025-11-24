@@ -82,6 +82,8 @@ const APCourseManagement = () => {
     link: '',
     duration: 0
   });
+  const [topicExamFiles, setTopicExamFiles] = useState<{[key: string]: File}>({});
+  const [finalExamFile, setFinalExamFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -156,6 +158,8 @@ const APCourseManagement = () => {
 
     try {
       const formDataToSend = new FormData();
+      
+      // Append all form fields
       formDataToSend.append('internshipId', formData.internshipId);
       formDataToSend.append('title', formData.title);
       formDataToSend.append('stream', formData.stream);
@@ -167,19 +171,13 @@ const APCourseManagement = () => {
       formDataToSend.append('curriculum', JSON.stringify(formData.curriculum));
 
       // Add topic exam files
-      formData.curriculum.forEach((topic, index) => {
-        const examFileInput = document.getElementById(`topicExam_${index}`) as HTMLInputElement;
-        if (examFileInput?.files?.[0]) {
-          formDataToSend.append(`topicExam_${topic.topicName}`, examFileInput.files[0]);
-        }
+      Object.entries(topicExamFiles).forEach(([topicName, file]) => {
+        formDataToSend.append(`topicExam_${topicName}`, file);
       });
 
       // Add final exam file if exists
-      if (formData.hasFinalExam) {
-        const finalExamInput = document.getElementById('finalExam') as HTMLInputElement;
-        if (finalExamInput?.files?.[0]) {
-          formDataToSend.append('finalExam', finalExamInput.files[0]);
-        }
+      if (formData.hasFinalExam && finalExamFile) {
+        formDataToSend.append('finalExam', finalExamFile);
       }
 
       const response = await fetch('/api/internships/apcourses', {
@@ -359,6 +357,17 @@ const APCourseManagement = () => {
     }));
   };
 
+  const handleTopicExamFileChange = (topicName: string, file: File) => {
+    setTopicExamFiles(prev => ({
+      ...prev,
+      [topicName]: file
+    }));
+  };
+
+  const handleFinalExamFileChange = (file: File) => {
+    setFinalExamFile(file);
+  };
+
   const resetForm = () => {
     setFormData({
       internshipId: '',
@@ -381,6 +390,8 @@ const APCourseManagement = () => {
       link: '',
       duration: 0
     });
+    setTopicExamFiles({});
+    setFinalExamFile(null);
     setSelectedCourse(null);
   };
 
@@ -674,10 +685,14 @@ const APCourseManagement = () => {
                             <div className="mt-2">
                               <label className="text-sm font-medium">Topic Exam (Excel)</label>
                               <Input
-                                id={`topicExam_${index}`}
                                 type="file"
                                 accept=".xlsx,.xls"
                                 className="mt-1"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    handleTopicExamFileChange(topic.topicName, e.target.files[0]);
+                                  }
+                                }}
                               />
                             </div>
                           </div>
@@ -697,9 +712,13 @@ const APCourseManagement = () => {
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Final Exam Excel File (60 questions)</label>
                         <Input
-                          id="finalExam"
                           type="file"
                           accept=".xlsx,.xls"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                              handleFinalExamFileChange(e.target.files[0]);
+                            }
+                          }}
                         />
                         <p className="text-sm text-gray-600">
                           Upload Excel file with 60 questions for final exam
