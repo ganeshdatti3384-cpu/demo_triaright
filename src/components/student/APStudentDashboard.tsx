@@ -143,6 +143,12 @@ const APStudentDashboard = () => {
     filterInternships();
   }, [apInternships, searchTerm, filters]);
 
+  // Debug effect to check enrollments state
+  useEffect(() => {
+    console.log('Enrollments state:', enrollments);
+    console.log('Loading enrollments:', loadingEnrollments);
+  }, [enrollments, loadingEnrollments]);
+
   const fetchEnrollments = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -152,15 +158,26 @@ const APStudentDashboard = () => {
 
     try {
       setLoadingEnrollments(true);
-      const response = await fetch('/api/internships/ap-enrollments/my', {
+      // FIXED: Updated endpoint to match backend
+      const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      // Add better error handling
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('Enrollments API response:', data); // Debug log
+      
       if (data.success) {
-        setEnrollments(data.enrollments || []);
+        // Make sure the data structure matches
+        setEnrollments(data.enrollments || data.data || []);
       } else {
+        console.error('API returned success: false', data);
         setEnrollments([]);
       }
     } catch (error) {
@@ -189,12 +206,21 @@ const APStudentDashboard = () => {
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       if (data.success) {
         setApplications(data.applications || []);
+      } else {
+        console.error('Applications API error:', data);
+        setApplications([]);
       }
     } catch (error) {
       console.error('Error fetching applications:', error);
+      setApplications([]);
     }
   };
 
@@ -202,6 +228,11 @@ const APStudentDashboard = () => {
     try {
       setLoadingInternships(true);
       const response = await fetch('/api/internships/ap-internships');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       if (data.success) {
         // Add mock data for demo like in APExclusiveInternshipsPage
@@ -215,6 +246,7 @@ const APStudentDashboard = () => {
         setApInternships(openInternships);
         setFilteredInternships(openInternships);
       } else {
+        console.error('AP Internships API error:', data);
         setApInternships([]);
         setFilteredInternships([]);
       }
@@ -281,7 +313,8 @@ const APStudentDashboard = () => {
     if (!token) return;
 
     try {
-      const response = await fetch('/api/internships/ap-enrollments/progress', {
+      // FIXED: Updated progress endpoint
+      const response = await fetch('/api/internships/apinternshipenrollment-progress', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
