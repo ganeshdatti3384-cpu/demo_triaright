@@ -1,94 +1,186 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { 
   Clock, 
+  AlertCircle, 
   CheckCircle2, 
-  AlertCircle,
-  Award,
-  Loader2
+  ArrowLeft,
+  BookOpen,
+  Award
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
+import Navbar from '@/components/Navbar';
 
 interface Question {
+  _id: string;
   questionText: string;
   options: string[];
   type: 'easy' | 'medium' | 'hard';
-  correctAnswer?: string;
   description?: string;
 }
 
-interface ExamResult {
-  message: string;
-  currentScore: number;
-  bestScore: number;
-  attemptNumber: number;
-  maxAttempts: number;
-  remainingAttempts: number;
-  isPassed: boolean;
-  canRetake: boolean;
-}
-
-interface ExamInterfaceProps {
+interface ExamDetails {
   examId: string;
-  courseId?: string;
-  onExamComplete: (result: ExamResult) => void;
+  courseName: string;
+  maxAttempts: number;
+  totalQuestions: number;
+  userAttemptInfo: {
+    totalAttempts: number;
+    remainingAttempts: number;
+    bestScore: number;
+    canTakeExam: boolean;
+    isPassed: boolean;
+    lastAttempt: string | null;
+  } | null;
 }
 
-const ExamInterface: React.FC<ExamInterfaceProps> = ({ examId, courseId, onExamComplete }) => {
+const ExamInterface = () => {
+  const { stream } = useParams<{ stream: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
+  
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [examDetails, setExamDetails] = useState<ExamDetails | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<{ [key: number]: string }>({});
+  const [answers, setAnswers] = useState<{ [key: string]: string }>({});
+  const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes in seconds
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes
-  const [showResults, setShowResults] = useState(false);
-  const [examResult, setExamResult] = useState<ExamResult | null>(null);
+  const [examStarted, setExamStarted] = useState(false);
 
   useEffect(() => {
-    fetchQuestions();
-    startTimer();
-  }, [examId]);
+    loadExamData();
+  }, [stream]);
 
-  const fetchQuestions = async () => {
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (examStarted && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            handleAutoSubmit();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => clearInterval(timer);
+  }, [examStarted, timeLeft]);
+
+  const loadExamData = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await pack365Api.getExamQuestions(examId, token || '');
-      setQuestions(response.questions || []);
+      if (!token) {
+        toast({ title: 'Authentication Required', variant: 'destructive' });
+        navigate('/login');
+        return;
+      }
+
+      // Get user enrollments to check eligibility
+      const enrollmentResponse = await pack365Api.getMyEnrollments(token);
+      if (!enrollmentResponse.success) {
+        throw new Error('Failed to fetch enrollment data');
+      }
+
+      const streamEnrollment = enrollmentResponse.enrollments.find(
+        (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
+      );
+
+      if (!streamEnrollment) {
+        toast({
+          title: 'Not Enrolled',
+          description: 'You are not enrolled in this stream.',
+          variant: 'destructive'
+        });
+        navigate(`/pack365-learning/${stream}`);
+        return;
+      }
+
+      // Check if user has completed at least 80%
+      if (streamEnrollment.totalWatchedPercentage < 80) {
+        toast({
+          title: 'Not Eligible',
+          description: `You need to complete at least 80% of the stream to take the exam. Current progress: ${Math.round(streamEnrollment.totalWatchedPercentage)}%`,
+          variant: 'destructive'
+        });
+        navigate(`/pack365-learning/${stream}`);
+        return;
+      }
+
+      // Get available exams
+      const availableExamsResponse = await pack365Api.getAvailableExamsForUser(token);
+      if (!availableExamsResponse || !Array.isArray(availableExamsResponse.exams)) {
+        throw new Error('No exams available for this stream');
+      }
+
+      // Find exam for current stream
+      const streamExam = availableExamsResponse.exams.find((exam: any) => {
+        // Match by stream or course ID
+        return exam.stream?.toLowerCase() === stream?.toLowerCase() || 
+               exam.courseId === streamEnrollment.courseId;
+      });
+
+      if (!streamExam) {
+        throw new Error('No exam found for this stream');
+      }
+
+      // Get exam details
+      const examDetailsResponse = await pack365Api.getExamDetails(token, streamExam.examId);
+      if (!examDetailsResponse.success) {
+        throw new Error('Failed to load exam details');
+      }
+
+      setExamDetails(examDetailsResponse.examDetails);
+
+      // Check if user can take exam
+      if (examDetailsResponse.examDetails.userAttemptInfo && 
+          !examDetailsResponse.examDetails.userAttemptInfo.canTakeExam) {
+        toast({
+          title: 'Attempts Exhausted',
+          description: 'You have used all your attempts for this exam.',
+          variant: 'destructive'
+        });
+        navigate(`/pack365-learning/${stream}`);
+        return;
+      }
+
+      // Load questions (without answers)
+      const questionsResponse = await pack365Api.getExamQuestions(token, streamExam.examId);
+      if (!questionsResponse.questions) {
+        throw new Error('Failed to load exam questions');
+      }
+
+      setQuestions(questionsResponse.questions);
+      setExamStarted(true);
+
     } catch (error: any) {
+      console.error('Error loading exam:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load exam questions',
+        description: error.message || 'Failed to load exam',
         variant: 'destructive'
       });
+      navigate(`/pack365-learning/${stream}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const startTimer = () => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleAutoSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const handleAnswerSelect = (value: string) => {
+  const handleAnswerSelect = (questionId: string, answer: string) => {
     setAnswers(prev => ({
       ...prev,
-      [currentQuestion]: value
+      [questionId]: answer
     }));
   };
 
@@ -104,37 +196,93 @@ const ExamInterface: React.FC<ExamInterfaceProps> = ({ examId, courseId, onExamC
     }
   };
 
-  const handleAutoSubmit = async () => {
-    await submitExam();
+  const calculateScore = () => {
+    if (!questions.length) return 0;
+    
+    // In a real implementation, this would be calculated on the backend
+    // For now, we'll return a placeholder
+    const answeredCount = Object.keys(answers).length;
+    return Math.round((answeredCount / questions.length) * 100);
   };
 
-  const submitExam = async () => {
+  const handleAutoSubmit = async () => {
+    if (!examDetails) return;
+    
+    setSubmitting(true);
     try {
-      setSubmitting(true);
-      const token = localStorage.getItem('token');
-      
-      // Calculate score
-      const correctAnswers = questions.filter((question, index) => 
-        answers[index] === question.correctAnswer
-      ).length;
-      
-      const score = (correctAnswers / questions.length) * 100;
-      const timeTaken = 3600 - timeLeft;
-
-      const response = await pack365Api.submitExam(token || '', {
-        examId,
-        marks: Math.round(score),
-        timeTaken,
-        courseId: courseId || ''
-      });
-
-      setExamResult(response);
-      setShowResults(true);
-      onExamComplete(response);
-    } catch (error: any) {
+      await submitExamToBackend();
       toast({
-        title: 'Error',
-        description: 'Failed to submit exam',
+        title: 'Time Up!',
+        description: 'Exam automatically submitted due to time expiration.',
+        variant: 'default'
+      });
+    } catch (error: any) {
+      console.error('Error auto-submitting exam:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitExamToBackend = async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !examDetails) return;
+
+    const score = calculateScore();
+    const timeTaken = 3600 - timeLeft; // Time spent in seconds
+
+    const submission = {
+      examId: examDetails.examId,
+      courseId: '', // This should come from enrollment
+      marks: score,
+      timeTaken: Math.floor(timeTaken / 60) // Convert to minutes
+    };
+
+    const result = await pack365Api.submitExam(token, submission);
+    
+    if (result && result.message) {
+      return result;
+    }
+    throw new Error('Submission failed');
+  };
+
+  const handleSubmit = async () => {
+    if (!examDetails) return;
+
+    const unansweredQuestions = questions.filter(q => !answers[q._id]).length;
+
+    if (unansweredQuestions > 0) {
+      const confirmSubmit = window.confirm(
+        `You have ${unansweredQuestions} unanswered questions. Are you sure you want to submit?`
+      );
+      if (!confirmSubmit) return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await submitExamToBackend();
+      
+      const examResult = {
+        score: calculateScore(),
+        passed: calculateScore() >= 50, // Assuming 50% passing
+        totalQuestions: questions.length,
+        correctAnswers: Math.round((calculateScore() / 100) * questions.length),
+        timeSpent: 3600 - timeLeft,
+        attemptNumber: result.attemptNumber || 1,
+        submittedAt: new Date().toISOString(),
+        answers: answers
+      };
+      
+      navigate(`/exam-result/${stream}`, { 
+        state: { 
+          result: examResult,
+          examDetails: examDetails
+        } 
+      });
+    } catch (error: any) {
+      console.error('Error submitting exam:', error);
+      toast({
+        title: 'Submission Failed',
+        description: error.message || 'Failed to submit exam',
         variant: 'destructive'
       });
     } finally {
@@ -143,246 +291,265 @@ const ExamInterface: React.FC<ExamInterfaceProps> = ({ examId, courseId, onExamC
   };
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getDifficultyColor = (type: string) => {
-    switch (type) {
-      case 'easy': return 'bg-green-100 text-green-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'hard': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading exam questions...</p>
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Loading exam...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  if (showResults && examResult) {
+  if (!examDetails || !questions.length) {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardContent className="p-6 text-center">
-          <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-            examResult.isPassed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-          }`}>
-            {examResult.isPassed ? (
-              <Award className="h-8 w-8" />
-            ) : (
-              <AlertCircle className="h-8 w-8" />
-            )}
-          </div>
-          
-          <h2 className="text-2xl font-bold mb-2">
-            {examResult.isPassed ? 'Exam Passed! 🎉' : 'Exam Failed'}
-          </h2>
-          
-          <div className="space-y-3 mb-6">
-            <div className="flex justify-between">
-              <span>Your Score:</span>
-              <span className="font-semibold">{examResult.currentScore}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Best Score:</span>
-              <span className="font-semibold">{examResult.bestScore}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Attempt:</span>
-              <span className="font-semibold">{examResult.attemptNumber} of {examResult.maxAttempts}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Remaining Attempts:</span>
-              <span className="font-semibold">{examResult.remainingAttempts}</span>
-            </div>
-          </div>
-
-          {examResult.isPassed ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-              <p className="text-green-800">
-                Congratulations! You have successfully passed the exam.
-              </p>
-            </div>
-          ) : examResult.canRetake ? (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-yellow-800">
-                You can retake the exam. You have {examResult.remainingAttempts} attempts remaining.
-              </p>
-            </div>
-          ) : (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <p className="text-red-800">
-                You have used all your attempts. Please contact support.
-              </p>
-            </div>
-          )}
-
-          <Button onClick={() => window.location.reload()} className="w-full">
-            {examResult.canRetake && !examResult.isPassed ? 'Retake Exam' : 'Close'}
-          </Button>
-        </CardContent>
-      </Card>
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <Card className="max-w-md w-full">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Exam Not Available</h2>
+                <p className="text-gray-600 mb-4">The exam for this stream is not available at the moment.</p>
+                <Button onClick={() => navigate(`/pack365-learning/${stream}`)}>
+                  Back to Learning
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </>
     );
   }
 
-  if (questions.length === 0) {
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardContent className="p-6 text-center">
-          <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Questions Available</h3>
-          <p className="text-gray-600">There are no questions available for this exam.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const currentQuestionData = questions[currentQuestion];
+  const currentQ = questions[currentQuestion];
+  const progress = ((currentQuestion + 1) / questions.length) * 100;
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Exam Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-xl font-bold">Exam in Progress</h2>
-              <p className="text-gray-600">
-                Question {currentQuestion + 1} of {questions.length}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                {formatTime(timeLeft)}
-              </Badge>
-              <Progress 
-                value={((currentQuestion + 1) / questions.length) * 100} 
-                className="w-24" 
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Question Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <CardTitle className="text-lg">
-              {currentQuestionData.questionText}
-            </CardTitle>
-            <Badge className={getDifficultyColor(currentQuestionData.type)}>
-              {currentQuestionData.type.toUpperCase()}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <RadioGroup
-            value={answers[currentQuestion] || ''}
-            onValueChange={handleAnswerSelect}
-            className="space-y-3"
-          >
-            {currentQuestionData.options.map((option, index) => (
-              <div key={index} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                <RadioGroupItem value={option} id={`option-${index}`} />
-                <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
-                  {option}
-                </Label>
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Header */}
+          <div className="mb-6">
+            <Button 
+              onClick={() => navigate(`/pack365-learning/${stream}`)}
+              variant="outline"
+              className="mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Learning
+            </Button>
+            
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 capitalize">
+                  {stream} Stream Exam
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Complete all {questions.length} questions to finish the exam
+                </p>
               </div>
-            ))}
-          </RadioGroup>
-        </CardContent>
-      </Card>
+              
+              <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+                <Badge variant={timeLeft < 300 ? "destructive" : "secondary"} className="flex items-center">
+                  <Clock className="h-4 w-4 mr-1" />
+                  {formatTime(timeLeft)}
+                </Badge>
+                
+                {examDetails.userAttemptInfo && (
+                  <Badge variant="outline">
+                    {examDetails.userAttemptInfo.totalAttempts + 1}/{examDetails.maxAttempts} Attempts
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
 
-      {/* Navigation */}
-      <div className="flex justify-between items-center">
-        <Button
-          onClick={handlePrevious}
-          disabled={currentQuestion === 0}
-          variant="outline"
-        >
-          Previous
-        </Button>
+          {/* Progress Bar */}
+          <div className="mb-6">
+            <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <span>Question {currentQuestion + 1} of {questions.length}</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
 
-        <div className="flex items-center gap-2">
-          {/* Question Navigation Dots */}
-          <div className="flex gap-1">
-            {questions.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentQuestion(index)}
-                className={`w-3 h-3 rounded-full ${
-                  index === currentQuestion
-                    ? 'bg-blue-600'
-                    : answers[index]
-                    ? 'bg-green-500'
-                    : 'bg-gray-300'
-                }`}
-              />
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Questions Navigation */}
+            <div className="lg:col-span-1">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Questions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-5 gap-2">
+                    {questions.map((_, index) => (
+                      <Button
+                        key={index}
+                        variant={
+                          currentQuestion === index 
+                            ? "default" 
+                            : answers[questions[index]._id] 
+                              ? "secondary" 
+                              : "outline"
+                        }
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => setCurrentQuestion(index)}
+                      >
+                        {index + 1}
+                      </Button>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-4 space-y-2 text-xs">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-blue-600 rounded mr-2"></div>
+                      <span>Current</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-gray-300 rounded mr-2"></div>
+                      <span>Unanswered</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                      <span>Answered</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Exam Info */}
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-sm">Exam Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Passing Score:</span>
+                    <span className="font-medium">50%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Time Limit:</span>
+                    <span className="font-medium">60 min</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Questions:</span>
+                    <span className="font-medium">{questions.length}</span>
+                  </div>
+                  {examDetails.userAttemptInfo && (
+                    <div className="flex justify-between">
+                      <span>Best Score:</span>
+                      <span className="font-medium">{examDetails.userAttemptInfo.bestScore}%</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Question Area */}
+            <div className="lg:col-span-3">
+              <Card>
+                <CardContent className="pt-6">
+                  {/* Question Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <Badge variant={
+                      currentQ.type === 'easy' ? 'default' :
+                      currentQ.type === 'medium' ? 'secondary' : 'destructive'
+                    }>
+                      {currentQ.type.charAt(0).toUpperCase() + currentQ.type.slice(1)}
+                    </Badge>
+                    <span className="text-sm text-gray-500">
+                      Question {currentQuestion + 1}
+                    </span>
+                  </div>
+
+                  {/* Question Text */}
+                  <h2 className="text-lg font-semibold mb-6">
+                    {currentQ.questionText}
+                  </h2>
+
+                  {/* Options */}
+                  <RadioGroup
+                    value={answers[currentQ._id] || ''}
+                    onValueChange={(value) => handleAnswerSelect(currentQ._id, value)}
+                    className="space-y-4"
+                  >
+                    {currentQ.options.map((option, index) => (
+                      <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                        <RadioGroupItem value={option} id={`option-${index}`} />
+                        <Label 
+                          htmlFor={`option-${index}`} 
+                          className="flex-1 cursor-pointer text-sm"
+                        >
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+
+                  {/* Navigation Buttons */}
+                  <div className="flex justify-between mt-8 pt-6 border-t">
+                    <Button
+                      onClick={handlePrevious}
+                      disabled={currentQuestion === 0}
+                      variant="outline"
+                    >
+                      Previous
+                    </Button>
+                    
+                    {currentQuestion === questions.length - 1 ? (
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {submitting ? 'Submitting...' : 'Submit Exam'}
+                      </Button>
+                    ) : (
+                      <Button onClick={handleNext}>
+                        Next Question
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quick Submit */}
+              <Card className="mt-4">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Ready to submit your exam? Make sure you've answered all questions.
+                    </p>
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={submitting}
+                      size="lg"
+                      className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      {submitting ? 'Submitting...' : 'Submit Exam'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
-
-        {currentQuestion < questions.length - 1 ? (
-          <Button onClick={handleNext}>
-            Next Question
-          </Button>
-        ) : (
-          <Button
-            onClick={submitExam}
-            disabled={submitting}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Submit Exam
-              </>
-            )}
-          </Button>
-        )}
       </div>
-
-      {/* Quick Stats */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-3 gap-4 text-center text-sm">
-            <div>
-              <div className="font-semibold text-gray-900">
-                {Object.keys(answers).length}
-              </div>
-              <div className="text-gray-600">Answered</div>
-            </div>
-            <div>
-              <div className="font-semibold text-gray-900">
-                {questions.length - Object.keys(answers).length}
-              </div>
-              <div className="text-gray-600">Remaining</div>
-            </div>
-            <div>
-              <div className="font-semibold text-gray-900">
-                {Math.round((Object.keys(answers).length / questions.length) * 100)}%
-              </div>
-              <div className="text-gray-600">Progress</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    </>
   );
 };
 
