@@ -211,7 +211,7 @@ const APCourseManagement = () => {
         curriculumLength: formData.curriculum.length
       });
 
-      // Append all required fields
+      // Append all required fields - MATCHING BACKEND EXPECTATIONS
       formDataToSend.append('internshipId', formData.internshipId);
       formDataToSend.append('title', formData.title);
       formDataToSend.append('stream', formData.stream);
@@ -221,14 +221,14 @@ const APCourseManagement = () => {
       formDataToSend.append('certificationProvided', formData.certificationProvided);
       formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
       
-      // Stringify curriculum - FIXED: Ensure proper formatting
+      // Stringify curriculum - PROPERLY FORMATTED FOR BACKEND
       const curriculumData = formData.curriculum.map(topic => ({
-        topicName: topic.topicName,
+        topicName: topic.topicName.trim(),
         topicCount: topic.subtopics.length,
         subtopics: topic.subtopics.map(subtopic => ({
-          name: subtopic.name,
-          link: subtopic.link,
-          duration: subtopic.duration
+          name: subtopic.name.trim(),
+          link: subtopic.link.trim(),
+          duration: parseInt(subtopic.duration.toString()) || 0
         }))
       }));
       
@@ -242,9 +242,9 @@ const APCourseManagement = () => {
         console.log('📄 Added curriculum doc:', curriculumDocFile.name);
       }
 
-      // Add topic exam files - FIXED: Use proper field names
+      // Add topic exam files - EXACT FIELD NAMES AS BACKEND EXPECTS
       Object.entries(topicExamFiles).forEach(([topicName, file]) => {
-        const fieldName = `topicExam_${topicName.replace(/\s+/g, ' ')}`; // Keep spaces as in backend
+        const fieldName = `topicExam_${topicName}`; // Exact match with backend
         formDataToSend.append(fieldName, file);
         console.log('📝 Added topic exam:', fieldName, file.name);
       });
@@ -265,13 +265,12 @@ const APCourseManagement = () => {
         }
       }
 
-      // FIXED: Don't set Content-Type header - let browser set it with boundary
+      // IMPORTANT: Don't set Content-Type header for FormData
       const response = await fetch('/api/internships/apcourses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-          // ⚠️ IMPORTANT: Don't set Content-Type for FormData
-          // Browser will automatically set it with multipart/form-data and boundary
+          // Let browser set Content-Type automatically with boundary
         },
         body: formDataToSend
       });
@@ -414,6 +413,16 @@ const APCourseManagement = () => {
       return;
     }
 
+    // Validate video link format
+    if (!currentSubtopic.link.startsWith('http')) {
+      toast({
+        title: 'Error',
+        description: 'Video link must be a valid URL starting with http/https',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setCurrentTopic(prev => ({
       ...prev,
       subtopics: [...prev.subtopics, { ...currentSubtopic }],
@@ -424,6 +433,11 @@ const APCourseManagement = () => {
       name: '',
       link: '',
       duration: 0
+    });
+
+    toast({
+      title: 'Success',
+      description: 'Subtopic added successfully',
     });
   };
 
@@ -474,14 +488,26 @@ const APCourseManagement = () => {
       ...prev,
       [topicName]: file
     }));
+    toast({
+      title: 'Success',
+      description: `Exam file added for ${topicName}`
+    });
   };
 
   const handleFinalExamFileChange = (file: File) => {
     setFinalExamFile(file);
+    toast({
+      title: 'Success',
+      description: 'Final exam file added'
+    });
   };
 
   const handleCurriculumDocChange = (file: File) => {
     setCurriculumDocFile(file);
+    toast({
+      title: 'Success',
+      description: 'Curriculum document added'
+    });
   };
 
   const resetForm = () => {
@@ -830,7 +856,7 @@ const APCourseManagement = () => {
                               ))}
                             </div>
                             <div className="mt-2">
-                              <label className="text-sm font-medium">Topic Exam (Excel - Optional)</label>
+                              <label className="text-sm font-medium">Topic Exam (Excel - 10 questions, Optional)</label>
                               <Input
                                 type="file"
                                 accept=".xlsx,.xls"
@@ -841,6 +867,7 @@ const APCourseManagement = () => {
                                   }
                                 }}
                               />
+                              <p className="text-xs text-gray-600 mt-1">Upload Excel file with 10 questions for this topic</p>
                             </div>
                           </div>
                         ))}
