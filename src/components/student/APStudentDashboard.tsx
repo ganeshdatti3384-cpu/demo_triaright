@@ -7,12 +7,10 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Video, Award, Clock, Play, CheckCircle, FileText, Search, MapPin, Building2, Calendar, IndianRupee, Users, Star, Eye, GraduationCap, BarChart3, Zap, TrendingUp, Shield, Globe, CreditCard, AlertCircle } from 'lucide-react';
+import { BookOpen, Video, Award, Clock, Play, CheckCircle, FileText, Search, MapPin, Building2, Calendar, IndianRupee, Users, Star, Eye, BarChart3, Zap, TrendingUp, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 import APRazorpayPayment from '@/components/internships/APRazorpayPayment';
 
 interface APInternship {
@@ -814,221 +812,172 @@ const APStudentDashboard = () => {
 
   if (loading && loadingInternships && loadingEnrollments && !showPaymentPage) {
     return (
-      <>
-        <Navbar />
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-            <div className="text-center text-gray-600">Loading your dashboard...</div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
+          <div className="text-center text-gray-600">Loading your dashboard...</div>
         </div>
-        <Footer />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Enhanced Header */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-6">
-              <div className="flex items-center justify-center p-2 bg-blue-600 text-white rounded-full">
-                <GraduationCap className="h-8 w-8" />
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Enhanced Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-6">
+            <div className="flex items-center justify-center p-2 bg-blue-600 text-white rounded-full">
+              <BookOpen className="h-8 w-8" />
             </div>
-            <h1 className="text-5xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              My AP Internships Dashboard
-            </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Track your progress, manage enrollments, and discover new AP exclusive internship opportunities.
-            </p>
           </div>
+          <h1 className="text-5xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            My AP Internships Dashboard
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            Track your progress, manage enrollments, and discover new AP exclusive internship opportunities.
+          </p>
+        </div>
 
-          {/* Enhanced Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white overflow-hidden">
-              <CardContent className="pt-8 pb-6 text-center relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
-                <div className="text-4xl font-bold mb-2">{enrollments.length}</div>
-                <p className="text-blue-100">Total Enrollments</p>
-                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white overflow-hidden">
-              <CardContent className="pt-8 pb-6 text-center relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
-                <div className="text-4xl font-bold mb-2">
-                  {enrollments.filter(e => e.status === 'completed').length}
-                </div>
-                <p className="text-green-100">Completed</p>
-                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-xl bg-gradient-to-br from-orange-500 to-red-600 text-white overflow-hidden">
-              <CardContent className="pt-8 pb-6 text-center relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
-                <div className="text-4xl font-bold mb-2">
-                  {enrollments.length > 0 
-                    ? Math.round(enrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / enrollments.length)
-                    : 0
-                  }%
-                </div>
-                <p className="text-orange-100">Avg Progress</p>
-                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white overflow-hidden">
-              <CardContent className="pt-8 pb-6 text-center relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
-                <div className="text-4xl font-bold mb-2">
-                  {enrollments.filter(e => e.certificateIssued).length}
-                </div>
-                <p className="text-purple-100">Certificates</p>
-                <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
-              </CardContent>
-            </Card>
-          </div>
+        {/* Removed Stats Overview Section */}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <TabsList className="grid w-full grid-cols-2 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-2xl p-2 shadow-lg">
-              <TabsTrigger 
-                value="enrolled" 
-                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
-              >
-                <BookOpen className="h-4 w-4 mr-2" />
-                My Enrolled Internships ({enrollments.length})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="browse" 
-                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
-              >
-                <Star className="h-4 w-4 mr-2" />
-                Browse AP Internships ({apInternships.length})
-              </TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <TabsList className="grid w-full grid-cols-2 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-2xl p-2 shadow-lg">
+            <TabsTrigger 
+              value="enrolled" 
+              className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              My Enrolled Internships ({enrollments.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="browse" 
+              className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all"
+            >
+              <Star className="h-4 w-4 mr-2" />
+              Browse AP Internships ({apInternships.length})
+            </TabsTrigger>
+          </TabsList>
 
-            {/* Enrolled Internships Tab */}
-            <TabsContent value="enrolled" className="space-y-6">
-              {loadingEnrollments ? (
-                <Card className="border-0 shadow-xl">
-                  <CardContent className="flex justify-center items-center py-12">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                      <p>Loading your enrollments...</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : enrollments.length === 0 ? (
-                <Card className="border-0 shadow-xl text-center py-16">
-                  <CardContent>
-                    <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <BookOpen className="h-12 w-12 text-blue-600" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3">No enrollments yet</h3>
-                    <p className="text-gray-600 text-lg mb-6 max-w-md mx-auto">
-                      You haven't enrolled in any AP internship programs yet.
-                    </p>
-                    <Button 
-                      onClick={() => setActiveTab('browse')}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                    >
-                      <Star className="h-4 w-4 mr-2" />
-                      Browse AP Internships
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-6">
-                  {enrollments.map((enrollment) => {
-                    const course = getCourseForEnrollment(enrollment);
-                    return (
-                      <Card key={enrollment._id} className="border-l-4 border-l-blue-500 border-0 shadow-lg hover:shadow-xl transition-all">
-                        <CardHeader>
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="text-xl">{enrollment.internshipId.title}</CardTitle>
-                              <CardDescription className="text-base">
-                                {enrollment.internshipId.companyName} • {enrollment.internshipId.duration}
-                                {enrollment.internshipId.mode === 'Paid' && ' • Paid Program'}
-                              </CardDescription>
-                            </div>
-                            <div className="text-right">
-                              {getStatusBadge(enrollment.status)}
-                              <div className="text-sm text-gray-500 mt-1">
-                                Enrolled: {new Date(enrollment.enrolledAt).toLocaleDateString()}
-                              </div>
+          {/* Enrolled Internships Tab */}
+          <TabsContent value="enrolled" className="space-y-6">
+            {loadingEnrollments ? (
+              <Card className="border-0 shadow-xl">
+                <CardContent className="flex justify-center items-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p>Loading your enrollments...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : enrollments.length === 0 ? (
+              <Card className="border-0 shadow-xl text-center py-16">
+                <CardContent>
+                  <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <BookOpen className="h-12 w-12 text-blue-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">No enrollments yet</h3>
+                  <p className="text-gray-600 text-lg mb-6 max-w-md mx-auto">
+                    You haven't enrolled in any AP internship programs yet.
+                  </p>
+                  <Button 
+                    onClick={() => setActiveTab('browse')}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    Browse AP Internships
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {enrollments.map((enrollment) => {
+                  const course = getCourseForEnrollment(enrollment);
+                  return (
+                    <Card key={enrollment._id} className="border-l-4 border-l-blue-500 border-0 shadow-lg hover:shadow-xl transition-all">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-xl">{enrollment.internshipId.title}</CardTitle>
+                            <CardDescription className="text-base">
+                              {enrollment.internshipId.companyName} • {enrollment.internshipId.duration}
+                              {enrollment.internshipId.mode === 'Paid' && ' • Paid Program'}
+                            </CardDescription>
+                          </div>
+                          <div className="text-right">
+                            {getStatusBadge(enrollment.status)}
+                            <div className="text-sm text-gray-500 mt-1">
+                              Enrolled: {new Date(enrollment.enrolledAt).toLocaleDateString()}
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            {/* Progress Bar */}
-                            {enrollment.progress !== undefined && (
-                              <div>
-                                <div className="flex justify-between text-sm mb-2">
-                                  <span>Overall Progress</span>
-                                  <span>{enrollment.progress}%</span>
-                                </div>
-                                <Progress value={enrollment.progress} className="h-3 bg-gray-200">
-                                  <div 
-                                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" 
-                                    style={{ width: `${enrollment.progress}%` }}
-                                  />
-                                </Progress>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Progress Bar */}
+                          {enrollment.progress !== undefined && (
+                            <div>
+                              <div className="flex justify-between text-sm mb-2">
+                                <span>Overall Progress</span>
+                                <span>{enrollment.progress}%</span>
                               </div>
-                            )}
+                              <Progress value={enrollment.progress} className="h-3 bg-gray-200">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" 
+                                  style={{ width: `${enrollment.progress}%` }}
+                                />
+                              </Progress>
+                            </div>
+                          )}
 
-                            {/* Course Content */}
-                            {course && (
-                              <div className="space-y-3">
-                                <h4 className="font-semibold text-lg">Course Content</h4>
-                                {course.curriculum.map((topic, index) => (
-                                  <div key={index} className="border-2 border-gray-100 rounded-xl p-4 hover:border-blue-200 transition-colors">
-                                    <div className="flex justify-between items-center mb-3">
-                                      <h5 className="font-medium text-base">{topic.topicName}</h5>
-                                      <Badge variant="outline" className="text-xs bg-blue-50">
-                                        {topic.subtopics.length} lessons
-                                      </Badge>
-                                    </div>
-                                    
-                                    <div className="space-y-2">
-                                      {topic.subtopics.map((subtopic, subIndex) => (
-                                        <div
-                                          key={subIndex}
-                                          className="flex justify-between items-center p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors"
-                                        >
-                                          <div className="flex items-center space-x-3">
-                                            <Play className="h-4 w-4 text-gray-400" />
-                                            <span className="text-sm">{subtopic.name}</span>
-                                          </div>
-                                          <div className="flex items-center space-x-3">
-                                            <span className="text-xs text-gray-600">{subtopic.duration} mins</span>
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              onClick={() => playVideo(enrollment, course, topic.topicName, subtopic)}
-                                              className="bg-white hover:bg-blue-50"
-                                            >
-                                              <Video className="h-3 w-3 mr-1" />
-                                              Watch
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
+                          {/* Course Content */}
+                          {course && (
+                            <div className="space-y-3">
+                              <h4 className="font-semibold text-lg">Course Content</h4>
+                              {course.curriculum.map((topic, index) => (
+                                <div key={index} className="border-2 border-gray-100 rounded-xl p-4 hover:border-blue-200 transition-colors">
+                                  <div className="flex justify-between items-center mb-3">
+                                    <h5 className="font-medium text-base">{topic.topicName}</h5>
+                                    <Badge variant="outline" className="text-xs bg-blue-50">
+                                      {topic.subtopics.length} lessons
+                                    </Badge>
                                   </div>
-                                ))}
-                              </div>
-                            )}
+                                  
+                                  <div className="space-y-2">
+                                    {topic.subtopics.map((subtopic, subIndex) => (
+                                      <div
+                                        key={subIndex}
+                                        className="flex justify-between items-center p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors"
+                                      >
+                                        <div className="flex items-center space-x-3">
+                                          <Play className="h-4 w-4 text-gray-400" />
+                                          <span className="text-sm">{subtopic.name}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-3">
+                                          <span className="text-xs text-gray-600">{subtopic.duration} mins</span>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => playVideo(enrollment, course, topic.topicName, subtopic)}
+                                            className="bg-white hover:bg-blue-50"
+                                          >
+                                            <Video className="h-3 w-3 mr-1" />
+                                            Watch
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
-                            {/* Certificate Section */}
-                            {enrollment.certificateIssued && enrollment.certificateUrl && (
-                              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
+                          {/* Certificate Section */}
+                          {enrollment.certificateIssued && enrollment.certificateUrl && (
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center">
                                     <Award className="h-6 w-6 text-green-600 mr-3" />
@@ -1154,48 +1103,6 @@ const APStudentDashboard = () => {
                   </p>
                 </div>
               )}
-
-              {/* Enhanced Stats Section */}
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white overflow-hidden">
-                  <CardContent className="pt-8 pb-6 text-center relative">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
-                    <div className="text-4xl font-bold">{apInternships.length}</div>
-                    <p className="text-blue-100">AP Exclusive Internships</p>
-                    <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
-                  </CardContent>
-                </Card>
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white overflow-hidden">
-                  <CardContent className="pt-8 pb-6 text-center relative">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
-                    <div className="text-4xl font-bold">
-                      {apInternships.filter(i => i.mode === 'Free').length}
-                    </div>
-                    <p className="text-green-100">Free Opportunities</p>
-                    <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
-                  </CardContent>
-                </Card>
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white overflow-hidden">
-                  <CardContent className="pt-8 pb-6 text-center relative">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
-                    <div className="text-4xl font-bold">
-                      {apInternships.filter(i => i.internshipType === 'Online').length}
-                    </div>
-                    <p className="text-purple-100">Online Programs</p>
-                    <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
-                  </CardContent>
-                </Card>
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-orange-500 to-red-600 text-white overflow-hidden">
-                  <CardContent className="pt-8 pb-6 text-center relative">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
-                    <div className="text-4xl font-bold">
-                      {[...new Set(apInternships.map(i => i.stream))].length}
-                    </div>
-                    <p className="text-orange-100">Different Streams</p>
-                    <div className="absolute bottom-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mb-8"></div>
-                  </CardContent>
-                </Card>
-              </div>
             </TabsContent>
           </Tabs>
 
@@ -1234,9 +1141,7 @@ const APStudentDashboard = () => {
           )}
         </div>
       </div>
-      <Footer />
-    </>
-  );
-};
+    );
+  };
 
 export default APStudentDashboard;
