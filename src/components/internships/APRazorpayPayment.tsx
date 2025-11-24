@@ -143,7 +143,7 @@ const APRazorpayPayment = ({
             setLoading(false);
             toast({
               title: 'Payment Cancelled',
-              description: 'You can complete the payment later',
+              description: 'You can complete the payment later from your applications',
               variant: 'default'
             });
           }
@@ -187,9 +187,7 @@ const APRazorpayPayment = ({
         body: JSON.stringify({
           razorpay_order_id: response.razorpay_order_id,
           razorpay_payment_id: response.razorpay_payment_id,
-          razorpay_signature: response.razorpay_signature,
-          applicationId: applicationId,
-          internshipId: internshipId
+          razorpay_signature: response.razorpay_signature
         })
       });
 
