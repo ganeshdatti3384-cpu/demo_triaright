@@ -55,6 +55,7 @@ interface Application {
   paymentStatus: string;
   enrollmentId?: string;
   orderId?: string;
+  enrollmentType?: string;
 }
 
 interface Coupon {
@@ -323,18 +324,28 @@ const APExclusiveInternshipsPage = () => {
   };
 
   const isEnrolled = (internshipId: string) => {
-    return enrollments.some(enrollment => enrollment.internshipId === internshipId && enrollment.status === 'active');
+    return enrollments.some(enrollment => enrollment.internshipId === internshipId);
   };
 
   const hasApplied = (internshipId: string) => {
     return applications.some(application => 
-      application.internshipId === internshipId && 
-      application.status === 'Applied'
+      application.internshipId === internshipId
     );
   };
 
   const getApplication = (internshipId: string) => {
     return applications.find(application => application.internshipId === internshipId);
+  };
+
+  const getApplicationStatus = (internshipId: string) => {
+    const application = getApplication(internshipId);
+    if (!application) return 'not_applied';
+    
+    if (application.enrollmentId) return 'enrolled';
+    if (application.paymentStatus === 'completed') return 'payment_completed';
+    if (application.paymentStatus === 'pending') return 'payment_pending';
+    
+    return 'applied';
   };
 
   const handleEnroll = async (internship: APInternship) => {
@@ -366,23 +377,25 @@ const APExclusiveInternshipsPage = () => {
       return;
     }
 
-    // Check if already applied
+    // Check application status
+    const applicationStatus = getApplicationStatus(internship._id);
     const existingApplication = getApplication(internship._id);
-    if (existingApplication) {
-      if (existingApplication.paymentStatus === 'completed') {
-        toast({
-          title: 'Already Enrolled',
-          description: 'You are already enrolled in this internship',
-          variant: 'default'
-        });
-        return;
-      } else if (existingApplication.paymentStatus === 'pending' && internship.mode === 'Paid') {
-        // Show payment page for pending paid applications
-        setSelectedInternship(internship);
-        setApplicationId(existingApplication._id);
-        setShowPaymentPage(true);
-        return;
-      }
+
+    if (applicationStatus === 'enrolled') {
+      toast({
+        title: 'Already Enrolled',
+        description: 'You are already enrolled in this internship',
+        variant: 'default'
+      });
+      return;
+    }
+
+    if (applicationStatus === 'payment_pending' && internship.mode === 'Paid') {
+      // Show payment page for pending paid applications
+      setSelectedInternship(internship);
+      setApplicationId(existingApplication!._id);
+      setShowPaymentPage(true);
+      return;
     }
 
     // Check if application deadline has passed
@@ -465,7 +478,6 @@ const APExclusiveInternshipsPage = () => {
         description: 'Failed to process enrollment. Please try again.',
         variant: 'destructive'
       });
-    } finally {
       setEnrollLoading(null);
     }
   };
@@ -496,8 +508,11 @@ const APExclusiveInternshipsPage = () => {
         });
         
         // Refresh enrollments and applications
-        fetchEnrollments();
-        fetchApplications();
+        await fetchEnrollments();
+        await fetchApplications();
+        
+        // Reset loading state
+        setEnrollLoading(null);
         
         // Redirect to student dashboard after a delay
         setTimeout(() => {
@@ -508,7 +523,12 @@ const APExclusiveInternshipsPage = () => {
       }
     } catch (error: any) {
       console.error('Error enrolling in free internship:', error);
-      throw error;
+      toast({
+        title: 'Enrollment Failed',
+        description: error.message || 'Failed to enroll in internship',
+        variant: 'destructive'
+      });
+      setEnrollLoading(null);
     }
   };
 
@@ -546,6 +566,10 @@ const APExclusiveInternshipsPage = () => {
         // Reset coupon state
         setAppliedCoupon(null);
         setCouponCode('');
+        setEnrollLoading(null);
+        
+        // Refresh applications to get updated status
+        await fetchApplications();
       } else {
         throw new Error(data.message || 'Failed to create application');
       }
@@ -575,6 +599,7 @@ const APExclusiveInternshipsPage = () => {
     setShowPaymentPage(false);
     setSelectedInternship(null);
     setApplicationId('');
+    setEnrollLoading(null);
   };
 
   const isDeadlinePassed = (deadline: string) => {
@@ -655,7 +680,10 @@ const APExclusiveInternshipsPage = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowCouponDialog(false)}
+              onClick={() => {
+                setShowCouponDialog(false);
+                setEnrollLoading(null);
+              }}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -767,7 +795,10 @@ const APExclusiveInternshipsPage = () => {
             <div className="flex gap-2 pt-4">
               <Button
                 variant="outline"
-                onClick={() => setShowCouponDialog(false)}
+                onClick={() => {
+                  setShowCouponDialog(false);
+                  setEnrollLoading(null);
+                }}
                 className="flex-1"
               >
                 Cancel
@@ -796,11 +827,34 @@ const APExclusiveInternshipsPage = () => {
   const InternshipCard = ({ internship }: { internship: APInternship }) => {
     const deadlinePassed = isDeadlinePassed(internship.applicationDeadline);
     const enrolled = isEnrolled(internship._id);
-    const applied = hasApplied(internship._id);
+    const applicationStatus = getApplicationStatus(internship._id);
     const application = getApplication(internship._id);
     const daysLeft = Math.ceil((new Date(internship.applicationDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
     const isLoading = enrollLoading === internship._id;
     
+    const getButtonText = () => {
+      if (enrolled) return 'Go to Dashboard';
+      if (applicationStatus === 'payment_pending') return 'Complete Payment';
+      if (applicationStatus === 'payment_completed') return 'Processing...';
+      if (applicationStatus === 'applied') return 'Processing...';
+      if (internship.mode === 'Free') return 'Enroll Free';
+      return 'Enroll Now';
+    };
+
+    const getButtonVariant = () => {
+      if (enrolled) return 'default';
+      if (applicationStatus === 'payment_pending') return 'default';
+      if (deadlinePassed) return 'outline';
+      return 'default';
+    };
+
+    const getButtonStyle = () => {
+      if (enrolled) return 'bg-green-600 hover:bg-green-700';
+      if (applicationStatus === 'payment_pending') return 'bg-orange-600 hover:bg-orange-700';
+      if (deadlinePassed) return '';
+      return 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700';
+    };
+
     return (
       <Card className="h-full flex flex-col border-2 border-blue-100 hover:border-blue-300 hover:shadow-xl transition-all duration-300 group overflow-hidden">
         {/* Popular Badge */}
@@ -839,10 +893,16 @@ const APExclusiveInternshipsPage = () => {
                   Enrolled
                 </Badge>
               )}
-              {applied && !enrolled && application?.paymentStatus === 'pending' && (
+              {applicationStatus === 'payment_pending' && (
                 <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 shadow-sm">
                   <Clock className="h-3 w-3 mr-1" />
                   Payment Pending
+                </Badge>
+              )}
+              {(applicationStatus === 'applied' || applicationStatus === 'payment_completed') && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 shadow-sm">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Processing
                 </Badge>
               )}
             </div>
@@ -940,59 +1000,33 @@ const APExclusiveInternshipsPage = () => {
         </CardContent>
         
         <CardFooter className="pt-4 border-t border-gray-100">
-          {enrolled ? (
-            <Button 
-              className="w-full bg-green-600 hover:bg-green-700 shadow-sm"
-              onClick={() => window.location.href = '/student-dashboard?tab=trainings'}
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              Go to Dashboard
-            </Button>
-          ) : applied && !enrolled && application?.paymentStatus === 'pending' ? (
-            <Button 
-              className="w-full bg-orange-600 hover:bg-orange-700 shadow-sm"
-              onClick={() => handleEnroll(internship)}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Processing...
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <IndianRupee className="h-4 w-4 mr-2" />
-                  Complete Payment
-                </div>
-              )}
-            </Button>
-          ) : (
-            <Button 
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm transition-all duration-300"
-              onClick={() => handleEnroll(internship)}
-              disabled={deadlinePassed || isLoading}
-              variant={deadlinePassed ? "outline" : "default"}
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Processing...
-                </div>
-              ) : deadlinePassed ? (
-                'Enrollment Closed'
-              ) : internship.mode === 'Free' ? (
-                <div className="flex items-center">
-                  <Zap className="h-4 w-4 mr-2" />
-                  Enroll Free
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 mr-2" />
-                  Enroll Now
-                </div>
-              )}
-            </Button>
-          )}
+          <Button 
+            className={`w-full shadow-sm ${getButtonStyle()}`}
+            onClick={() => {
+              if (enrolled) {
+                window.location.href = '/student-dashboard?tab=trainings';
+              } else {
+                handleEnroll(internship);
+              }
+            }}
+            disabled={deadlinePassed || isLoading || applicationStatus === 'applied' || applicationStatus === 'payment_completed'}
+            variant={getButtonVariant()}
+          >
+            {isLoading ? (
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Processing...
+              </div>
+            ) : (
+              <div className="flex items-center">
+                {enrolled && <BookOpen className="h-4 w-4 mr-2" />}
+                {applicationStatus === 'payment_pending' && <IndianRupee className="h-4 w-4 mr-2" />}
+                {internship.mode === 'Free' && !enrolled && <Zap className="h-4 w-4 mr-2" />}
+                {internship.mode === 'Paid' && !enrolled && applicationStatus !== 'payment_pending' && <Star className="h-4 w-4 mr-2" />}
+                {getButtonText()}
+              </div>
+            )}
+          </Button>
         </CardFooter>
       </Card>
     );
