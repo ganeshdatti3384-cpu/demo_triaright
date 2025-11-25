@@ -148,7 +148,6 @@ const APStudentDashboard = () => {
 
     try {
       setLoadingEnrollments(true);
-      // FIXED: Using the correct endpoint from backend routes
       const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -156,7 +155,6 @@ const APStudentDashboard = () => {
       });
       const data = await response.json();
       if (data.success) {
-        // Transform the backend response to match our frontend interface
         const transformedEnrollments = data.enrollments.map((enrollment: any) => ({
           _id: enrollment._id,
           internshipId: {
@@ -221,12 +219,11 @@ const APStudentDashboard = () => {
       const response = await fetch('/api/internships/ap-internships');
       const data = await response.json();
       if (data.success) {
-        // Add mock data for demo like in APExclusiveInternshipsPage
         const internshipsWithStats = data.internships.map((internship: APInternship) => ({
           ...internship,
           views: Math.floor(Math.random() * 1000) + 100,
           applications: Math.floor(Math.random() * 200) + 50,
-          rating: parseFloat((Math.random() * 1 + 4).toFixed(1)) // Random rating between 4.0 and 5.0
+          rating: parseFloat((Math.random() * 1 + 4).toFixed(1))
         }));
         const openInternships = internshipsWithStats.filter((internship: APInternship) => internship.status === 'Open');
         setApInternships(openInternships);
@@ -262,7 +259,6 @@ const APStudentDashboard = () => {
       return matchesSearch && matchesType && matchesMode && matchesStream;
     });
 
-    // Apply sorting
     switch (filters.sort) {
       case 'newest':
         filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -325,7 +321,6 @@ const APStudentDashboard = () => {
       return;
     }
 
-    // Check if already enrolled
     if (isEnrolled(internship._id)) {
       toast({
         title: 'Already Enrolled',
@@ -335,7 +330,6 @@ const APStudentDashboard = () => {
       return;
     }
 
-    // Check application status
     const applicationStatus = getApplicationStatus(internship._id);
     const existingApplication = getApplication(internship._id);
 
@@ -349,14 +343,12 @@ const APStudentDashboard = () => {
     }
 
     if (applicationStatus === 'payment_pending' && internship.mode === 'Paid') {
-      // Show payment page for pending paid applications
       setSelectedInternship(internship);
       setApplicationId(existingApplication!._id);
       setShowPaymentPage(true);
       return;
     }
 
-    // Check if application deadline has passed
     if (isDeadlinePassed(internship.applicationDeadline)) {
       toast({
         title: 'Application Closed',
@@ -368,11 +360,9 @@ const APStudentDashboard = () => {
 
     setSelectedInternship(internship);
 
-    // For free internships, enroll directly
     if (internship.mode === 'Free') {
       await enrollInFreeInternship(internship);
     } else {
-      // For paid internships, create application and proceed to payment
       await createPaidApplication(internship);
     }
   };
@@ -402,11 +392,8 @@ const APStudentDashboard = () => {
           variant: 'default'
         });
         
-        // Refresh enrollments and applications
         await fetchEnrollments();
         await fetchApplications();
-        
-        // Redirect to enrolled tab
         setActiveTab('enrolled');
       } else {
         throw new Error(data.message || 'Failed to enroll in internship');
@@ -441,11 +428,7 @@ const APStudentDashboard = () => {
 
       if (response.ok && data.success) {
         setApplicationId(data.application._id);
-        
-        // For paid internships, proceed to payment
         setShowPaymentPage(true);
-        
-        // Refresh applications to get updated status
         await fetchApplications();
       } else {
         throw new Error(data.message || 'Failed to create application');
@@ -467,11 +450,8 @@ const APStudentDashboard = () => {
       variant: 'default'
     });
     
-    // Refresh enrollments and applications
     fetchEnrollments();
     fetchApplications();
-    
-    // Switch to enrolled tab
     setActiveTab('enrolled');
     setShowPaymentPage(false);
   };
@@ -578,7 +558,6 @@ const APStudentDashboard = () => {
 
     return (
       <Card className="h-full flex flex-col border-2 border-blue-100 hover:border-blue-300 hover:shadow-xl transition-all duration-300 group overflow-hidden">
-        {/* Popular Badge */}
         {internship.applications && internship.applications > 100 && (
           <div className="absolute top-4 right-4 z-10">
             <Badge className="bg-red-500 text-white hover:bg-red-600">
@@ -588,7 +567,6 @@ const APStudentDashboard = () => {
           </div>
         )}
         
-        {/* Card Header with Gradient */}
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 pb-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-blue-200 rounded-full -mr-10 -mt-10 opacity-50"></div>
           <div className="absolute bottom-0 left-0 w-16 h-16 bg-indigo-200 rounded-full -ml-8 -mb-8 opacity-50"></div>
@@ -638,7 +616,6 @@ const APStudentDashboard = () => {
             </Badge>
           </div>
 
-          {/* Rating and Stats */}
           <div className="flex items-center justify-between text-sm relative z-10">
             {internship.rating && renderStars(internship.rating)}
             <div className="flex items-center gap-4 text-gray-500">
@@ -725,13 +702,9 @@ const APStudentDashboard = () => {
             className={`w-full shadow-sm ${getButtonStyle()}`}
             onClick={() => {
               if (enrolled) {
-                // Find the enrollment and set it as selected, then switch to enrolled tab
-                const enrollment = enrollments.find(e => e.internshipId._id === internship._id);
-                if (enrollment) {
-                  setActiveTab('enrolled');
-                }
+                // Navigate to learning page
+                window.open(`/ap-internship-learning/${enrollments.find(e => e.internshipId._id === internship._id)?._id}`, '_self');
               } else if (applicationStatus === 'payment_pending') {
-                // Complete payment
                 setSelectedInternship(internship);
                 setApplicationId(application!._id);
                 setShowPaymentPage(true);
@@ -755,7 +728,6 @@ const APStudentDashboard = () => {
     );
   };
 
-  // Show payment page if applicable
   if (showPaymentPage && selectedInternship) {
     return (
       <APRazorpayPayment
@@ -785,7 +757,6 @@ const APStudentDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Enhanced Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-6">
             <div className="flex items-center justify-center p-2 bg-blue-600 text-white rounded-full">
@@ -818,7 +789,6 @@ const APStudentDashboard = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Enrolled Internships Tab - SIMPLIFIED */}
           <TabsContent value="enrolled" className="space-y-6">
             {loadingEnrollments ? (
               <Card className="border-0 shadow-xl">
@@ -870,7 +840,6 @@ const APStudentDashboard = () => {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {/* Progress Bar */}
                       {enrollment.progress !== undefined && (
                         <div className="mb-4">
                           <div className="flex justify-between text-sm mb-2">
@@ -886,7 +855,6 @@ const APStudentDashboard = () => {
                         </div>
                       )}
 
-                      {/* Certificate Section */}
                       {enrollment.certificateIssued && enrollment.certificateUrl && (
                         <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 mb-4">
                           <div className="flex items-center justify-between">
@@ -917,7 +885,7 @@ const APStudentDashboard = () => {
                       <div className="flex space-x-2">
                         <Button 
                           size="sm"
-                          onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_blank')}
+                          onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_self')}
                           className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                         >
                           <Play className="h-4 w-4 mr-1" />
@@ -931,9 +899,7 @@ const APStudentDashboard = () => {
             )}
           </TabsContent>
 
-          {/* Browse AP Internships Tab */}
           <TabsContent value="browse" className="space-y-6">
-            {/* Enhanced Search and Filters */}
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardContent className="p-6">
                 <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
@@ -983,7 +949,6 @@ const APStudentDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Internships Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredInternships.map((internship) => (
                 <InternshipCard key={internship._id} internship={internship} />
