@@ -24,21 +24,20 @@ import {
   BarChart3,
   Bookmark,
   ArrowLeft,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
-
-interface Topic {
-  topicName: string;
-  topicCount: number;
-  subtopics: Subtopic[];
-  directLink?: string;
-  examExcelLink?: string;
-}
 
 interface Subtopic {
   name: string;
   link: string;
   duration: number;
+}
+
+interface Topic {
+  topicName: string;
+  topicCount: number;
+  subtopics: Subtopic[];
 }
 
 interface APCourse {
@@ -60,36 +59,32 @@ interface APCourse {
   createdAt: string;
 }
 
+interface ProgressSubtopic {
+  subTopicName: string;
+  subTopicLink: string;
+  watchedDuration: number;
+  totalDuration: number;
+}
+
+interface TopicProgress {
+  topicName: string;
+  subtopics: ProgressSubtopic[];
+  topicWatchedDuration: number;
+  topicTotalDuration: number;
+  examAttempted: boolean;
+  examScore: number;
+  passed: boolean;
+}
+
 interface APEnrollment {
   _id: string;
-  internshipId: {
-    _id: string;
-    title: string;
-    companyName: string;
-    duration: string;
-    mode: string;
-    stream: string;
-    internshipType: string;
-  };
+  internshipId: string;
   courseId: APCourse;
   userId: string;
   enrollmentDate: string;
   isPaid: boolean;
   amountPaid: number;
-  progress: {
-    topicName: string;
-    subtopics: {
-      subTopicName: string;
-      subTopicLink: string;
-      watchedDuration: number;
-      totalDuration: number;
-    }[];
-    topicWatchedDuration: number;
-    topicTotalDuration: number;
-    examAttempted: boolean;
-    examScore: number;
-    passed: boolean;
-  }[];
+  progress: TopicProgress[];
   totalWatchedDuration: number;
   totalVideoDuration: number;
   finalExamEligible: boolean;
@@ -135,6 +130,7 @@ const APInternshipLearningPage = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [updatingProgress, setUpdatingProgress] = useState(false);
+  const [error, setError] = useState<string>('');
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout>();
@@ -145,9 +141,14 @@ const APInternshipLearningPage = () => {
   useEffect(() => {
     if (enrollmentId) {
       fetchEnrollmentData();
-      fetchExamStatus();
     }
   }, [enrollmentId]);
+
+  useEffect(() => {
+    if (enrollment?.courseId?._id) {
+      fetchExamStatus();
+    }
+  }, [enrollment]);
 
   useEffect(() => {
     return () => {
@@ -171,51 +172,55 @@ const APInternshipLearningPage = () => {
 
     try {
       setLoading(true);
+      setError('');
       
-      // First, try to get the specific enrollment with course details
-      const response = await fetch(`/api/internships/apinternshipapplications/enrollment/${enrollmentId}`, {
+      // Get all enrollments and find the specific one
+      const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
-      if (response.status === 404) {
-        // Fallback: try to find enrollment from all enrollments
-        const allEnrollmentsResponse = await fetch('/api/internships/apinternshipmy-enrollments', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const foundEnrollment = data.enrollments.find((e: any) => e._id === enrollmentId);
         
-        const allData = await allEnrollmentsResponse.json();
-        if (allData.success) {
-          const foundEnrollment = allData.enrollments.find((e: any) => e._id === enrollmentId);
-          if (foundEnrollment) {
-            setEnrollment(foundEnrollment);
-            initializeActiveContent(foundEnrollment);
+        if (foundEnrollment) {
+          // Fetch complete course details
+          const courseResponse = await fetch(`/api/internships/apcourses/${foundEnrollment.courseId._id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          const courseData = await courseResponse.json();
+          
+          if (courseData.success) {
+            const completeEnrollment = {
+              ...foundEnrollment,
+              courseId: courseData.course
+            };
+            
+            setEnrollment(completeEnrollment);
+            initializeActiveContent(completeEnrollment);
           } else {
-            throw new Error('Enrollment not found');
+            throw new Error('Failed to fetch course details');
           }
         } else {
-          throw new Error('Failed to fetch enrollments');
+          throw new Error('Enrollment not found');
         }
       } else {
-        const data = await response.json();
-        if (data.success) {
-          setEnrollment(data.enrollment);
-          initializeActiveContent(data.enrollment);
-        } else {
-          throw new Error(data.message || 'Failed to fetch enrollment');
-        }
+        throw new Error(data.message || 'Failed to fetch enrollments');
       }
     } catch (error: any) {
       console.error('Error fetching enrollment:', error);
+      setError(error.message || 'Failed to load course data');
       toast({
         title: 'Error',
         description: error.message || 'Failed to load course data',
         variant: 'destructive'
       });
-      navigate('/student-dashboard');
     } finally {
       setLoading(false);
     }
@@ -304,6 +309,9 @@ const APInternshipLearningPage = () => {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+        }
       } else {
         videoRef.current.play();
         
@@ -323,7 +331,7 @@ const APInternshipLearningPage = () => {
     if (videoRef.current && activeSubtopic) {
       const currentTime = videoRef.current.currentTime;
       const duration = videoRef.current.duration || activeSubtopic.duration;
-      const progress = (currentTime / duration) * 100;
+      const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
       
       setCurrentTime(currentTime);
       setVideoProgress(progress);
@@ -358,7 +366,7 @@ const APInternshipLearningPage = () => {
     const topicProgress = enrollment?.progress?.find(t => t.topicName === topicName);
     const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === subtopic.name);
     
-    if (subtopicProgress) {
+    if (subtopicProgress && subtopicProgress.totalDuration > 0) {
       const progressPercent = (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100;
       setVideoProgress(progressPercent);
     }
@@ -397,7 +405,7 @@ const APInternshipLearningPage = () => {
     }
 
     // Navigate to exam page
-    window.open(`/ap-internship-exam/${enrollment.courseId._id}/${topicName}?enrollmentId=${enrollmentId}`, '_blank');
+    navigate(`/ap-internship-exam/${enrollment.courseId._id}/${topicName}?enrollmentId=${enrollmentId}`);
   };
 
   const handleTakeFinalExam = () => {
@@ -410,7 +418,7 @@ const APInternshipLearningPage = () => {
       return;
     }
 
-    window.open(`/ap-internship-final-exam/${enrollment.courseId._id}?enrollmentId=${enrollmentId}`, '_blank');
+    navigate(`/ap-internship-final-exam/${enrollment.courseId._id}?enrollmentId=${enrollmentId}`);
   };
 
   const formatTime = (seconds: number) => {
@@ -432,18 +440,20 @@ const APInternshipLearningPage = () => {
     );
   }
 
-  if (!enrollment) {
+  if (error || !enrollment) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Card className="text-center py-16">
             <CardContent>
               <div className="w-24 h-24 bg-gradient-to-r from-red-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <BookOpen className="h-12 w-12 text-red-600" />
+                <AlertCircle className="h-12 w-12 text-red-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">Course Not Found</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                {error ? 'Error Loading Course' : 'Course Not Found'}
+              </h3>
               <p className="text-gray-600 text-lg mb-6 max-w-md mx-auto">
-                The requested course could not be found or you don't have access to it.
+                {error || 'The requested course could not be found or you don\'t have access to it.'}
               </p>
               <Button onClick={() => navigate('/student-dashboard')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -483,7 +493,7 @@ const APInternshipLearningPage = () => {
                   {course?.title || 'Course Content'}
                 </h1>
                 <p className="text-gray-600">
-                  {enrollment.internshipId?.companyName} • {course?.stream}
+                  {course?.providerName} • {course?.stream}
                 </p>
               </div>
             </div>
@@ -513,7 +523,7 @@ const APInternshipLearningPage = () => {
                   Curriculum
                 </CardTitle>
                 <CardDescription>
-                  {course?.curriculum?.length || 0} topics • {Math.ceil(enrollment.totalVideoDuration / 60)} min total
+                  {course?.curriculum?.length || 0} topics • {Math.ceil(course?.totalDuration / 60) || 0} min total
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
@@ -841,7 +851,7 @@ const APInternshipLearningPage = () => {
                       size="sm" 
                       variant="outline"
                       disabled={!examStatus?.courseProgress.courseCompleted}
-                      onClick={() => window.open(`/ap-internship-certificate/${enrollmentId}`, '_blank')}
+                      onClick={() => navigate(`/ap-internship-certificate/${enrollmentId}`)}
                     >
                       Download Certificate
                     </Button>
