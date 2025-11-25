@@ -57,6 +57,17 @@ interface APEnrollment {
   lastAccessed?: string;
   certificateIssued?: boolean;
   certificateUrl?: string;
+  // Added fields from your backend model
+  courseId?: {
+    _id: string;
+    title: string;
+    totalDuration?: number;
+    stream?: string;
+    providerName?: string;
+  };
+  totalWatchedDuration?: number;
+  totalVideoDuration?: number;
+  finalExamEligible?: boolean;
 }
 
 interface APCourse {
@@ -114,6 +125,9 @@ const APStudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [loadingInternships, setLoadingInternships] = useState(true);
   const [loadingEnrollments, setLoadingEnrollments] = useState(true);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<APEnrollment | null>(null);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [currentVideo, setCurrentVideo] = useState<{ link: string; title: string } | null>(null);
   const [activeTab, setActiveTab] = useState('enrolled');
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -130,10 +144,17 @@ const APStudentDashboard = () => {
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
+    console.log('🔄 Dashboard mounted, fetching data...');
     fetchEnrollments();
     fetchApplications();
     fetchAPInternships();
+    fetchCourses();
   }, []);
+
+  useEffect(() => {
+    console.log('📊 Enrollments updated:', enrollments);
+    console.log('📊 Applications updated:', applications);
+  }, [enrollments, applications]);
 
   useEffect(() => {
     filterInternships();
@@ -142,44 +163,67 @@ const APStudentDashboard = () => {
   const fetchEnrollments = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
+      console.log('❌ No token found');
       setLoadingEnrollments(false);
       return;
     }
 
     try {
       setLoadingEnrollments(true);
+      console.log('🔄 Fetching enrollments from:', '/api/internships/apinternshipmy-enrollments');
+      
       const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      console.log('📡 Enrollment response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('📦 Raw enrollment API response:', data);
+      
       if (data.success) {
-        const transformedEnrollments = data.enrollments.map((enrollment: any) => ({
+        // Handle different possible response structures
+        const enrollmentData = data.enrollments || data.data || [];
+        console.log('✅ Processed enrollments:', enrollmentData);
+        
+        // Transform the data to match our frontend interface
+        const transformedEnrollments = enrollmentData.map((enrollment: any) => ({
           _id: enrollment._id,
-          internshipId: {
-            _id: enrollment.internshipId?._id || enrollment.internshipId,
+          internshipId: enrollment.internshipId || {
+            _id: enrollment.internshipId?._id || 'unknown',
             title: enrollment.internshipId?.title || 'Unknown Internship',
             companyName: enrollment.internshipId?.companyName || 'Unknown Company',
             duration: enrollment.internshipId?.duration || 'Unknown Duration',
-            mode: enrollment.internshipId?.mode || 'Free',
-            stream: enrollment.internshipId?.stream || 'General',
-            internshipType: enrollment.internshipId?.internshipType || 'Online'
+            mode: enrollment.internshipId?.mode || 'Unknown',
+            stream: enrollment.internshipId?.stream || 'Unknown',
+            internshipType: enrollment.internshipId?.internshipType || 'Unknown'
           },
           userId: enrollment.userId,
           status: enrollment.status || 'active',
-          enrolledAt: enrollment.enrollmentDate || enrollment.enrolledAt || new Date().toISOString(),
-          progress: enrollment.completionPercentage ? parseFloat(enrollment.completionPercentage) : 0,
-          lastAccessed: enrollment.lastAccessed,
+          enrolledAt: enrollment.enrolledAt || enrollment.enrollmentDate || new Date().toISOString(),
+          progress: enrollment.progress || calculateProgress(enrollment),
+          courseId: enrollment.courseId,
+          totalWatchedDuration: enrollment.totalWatchedDuration || 0,
+          totalVideoDuration: enrollment.totalVideoDuration || 0,
+          finalExamEligible: enrollment.finalExamEligible || false,
           certificateIssued: enrollment.certificateIssued || false,
           certificateUrl: enrollment.certificateUrl
         }));
-        setEnrollments(transformedEnrollments || []);
+        
+        console.log('🔄 Transformed enrollments:', transformedEnrollments);
+        setEnrollments(transformedEnrollments);
       } else {
+        console.error('❌ API returned success: false', data);
         setEnrollments([]);
       }
     } catch (error) {
-      console.error('Error fetching enrollments:', error);
+      console.error('❌ Error fetching enrollments:', error);
       toast({
         title: 'Error',
         description: 'Failed to load your enrollments',
@@ -192,32 +236,70 @@ const APStudentDashboard = () => {
     }
   };
 
+  // Helper function to calculate progress
+  const calculateProgress = (enrollment: any): number => {
+    if (enrollment.totalVideoDuration && enrollment.totalVideoDuration > 0) {
+      return Math.round((enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100);
+    }
+    return 0;
+  };
+
   const fetchApplications = async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      console.log('❌ User not authenticated, skipping applications fetch');
+      return;
+    }
 
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      console.log('❌ No token found for applications');
+      return;
+    }
 
     try {
+      console.log('🔄 Fetching applications...');
       const response = await fetch('/api/internships/apinternshipmy-applications', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      console.log('📡 Applications response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('📦 Applications API response:', data);
+      
       if (data.success) {
         setApplications(data.applications || []);
+      } else {
+        console.error('❌ Applications API error:', data);
+        setApplications([]);
       }
     } catch (error) {
-      console.error('Error fetching applications:', error);
+      console.error('❌ Error fetching applications:', error);
+      setApplications([]);
     }
   };
 
   const fetchAPInternships = async () => {
     try {
       setLoadingInternships(true);
+      console.log('🔄 Fetching AP internships...');
+      
       const response = await fetch('/api/internships/ap-internships');
+      console.log('📡 Internships response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('📦 Internships API response:', data);
+      
       if (data.success) {
         const internshipsWithStats = data.internships.map((internship: APInternship) => ({
           ...internship,
@@ -229,11 +311,12 @@ const APStudentDashboard = () => {
         setApInternships(openInternships);
         setFilteredInternships(openInternships);
       } else {
+        console.error('❌ AP Internships API error:', data);
         setApInternships([]);
         setFilteredInternships([]);
       }
     } catch (error) {
-      console.error('Error fetching AP internships:', error);
+      console.error('❌ Error fetching AP internships:', error);
       toast({
         title: 'Error',
         description: 'Failed to load AP internships',
@@ -243,6 +326,21 @@ const APStudentDashboard = () => {
       setFilteredInternships([]);
     } finally {
       setLoadingInternships(false);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      console.log('🔄 Fetching courses...');
+      const response = await fetch('/api/internships/ap-courses');
+      const data = await response.json();
+      console.log('📦 Courses API response:', data);
+      
+      if (data.success) {
+        setCourses(data.courses || []);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching courses:', error);
     }
   };
 
@@ -259,6 +357,7 @@ const APStudentDashboard = () => {
       return matchesSearch && matchesType && matchesMode && matchesStream;
     });
 
+    // Apply sorting
     switch (filters.sort) {
       case 'newest':
         filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -275,6 +374,47 @@ const APStudentDashboard = () => {
     }
 
     setFilteredInternships(filtered);
+  };
+
+  const updateProgress = async (enrollmentId: string, progress: number) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/internships/apinternshipenrollment-progress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          enrollmentId,
+          progress
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        fetchEnrollments(); // Refresh data
+      }
+    } catch (error) {
+      console.error('Error updating progress:', error);
+    }
+  };
+
+  const playVideo = (enrollment: APEnrollment, course: APCourse | undefined, topicName: string, subtopic: Subtopic) => {
+    setSelectedEnrollment(enrollment);
+    setCurrentVideo({
+      link: subtopic.link,
+      title: `${topicName} - ${subtopic.name}`
+    });
+    setShowVideoPlayer(true);
+
+    // Update progress when video is played
+    if (enrollment.progress !== undefined && enrollment.progress < 100) {
+      const newProgress = Math.min(enrollment.progress + 10, 100);
+      updateProgress(enrollment._id, newProgress);
+    }
   };
 
   const isEnrolled = (internshipId: string) => {
@@ -321,6 +461,7 @@ const APStudentDashboard = () => {
       return;
     }
 
+    // Check if already enrolled
     if (isEnrolled(internship._id)) {
       toast({
         title: 'Already Enrolled',
@@ -330,6 +471,7 @@ const APStudentDashboard = () => {
       return;
     }
 
+    // Check application status
     const applicationStatus = getApplicationStatus(internship._id);
     const existingApplication = getApplication(internship._id);
 
@@ -343,12 +485,14 @@ const APStudentDashboard = () => {
     }
 
     if (applicationStatus === 'payment_pending' && internship.mode === 'Paid') {
+      // Show payment page for pending paid applications
       setSelectedInternship(internship);
       setApplicationId(existingApplication!._id);
       setShowPaymentPage(true);
       return;
     }
 
+    // Check if application deadline has passed
     if (isDeadlinePassed(internship.applicationDeadline)) {
       toast({
         title: 'Application Closed',
@@ -360,9 +504,11 @@ const APStudentDashboard = () => {
 
     setSelectedInternship(internship);
 
+    // For free internships, enroll directly
     if (internship.mode === 'Free') {
       await enrollInFreeInternship(internship);
     } else {
+      // For paid internships, create application and proceed to payment
       await createPaidApplication(internship);
     }
   };
@@ -392,8 +538,11 @@ const APStudentDashboard = () => {
           variant: 'default'
         });
         
+        // Refresh enrollments and applications
         await fetchEnrollments();
         await fetchApplications();
+        
+        // Redirect to enrolled tab
         setActiveTab('enrolled');
       } else {
         throw new Error(data.message || 'Failed to enroll in internship');
@@ -428,7 +577,11 @@ const APStudentDashboard = () => {
 
       if (response.ok && data.success) {
         setApplicationId(data.application._id);
+        
+        // For paid internships, proceed to payment
         setShowPaymentPage(true);
+        
+        // Refresh applications to get updated status
         await fetchApplications();
       } else {
         throw new Error(data.message || 'Failed to create application');
@@ -450,8 +603,11 @@ const APStudentDashboard = () => {
       variant: 'default'
     });
     
+    // Refresh enrollments and applications
     fetchEnrollments();
     fetchApplications();
+    
+    // Switch to enrolled tab
     setActiveTab('enrolled');
     setShowPaymentPage(false);
   };
@@ -464,6 +620,10 @@ const APStudentDashboard = () => {
 
   const isDeadlinePassed = (deadline: string) => {
     return new Date(deadline) < new Date();
+  };
+
+  const getCourseForEnrollment = (enrollment: APEnrollment) => {
+    return courses.find(course => course.internshipRef._id === enrollment.internshipId._id);
   };
 
   const getModeBadge = (mode: string) => {
@@ -558,6 +718,7 @@ const APStudentDashboard = () => {
 
     return (
       <Card className="h-full flex flex-col border-2 border-blue-100 hover:border-blue-300 hover:shadow-xl transition-all duration-300 group overflow-hidden">
+        {/* Popular Badge */}
         {internship.applications && internship.applications > 100 && (
           <div className="absolute top-4 right-4 z-10">
             <Badge className="bg-red-500 text-white hover:bg-red-600">
@@ -567,6 +728,7 @@ const APStudentDashboard = () => {
           </div>
         )}
         
+        {/* Card Header with Gradient */}
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 pb-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-blue-200 rounded-full -mr-10 -mt-10 opacity-50"></div>
           <div className="absolute bottom-0 left-0 w-16 h-16 bg-indigo-200 rounded-full -ml-8 -mb-8 opacity-50"></div>
@@ -616,6 +778,7 @@ const APStudentDashboard = () => {
             </Badge>
           </div>
 
+          {/* Rating and Stats */}
           <div className="flex items-center justify-between text-sm relative z-10">
             {internship.rating && renderStars(internship.rating)}
             <div className="flex items-center gap-4 text-gray-500">
@@ -702,9 +865,14 @@ const APStudentDashboard = () => {
             className={`w-full shadow-sm ${getButtonStyle()}`}
             onClick={() => {
               if (enrolled) {
-                // Navigate to learning page
-                window.open(`/ap-internship-learning/${enrollments.find(e => e.internshipId._id === internship._id)?._id}`, '_self');
+                // Find the enrollment and set it as selected, then switch to enrolled tab
+                const enrollment = enrollments.find(e => e.internshipId._id === internship._id);
+                if (enrollment) {
+                  setSelectedEnrollment(enrollment);
+                  setActiveTab('enrolled');
+                }
               } else if (applicationStatus === 'payment_pending') {
+                // Complete payment
                 setSelectedInternship(internship);
                 setApplicationId(application!._id);
                 setShowPaymentPage(true);
@@ -728,6 +896,7 @@ const APStudentDashboard = () => {
     );
   };
 
+  // Show payment page if applicable
   if (showPaymentPage && selectedInternship) {
     return (
       <APRazorpayPayment
@@ -757,6 +926,7 @@ const APStudentDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Enhanced Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-6">
             <div className="flex items-center justify-center p-2 bg-blue-600 text-white rounded-full">
@@ -768,6 +938,15 @@ const APStudentDashboard = () => {
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             Track your progress, manage enrollments, and discover new AP exclusive internship opportunities.
+          </p>
+        </div>
+
+        {/* Debug Info - Remove in production */}
+        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="text-sm font-semibold text-yellow-800">Debug Info:</h3>
+          <p className="text-xs text-yellow-700">
+            Enrollments: {enrollments.length} | Applications: {applications.length} | 
+            Loading: {loadingEnrollments ? 'Yes' : 'No'}
           </p>
         </div>
 
@@ -789,6 +968,7 @@ const APStudentDashboard = () => {
             </TabsTrigger>
           </TabsList>
 
+          {/* Enrolled Internships Tab */}
           <TabsContent value="enrolled" className="space-y-6">
             {loadingEnrollments ? (
               <Card className="border-0 shadow-xl">
@@ -819,158 +999,264 @@ const APStudentDashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {enrollments.map((enrollment) => (
-                  <Card key={enrollment._id} className="border-l-4 border-l-blue-500 border-0 shadow-lg hover:shadow-xl transition-all">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-xl">{enrollment.internshipId.title}</CardTitle>
-                          <CardDescription className="text-base">
-                            {enrollment.internshipId.companyName} • {enrollment.internshipId.duration}
-                            {enrollment.internshipId.mode === 'Paid' && ' • Paid Program'}
-                          </CardDescription>
-                        </div>
-                        <div className="text-right">
-                          {getStatusBadge(enrollment.status)}
-                          <div className="text-sm text-gray-500 mt-1">
-                            Enrolled: {new Date(enrollment.enrolledAt).toLocaleDateString()}
+              <div className="space-y-6">
+                {enrollments.map((enrollment) => {
+                  const course = getCourseForEnrollment(enrollment);
+                  console.log('Rendering enrollment:', enrollment);
+                  console.log('Found course:', course);
+                  
+                  return (
+                    <Card key={enrollment._id} className="border-l-4 border-l-blue-500 border-0 shadow-lg hover:shadow-xl transition-all">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-xl">{enrollment.internshipId.title}</CardTitle>
+                            <CardDescription className="text-base">
+                              {enrollment.internshipId.companyName} • {enrollment.internshipId.duration}
+                              {enrollment.internshipId.mode === 'Paid' && ' • Paid Program'}
+                            </CardDescription>
                           </div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {enrollment.progress !== undefined && (
-                        <div className="mb-4">
-                          <div className="flex justify-between text-sm mb-2">
-                            <span>Overall Progress</span>
-                            <span>{enrollment.progress}%</span>
-                          </div>
-                          <Progress value={enrollment.progress} className="h-3 bg-gray-200">
-                            <div 
-                              className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" 
-                              style={{ width: `${enrollment.progress}%` }}
-                            />
-                          </Progress>
-                        </div>
-                      )}
-
-                      {enrollment.certificateIssued && enrollment.certificateUrl && (
-                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 mb-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <Award className="h-6 w-6 text-green-600 mr-3" />
-                              <div>
-                                <p className="font-medium text-green-800 text-lg">Certificate Available</p>
-                                <p className="text-sm text-green-600">Download your completion certificate</p>
-                              </div>
+                          <div className="text-right">
+                            {getStatusBadge(enrollment.status)}
+                            <div className="text-sm text-gray-500 mt-1">
+                              Enrolled: {new Date(enrollment.enrolledAt).toLocaleDateString()}
                             </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Progress Bar */}
+                          {enrollment.progress !== undefined && (
+                            <div>
+                              <div className="flex justify-between text-sm mb-2">
+                                <span>Overall Progress</span>
+                                <span>{enrollment.progress}%</span>
+                              </div>
+                              <Progress value={enrollment.progress} className="h-3 bg-gray-200">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" 
+                                  style={{ width: `${enrollment.progress}%` }}
+                                />
+                              </Progress>
+                            </div>
+                          )}
+
+                          {/* Course Content - Show if course exists */}
+                          {course ? (
+                            <div className="space-y-3">
+                              <h4 className="font-semibold text-lg">Course Content</h4>
+                              {course.curriculum.map((topic, index) => (
+                                <div key={index} className="border-2 border-gray-100 rounded-xl p-4 hover:border-blue-200 transition-colors">
+                                  <div className="flex justify-between items-center mb-3">
+                                    <h5 className="font-medium text-base">{topic.topicName}</h5>
+                                    <Badge variant="outline" className="text-xs bg-blue-50">
+                                      {topic.subtopics.length} lessons
+                                    </Badge>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    {topic.subtopics.map((subtopic, subIndex) => (
+                                      <div
+                                        key={subIndex}
+                                        className="flex justify-between items-center p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors"
+                                      >
+                                        <div className="flex items-center space-x-3">
+                                          <Play className="h-4 w-4 text-gray-400" />
+                                          <span className="text-sm">{subtopic.name}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-3">
+                                          <span className="text-xs text-gray-600">{subtopic.duration} mins</span>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => playVideo(enrollment, course, topic.topicName, subtopic)}
+                                            className="bg-white hover:bg-blue-50"
+                                          >
+                                            <Video className="h-3 w-3 mr-1" />
+                                            Watch
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                              <p>Course content not available</p>
+                            </div>
+                          )}
+
+                          {/* Certificate Section */}
+                          {enrollment.certificateIssued && enrollment.certificateUrl && (
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    <Award className="h-6 w-6 text-green-600 mr-3" />
+                                    <div>
+                                      <p className="font-medium text-green-800 text-lg">Certificate Available</p>
+                                      <p className="text-sm text-green-600">Download your completion certificate</p>
+                                    </div>
+                                  </div>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => window.open(enrollment.certificateUrl, '_blank')}
+                                    className="border-green-300 text-green-700 hover:bg-green-50"
+                                  >
+                                    <FileText className="h-4 w-4 mr-1" />
+                                    View Certificate
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                        <CardFooter className="flex justify-between border-t border-gray-100 pt-4">
+                          <div className="text-sm text-gray-600">
+                            Last accessed: {enrollment.lastAccessed ? new Date(enrollment.lastAccessed).toLocaleDateString() : 'Never'}
+                          </div>
+                          <div className="flex space-x-2">
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => window.open(enrollment.certificateUrl, '_blank')}
-                              className="border-green-300 text-green-700 hover:bg-green-50"
+                              onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_blank')}
+                              className="border-gray-300"
                             >
-                              <FileText className="h-4 w-4 mr-1" />
-                              View Certificate
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Details
                             </Button>
+                            {enrollment.status === 'active' && (
+                              <Button 
+                                size="sm"
+                                onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_blank')}
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                              >
+                                <Play className="h-4 w-4 mr-1" />
+                                Continue Learning
+                              </Button>
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </CardContent>
-                    <CardFooter className="flex justify-between border-t border-gray-100 pt-4">
-                      <div className="text-sm text-gray-600">
-                        Last accessed: {enrollment.lastAccessed ? new Date(enrollment.lastAccessed).toLocaleDateString() : 'Never'}
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button 
-                          size="sm"
-                          onClick={() => window.open(`/ap-internship-learning/${enrollment._id}`, '_self')}
-                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                        >
-                          <Play className="h-4 w-4 mr-1" />
-                          Continue Learning
-                        </Button>
-                      </div>
-                    </CardFooter>
-                  </Card>
+                        </CardFooter>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Browse AP Internships Tab */}
+            <TabsContent value="browse" className="space-y-6">
+              {/* Enhanced Search and Filters */}
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-4 top-3 h-5 w-5 text-gray-400" />
+                      <Input
+                        placeholder="Search AP internships by title, company, or description..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-12 pr-4 py-3 bg-white border-2 border-gray-200 focus:border-blue-500 rounded-xl text-lg shadow-sm"
+                      />
+                    </div>
+                    <div className="flex gap-4 flex-wrap">
+                      <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
+                        <SelectTrigger className="w-48 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
+                          <SelectValue placeholder="Internship Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="online">Online</SelectItem>
+                          <SelectItem value="offline">Offline</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filters.mode} onValueChange={(value) => setFilters({...filters, mode: value})}>
+                        <SelectTrigger className="w-40 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
+                          <SelectValue placeholder="Mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Modes</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="free">Free</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filters.sort} onValueChange={(value) => setFilters({...filters, sort: value})}>
+                        <SelectTrigger className="w-44 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
+                          <SelectValue placeholder="Sort By" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="newest">Newest First</SelectItem>
+                          <SelectItem value="popular">Most Popular</SelectItem>
+                          <SelectItem value="applications">Most Applications</SelectItem>
+                          <SelectItem value="rating">Highest Rated</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Internships Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredInternships.map((internship) => (
+                  <InternshipCard key={internship._id} internship={internship} />
                 ))}
               </div>
-            )}
-          </TabsContent>
 
-          <TabsContent value="browse" className="space-y-6">
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-4 top-3 h-5 w-5 text-gray-400" />
-                    <Input
-                      placeholder="Search AP internships by title, company, or description..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-12 pr-4 py-3 bg-white border-2 border-gray-200 focus:border-blue-500 rounded-xl text-lg shadow-sm"
-                    />
+              {filteredInternships.length === 0 && (
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <BookOpen className="h-12 w-12 text-blue-600" />
                   </div>
-                  <div className="flex gap-4 flex-wrap">
-                    <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
-                      <SelectTrigger className="w-48 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
-                        <SelectValue placeholder="Internship Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="online">Online</SelectItem>
-                        <SelectItem value="offline">Offline</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={filters.mode} onValueChange={(value) => setFilters({...filters, mode: value})}>
-                      <SelectTrigger className="w-40 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
-                        <SelectValue placeholder="Mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Modes</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="free">Free</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={filters.sort} onValueChange={(value) => setFilters({...filters, sort: value})}>
-                      <SelectTrigger className="w-44 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
-                        <SelectValue placeholder="Sort By" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="newest">Newest First</SelectItem>
-                        <SelectItem value="popular">Most Popular</SelectItem>
-                        <SelectItem value="applications">Most Applications</SelectItem>
-                        <SelectItem value="rating">Highest Rated</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">No AP internships found</h3>
+                  <p className="text-gray-600 text-lg max-w-md mx-auto">
+                    Try adjusting your search criteria or check back later for new opportunities.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
+          {/* Video Player Dialog */}
+          {showVideoPlayer && currentVideo && (
+            <Dialog open={showVideoPlayer} onOpenChange={setShowVideoPlayer}>
+              <DialogContent className="max-w-4xl bg-white rounded-2xl">
+                <DialogHeader>
+                  <DialogTitle className="text-xl">{currentVideo.title}</DialogTitle>
+                </DialogHeader>
+                <div className="aspect-video bg-black rounded-xl">
+                  <div className="w-full h-full flex items-center justify-center text-white">
+                    <div className="text-center">
+                      <Video className="h-16 w-16 mx-auto mb-4" />
+                      <p>Video Player - {currentVideo.title}</p>
+                      <p className="text-sm text-gray-400 mt-2">Video URL: {currentVideo.link}</p>
+                      <Button 
+                        className="mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                        onClick={() => window.open(currentVideo.link, '_blank')}
+                      >
+                        Open Video in New Tab
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredInternships.map((internship) => (
-                <InternshipCard key={internship._id} internship={internship} />
-              ))}
-            </div>
-
-            {filteredInternships.length === 0 && (
-              <div className="text-center py-16">
-                <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <BookOpen className="h-12 w-12 text-blue-600" />
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={() => setShowVideoPlayer(false)}
+                    variant="outline"
+                  >
+                    Close
+                  </Button>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">No AP internships found</h3>
-                <p className="text-gray-600 text-lg max-w-md mx-auto">
-                  Try adjusting your search criteria or check back later for new opportunities.
-                </p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 export default APStudentDashboard;
