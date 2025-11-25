@@ -57,17 +57,6 @@ interface APEnrollment {
   lastAccessed?: string;
   certificateIssued?: boolean;
   certificateUrl?: string;
-  // Added fields from your backend model
-  courseId?: {
-    _id: string;
-    title: string;
-    totalDuration?: number;
-    stream?: string;
-    providerName?: string;
-  };
-  totalWatchedDuration?: number;
-  totalVideoDuration?: number;
-  finalExamEligible?: boolean;
 }
 
 interface APCourse {
@@ -144,7 +133,6 @@ const APStudentDashboard = () => {
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    console.log('🔄 Dashboard mounted, fetching data...');
     fetchEnrollments();
     fetchApplications();
     fetchAPInternships();
@@ -152,78 +140,48 @@ const APStudentDashboard = () => {
   }, []);
 
   useEffect(() => {
-    console.log('📊 Enrollments updated:', enrollments);
-    console.log('📊 Applications updated:', applications);
-  }, [enrollments, applications]);
-
-  useEffect(() => {
     filterInternships();
   }, [apInternships, searchTerm, filters]);
+
+  // Debug effect to check enrollments state
+  useEffect(() => {
+    console.log('Enrollments state:', enrollments);
+    console.log('Loading enrollments:', loadingEnrollments);
+  }, [enrollments, loadingEnrollments]);
 
   const fetchEnrollments = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      console.log('❌ No token found');
       setLoadingEnrollments(false);
       return;
     }
 
     try {
       setLoadingEnrollments(true);
-      console.log('🔄 Fetching enrollments from:', '/api/internships/apinternshipmy-enrollments');
-      
+      // FIXED: Updated endpoint to match backend
       const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      console.log('📡 Enrollment response status:', response.status);
-      
+      // Add better error handling
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('📦 Raw enrollment API response:', data);
+      console.log('Enrollments API response:', data); // Debug log
       
       if (data.success) {
-        // Handle different possible response structures
-        const enrollmentData = data.enrollments || data.data || [];
-        console.log('✅ Processed enrollments:', enrollmentData);
-        
-        // Transform the data to match our frontend interface
-        const transformedEnrollments = enrollmentData.map((enrollment: any) => ({
-          _id: enrollment._id,
-          internshipId: enrollment.internshipId || {
-            _id: enrollment.internshipId?._id || 'unknown',
-            title: enrollment.internshipId?.title || 'Unknown Internship',
-            companyName: enrollment.internshipId?.companyName || 'Unknown Company',
-            duration: enrollment.internshipId?.duration || 'Unknown Duration',
-            mode: enrollment.internshipId?.mode || 'Unknown',
-            stream: enrollment.internshipId?.stream || 'Unknown',
-            internshipType: enrollment.internshipId?.internshipType || 'Unknown'
-          },
-          userId: enrollment.userId,
-          status: enrollment.status || 'active',
-          enrolledAt: enrollment.enrolledAt || enrollment.enrollmentDate || new Date().toISOString(),
-          progress: enrollment.progress || calculateProgress(enrollment),
-          courseId: enrollment.courseId,
-          totalWatchedDuration: enrollment.totalWatchedDuration || 0,
-          totalVideoDuration: enrollment.totalVideoDuration || 0,
-          finalExamEligible: enrollment.finalExamEligible || false,
-          certificateIssued: enrollment.certificateIssued || false,
-          certificateUrl: enrollment.certificateUrl
-        }));
-        
-        console.log('🔄 Transformed enrollments:', transformedEnrollments);
-        setEnrollments(transformedEnrollments);
+        // Make sure the data structure matches
+        setEnrollments(data.enrollments || data.data || []);
       } else {
-        console.error('❌ API returned success: false', data);
+        console.error('API returned success: false', data);
         setEnrollments([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching enrollments:', error);
+      console.error('Error fetching enrollments:', error);
       toast({
         title: 'Error',
         description: 'Failed to load your enrollments',
@@ -236,51 +194,32 @@ const APStudentDashboard = () => {
     }
   };
 
-  // Helper function to calculate progress
-  const calculateProgress = (enrollment: any): number => {
-    if (enrollment.totalVideoDuration && enrollment.totalVideoDuration > 0) {
-      return Math.round((enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100);
-    }
-    return 0;
-  };
-
   const fetchApplications = async () => {
-    if (!isAuthenticated) {
-      console.log('❌ User not authenticated, skipping applications fetch');
-      return;
-    }
+    if (!isAuthenticated) return;
 
     const token = localStorage.getItem('token');
-    if (!token) {
-      console.log('❌ No token found for applications');
-      return;
-    }
+    if (!token) return;
 
     try {
-      console.log('🔄 Fetching applications...');
       const response = await fetch('/api/internships/apinternshipmy-applications', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      console.log('📡 Applications response status:', response.status);
-      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('📦 Applications API response:', data);
-      
       if (data.success) {
         setApplications(data.applications || []);
       } else {
-        console.error('❌ Applications API error:', data);
+        console.error('Applications API error:', data);
         setApplications([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching applications:', error);
+      console.error('Error fetching applications:', error);
       setApplications([]);
     }
   };
@@ -288,35 +227,31 @@ const APStudentDashboard = () => {
   const fetchAPInternships = async () => {
     try {
       setLoadingInternships(true);
-      console.log('🔄 Fetching AP internships...');
-      
       const response = await fetch('/api/internships/ap-internships');
-      console.log('📡 Internships response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('📦 Internships API response:', data);
-      
       if (data.success) {
+        // Add mock data for demo like in APExclusiveInternshipsPage
         const internshipsWithStats = data.internships.map((internship: APInternship) => ({
           ...internship,
           views: Math.floor(Math.random() * 1000) + 100,
           applications: Math.floor(Math.random() * 200) + 50,
-          rating: parseFloat((Math.random() * 1 + 4).toFixed(1))
+          rating: parseFloat((Math.random() * 1 + 4).toFixed(1)) // Random rating between 4.0 and 5.0
         }));
         const openInternships = internshipsWithStats.filter((internship: APInternship) => internship.status === 'Open');
         setApInternships(openInternships);
         setFilteredInternships(openInternships);
       } else {
-        console.error('❌ AP Internships API error:', data);
+        console.error('AP Internships API error:', data);
         setApInternships([]);
         setFilteredInternships([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching AP internships:', error);
+      console.error('Error fetching AP internships:', error);
       toast({
         title: 'Error',
         description: 'Failed to load AP internships',
@@ -331,16 +266,13 @@ const APStudentDashboard = () => {
 
   const fetchCourses = async () => {
     try {
-      console.log('🔄 Fetching courses...');
       const response = await fetch('/api/internships/ap-courses');
       const data = await response.json();
-      console.log('📦 Courses API response:', data);
-      
       if (data.success) {
         setCourses(data.courses || []);
       }
     } catch (error) {
-      console.error('❌ Error fetching courses:', error);
+      console.error('Error fetching courses:', error);
     }
   };
 
@@ -381,6 +313,7 @@ const APStudentDashboard = () => {
     if (!token) return;
 
     try {
+      // FIXED: Updated progress endpoint
       const response = await fetch('/api/internships/apinternshipenrollment-progress', {
         method: 'PUT',
         headers: {
@@ -941,14 +874,7 @@ const APStudentDashboard = () => {
           </p>
         </div>
 
-        {/* Debug Info - Remove in production */}
-        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h3 className="text-sm font-semibold text-yellow-800">Debug Info:</h3>
-          <p className="text-xs text-yellow-700">
-            Enrollments: {enrollments.length} | Applications: {applications.length} | 
-            Loading: {loadingEnrollments ? 'Yes' : 'No'}
-          </p>
-        </div>
+        {/* Removed Stats Overview Section */}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <TabsList className="grid w-full grid-cols-2 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-2xl p-2 shadow-lg">
@@ -1002,9 +928,6 @@ const APStudentDashboard = () => {
               <div className="space-y-6">
                 {enrollments.map((enrollment) => {
                   const course = getCourseForEnrollment(enrollment);
-                  console.log('Rendering enrollment:', enrollment);
-                  console.log('Found course:', course);
-                  
                   return (
                     <Card key={enrollment._id} className="border-l-4 border-l-blue-500 border-0 shadow-lg hover:shadow-xl transition-all">
                       <CardHeader>
@@ -1042,8 +965,8 @@ const APStudentDashboard = () => {
                             </div>
                           )}
 
-                          {/* Course Content - Show if course exists */}
-                          {course ? (
+                          {/* Course Content */}
+                          {course && (
                             <div className="space-y-3">
                               <h4 className="font-semibold text-lg">Course Content</h4>
                               {course.curriculum.map((topic, index) => (
@@ -1082,11 +1005,6 @@ const APStudentDashboard = () => {
                                   </div>
                                 </div>
                               ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-8 text-gray-500">
-                              <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                              <p>Course content not available</p>
                             </div>
                           )}
 
