@@ -1,4 +1,3 @@
-// components/admin/APCourseManagement.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Eye, FileText, Download, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, FileText, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface APCourse {
@@ -32,6 +31,7 @@ interface APCourse {
   finalExamExcelLink?: string;
   createdAt: string;
   updatedAt: string;
+  courseId?: string;
 }
 
 interface CurriculumTopic {
@@ -44,6 +44,7 @@ interface Subtopic {
   name: string;
   link: string;
   duration: number;
+  _id?: string;
 }
 
 interface APInternship {
@@ -60,42 +61,58 @@ const APCourseManagement = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<APCourse | null>(null);
-  const [formData, setFormData] = useState({
+
+  // formDataState mirrors exactly what backend expects:
+  // internshipId, title, curriculum (we will stringify before sending),
+  // stream, providerName, instructorName, courseLanguage, certificationProvided, hasFinalExam
+  const [formDataState, setFormDataState] = useState({
     internshipId: '',
     title: '',
     curriculum: [] as CurriculumTopic[],
     stream: '',
-    providerName: 'triaright' as const,
+    providerName: 'triaright' as 'triaright' | 'etv' | 'kalasalingan' | 'instructor',
     instructorName: '',
     courseLanguage: 'English',
-    certificationProvided: 'yes' as const,
+    certificationProvided: 'yes' as 'yes' | 'no',
     hasFinalExam: false
   });
-  const [files, setFiles] = useState<{ [key: string]: File }>({});
+
+  // files keyed by the exact fieldnames backend expects:
+  // 'curriculumDoc', 'finalExam', and topic exam files like `topicExam_${topic.topicName}`
+  const [files, setFiles] = useState<{ [fieldName: string]: File }>({});
+
   const { toast } = useToast();
 
   useEffect(() => {
     fetchCourses();
     fetchInternships();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCourses = async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
-
+    if (!token) {
+      return;
+    }
     try {
       setLoading(true);
-      const response = await fetch('/api/internships/apcourses', {
+      const res = await fetch('/api/internships/apcourses', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         }
       });
-      const data = await response.json();
+      const data = await res.json();
       if (data.success) {
-        setCourses(data.courses);
+        setCourses(data.courses || []);
+      } else {
+        toast({
+          title: 'Error',
+          description: data.message || 'Failed to load courses',
+          variant: 'destructive'
+        });
       }
-    } catch (error) {
-      console.error('Error fetching courses:', error);
+    } catch (err) {
+      console.error('fetchCourses error', err);
       toast({
         title: 'Error',
         description: 'Failed to load courses',
@@ -109,180 +126,31 @@ const APCourseManagement = () => {
   const fetchInternships = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
-
     try {
-      const response = await fetch('/api/internships/ap-internships', {
+      const res = await fetch('/api/internships/ap-internships', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         }
       });
-      const data = await response.json();
+      const data = await res.json();
       if (data.success) {
-        setInternships(data.internships);
-      }
-    } catch (error) {
-      console.error('Error fetching internships:', error);
-    }
-  };
-
-  const handleFileChange = (fieldName: string, file: File) => {
-    setFiles(prev => ({
-      ...prev,
-      [fieldName]: file
-    }));
-  };
-
-  const createCourse = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const formDataToSend = new FormData();
-      
-      // Append basic form data
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'curriculum') {
-          formDataToSend.append(key, JSON.stringify(value));
-        } else {
-          formDataToSend.append(key, value.toString());
-        }
-      });
-
-      // Append files
-      Object.entries(files).forEach(([fieldName, file]) => {
-        formDataToSend.append(fieldName, file);
-      });
-
-      const response = await fetch('/api/internships/apcourses', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formDataToSend
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast({
-          title: 'Success',
-          description: 'Course created successfully with exams'
-        });
-        setShowCreateDialog(false);
-        resetForm();
-        fetchCourses();
+        setInternships(data.internships || []);
       } else {
-        throw new Error(data.message || 'Failed to create course');
+        console.warn('fetchInternships:', data.message);
       }
-    } catch (error: any) {
-      console.error('Error creating course:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create course',
-        variant: 'destructive'
-      });
+    } catch (err) {
+      console.error('fetchInternships error', err);
     }
   };
 
-  const updateCourse = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCourse) return;
-
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await fetch(`/api/internships/apcourses/${selectedCourse._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast({
-          title: 'Success',
-          description: 'Course updated successfully'
-        });
-        setShowEditDialog(false);
-        resetForm();
-        fetchCourses();
-      } else {
-        throw new Error(data.message || 'Failed to update course');
-      }
-    } catch (error: any) {
-      console.error('Error updating course:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update course',
-        variant: 'destructive'
-      });
-    }
+  const handleFileChange = (fieldName: string, file: File | undefined) => {
+    if (!file) return;
+    setFiles(prev => ({ ...prev, [fieldName]: file }));
   };
 
-  const deleteCourse = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this course?')) return;
-
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await fetch(`/api/internships/apcourses/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast({
-          title: 'Success',
-          description: 'Course deleted successfully'
-        });
-        fetchCourses();
-      } else {
-        throw new Error(data.message || 'Failed to delete course');
-      }
-    } catch (error: any) {
-      console.error('Error deleting course:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete course',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleEdit = (course: APCourse) => {
-    setSelectedCourse(course);
-    setFormData({
-      internshipId: course.internshipRef._id,
-      title: course.title,
-      curriculum: course.curriculum,
-      stream: course.stream,
-      providerName: course.providerName,
-      instructorName: course.instructorName,
-      courseLanguage: course.courseLanguage,
-      certificationProvided: course.certificationProvided,
-      hasFinalExam: course.hasFinalExam
-    });
-    setShowEditDialog(true);
-  };
-
-  const handleView = (course: APCourse) => {
-    setSelectedCourse(course);
-    setShowViewDialog(true);
-  };
-
+  // Reset form to initial state
   const resetForm = () => {
-    setFormData({
+    setFormDataState({
       internshipId: '',
       title: '',
       curriculum: [],
@@ -297,75 +165,271 @@ const APCourseManagement = () => {
     setSelectedCourse(null);
   };
 
+  // Add/modify curriculum helpers (keeps the structure the backend expects)
   const addTopic = () => {
-    setFormData(prev => ({
+    setFormDataState(prev => ({
       ...prev,
       curriculum: [
         ...prev.curriculum,
-        {
-          topicName: '',
-          topicCount: 0,
-          subtopics: []
-        }
+        { topicName: '', topicCount: 0, subtopics: [] }
       ]
     }));
   };
 
-  const updateTopic = (index: number, field: string, value: any) => {
-    setFormData(prev => ({
+  const updateTopic = (index: number, field: keyof CurriculumTopic, value: any) => {
+    setFormDataState(prev => ({
       ...prev,
-      curriculum: prev.curriculum.map((topic, i) => 
-        i === index ? { ...topic, [field]: value } : topic
-      )
+      curriculum: prev.curriculum.map((t, i) => i === index ? { ...t, [field]: value } : t)
     }));
   };
 
   const removeTopic = (index: number) => {
-    setFormData(prev => ({
+    setFormDataState(prev => ({
       ...prev,
       curriculum: prev.curriculum.filter((_, i) => i !== index)
     }));
+    // Also remove any topic exam file mapped to this topic
+    setFiles(prev => {
+      const copy = { ...prev };
+      // topicName might be removed; safest to remove any key that starts with `topicExam_` and matches removed topic name — but since topic name removed we can't know it here.
+      // We will simply keep files (no-op) — backend can handle missing files per topic.
+      return copy;
+    });
   };
 
   const addSubtopic = (topicIndex: number) => {
-    setFormData(prev => ({
+    setFormDataState(prev => ({
       ...prev,
-      curriculum: prev.curriculum.map((topic, i) => 
-        i === topicIndex ? {
-          ...topic,
-          subtopics: [
-            ...topic.subtopics,
-            { name: '', link: '', duration: 0 }
-          ]
-        } : topic
-      )
+      curriculum: prev.curriculum.map((t, i) => i === topicIndex ? {
+        ...t,
+        subtopics: [...t.subtopics, { name: '', link: '', duration: 0 }]
+      } : t)
     }));
   };
 
-  const updateSubtopic = (topicIndex: number, subtopicIndex: number, field: string, value: any) => {
-    setFormData(prev => ({
+  const updateSubtopic = (topicIndex: number, subIndex: number, field: keyof Subtopic, value: any) => {
+    setFormDataState(prev => ({
       ...prev,
-      curriculum: prev.curriculum.map((topic, i) => 
-        i === topicIndex ? {
-          ...topic,
-          subtopics: topic.subtopics.map((subtopic, j) => 
-            j === subtopicIndex ? { ...subtopic, [field]: value } : subtopic
-          )
-        } : topic
-      )
+      curriculum: prev.curriculum.map((t, i) => i === topicIndex ? {
+        ...t,
+        subtopics: t.subtopics.map((s, j) => j === subIndex ? { ...s, [field]: value } : s)
+      } : t)
     }));
   };
 
-  const removeSubtopic = (topicIndex: number, subtopicIndex: number) => {
-    setFormData(prev => ({
+  const removeSubtopic = (topicIndex: number, subIndex: number) => {
+    setFormDataState(prev => ({
       ...prev,
-      curriculum: prev.curriculum.map((topic, i) => 
-        i === topicIndex ? {
-          ...topic,
-          subtopics: topic.subtopics.filter((_, j) => j !== subtopicIndex)
-        } : topic
-      )
+      curriculum: prev.curriculum.map((t, i) => i === topicIndex ? {
+        ...t,
+        subtopics: t.subtopics.filter((_, j) => j !== subIndex)
+      } : t)
     }));
+  };
+
+  // Build FormData exactly as backend expects and POST to /api/internships/apcourses
+  const createCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({ title: 'Error', description: 'Not authenticated', variant: 'destructive' });
+      return;
+    }
+
+    // Basic validation before sending
+    if (!formDataState.internshipId) {
+      toast({ title: 'Validation', description: 'Please select an internship', variant: 'destructive' });
+      return;
+    }
+    if (!formDataState.title) {
+      toast({ title: 'Validation', description: 'Please provide a course title', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const fd = new FormData();
+
+      // IMPORTANT: keys must match backend: internshipId, title, curriculum (JSON), stream, providerName, instructorName,
+      // courseLanguage, certificationProvided, hasFinalExam
+      fd.append('internshipId', formDataState.internshipId);
+      fd.append('title', formDataState.title);
+      fd.append('stream', formDataState.stream || '');
+      fd.append('providerName', formDataState.providerName);
+      fd.append('instructorName', formDataState.instructorName || '');
+      fd.append('courseLanguage', formDataState.courseLanguage || 'English');
+      fd.append('certificationProvided', formDataState.certificationProvided);
+      // backend expects curriculum as JSON string (controller supports string parse)
+      fd.append('curriculum', JSON.stringify(formDataState.curriculum || []));
+      // hasFinalExam should be sent as boolean-like value; FormData stores strings — backend treats truthy values as OK
+      fd.append('hasFinalExam', formDataState.hasFinalExam ? 'true' : 'false');
+
+      // Append curriculum document if provided
+      if (files['curriculumDoc']) {
+        fd.append('curriculumDoc', files['curriculumDoc']);
+      }
+
+      // Append final exam file only if hasFinalExam true and file present
+      if (formDataState.hasFinalExam && files['finalExam']) {
+        fd.append('finalExam', files['finalExam']);
+      }
+
+      // Append topic exam files. Backend expects field names exactly: `topicExam_${topic.topicName}`
+      // IMPORTANT: Use the topicName as-is (backend uses the same key). If you sanitize here, backend won't find it.
+      formDataState.curriculum.forEach((topic) => {
+        const fieldName = `topicExam_${topic.topicName}`;
+        const file = files[fieldName];
+        if (file) {
+          fd.append(fieldName, file);
+        }
+      });
+
+      // Debugging: (optional) log FormData keys (cannot log values directly)
+      // for (const pair of fd.entries()) {
+      //   console.log(pair[0], pair[1]);
+      // }
+
+      const res = await fetch('/api/internships/apcourses', {
+        method: 'POST',
+        headers: {
+          // DO NOT set Content-Type; let browser set multipart boundary
+          Authorization: `Bearer ${token}`
+        },
+        body: fd
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        toast({
+          title: 'Success',
+          description: 'Course created successfully'
+        });
+        setShowCreateDialog(false);
+        resetForm();
+        fetchCourses();
+      } else {
+        const msg = data.message || 'Failed to create course';
+        throw new Error(msg);
+      }
+    } catch (err: any) {
+      console.error('createCourse error', err);
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to create course',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update course (backend route supports multipart upload on PUT too), but current controller updateAPCourse expects JSON body.
+  // We'll send JSON for updates (no file changes here). If you need file update support, switch to FormData & upload.any().
+  const updateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourse) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({ title: 'Error', description: 'Not authenticated', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Prepare payload same field names as backend expects
+      const payload = {
+        internshipRef: formDataState.internshipId, // backend used 'internshipRef' field on model; update accepts req.body
+        title: formDataState.title,
+        curriculum: formDataState.curriculum,
+        stream: formDataState.stream,
+        providerName: formDataState.providerName,
+        instructorName: formDataState.instructorName,
+        courseLanguage: formDataState.courseLanguage,
+        certificationProvided: formDataState.certificationProvided,
+        hasFinalExam: formDataState.hasFinalExam
+      };
+
+      const res = await fetch(`/api/internships/apcourses/${selectedCourse._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        toast({
+          title: 'Success',
+          description: 'Course updated successfully'
+        });
+        setShowEditDialog(false);
+        resetForm();
+        fetchCourses();
+      } else {
+        throw new Error(data.message || 'Failed to update course');
+      }
+    } catch (err: any) {
+      console.error('updateCourse error', err);
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to update course',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteCourse = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this course?')) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const res = await fetch(`/api/internships/apcourses/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast({ title: 'Success', description: 'Course deleted' });
+        fetchCourses();
+      } else {
+        throw new Error(data.message || 'Failed to delete course');
+      }
+    } catch (err: any) {
+      console.error('deleteCourse error', err);
+      toast({ title: 'Error', description: err.message || 'Failed to delete', variant: 'destructive' });
+    }
+  };
+
+  // Pre-fill form for editing with backend-compatible fields
+  const handleEdit = (course: APCourse) => {
+    setSelectedCourse(course);
+    setFormDataState({
+      internshipId: course.internshipRef?._id || '',
+      title: course.title || '',
+      curriculum: course.curriculum || [],
+      stream: course.stream || '',
+      providerName: course.providerName || 'triaright',
+      instructorName: course.instructorName || '',
+      courseLanguage: course.courseLanguage || 'English',
+      certificationProvided: course.certificationProvided || 'yes',
+      hasFinalExam: !!course.hasFinalExam
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleView = (course: APCourse) => {
+    setSelectedCourse(course);
+    setShowViewDialog(true);
   };
 
   const getProviderBadge = (provider: string) => {
@@ -410,32 +474,34 @@ const APCourseManagement = () => {
                 Create a recorded course with topics, subtopics, and exams.
               </DialogDescription>
             </DialogHeader>
+
             <form onSubmit={createCourse} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Internship *</label>
                   <Select
-                    value={formData.internshipId}
-                    onValueChange={(value) => setFormData({...formData, internshipId: value})}
+                    value={formDataState.internshipId}
+                    onValueChange={(value) => setFormDataState(prev => ({ ...prev, internshipId: value }))}
                     required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select internship" />
                     </SelectTrigger>
                     <SelectContent>
-                      {internships.map(internship => (
-                        <SelectItem key={internship._id} value={internship._id}>
-                          {internship.title} - {internship.companyName}
+                      {internships.map(i => (
+                        <SelectItem key={i._id} value={i._id}>
+                          {i.title} - {i.companyName}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Course Title *</label>
                   <Input
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    value={formDataState.title}
+                    onChange={(e) => setFormDataState(prev => ({ ...prev, title: e.target.value }))}
                     required
                   />
                 </div>
@@ -445,18 +511,17 @@ const APCourseManagement = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Stream *</label>
                   <Input
-                    value={formData.stream}
-                    onChange={(e) => setFormData({...formData, stream: e.target.value})}
+                    value={formDataState.stream}
+                    onChange={(e) => setFormDataState(prev => ({ ...prev, stream: e.target.value }))}
                     required
                   />
                 </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Provider *</label>
                   <Select
-                    value={formData.providerName}
-                    onValueChange={(value: 'triaright' | 'etv' | 'kalasalingan' | 'instructor') => 
-                      setFormData({...formData, providerName: value})
-                    }
+                    value={formDataState.providerName}
+                    onValueChange={(value) => setFormDataState(prev => ({ ...prev, providerName: value as any }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -475,16 +540,17 @@ const APCourseManagement = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Instructor Name *</label>
                   <Input
-                    value={formData.instructorName}
-                    onChange={(e) => setFormData({...formData, instructorName: e.target.value})}
+                    value={formDataState.instructorName}
+                    onChange={(e) => setFormDataState(prev => ({ ...prev, instructorName: e.target.value }))}
                     required
                   />
                 </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Course Language *</label>
                   <Input
-                    value={formData.courseLanguage}
-                    onChange={(e) => setFormData({...formData, courseLanguage: e.target.value})}
+                    value={formDataState.courseLanguage}
+                    onChange={(e) => setFormDataState(prev => ({ ...prev, courseLanguage: e.target.value }))}
                     required
                   />
                 </div>
@@ -494,10 +560,8 @@ const APCourseManagement = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Certification Provided *</label>
                   <Select
-                    value={formData.certificationProvided}
-                    onValueChange={(value: 'yes' | 'no') => 
-                      setFormData({...formData, certificationProvided: value})
-                    }
+                    value={formDataState.certificationProvided}
+                    onValueChange={(value) => setFormDataState(prev => ({ ...prev, certificationProvided: value as any }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -508,11 +572,12 @@ const APCourseManagement = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Has Final Exam</label>
                   <Select
-                    value={formData.hasFinalExam.toString()}
-                    onValueChange={(value) => setFormData({...formData, hasFinalExam: value === 'true'})}
+                    value={formDataState.hasFinalExam ? 'true' : 'false'}
+                    onValueChange={(value) => setFormDataState(prev => ({ ...prev, hasFinalExam: value === 'true' }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -535,16 +600,11 @@ const APCourseManagement = () => {
                   </Button>
                 </div>
 
-                {formData.curriculum.map((topic, topicIndex) => (
-                  <div key={topicIndex} className="border rounded-lg p-4 space-y-4">
+                {formDataState.curriculum.map((topic, tIdx) => (
+                  <div key={tIdx} className="border rounded-lg p-4 space-y-4">
                     <div className="flex justify-between items-start">
-                      <h4 className="font-medium">Topic {topicIndex + 1}</h4>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeTopic(topicIndex)}
-                      >
+                      <h4 className="font-medium">Topic {tIdx + 1}</h4>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => removeTopic(tIdx)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -554,17 +614,18 @@ const APCourseManagement = () => {
                         <label className="text-sm font-medium">Topic Name *</label>
                         <Input
                           value={topic.topicName}
-                          onChange={(e) => updateTopic(topicIndex, 'topicName', e.target.value)}
+                          onChange={(e) => updateTopic(tIdx, 'topicName', e.target.value)}
                           required
                         />
                       </div>
+
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Subtopic Count</label>
                         <Input
                           type="number"
                           value={topic.topicCount}
-                          onChange={(e) => updateTopic(topicIndex, 'topicCount', parseInt(e.target.value))}
-                          min="0"
+                          min={0}
+                          onChange={(e) => updateTopic(tIdx, 'topicCount', parseInt(e.target.value || '0', 10))}
                         />
                       </div>
                     </div>
@@ -572,27 +633,17 @@ const APCourseManagement = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <h5 className="font-medium">Subtopics</h5>
-                        <Button
-                          type="button"
-                          onClick={() => addSubtopic(topicIndex)}
-                          variant="outline"
-                          size="sm"
-                        >
+                        <Button type="button" onClick={() => addSubtopic(tIdx)} variant="outline" size="sm">
                           <Plus className="h-4 w-4 mr-2" />
                           Add Subtopic
                         </Button>
                       </div>
 
-                      {topic.subtopics.map((subtopic, subtopicIndex) => (
-                        <div key={subtopicIndex} className="border rounded p-3 space-y-3">
+                      {topic.subtopics.map((sub, sIdx) => (
+                        <div key={sIdx} className="border rounded p-3 space-y-3">
                           <div className="flex justify-between items-start">
-                            <h6 className="font-medium">Subtopic {subtopicIndex + 1}</h6>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => removeSubtopic(topicIndex, subtopicIndex)}
-                            >
+                            <h6 className="font-medium">Subtopic {sIdx + 1}</h6>
+                            <Button type="button" variant="destructive" size="sm" onClick={() => removeSubtopic(tIdx, sIdx)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -601,26 +652,28 @@ const APCourseManagement = () => {
                             <div className="space-y-2">
                               <label className="text-sm font-medium">Name *</label>
                               <Input
-                                value={subtopic.name}
-                                onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'name', e.target.value)}
+                                value={sub.name}
+                                onChange={(e) => updateSubtopic(tIdx, sIdx, 'name', e.target.value)}
                                 required
                               />
                             </div>
+
                             <div className="space-y-2">
                               <label className="text-sm font-medium">Video Link *</label>
                               <Input
-                                value={subtopic.link}
-                                onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'link', e.target.value)}
+                                value={sub.link}
+                                onChange={(e) => updateSubtopic(tIdx, sIdx, 'link', e.target.value)}
                                 required
                               />
                             </div>
+
                             <div className="space-y-2">
                               <label className="text-sm font-medium">Duration (minutes) *</label>
                               <Input
                                 type="number"
-                                value={subtopic.duration}
-                                onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value))}
-                                min="1"
+                                min={1}
+                                value={sub.duration}
+                                onChange={(e) => updateSubtopic(tIdx, sIdx, 'duration', parseInt(e.target.value || '0', 10))}
                                 required
                               />
                             </div>
@@ -629,7 +682,7 @@ const APCourseManagement = () => {
                       ))}
                     </div>
 
-                    {/* Topic Exam Upload */}
+                    {/* Topic Exam Upload - IMPORTANT: name must match backend's expected field */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
                         Topic Exam Excel File (10 questions) for "{topic.topicName}"
@@ -637,13 +690,16 @@ const APCourseManagement = () => {
                       <Input
                         type="file"
                         accept=".xlsx,.xls"
+                        // we will use the exact field name backend expects: `topicExam_${topic.topicName}`
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
-                            handleFileChange(`topicExam_${topic.topicName}`, file);
-                          }
+                          const fieldName = `topicExam_${topic.topicName}`;
+                          if (file) handleFileChange(fieldName, file);
                         }}
+                        // for debugging you can add name prop:
+                        name={`topicExam_${topic.topicName}`}
                       />
+                      <p className="text-xs text-gray-500">Excel with exactly 10 rows/questions (backend validates).</p>
                     </div>
                   </div>
                 ))}
@@ -660,14 +716,13 @@ const APCourseManagement = () => {
                     accept=".pdf,.doc,.docx"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) {
-                        handleFileChange('curriculumDoc', file);
-                      }
+                      if (file) handleFileChange('curriculumDoc', file);
                     }}
+                    name="curriculumDoc"
                   />
                 </div>
 
-                {formData.hasFinalExam && (
+                {formDataState.hasFinalExam && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Final Exam Excel File (60 questions)</label>
                     <Input
@@ -675,20 +730,22 @@ const APCourseManagement = () => {
                       accept=".xlsx,.xls"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) {
-                          handleFileChange('finalExam', file);
-                        }
+                        if (file) handleFileChange('finalExam', file);
                       }}
+                      name="finalExam"
                     />
+                    <p className="text-xs text-gray-500">Excel with exactly 60 rows/questions (backend validates).</p>
                   </div>
                 )}
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                <Button type="button" variant="outline" onClick={() => { setShowCreateDialog(false); resetForm(); }}>
                   Cancel
                 </Button>
-                <Button type="submit">Create Course</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Creating...' : 'Create Course'}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -698,9 +755,7 @@ const APCourseManagement = () => {
       <Card>
         <CardHeader>
           <CardTitle>AP Courses</CardTitle>
-          <CardDescription>
-            Manage recorded courses for Andhra Pradesh internships
-          </CardDescription>
+          <CardDescription>Manage recorded courses for Andhra Pradesh internships</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -722,20 +777,20 @@ const APCourseManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {courses.map((course) => (
+                {courses.map(course => (
                   <TableRow key={course._id}>
                     <TableCell className="font-medium">{course.title}</TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{course.internshipRef.title}</div>
-                        <div className="text-sm text-gray-500">{course.internshipRef.companyName}</div>
+                        <div className="font-medium">{course.internshipRef?.title}</div>
+                        <div className="text-sm text-gray-500">{course.internshipRef?.companyName}</div>
                       </div>
                     </TableCell>
                     <TableCell>{course.stream}</TableCell>
                     <TableCell>{getProviderBadge(course.providerName)}</TableCell>
                     <TableCell>{course.instructorName}</TableCell>
-                    <TableCell>{formatDuration(course.totalDuration)}</TableCell>
-                    <TableCell>{course.curriculum.length}</TableCell>
+                    <TableCell>{formatDuration(course.totalDuration || 0)}</TableCell>
+                    <TableCell>{course.curriculum?.length || 0}</TableCell>
                     <TableCell>
                       <Badge variant={course.certificationProvided === 'yes' ? 'default' : 'secondary'}>
                         {course.certificationProvided === 'yes' ? 'Yes' : 'No'}
@@ -748,25 +803,13 @@ const APCourseManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleView(course)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleView(course)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEdit(course)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(course)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => deleteCourse(course._id)}
-                        >
+                        <Button variant="destructive" size="sm" onClick={() => deleteCourse(course._id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -791,39 +834,26 @@ const APCourseManagement = () => {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Course</DialogTitle>
-            <DialogDescription>
-              Update course details and curriculum.
-            </DialogDescription>
+            <DialogDescription>Update course details and curriculum.</DialogDescription>
           </DialogHeader>
+
           <form onSubmit={updateCourse} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Course Title *</label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  required
-                />
+                <Input value={formDataState.title} onChange={(e) => setFormDataState(prev => ({ ...prev, title: e.target.value }))} required />
               </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Stream *</label>
-                <Input
-                  value={formData.stream}
-                  onChange={(e) => setFormData({...formData, stream: e.target.value})}
-                  required
-                />
+                <Input value={formDataState.stream} onChange={(e) => setFormDataState(prev => ({ ...prev, stream: e.target.value }))} required />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Provider *</label>
-                <Select
-                  value={formData.providerName}
-                  onValueChange={(value: 'triaright' | 'etv' | 'kalasalingan' | 'instructor') => 
-                    setFormData({...formData, providerName: value})
-                  }
-                >
+                <Select value={formDataState.providerName} onValueChange={(value) => setFormDataState(prev => ({ ...prev, providerName: value as any }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -835,33 +865,22 @@ const APCourseManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Instructor Name *</label>
-                <Input
-                  value={formData.instructorName}
-                  onChange={(e) => setFormData({...formData, instructorName: e.target.value})}
-                  required
-                />
+                <Input value={formDataState.instructorName} onChange={(e) => setFormDataState(prev => ({ ...prev, instructorName: e.target.value }))} required />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Course Language *</label>
-                <Input
-                  value={formData.courseLanguage}
-                  onChange={(e) => setFormData({...formData, courseLanguage: e.target.value})}
-                  required
-                />
+                <Input value={formDataState.courseLanguage} onChange={(e) => setFormDataState(prev => ({ ...prev, courseLanguage: e.target.value }))} required />
               </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Certification Provided *</label>
-                <Select
-                  value={formData.certificationProvided}
-                  onValueChange={(value: 'yes' | 'no') => 
-                    setFormData({...formData, certificationProvided: value})
-                  }
-                >
+                <Select value={formDataState.certificationProvided} onValueChange={(value) => setFormDataState(prev => ({ ...prev, certificationProvided: value as any }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -873,7 +892,7 @@ const APCourseManagement = () => {
               </div>
             </div>
 
-            {/* Curriculum Section for Edit */}
+            {/* Curriculum editing area (same as create) */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Curriculum</h3>
@@ -883,16 +902,11 @@ const APCourseManagement = () => {
                 </Button>
               </div>
 
-              {formData.curriculum.map((topic, topicIndex) => (
+              {formDataState.curriculum.map((topic, topicIndex) => (
                 <div key={topicIndex} className="border rounded-lg p-4 space-y-4">
                   <div className="flex justify-between items-start">
                     <h4 className="font-medium">Topic {topicIndex + 1}</h4>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeTopic(topicIndex)}
-                    >
+                    <Button type="button" variant="destructive" size="sm" onClick={() => removeTopic(topicIndex)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -900,32 +914,19 @@ const APCourseManagement = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Topic Name *</label>
-                      <Input
-                        value={topic.topicName}
-                        onChange={(e) => updateTopic(topicIndex, 'topicName', e.target.value)}
-                        required
-                      />
+                      <Input value={topic.topicName} onChange={(e) => updateTopic(topicIndex, 'topicName', e.target.value)} required />
                     </div>
+
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Subtopic Count</label>
-                      <Input
-                        type="number"
-                        value={topic.topicCount}
-                        onChange={(e) => updateTopic(topicIndex, 'topicCount', parseInt(e.target.value))}
-                        min="0"
-                      />
+                      <Input type="number" value={topic.topicCount} onChange={(e) => updateTopic(topicIndex, 'topicCount', parseInt(e.target.value || '0', 10))} min={0} />
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <h5 className="font-medium">Subtopics</h5>
-                      <Button
-                        type="button"
-                        onClick={() => addSubtopic(topicIndex)}
-                        variant="outline"
-                        size="sm"
-                      >
+                      <Button type="button" onClick={() => addSubtopic(topicIndex)} variant="outline" size="sm">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Subtopic
                       </Button>
@@ -935,12 +936,7 @@ const APCourseManagement = () => {
                       <div key={subtopicIndex} className="border rounded p-3 space-y-3">
                         <div className="flex justify-between items-start">
                           <h6 className="font-medium">Subtopic {subtopicIndex + 1}</h6>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => removeSubtopic(topicIndex, subtopicIndex)}
-                          >
+                          <Button type="button" variant="destructive" size="sm" onClick={() => removeSubtopic(topicIndex, subtopicIndex)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -948,29 +944,17 @@ const APCourseManagement = () => {
                         <div className="grid grid-cols-3 gap-3">
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Name *</label>
-                            <Input
-                              value={subtopic.name}
-                              onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'name', e.target.value)}
-                              required
-                            />
+                            <Input value={subtopic.name} onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'name', e.target.value)} required />
                           </div>
+
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Video Link *</label>
-                            <Input
-                              value={subtopic.link}
-                              onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'link', e.target.value)}
-                              required
-                            />
+                            <Input value={subtopic.link} onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'link', e.target.value)} required />
                           </div>
+
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Duration (minutes) *</label>
-                            <Input
-                              type="number"
-                              value={subtopic.duration}
-                              onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value))}
-                              min="1"
-                              required
-                            />
+                            <Input type="number" value={subtopic.duration} min={1} onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value || '0', 10))} required />
                           </div>
                         </div>
                       </div>
@@ -981,10 +965,12 @@ const APCourseManagement = () => {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
+              <Button type="button" variant="outline" onClick={() => { setShowEditDialog(false); resetForm(); }}>
                 Cancel
               </Button>
-              <Button type="submit">Update Course</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Updating...' : 'Update Course'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -994,21 +980,16 @@ const APCourseManagement = () => {
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {selectedCourse?.title}
-            </DialogTitle>
-            <DialogDescription>
-              Course Details
-            </DialogDescription>
+            <DialogTitle>{selectedCourse?.title}</DialogTitle>
+            <DialogDescription>Course Details</DialogDescription>
           </DialogHeader>
+
           {selectedCourse && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="font-semibold">Internship</h4>
-                  <p className="text-sm text-gray-600">
-                    {selectedCourse.internshipRef.title} - {selectedCourse.internshipRef.companyName}
-                  </p>
+                  <p className="text-sm text-gray-600">{selectedCourse.internshipRef.title} - {selectedCourse.internshipRef.companyName}</p>
                 </div>
                 <div>
                   <h4 className="font-semibold">Stream</h4>
@@ -1034,7 +1015,7 @@ const APCourseManagement = () => {
                 </div>
                 <div>
                   <h4 className="font-semibold">Total Duration</h4>
-                  <p className="text-sm text-gray-600">{formatDuration(selectedCourse.totalDuration)}</p>
+                  <p className="text-sm text-gray-600">{formatDuration(selectedCourse.totalDuration || 0)}</p>
                 </div>
               </div>
 
@@ -1056,12 +1037,7 @@ const APCourseManagement = () => {
               {selectedCourse.curriculumDocLink && (
                 <div>
                   <h4 className="font-semibold">Curriculum Document</h4>
-                  <a 
-                    href={selectedCourse.curriculumDocLink} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center text-blue-600 hover:text-blue-800"
-                  >
+                  <a href={selectedCourse.curriculumDocLink} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-600 hover:text-blue-800">
                     <FileText className="h-4 w-4 mr-2" />
                     View Curriculum Document
                   </a>
@@ -1071,12 +1047,7 @@ const APCourseManagement = () => {
               {selectedCourse.finalExamExcelLink && (
                 <div>
                   <h4 className="font-semibold">Final Exam</h4>
-                  <a 
-                    href={selectedCourse.finalExamExcelLink} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center text-blue-600 hover:text-blue-800"
-                  >
+                  <a href={selectedCourse.finalExamExcelLink} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-600 hover:text-blue-800">
                     <Download className="h-4 w-4 mr-2" />
                     Download Final Exam
                   </a>
@@ -1094,18 +1065,11 @@ const APCourseManagement = () => {
                           <div key={subtopicIndex} className="flex justify-between items-center py-2 border-b last:border-b-0">
                             <div>
                               <p className="font-medium">{subtopic.name}</p>
-                              <a 
-                                href={subtopic.link} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:text-blue-800"
-                              >
+                              <a href={subtopic.link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800">
                                 Watch Video
                               </a>
                             </div>
-                            <span className="text-sm text-gray-500">
-                              {formatDuration(subtopic.duration)}
-                            </span>
+                            <span className="text-sm text-gray-500">{formatDuration(subtopic.duration || 0)}</span>
                           </div>
                         ))}
                       </div>
