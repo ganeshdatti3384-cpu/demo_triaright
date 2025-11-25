@@ -1,61 +1,29 @@
 import React, { useEffect, useState } from "react";
-import {
-  Button
-} from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Edit, Trash2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * This component implements:
- * - List AP Courses (admin)
- * - Create AP Course (multipart/form-data)
- * - Update AP Course (multipart/form-data)
- * - Delete AP Course
+ * Fixed version of APCourseManagement.tsx
  *
- * IMPORTANT:
- * Field names and files keys must match backend:
- * Body fields: internshipId, title, curriculum, stream, providerName,
- * instructorName, courseLanguage, certificationProvided, hasFinalExam
+ * Main fixes:
+ * - Removed raw "<topicName>" text inside JSX that caused JSX parser to interpret it as a tag.
+ *   Replaced with safe interpolations or escaped text.
+ * - Used `{`topicExam_${topic.topicName}`}` inside <code> elements to avoid accidental JSX parsing.
+ * - Ensured all JSX tags are balanced and closed.
  *
+ * Backend field names and file keys are preserved:
+ *   internshipId, title, curriculum, stream, providerName, instructorName,
+ *   courseLanguage, certificationProvided, hasFinalExam
  * Files:
- * - curriculumDoc
- * - finalExam
- * - topicExam_<topicName>  (exactly this key; topicName may contain spaces)
- *
- * The backend expects curriculum as JSON string or parsed object.
+ *   curriculumDoc, finalExam, topicExam_<topicName>
  */
 
 type Subtopic = {
@@ -105,7 +73,6 @@ const APCourseManagement: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<APCourse | null>(null);
   const { toast } = useToast();
 
-  // Form state (used for create & edit)
   const [form, setForm] = useState({
     internshipId: "",
     title: "",
@@ -113,9 +80,8 @@ const APCourseManagement: React.FC = () => {
     providerName: "triaright",
     instructorName: "",
     courseLanguage: "English",
-    certificationProvided: "yes", // backend expects 'yes' | 'no'
+    certificationProvided: "yes",
     hasFinalExam: false,
-    // curriculum is an array of topics (Topic[])
     curriculum: [] as Topic[],
   } as {
     internshipId: string;
@@ -129,14 +95,13 @@ const APCourseManagement: React.FC = () => {
     curriculum: Topic[];
   });
 
-  // File inputs (we store File | null for each)
   const [curriculumDocFile, setCurriculumDocFile] = useState<File | null>(null);
   const [finalExamFile, setFinalExamFile] = useState<File | null>(null);
-  // topicExamFiles: key = `topicExam_${topicName}` (exact key used on backend)
   const [topicExamFiles, setTopicExamFiles] = useState<Record<string, File | null>>({});
 
   useEffect(() => {
     fetchCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getToken = () => localStorage.getItem("token");
@@ -152,7 +117,6 @@ const APCourseManagement: React.FC = () => {
       if (res.ok && data.success) {
         setCourses(data.courses || []);
       } else {
-        // In some setups the endpoint returns courses without success flag
         if (Array.isArray(data)) setCourses(data);
         else if (data.courses) setCourses(data.courses);
         else {
@@ -193,7 +157,6 @@ const APCourseManagement: React.FC = () => {
     setSelectedCourse(null);
   };
 
-  // Calculate total duration helper (used client-side display only)
   const calculateTotalDuration = (curr: Topic[]) => {
     let total = 0;
     curr.forEach((t) => {
@@ -204,7 +167,6 @@ const APCourseManagement: React.FC = () => {
     return total;
   };
 
-  // Create course
   const createCourse = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     try {
@@ -214,7 +176,6 @@ const APCourseManagement: React.FC = () => {
         return;
       }
 
-      // Basic validation
       if (!form.internshipId || !form.title || form.curriculum.length === 0) {
         toast({ title: "Validation", description: "Please fill internshipId, title and curriculum", variant: "destructive" });
         return;
@@ -229,19 +190,15 @@ const APCourseManagement: React.FC = () => {
       fd.append("courseLanguage", form.courseLanguage);
       fd.append("certificationProvided", form.certificationProvided);
       fd.append("hasFinalExam", form.hasFinalExam ? "true" : "false");
-
-      // Backend accepts curriculum as JSON string OR object; we will send string
       fd.append("curriculum", JSON.stringify(form.curriculum));
 
       if (curriculumDocFile) fd.append("curriculumDoc", curriculumDocFile);
       if (finalExamFile && form.hasFinalExam) fd.append("finalExam", finalExamFile);
 
-      // Append topic exams with keys: topicExam_<topicName>
       form.curriculum.forEach((topic) => {
         const key = `topicExam_${topic.topicName}`;
         const file = topicExamFiles[key];
         if (file) {
-          // IMPORTANT: backend expects this field name exactly (topicExam_<topicName>)
           fd.append(key, file);
         }
       });
@@ -272,7 +229,6 @@ const APCourseManagement: React.FC = () => {
     }
   };
 
-  // Edit / Populate form for update
   const handleEdit = async (courseId: string) => {
     try {
       const token = getToken();
@@ -300,7 +256,6 @@ const APCourseManagement: React.FC = () => {
           curriculum: c.curriculum || [],
         });
 
-        // Clear file inputs (existing links remain on backend)
         setCurriculumDocFile(null);
         setFinalExamFile(null);
         setTopicExamFiles({});
@@ -316,7 +271,6 @@ const APCourseManagement: React.FC = () => {
     }
   };
 
-  // Update course
   const updateCourse = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedCourse) return;
@@ -329,7 +283,6 @@ const APCourseManagement: React.FC = () => {
       }
 
       const fd = new FormData();
-      // Append only the fields we want to update (backend accepts full body)
       fd.append("internshipId", form.internshipId);
       fd.append("title", form.title);
       fd.append("stream", form.stream);
@@ -375,7 +328,6 @@ const APCourseManagement: React.FC = () => {
     }
   };
 
-  // Delete course
   const deleteCourse = async (courseId: string) => {
     if (!confirm("Are you sure you want to delete this course? This action cannot be undone.")) return;
     try {
@@ -404,7 +356,6 @@ const APCourseManagement: React.FC = () => {
     }
   };
 
-  // Curriculum helpers
   const addTopic = () => {
     setForm((prev) => ({ ...prev, curriculum: [...prev.curriculum, defaultTopic()] }));
   };
@@ -413,7 +364,6 @@ const APCourseManagement: React.FC = () => {
     setForm((prev) => {
       const newCurr = [...prev.curriculum];
       const removed = newCurr.splice(index, 1);
-      // Remove any topicExamFiles for removed topic
       if (removed[0]) {
         const key = `topicExam_${removed[0].topicName}`;
         setTopicExamFiles((files) => {
@@ -431,7 +381,6 @@ const APCourseManagement: React.FC = () => {
       const newCurr = [...prev.curriculum];
       const oldName = newCurr[index]?.topicName;
       newCurr[index] = { ...newCurr[index], topicName: name };
-      // If topic name changed, move any file under old key to new key
       if (oldName && oldName !== name) {
         const oldKey = `topicExam_${oldName}`;
         const newKey = `topicExam_${name}`;
@@ -475,7 +424,6 @@ const APCourseManagement: React.FC = () => {
     });
   };
 
-  // topic exam file change
   const onTopicExamFileChange = (topicName: string, file?: File) => {
     const key = `topicExam_${topicName}`;
     setTopicExamFiles((prev) => ({ ...prev, [key]: file || null }));
@@ -496,6 +444,7 @@ const APCourseManagement: React.FC = () => {
               Create AP Course
             </Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create AP Course</DialogTitle>
@@ -581,12 +530,14 @@ const APCourseManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* Curriculum editor */}
               <Card>
                 <CardHeader>
                   <CardTitle>Curriculum</CardTitle>
-                  <CardDescription>Add topics and subtopics. Each topic can have an Excel file named topicExam_<topicName> (10 questions)</CardDescription>
+                  <CardDescription>
+                    Add topics and subtopics. Each topic can have an Excel file named topicExam_{`<topicName>`} (10 questions)
+                  </CardDescription>
                 </CardHeader>
+
                 <CardContent>
                   <div className="space-y-4">
                     {form.curriculum.map((topic, tIdx) => (
@@ -612,7 +563,9 @@ const APCourseManagement: React.FC = () => {
                             }}
                             className="block mt-1"
                           />
-                          <p className="text-xs text-gray-500 mt-1">Field name will be: <code>topicExam_{topic.topicName}</code></p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Field name will be: <code>{`topicExam_${topic.topicName}`}</code>
+                          </p>
                         </div>
 
                         <div className="space-y-2">
@@ -817,7 +770,6 @@ const APCourseManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Curriculum (reuse same UI as create) */}
             <Card>
               <CardHeader>
                 <CardTitle>Curriculum</CardTitle>
@@ -848,7 +800,7 @@ const APCourseManagement: React.FC = () => {
                           }}
                           className="block mt-1"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Field name: <code>topicExam_{topic.topicName}</code></p>
+                        <p className="text-xs text-gray-500 mt-1">Field name: <code>{`topicExam_${topic.topicName}`}</code></p>
                       </div>
 
                       <div className="space-y-2">
