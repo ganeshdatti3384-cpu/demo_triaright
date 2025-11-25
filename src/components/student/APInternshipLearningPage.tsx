@@ -98,31 +98,52 @@ const APInternshipLearningPage = () => {
   const fetchEnrollmentData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/internships/apinternshipmy-enrollments`, {
+      
+      // First, get all enrollments to find the specific one
+      const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
       const data = await response.json();
-      console.log('Enrollments API Response:', data); // Debug log
+      console.log('Enrollments API Response:', data);
       
       if (data.success && data.enrollments) {
+        // Find the specific enrollment by ID
         const currentEnrollment = data.enrollments.find((e: any) => e._id === enrollmentId);
-        console.log('Found Enrollment:', currentEnrollment); // Debug log
+        console.log('Found Enrollment:', currentEnrollment);
         
         if (currentEnrollment) {
-          setEnrollment(currentEnrollment);
+          // Check if course data is properly structured
+          let enrollmentData = currentEnrollment;
           
-          // Set first topic and subtopic as active
-          if (currentEnrollment.courseId?.curriculum?.length > 0) {
-            const firstTopic = currentEnrollment.courseId.curriculum[0];
+          // If course data is nested in courseId object, use it directly
+          if (currentEnrollment.courseId && typeof currentEnrollment.courseId === 'object') {
+            enrollmentData = {
+              ...currentEnrollment,
+              courseId: currentEnrollment.courseId
+            };
+          }
+          
+          setEnrollment(enrollmentData);
+          
+          // Set first topic and subtopic as active if curriculum exists
+          if (enrollmentData.courseId?.curriculum?.length > 0) {
+            const firstTopic = enrollmentData.courseId.curriculum[0];
             setActiveTopic(firstTopic.topicName);
-            if (firstTopic.subtopics.length > 0) {
+            if (firstTopic.subtopics && firstTopic.subtopics.length > 0) {
               setActiveSubtopic(firstTopic.subtopics[0].name);
             }
           } else {
-            console.warn('No curriculum found for course');
+            console.warn('No curriculum found for course:', enrollmentData.courseId);
+            // If no curriculum in course data, check if we have progress data that can be used
+            if (enrollmentData.progress && enrollmentData.progress.length > 0) {
+              setActiveTopic(enrollmentData.progress[0].topicName);
+              if (enrollmentData.progress[0].subtopics && enrollmentData.progress[0].subtopics.length > 0) {
+                setActiveSubtopic(enrollmentData.progress[0].subtopics[0].subTopicName);
+              }
+            }
           }
         } else {
           toast({
@@ -205,6 +226,38 @@ const APInternshipLearningPage = () => {
     }
   };
 
+  // Get curriculum topics - either from course data or progress data
+  const getCurriculumTopics = () => {
+    if (enrollment?.courseId?.curriculum) {
+      return enrollment.courseId.curriculum;
+    }
+    // If no curriculum in course data, create topics from progress data
+    if (enrollment?.progress) {
+      return enrollment.progress.map(progressItem => ({
+        topicName: progressItem.topicName,
+        topicCount: progressItem.subtopics?.length || 0,
+        subtopics: progressItem.subtopics?.map(sub => ({
+          name: sub.subTopicName,
+          link: sub.subTopicLink,
+          duration: sub.totalDuration
+        })) || []
+      }));
+    }
+    return [];
+  };
+
+  // Get current topic data
+  const getCurrentTopic = () => {
+    const topics = getCurriculumTopics();
+    return topics.find(t => t.topicName === activeTopic);
+  };
+
+  // Get current subtopic data
+  const getCurrentSubtopic = () => {
+    const topic = getCurrentTopic();
+    return topic?.subtopics?.find(s => s.name === activeSubtopic);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -231,8 +284,9 @@ const APInternshipLearningPage = () => {
     );
   }
 
-  const currentTopic = enrollment.courseId?.curriculum?.find(t => t.topicName === activeTopic);
-  const currentSubtopic = currentTopic?.subtopics.find(s => s.name === activeSubtopic);
+  const curriculumTopics = getCurriculumTopics();
+  const currentTopic = getCurrentTopic();
+  const currentSubtopic = getCurrentSubtopic();
 
   const overallProgress = enrollment.totalVideoDuration > 0 
     ? (enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100 
@@ -295,98 +349,104 @@ const APInternshipLearningPage = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-                  {enrollment.courseId?.curriculum?.map((topic, topicIndex) => (
-                    <div key={topic.topicName} className="border-b last:border-b-0">
-                      <div
-                        className={`p-4 cursor-pointer hover:bg-gray-50 ${
-                          activeTopic === topic.topicName ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
-                        }`}
-                        onClick={() => setActiveTopic(topic.topicName)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                              getTopicProgress(topic.topicName) === 100 
-                                ? 'bg-green-100 text-green-600' 
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {getTopicProgress(topic.topicName) === 100 ? '✓' : topicIndex + 1}
-                            </div>
-                            <span className="ml-3 font-medium">{topic.topicName}</span>
-                          </div>
-                          <ChevronRight className={`h-4 w-4 transition-transform ${
-                            activeTopic === topic.topicName ? 'rotate-90' : ''
-                          }`} />
-                        </div>
-                        
-                        <div className="mt-2 ml-9">
-                          <Progress 
-                            value={getTopicProgress(topic.topicName)} 
-                            className="h-1"
-                          />
-                          <div className="flex justify-between text-xs text-gray-600 mt-1">
-                            <span>{Math.round(getTopicProgress(topic.topicName))}% complete</span>
-                            <span>{topic.subtopics.length} lessons</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Subtopic List */}
-                      {activeTopic === topic.topicName && (
-                        <div className="bg-gray-50">
-                          {topic.subtopics.map((subtopic, subtopicIndex) => {
-                            const progress = getSubtopicProgress(topic.topicName, subtopic.name);
-                            return (
-                              <div
-                                key={subtopic.name}
-                                className={`p-3 pl-12 border-t cursor-pointer hover:bg-white ${
-                                  activeSubtopic === subtopic.name ? 'bg-white' : ''
-                                }`}
-                                onClick={() => setActiveSubtopic(subtopic.name)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center">
-                                    <div className="w-2 h-2 rounded-full bg-gray-400 mr-3"></div>
-                                    <span className="text-sm">{subtopic.name}</span>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    {progress === 100 && (
-                                      <CheckCircle className="h-4 w-4 text-green-500" />
-                                    )}
-                                    <span className="text-xs text-gray-500">
-                                      {Math.round(subtopic.duration / 60)} min
-                                    </span>
-                                  </div>
-                                </div>
-                                {progress > 0 && progress < 100 && (
-                                  <Progress value={progress} className="h-1 mt-2" />
-                                )}
-                              </div>
-                            );
-                          })}
-                          
-                          {/* Topic Exam Button */}
-                          <div className="p-3 pl-12 border-t">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => navigate(`/exams/topic/${enrollment.courseId?._id}/${topic.topicName}`)}
-                              disabled={getTopicProgress(topic.topicName) < 100}
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              Take Topic Exam
-                              {getTopicProgress(topic.topicName) < 100 && (
-                                <Badge variant="secondary" className="ml-2 text-xs">
-                                  Complete videos first
-                                </Badge>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                  {curriculumTopics.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      No course content available
                     </div>
-                  ))}
+                  ) : (
+                    curriculumTopics.map((topic, topicIndex) => (
+                      <div key={topic.topicName} className="border-b last:border-b-0">
+                        <div
+                          className={`p-4 cursor-pointer hover:bg-gray-50 ${
+                            activeTopic === topic.topicName ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
+                          }`}
+                          onClick={() => setActiveTopic(topic.topicName)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                getTopicProgress(topic.topicName) === 100 
+                                  ? 'bg-green-100 text-green-600' 
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {getTopicProgress(topic.topicName) === 100 ? '✓' : topicIndex + 1}
+                              </div>
+                              <span className="ml-3 font-medium">{topic.topicName}</span>
+                            </div>
+                            <ChevronRight className={`h-4 w-4 transition-transform ${
+                              activeTopic === topic.topicName ? 'rotate-90' : ''
+                            }`} />
+                          </div>
+                          
+                          <div className="mt-2 ml-9">
+                            <Progress 
+                              value={getTopicProgress(topic.topicName)} 
+                              className="h-1"
+                            />
+                            <div className="flex justify-between text-xs text-gray-600 mt-1">
+                              <span>{Math.round(getTopicProgress(topic.topicName))}% complete</span>
+                              <span>{topic.subtopics?.length || 0} lessons</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Subtopic List */}
+                        {activeTopic === topic.topicName && topic.subtopics && (
+                          <div className="bg-gray-50">
+                            {topic.subtopics.map((subtopic, subtopicIndex) => {
+                              const progress = getSubtopicProgress(topic.topicName, subtopic.name);
+                              return (
+                                <div
+                                  key={subtopic.name}
+                                  className={`p-3 pl-12 border-t cursor-pointer hover:bg-white ${
+                                    activeSubtopic === subtopic.name ? 'bg-white' : ''
+                                  }`}
+                                  onClick={() => setActiveSubtopic(subtopic.name)}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center">
+                                      <div className="w-2 h-2 rounded-full bg-gray-400 mr-3"></div>
+                                      <span className="text-sm">{subtopic.name}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      {progress === 100 && (
+                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                      )}
+                                      <span className="text-xs text-gray-500">
+                                        {Math.round(subtopic.duration / 60)} min
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {progress > 0 && progress < 100 && (
+                                    <Progress value={progress} className="h-1 mt-2" />
+                                  )}
+                                </div>
+                              );
+                            })}
+                            
+                            {/* Topic Exam Button */}
+                            <div className="p-3 pl-12 border-t">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => navigate(`/exams/topic/${enrollment.courseId?._id}/${topic.topicName}`)}
+                                disabled={getTopicProgress(topic.topicName) < 100}
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                Take Topic Exam
+                                {getTopicProgress(topic.topicName) < 100 && (
+                                  <Badge variant="secondary" className="ml-2 text-xs">
+                                    Complete videos first
+                                  </Badge>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -426,8 +486,8 @@ const APInternshipLearningPage = () => {
                         variant="outline"
                         onClick={() => {
                           // Navigate to previous subtopic
-                          const topic = enrollment.courseId?.curriculum?.find(t => t.topicName === activeTopic);
-                          if (topic) {
+                          const topic = curriculumTopics.find(t => t.topicName === activeTopic);
+                          if (topic?.subtopics) {
                             const currentIndex = topic.subtopics.findIndex(s => s.name === activeSubtopic);
                             if (currentIndex > 0) {
                               setActiveSubtopic(topic.subtopics[currentIndex - 1].name);
@@ -441,8 +501,8 @@ const APInternshipLearningPage = () => {
                       <Button
                         onClick={() => {
                           // Navigate to next subtopic
-                          const topic = enrollment.courseId?.curriculum?.find(t => t.topicName === activeTopic);
-                          if (topic) {
+                          const topic = curriculumTopics.find(t => t.topicName === activeTopic);
+                          if (topic?.subtopics) {
                             const currentIndex = topic.subtopics.findIndex(s => s.name === activeSubtopic);
                             if (currentIndex < topic.subtopics.length - 1) {
                               setActiveSubtopic(topic.subtopics[currentIndex + 1].name);
@@ -463,7 +523,10 @@ const APInternshipLearningPage = () => {
                   <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Lesson</h3>
                   <p className="text-gray-600">
-                    Choose a topic and lesson from the sidebar to start learning
+                    {curriculumTopics.length === 0 
+                      ? 'Course content is not available. Please contact support.'
+                      : 'Choose a topic and lesson from the sidebar to start learning'
+                    }
                   </p>
                 </CardContent>
               </Card>
