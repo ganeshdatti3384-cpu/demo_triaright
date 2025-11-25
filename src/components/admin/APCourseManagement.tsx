@@ -72,6 +72,7 @@ const APCourseManagement = () => {
     hasFinalExam: false
   });
   const [files, setFiles] = useState<{ [key: string]: File }>({});
+  const [curriculumJson, setCurriculumJson] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -132,32 +133,57 @@ const APCourseManagement = () => {
     }));
   };
 
+  // FIXED: Proper FormData creation with correct field names
   const createCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      toast({
+        title: 'Error',
+        description: 'Authentication token not found',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
       const formDataToSend = new FormData();
       
-      // Append basic form data
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'curriculum') {
-          formDataToSend.append(key, JSON.stringify(value));
-        } else {
-          formDataToSend.append(key, value.toString());
-        }
-      });
+      // Append basic form data with correct field names
+      formDataToSend.append('internshipId', formData.internshipId);
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('stream', formData.stream);
+      formDataToSend.append('providerName', formData.providerName);
+      formDataToSend.append('instructorName', formData.instructorName);
+      formDataToSend.append('courseLanguage', formData.courseLanguage);
+      formDataToSend.append('certificationProvided', formData.certificationProvided);
+      formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
 
-      // Append files
+      // FIXED: Proper curriculum JSON format
+      const curriculumForBackend = formData.curriculum.map(topic => ({
+        topicName: topic.topicName,
+        topicCount: topic.subtopics.length, // Calculate from actual subtopics
+        subtopics: topic.subtopics.map(sub => ({
+          name: sub.name,
+          link: sub.link,
+          duration: sub.duration
+        }))
+      }));
+
+      formDataToSend.append('curriculum', JSON.stringify(curriculumForBackend));
+
+      // FIXED: Append files with correct field names
       Object.entries(files).forEach(([fieldName, file]) => {
         formDataToSend.append(fieldName, file);
       });
+
+      console.log('Sending form data with curriculum:', curriculumForBackend);
 
       const response = await fetch('/api/internships/apcourses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
+          // Don't set Content-Type for FormData - browser will set it with boundary
         },
         body: formDataToSend
       });
@@ -173,7 +199,7 @@ const APCourseManagement = () => {
         resetForm();
         fetchCourses();
       } else {
-        throw new Error(data.message || 'Failed to create course');
+        throw new Error(data.message || `Failed to create course: ${response.status}`);
       }
     } catch (error: any) {
       console.error('Error creating course:', error);
@@ -193,13 +219,32 @@ const APCourseManagement = () => {
     if (!token) return;
 
     try {
+      const updateData = {
+        title: formData.title,
+        stream: formData.stream,
+        providerName: formData.providerName,
+        instructorName: formData.instructorName,
+        courseLanguage: formData.courseLanguage,
+        certificationProvided: formData.certificationProvided,
+        hasFinalExam: formData.hasFinalExam,
+        curriculum: formData.curriculum.map(topic => ({
+          topicName: topic.topicName,
+          topicCount: topic.subtopics.length,
+          subtopics: topic.subtopics.map(sub => ({
+            name: sub.name,
+            link: sub.link,
+            duration: sub.duration
+          }))
+        }))
+      };
+
       const response = await fetch(`/api/internships/apcourses/${selectedCourse._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(updateData)
       });
 
       const data = await response.json();
@@ -294,6 +339,7 @@ const APCourseManagement = () => {
       hasFinalExam: false
     });
     setFiles({});
+    setCurriculumJson('');
     setSelectedCourse(null);
   };
 
@@ -336,7 +382,8 @@ const APCourseManagement = () => {
           subtopics: [
             ...topic.subtopics,
             { name: '', link: '', duration: 0 }
-          ]
+          ],
+          topicCount: topic.subtopics.length + 1
         } : topic
       )
     }));
@@ -362,10 +409,47 @@ const APCourseManagement = () => {
       curriculum: prev.curriculum.map((topic, i) => 
         i === topicIndex ? {
           ...topic,
-          subtopics: topic.subtopics.filter((_, j) => j !== subtopicIndex)
+          subtopics: topic.subtopics.filter((_, j) => j !== subtopicIndex),
+          topicCount: topic.subtopics.length - 1
         } : topic
       )
     }));
+  };
+
+  // NEW: Quick curriculum import from JSON
+  const importCurriculumFromJson = () => {
+    try {
+      if (!curriculumJson.trim()) {
+        toast({
+          title: 'Error',
+          description: 'Please enter JSON curriculum data',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const parsedCurriculum = JSON.parse(curriculumJson);
+      if (!Array.isArray(parsedCurriculum)) {
+        throw new Error('Curriculum must be an array');
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        curriculum: parsedCurriculum
+      }));
+
+      toast({
+        title: 'Success',
+        description: 'Curriculum imported successfully'
+      });
+      setCurriculumJson('');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Invalid JSON format for curriculum',
+        variant: 'destructive'
+      });
+    }
   };
 
   const getProviderBadge = (provider: string) => {
@@ -525,6 +609,34 @@ const APCourseManagement = () => {
                 </div>
               </div>
 
+              {/* Quick JSON Import */}
+              <div className="space-y-3 p-4 border rounded-lg">
+                <h3 className="font-semibold">Quick Curriculum Import (JSON)</h3>
+                <Textarea
+                  placeholder={`Paste JSON curriculum here. Example:
+[
+  {
+    "topicName": "HTML Basics",
+    "topicCount": 2,
+    "subtopics": [
+      {
+        "name": "Introduction to HTML",
+        "link": "https://example.com/video1",
+        "duration": 30
+      }
+    ]
+  }
+]`}
+                  value={curriculumJson}
+                  onChange={(e) => setCurriculumJson(e.target.value)}
+                  rows={6}
+                />
+                <Button type="button" onClick={importCurriculumFromJson} variant="outline" size="sm">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import Curriculum from JSON
+                </Button>
+              </div>
+
               {/* Curriculum Section */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -559,19 +671,14 @@ const APCourseManagement = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Subtopic Count</label>
-                        <Input
-                          type="number"
-                          value={topic.topicCount}
-                          onChange={(e) => updateTopic(topicIndex, 'topicCount', parseInt(e.target.value))}
-                          min="0"
-                        />
+                        <label className="text-sm font-medium">Subtopic Count: {topic.subtopics.length}</label>
+                        <div className="text-sm text-gray-500">Auto-calculated from subtopics</div>
                       </div>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <h5 className="font-medium">Subtopics</h5>
+                        <h5 className="font-medium">Subtopics ({topic.subtopics.length})</h5>
                         <Button
                           type="button"
                           onClick={() => addSubtopic(topicIndex)}
@@ -619,7 +726,7 @@ const APCourseManagement = () => {
                               <Input
                                 type="number"
                                 value={subtopic.duration}
-                                onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value))}
+                                onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value) || 0)}
                                 min="1"
                                 required
                               />
@@ -644,6 +751,9 @@ const APCourseManagement = () => {
                           }
                         }}
                       />
+                      <p className="text-xs text-gray-500">
+                        Upload Excel file with exactly 10 questions for this topic
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -654,7 +764,7 @@ const APCourseManagement = () => {
                 <h3 className="text-lg font-semibold">File Uploads</h3>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Curriculum Document (PDF/DOC)</label>
+                  <label className="text-sm font-medium">Curriculum Document (PDF/DOC) - Optional</label>
                   <Input
                     type="file"
                     accept=".pdf,.doc,.docx"
@@ -669,7 +779,7 @@ const APCourseManagement = () => {
 
                 {formData.hasFinalExam && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Final Exam Excel File (60 questions)</label>
+                    <label className="text-sm font-medium">Final Exam Excel File (60 questions) *</label>
                     <Input
                       type="file"
                       accept=".xlsx,.xls"
@@ -679,7 +789,11 @@ const APCourseManagement = () => {
                           handleFileChange('finalExam', file);
                         }
                       }}
+                      required={formData.hasFinalExam}
                     />
+                    <p className="text-xs text-gray-500">
+                      Upload Excel file with exactly 60 questions for final exam
+                    </p>
                   </div>
                 )}
               </div>
@@ -776,7 +890,7 @@ const APCourseManagement = () => {
                 {courses.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                      No courses found
+                      No courses found. Create your first course to get started.
                     </TableCell>
                   </TableRow>
                 )}
@@ -907,19 +1021,14 @@ const APCourseManagement = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Subtopic Count</label>
-                      <Input
-                        type="number"
-                        value={topic.topicCount}
-                        onChange={(e) => updateTopic(topicIndex, 'topicCount', parseInt(e.target.value))}
-                        min="0"
-                      />
+                      <label className="text-sm font-medium">Subtopic Count: {topic.subtopics.length}</label>
+                      <div className="text-sm text-gray-500">Auto-calculated from subtopics</div>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <h5 className="font-medium">Subtopics</h5>
+                      <h5 className="font-medium">Subtopics ({topic.subtopics.length})</h5>
                       <Button
                         type="button"
                         onClick={() => addSubtopic(topicIndex)}
@@ -967,7 +1076,7 @@ const APCourseManagement = () => {
                             <Input
                               type="number"
                               value={subtopic.duration}
-                              onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value))}
+                              onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value) || 0)}
                               min="1"
                               required
                             />
