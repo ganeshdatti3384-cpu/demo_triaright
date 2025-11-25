@@ -1,4 +1,9 @@
-// components/student/APInternshipLearningPage.tsx
+/* Updated APInternshipLearningPage.tsx
+   - Fixed curriculum/video not showing by using enrollment.progress as fallback source of curriculum
+   - Normalized subtopic objects so UI always has { name, link, duration }
+   - Robust checks and defensive code for missing data
+   - Simplified some video play/pause handling and ensured progress update uses the normalized durations
+*/
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,15 +14,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
-  BookOpen, 
-  CheckCircle, 
-  Clock, 
-  FileText, 
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  BookOpen,
+  CheckCircle,
+  Clock,
+  FileText,
   Award,
   Video,
   List,
@@ -50,18 +55,18 @@ interface APCourse {
   courseLanguage: string;
   certificationProvided: string;
   hasFinalExam: boolean;
-  internshipRef: {
+  internshipRef?: {
     _id: string;
     title: string;
     companyName: string;
   };
-  curriculum: Topic[];
+  curriculum?: Topic[];
   createdAt: string;
 }
 
 interface ProgressSubtopic {
   subTopicName: string;
-  subTopicLink: string;
+  subTopicLink?: string;
   watchedDuration: number;
   totalDuration: number;
 }
@@ -84,10 +89,10 @@ interface APEnrollment {
     companyName: string;
     duration: string;
     mode: string;
-    stream: string;
-    internshipType: string;
+    stream?: string;
+    internshipType?: string;
   };
-  courseId: APCourse;
+  courseId: APCourse | string;
   userId: string;
   enrollmentDate: string;
   isPaid: boolean;
@@ -96,9 +101,9 @@ interface APEnrollment {
   totalWatchedDuration: number;
   totalVideoDuration: number;
   finalExamEligible: boolean;
-  finalExamAttempted: boolean;
-  courseCompleted: boolean;
-  completionPercentage?: number;
+  finalExamAttempted?: boolean;
+  courseCompleted?: boolean;
+  completionPercentage?: string;
 }
 
 interface ExamStatus {
@@ -139,10 +144,10 @@ const APInternshipLearningPage = () => {
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [error, setError] = useState<string>('');
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout>();
-  
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const progressIntervalRef = useRef<number | undefined>(undefined);
+
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
 
@@ -150,21 +155,60 @@ const APInternshipLearningPage = () => {
     if (enrollmentId) {
       fetchEnrollmentData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentId]);
 
   useEffect(() => {
-    if (enrollment?.courseId?._id) {
+    if (enrollment?.courseId && typeof enrollment.courseId !== 'string') {
       fetchExamStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollment]);
 
   useEffect(() => {
     return () => {
       if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
+        window.clearInterval(progressIntervalRef.current);
       }
     };
   }, []);
+
+  // Utility: normalize curriculum from either course.curriculum OR enrollment.progress
+  const buildCurriculumFromEnrollment = (enr: APEnrollment): Topic[] => {
+    try {
+      // Prefer courseId.curriculum if available
+      if (enr.courseId && typeof enr.courseId !== 'string' && enr.courseId.curriculum && enr.courseId.curriculum.length > 0) {
+        // Ensure subtopics have expected keys name, link, duration
+        return enr.courseId.curriculum.map((t: any) => ({
+          topicName: t.topicName,
+          topicCount: t.subtopics?.length || 0,
+          subtopics: (t.subtopics || []).map((s: any) => ({
+            name: s.name || s.subTopicName || 'Untitled',
+            link: s.link || s.subTopicLink || '',
+            duration: Number(s.duration || s.totalDuration || 0)
+          }))
+        }));
+      }
+
+      // Fallback: derive from enrollment.progress
+      if (enr.progress && enr.progress.length > 0) {
+        return enr.progress.map((t: TopicProgress) => ({
+          topicName: t.topicName,
+          topicCount: t.subtopics?.length || 0,
+          subtopics: (t.subtopics || []).map((s: ProgressSubtopic) => ({
+            name: s.subTopicName || 'Untitled',
+            link: s.subTopicLink || '',
+            duration: Number(s.totalDuration || 0)
+          }))
+        }));
+      }
+
+      return [];
+    } catch (err) {
+      console.error('buildCurriculumFromEnrollment error:', err);
+      return [];
+    }
+  };
 
   const fetchEnrollmentData = async () => {
     const token = localStorage.getItem('token');
@@ -181,39 +225,66 @@ const APInternshipLearningPage = () => {
     try {
       setLoading(true);
       setError('');
-      
-      // Get all enrollments and find the specific one
+
+      // The student's enrollments endpoint returns enrollments where courseId may not include curriculum.
+      // We'll fetch the enrollments list and use enrollment.progress to build curriculum if missing.
       const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        const foundEnrollment = data.enrollments.find((e: any) => e._id === enrollmentId);
-        
-        if (foundEnrollment) {
-          console.log('Found enrollment:', foundEnrollment);
-          setEnrollment(foundEnrollment);
-          
-          // Initialize active content from the enrollment data
-          if (foundEnrollment.courseId?.curriculum?.length > 0) {
-            const firstTopic = foundEnrollment.courseId.curriculum[0];
-            const firstSubtopic = firstTopic.subtopics[0];
-            
-            setActiveTopic(firstTopic.topicName);
-            setActiveSubtopic(firstSubtopic);
 
-            // Set initial progress for the first subtopic
-            const topicProgress = foundEnrollment.progress?.find(t => t.topicName === firstTopic.topicName);
-            const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === firstSubtopic.name);
-            
-            if (subtopicProgress && subtopicProgress.totalDuration > 0) {
-              const progressPercent = (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100;
-              setVideoProgress(progressPercent);
+      const data = await response.json();
+
+      if (data.success) {
+        const foundEnrollment = data.enrollments.find((e: any) => String(e._id) === String(enrollmentId));
+
+        if (foundEnrollment) {
+          // Ensure we use consistent object shape for enrollment
+          // When backend returned minimal courseId, it's still fine because progress contains all needed info.
+          const normalizedEnrollment: APEnrollment = {
+            ...foundEnrollment,
+            // ensure numeric durations
+            totalWatchedDuration: Number(foundEnrollment.totalWatchedDuration || 0),
+            totalVideoDuration: Number(foundEnrollment.totalVideoDuration || 0),
+            progress: (foundEnrollment.progress || []).map((t: any) => ({
+              topicName: t.topicName,
+              subtopics: (t.subtopics || []).map((s: any) => ({
+                subTopicName: s.subTopicName || s.name || '',
+                subTopicLink: s.subTopicLink || s.link || '',
+                watchedDuration: Number(s.watchedDuration || 0),
+                totalDuration: Number(s.totalDuration || s.duration || 0)
+              })),
+              topicWatchedDuration: Number(t.topicWatchedDuration || 0),
+              topicTotalDuration: Number(t.topicTotalDuration || 0),
+              examAttempted: !!t.examAttempted,
+              examScore: Number(t.examScore || 0),
+              passed: !!t.passed
+            }))
+          };
+
+          setEnrollment(normalizedEnrollment);
+
+          // Build curriculum (prefer course curriculum, else progress)
+          const curriculum = buildCurriculumFromEnrollment(normalizedEnrollment);
+
+          if (curriculum.length > 0) {
+            const firstTopic = curriculum[0];
+            const firstSubtopic = firstTopic.subtopics && firstTopic.subtopics.length > 0 ? firstTopic.subtopics[0] : null;
+
+            if (firstTopic) setActiveTopic(firstTopic.topicName);
+            if (firstSubtopic) {
+              setActiveSubtopic(firstSubtopic);
+              // Initialize progress percent from enrollment progress if available
+              const topicProgress = normalizedEnrollment.progress?.find(p => p.topicName === firstTopic.topicName);
+              const subProg = topicProgress?.subtopics?.find(sp => sp.subTopicName === (firstSubtopic.name || firstSubtopic.name));
+              const percent = (subProg && subProg.totalDuration > 0) ? (subProg.watchedDuration / subProg.totalDuration) * 100 : 0;
+              setVideoProgress(percent);
             }
+          } else {
+            // No curriculum found
+            setActiveTopic('');
+            setActiveSubtopic(null);
           }
         } else {
           throw new Error('Enrollment not found in your enrollments list');
@@ -221,12 +292,12 @@ const APInternshipLearningPage = () => {
       } else {
         throw new Error(data.message || 'Failed to fetch enrollments');
       }
-    } catch (error: any) {
-      console.error('Error fetching enrollment:', error);
-      setError(error.message || 'Failed to load course data');
+    } catch (err: any) {
+      console.error('Error fetching enrollment:', err);
+      setError(err.message || 'Failed to load course data');
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load course data',
+        description: err.message || 'Failed to load course data',
         variant: 'destructive'
       });
     } finally {
@@ -235,43 +306,42 @@ const APInternshipLearningPage = () => {
   };
 
   const fetchExamStatus = async () => {
-    if (!enrollmentId || !enrollment?.courseId?._id) return;
-    
+    if (!enrollment || typeof enrollment.courseId === 'string') return;
+    const courseId = (enrollment.courseId as APCourse)._id;
+    if (!courseId) return;
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`/api/internships/exams/status/${enrollment.courseId._id}`, {
+      const response = await fetch(`/api/internships/exams/status/${courseId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
-      if (response.status === 304) {
-        // Not modified - use cached data
-        console.log('Exam status not modified');
+
+      if (!response.ok) {
+        console.warn('fetchExamStatus non-ok', response.status);
         return;
       }
-      
+
       const data = await response.json();
-      
       if (data.success) {
         setExamStatus(data.examStatus);
       }
-    } catch (error) {
-      console.error('Error fetching exam status:', error);
+    } catch (err) {
+      console.error('Error fetching exam status:', err);
     }
   };
 
   const updateProgress = async (watchedDuration: number) => {
     if (!enrollmentId || !activeSubtopic || !activeTopic || updatingProgress) return;
-
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
       setUpdatingProgress(true);
-      
+
+      // watchedDuration should be seconds
       const response = await fetch('/api/internships/apinternshipenrollment-progress', {
         method: 'PUT',
         headers: {
@@ -287,62 +357,70 @@ const APInternshipLearningPage = () => {
       });
 
       const data = await response.json();
-      
+
       if (!data.success) {
         console.error('Progress update failed:', data.message);
       } else {
-        // Update local state immediately for better UX
-        fetchEnrollmentData(); // Refresh data
+        // Refresh local enrollment data to reflect updated progress
+        await fetchEnrollmentData();
       }
-    } catch (error) {
-      console.error('Error updating progress:', error);
+    } catch (err) {
+      console.error('Error updating progress:', err);
     } finally {
       setUpdatingProgress(false);
     }
   };
 
-  const handleVideoPlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-        }
-      } else {
-        videoRef.current.play();
-        
-        // Start progress tracking interval
-        progressIntervalRef.current = setInterval(() => {
-          if (videoRef.current && activeSubtopic) {
-            const currentTime = videoRef.current.currentTime;
-            updateProgress(currentTime);
-          }
-        }, 10000); // Update every 10 seconds
+  const handleVideoPlayPause = () => {
+    if (!videoRef.current) return;
+
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+      if (progressIntervalRef.current) {
+        window.clearInterval(progressIntervalRef.current);
       }
-      setIsPlaying(!isPlaying);
+    } else {
+      // play
+      videoRef.current.play().catch(err => {
+        console.warn('video play error', err);
+      });
+      setIsPlaying(true);
+
+      // start periodic updates (every 10 seconds)
+      if (progressIntervalRef.current) {
+        window.clearInterval(progressIntervalRef.current);
+      }
+      progressIntervalRef.current = window.setInterval(() => {
+        if (videoRef.current && activeSubtopic) {
+          updateProgress(videoRef.current.currentTime);
+        }
+      }, 10000);
     }
   };
 
   const handleTimeUpdate = () => {
     if (videoRef.current && activeSubtopic) {
-      const currentTime = videoRef.current.currentTime;
-      const duration = videoRef.current.duration || activeSubtopic.duration;
-      const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-      
-      setCurrentTime(currentTime);
+      const current = videoRef.current.currentTime || 0;
+      const duration = (videoRef.current.duration && isFinite(videoRef.current.duration)) ? videoRef.current.duration : activeSubtopic.duration || 0;
+      const progress = duration > 0 ? (current / duration) * 100 : 0;
+
+      setCurrentTime(current);
       setVideoProgress(progress);
     }
   };
 
   const handleVideoEnd = () => {
     if (activeSubtopic) {
-      // Mark as fully watched
-      updateProgress(activeSubtopic.duration);
+      // mark fully watched (use subtopic.duration if available)
+      updateProgress(activeSubtopic.duration || currentTime);
       setIsPlaying(false);
-      
       if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
+        window.clearInterval(progressIntervalRef.current);
       }
+      // ensure progress shows 100%
+      setVideoProgress(100);
+      setCurrentTime(activeSubtopic.duration || 0);
     }
   };
 
@@ -353,18 +431,20 @@ const APInternshipLearningPage = () => {
     setCurrentTime(0);
     setIsPlaying(false);
 
-    // Clear existing interval
     if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
+      window.clearInterval(progressIntervalRef.current);
     }
 
-    // Find existing progress for this subtopic
+    // find existing watched duration to show accurate progress
     const topicProgress = enrollment?.progress?.find(t => t.topicName === topicName);
-    const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === subtopic.name);
-    
+    const subtopicProgress = topicProgress?.subtopics?.find(s => s.subTopicName === subtopic.name);
     if (subtopicProgress && subtopicProgress.totalDuration > 0) {
       const progressPercent = (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100;
       setVideoProgress(progressPercent);
+      setCurrentTime(subtopicProgress.watchedDuration || 0);
+    } else {
+      setVideoProgress(0);
+      setCurrentTime(0);
     }
   };
 
@@ -387,11 +467,10 @@ const APInternshipLearningPage = () => {
   };
 
   const handleTakeExam = (topicName: string) => {
-    if (!enrollment?.courseId?._id) return;
+    if (!enrollment) return;
 
-    // Check if topic content is completed
-    const topicProgress = getTopicProgress(topicName);
-    if (topicProgress < 95) {
+    const topicProgressPercent = getTopicProgress(topicName);
+    if (topicProgressPercent < 95) {
       toast({
         title: 'Complete Topic First',
         description: 'Please complete all videos in this topic before taking the exam',
@@ -401,11 +480,12 @@ const APInternshipLearningPage = () => {
     }
 
     // Navigate to exam page
-    navigate(`/ap-internship-exam/${enrollment.courseId._id}/${topicName}?enrollmentId=${enrollmentId}`);
+    const courseId = typeof enrollment.courseId === 'string' ? enrollment.courseId : enrollment.courseId._id;
+    navigate(`/ap-internship-exam/${courseId}/${encodeURIComponent(topicName)}?enrollmentId=${enrollmentId}`);
   };
 
   const handleTakeFinalExam = () => {
-    if (!enrollment?.courseId?._id || !examStatus?.courseProgress.finalExamEligible) {
+    if (!enrollment?.courseId || !examStatus?.courseProgress.finalExamEligible) {
       toast({
         title: 'Not Eligible',
         description: 'Complete all topic exams first to unlock the final exam',
@@ -414,14 +494,19 @@ const APInternshipLearningPage = () => {
       return;
     }
 
-    navigate(`/ap-internship-final-exam/${enrollment.courseId._id}?enrollmentId=${enrollmentId}`);
+    const courseId = typeof enrollment.courseId === 'string' ? enrollment.courseId : enrollment.courseId._id;
+    navigate(`/ap-internship-final-exam/${courseId}?enrollmentId=${enrollmentId}`);
   };
 
   const formatTime = (seconds: number) => {
+    if (!isFinite(seconds) || seconds <= 0) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Derived curriculum (ensures UI always has a consistent shape even if backend omitted course.curriculum)
+  const curriculum = enrollment ? buildCurriculumFromEnrollment(enrollment) : [];
 
   if (loading) {
     return (
@@ -468,11 +553,12 @@ const APInternshipLearningPage = () => {
     );
   }
 
-  const overallProgress = enrollment.totalVideoDuration > 0 
-    ? (enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100 
+  const overallProgress = enrollment.totalVideoDuration > 0
+    ? (enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100
     : 0;
 
-  const course = enrollment.courseId;
+  // course object for header display (may be partial)
+  const course = typeof enrollment.courseId === 'string' ? null : enrollment.courseId;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -481,9 +567,9 @@ const APInternshipLearningPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => navigate('/student-dashboard')}
                 className="flex items-center"
               >
@@ -492,10 +578,10 @@ const APInternshipLearningPage = () => {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {course?.title || 'Course Content'}
+                  {course?.title || enrollment.internshipId?.title || 'Course Content'}
                 </h1>
                 <p className="text-gray-600">
-                  {enrollment.internshipId?.companyName} • {course?.stream}
+                  {enrollment.internshipId?.companyName} • {course?.stream || enrollment.internshipId?.stream || ''}
                 </p>
               </div>
             </div>
@@ -525,15 +611,15 @@ const APInternshipLearningPage = () => {
                   Curriculum
                 </CardTitle>
                 <CardDescription>
-                  {course?.curriculum?.length || 0} topics • {Math.ceil(course?.totalDuration / 60) || 0} min total
+                  {curriculum?.length || 0} topics • {Math.ceil((course?.totalDuration || enrollment.totalVideoDuration) / 60) || 0} min total
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-                  {course?.curriculum?.map((topic, topicIndex) => {
+                  {curriculum?.map((topic, topicIndex) => {
                     const topicProgress = getTopicProgress(topic.topicName);
                     const isTopicCompleted = topicProgress >= 95;
-                    
+
                     return (
                       <div key={topicIndex} className="border-b last:border-b-0">
                         <div className="p-4 bg-gray-50 border-b">
@@ -556,19 +642,20 @@ const APInternshipLearningPage = () => {
                           </div>
                           <Progress value={topicProgress} className="h-1 mt-1" />
                         </div>
-                        
+
                         <div className="divide-y">
                           {topic.subtopics.map((subtopic, subtopicIndex) => {
+                            // If curriculum was built from enrollment.progress the subtopic.name matches subTopicName
                             const subtopicProgress = getSubtopicProgress(topic.topicName, subtopic.name);
                             const isCompleted = isSubtopicCompleted(topic.topicName, subtopic.name);
                             const isActive = activeSubtopic?.name === subtopic.name && activeTopic === topic.topicName;
-                            
+
                             return (
                               <div
                                 key={subtopicIndex}
                                 className={`p-3 cursor-pointer transition-colors ${
-                                  isActive 
-                                    ? 'bg-blue-50 border-l-4 border-l-blue-600' 
+                                  isActive
+                                    ? 'bg-blue-50 border-l-4 border-l-blue-600'
                                     : 'hover:bg-gray-50'
                                 }`}
                                 onClick={() => handleSubtopicSelect(topic.topicName, subtopic)}
@@ -624,6 +711,12 @@ const APInternshipLearningPage = () => {
                       </div>
                     );
                   })}
+
+                  {curriculum.length === 0 && (
+                    <div className="p-4 text-sm text-gray-600">
+                      No curriculum available for this course yet.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -641,16 +734,16 @@ const APInternshipLearningPage = () => {
                   <div className="flex justify-between text-sm mb-1">
                     <span>Topic Exams Passed</span>
                     <span>
-                      {examStatus?.topicExams.passedCount || 0} / {course?.curriculum?.length || 0}
+                      {examStatus?.topicExams.passedCount || 0} / {curriculum?.length || 0}
                     </span>
                   </div>
-                  <Progress 
+                  <Progress
                     value={
-                      course?.curriculum?.length 
-                        ? ((examStatus?.topicExams.passedCount || 0) / course.curriculum.length) * 100 
+                      curriculum?.length
+                        ? ((examStatus?.topicExams.passedCount || 0) / curriculum.length) * 100
                         : 0
-                    } 
-                    className="h-2" 
+                    }
+                    className="h-2"
                   />
                 </div>
 
@@ -658,13 +751,13 @@ const APInternshipLearningPage = () => {
                   <div className="flex justify-between text-sm mb-1">
                     <span>Final Exam</span>
                     <span>
-                      {examStatus?.finalExam.passed ? 'Passed' : 
-                       examStatus?.courseProgress.finalExamEligible ? 'Eligible' : 'Not Eligible'}
+                      {examStatus?.finalExam.passed ? 'Passed' :
+                        examStatus?.courseProgress.finalExamEligible ? 'Eligible' : 'Not Eligible'}
                     </span>
                   </div>
                   {examStatus?.courseProgress.finalExamEligible && !examStatus.finalExam.passed && (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="w-full mt-2"
                       onClick={handleTakeFinalExam}
                     >
@@ -712,20 +805,20 @@ const APInternshipLearningPage = () => {
                   )}
                 </div>
               </CardHeader>
-              
+
               <CardContent className="space-y-6">
                 {/* Video Player */}
                 {activeSubtopic ? (
                   <div className="bg-black rounded-lg overflow-hidden">
                     <video
-                      ref={videoRef}
+                      ref={el => videoRef.current = el}
                       className="w-full h-auto max-h-[480px]"
                       controls
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
+                      onPlay={() => { setIsPlaying(true); }}
+                      onPause={() => { setIsPlaying(false); if (progressIntervalRef.current) { window.clearInterval(progressIntervalRef.current); } }}
                       onTimeUpdate={handleTimeUpdate}
                       onEnded={handleVideoEnd}
-                      src={activeSubtopic.link}
+                      src={activeSubtopic.link || undefined}
                     >
                       Your browser does not support the video tag.
                     </video>
@@ -746,8 +839,8 @@ const APInternshipLearningPage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleVideoPlay}
-                        disabled={!activeSubtopic}
+                        onClick={handleVideoPlayPause}
+                        disabled={!activeSubtopic || (!activeSubtopic.link)}
                       >
                         {isPlaying ? (
                           <Pause className="h-4 w-4 mr-2" />
@@ -756,7 +849,7 @@ const APInternshipLearningPage = () => {
                         )}
                         {isPlaying ? 'Pause' : 'Play'}
                       </Button>
-                      
+
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <span>{formatTime(currentTime)}</span>
                         <span>/</span>
@@ -787,8 +880,8 @@ const APInternshipLearningPage = () => {
                     </div>
                   </div>
                   <Progress value={overallProgress} className="h-2 mt-2 bg-blue-200">
-                    <div 
-                      className="h-full bg-blue-600 rounded-full transition-all duration-500" 
+                    <div
+                      className="h-full bg-blue-600 rounded-full transition-all duration-500"
                       style={{ width: `${overallProgress}%` }}
                     />
                   </Progress>
@@ -823,7 +916,7 @@ const APInternshipLearningPage = () => {
                       Pass all topic exams to unlock the final exam
                     </p>
                     <div className="text-sm">
-                      {examStatus?.topicExams.passedCount || 0} of {course?.curriculum?.length || 0} passed
+                      {examStatus?.topicExams.passedCount || 0} of {curriculum?.length || 0} passed
                     </div>
                   </div>
 
@@ -836,8 +929,8 @@ const APInternshipLearningPage = () => {
                       Pass the final exam to receive your certificate
                     </p>
                     <div className="text-sm">
-                      Status: {examStatus?.finalExam.passed ? 'Passed' : 
-                              examStatus?.courseProgress.finalExamEligible ? 'Ready' : 'Locked'}
+                      Status: {examStatus?.finalExam.passed ? 'Passed' :
+                        examStatus?.courseProgress.finalExamEligible ? 'Ready' : 'Locked'}
                     </div>
                   </div>
 
@@ -849,8 +942,8 @@ const APInternshipLearningPage = () => {
                     <p className="text-sm text-gray-600 mb-3">
                       Download your completion certificate
                     </p>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       disabled={!examStatus?.courseProgress.courseCompleted}
                       onClick={() => navigate(`/ap-internship-certificate/${enrollmentId}`)}
