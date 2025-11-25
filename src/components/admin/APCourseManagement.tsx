@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Trash2, Eye } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Edit, Trash2, Eye, Download, Clock, FileText, Award, Languages, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Subtopic = {
@@ -63,6 +64,7 @@ const APCourseManagement: React.FC = () => {
   const [internshipsLoading, setInternshipsLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<APCourse | null>(null);
   const { toast } = useToast();
 
@@ -256,6 +258,33 @@ const APCourseManagement: React.FC = () => {
     } catch (err: any) {
       console.error("createCourse", err);
       toast({ title: "Error", description: err.message || "Failed to create course", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleView = async (courseId: string) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        toast({ title: "Unauthorized", description: "No token found", variant: "destructive" });
+        return;
+      }
+      setLoading(true);
+      const res = await fetch(`/api/internships/apcourses/${courseId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.course) {
+        const c: APCourse = data.course;
+        setSelectedCourse(c);
+        setShowViewDialog(true);
+      } else {
+        throw new Error(data.message || "Failed to fetch course");
+      }
+    } catch (err: any) {
+      console.error("handleView", err);
+      toast({ title: "Error", description: err.message || "Failed to fetch course", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -465,122 +494,142 @@ const APCourseManagement: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">AP Course Management</h2>
-          <p className="text-gray-600">Create, update or delete recorded courses linked to AP internships</p>
+          <h2 className="text-2xl font-bold tracking-tight">AP Course Management</h2>
+          <p className="text-muted-foreground">Create, update or delete recorded courses linked to AP internships</p>
         </div>
 
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
               Create AP Course
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create AP Course</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                Create New AP Course
+              </DialogTitle>
             </DialogHeader>
 
-            <form onSubmit={(e) => { e.preventDefault(); createCourse(); }} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Select Internship *</label>
-                  <Select 
-                    value={form.internshipId} 
-                    onValueChange={handleInternshipChange}
-                    disabled={internshipsLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={internshipsLoading ? "Loading internships..." : "Select an internship"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {internships.map((internship) => (
-                        <SelectItem key={internship._id} value={internship._id}>
-                          {internship.title} - {internship.companyName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.internshipId && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Selected: {form.title} ({form.stream})
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Course Title *</label>
-                  <Input
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    required
-                    placeholder="Course title will be auto-filled from internship"
-                  />
-                </div>
-              </div>
+            <form onSubmit={(e) => { e.preventDefault(); createCourse(); }} className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Course Information</CardTitle>
+                  <CardDescription>Basic information about the course</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Select Internship *</label>
+                      <Select 
+                        value={form.internshipId} 
+                        onValueChange={handleInternshipChange}
+                        disabled={internshipsLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={internshipsLoading ? "Loading internships..." : "Select an internship"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {internships.map((internship) => (
+                            <SelectItem key={internship._id} value={internship._id}>
+                              {internship.title} - {internship.companyName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {form.internshipId && (
+                        <p className="text-xs text-green-600 mt-1">
+                          Selected: {form.title} ({form.stream})
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Course Title *</label>
+                      <Input
+                        value={form.title}
+                        onChange={(e) => setForm({ ...form, title: e.target.value })}
+                        required
+                        placeholder="Course title will be auto-filled from internship"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Stream</label>
-                  <Input value={form.stream} onChange={(e) => setForm({ ...form, stream: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Provider</label>
-                  <Select value={form.providerName} onValueChange={(v: string) => setForm({ ...form, providerName: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="triaright">triaright</SelectItem>
-                      <SelectItem value="etv">etv</SelectItem>
-                      <SelectItem value="kalasalingan">kalasalingan</SelectItem>
-                      <SelectItem value="instructor">instructor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Stream</label>
+                      <Input value={form.stream} onChange={(e) => setForm({ ...form, stream: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Provider</label>
+                      <Select value={form.providerName} onValueChange={(v: string) => setForm({ ...form, providerName: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="triaright">triaright</SelectItem>
+                          <SelectItem value="etv">etv</SelectItem>
+                          <SelectItem value="kalasalingan">kalasalingan</SelectItem>
+                          <SelectItem value="instructor">instructor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Instructor Name</label>
-                  <Input value={form.instructorName} onChange={(e) => setForm({ ...form, instructorName: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Course Language</label>
-                  <Input value={form.courseLanguage} onChange={(e) => setForm({ ...form, courseLanguage: e.target.value })} />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Instructor Name
+                      </label>
+                      <Input value={form.instructorName} onChange={(e) => setForm({ ...form, instructorName: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Languages className="h-4 w-4" />
+                        Course Language
+                      </label>
+                      <Input value={form.courseLanguage} onChange={(e) => setForm({ ...form, courseLanguage: e.target.value })} />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4 items-end">
-                <div>
-                  <label className="text-sm font-medium">Certification Provided</label>
-                  <Select value={form.certificationProvided} onValueChange={(v: string) => setForm({ ...form, certificationProvided: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yes">yes</SelectItem>
-                      <SelectItem value="no">no</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Has Final Exam</label>
-                  <Select value={form.hasFinalExam ? "true" : "false"} onValueChange={(v: string) => setForm({ ...form, hasFinalExam: v === "true" })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">Yes</SelectItem>
-                      <SelectItem value="false">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Award className="h-4 w-4" />
+                        Certification Provided
+                      </label>
+                      <Select value={form.certificationProvided} onValueChange={(v: string) => setForm({ ...form, certificationProvided: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="yes">Yes</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Has Final Exam</label>
+                      <Select value={form.hasFinalExam ? "true" : "false"} onValueChange={(v: string) => setForm({ ...form, hasFinalExam: v === "true" })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Curriculum</CardTitle>
+                  <CardTitle className="text-lg">Curriculum</CardTitle>
                   <CardDescription>
                     Add topics and subtopics. Each topic can have an Excel file named topicExam_&lt;topicName&gt; (10 questions)
                   </CardDescription>
@@ -589,18 +638,24 @@ const APCourseManagement: React.FC = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {form.curriculum.map((topic, tIdx) => (
-                      <div key={tIdx} className="border rounded p-3 space-y-3">
+                      <div key={tIdx} className="border rounded-lg p-4 space-y-4 bg-gray-50/50">
                         <div className="flex justify-between items-center">
-                          <Input
-                            value={topic.topicName}
-                            onChange={(e) => updateTopicName(tIdx, e.target.value)}
-                            placeholder="Topic Name"
-                            className="flex-1 mr-2"
-                          />
-                          <Button variant="destructive" onClick={() => removeTopic(tIdx)}>Remove Topic</Button>
+                          <div className="flex-1 space-y-2">
+                            <label className="text-sm font-medium">Topic Name</label>
+                            <Input
+                              value={topic.topicName}
+                              onChange={(e) => updateTopicName(tIdx, e.target.value)}
+                              placeholder="Enter topic name"
+                              className="flex-1"
+                            />
+                          </div>
+                          <Button variant="destructive" size="sm" onClick={() => removeTopic(tIdx)} className="ml-4">
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Remove
+                          </Button>
                         </div>
 
-                        <div>
+                        <div className="space-y-2">
                           <label className="text-sm font-medium">Topic Exam (Excel - 10 rows)</label>
                           <input
                             type="file"
@@ -609,49 +664,75 @@ const APCourseManagement: React.FC = () => {
                               const f = e.target.files?.[0];
                               onTopicExamFileChange(topic.topicName, f);
                             }}
-                            className="block mt-1"
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                           />
                           <p className="text-xs text-gray-500 mt-1">
-                            Field name will be: <code>{`topicExam_${topic.topicName}`}</code>
+                            Field name will be: <code className="bg-gray-100 px-1 rounded">{`topicExam_${topic.topicName}`}</code>
                           </p>
                         </div>
 
-                        <div className="space-y-2">
-                          <h4 className="font-semibold">Subtopics</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <h4 className="font-semibold text-sm">Subtopics</h4>
+                            <span className="text-xs text-gray-500">
+                              {topic.subtopics.length} subtopic(s)
+                            </span>
+                          </div>
                           {topic.subtopics.map((sub, sIdx) => (
-                            <div key={sIdx} className="grid grid-cols-3 gap-2 items-end">
-                              <Input
-                                placeholder="Subtopic name"
-                                value={sub.name}
-                                onChange={(e) => updateSubtopic(tIdx, sIdx, "name", e.target.value)}
-                              />
-                              <Input
-                                placeholder="Link (video)"
-                                value={sub.link}
-                                onChange={(e) => updateSubtopic(tIdx, sIdx, "link", e.target.value)}
-                              />
-                              <Input
-                                placeholder="Duration (minutes)"
-                                value={String(sub.duration)}
-                                type="number"
-                                onChange={(e) => updateSubtopic(tIdx, sIdx, "duration", Number(e.target.value))}
-                              />
-                              <div className="col-span-3 flex justify-end">
-                                <Button variant="outline" size="sm" onClick={() => removeSubtopic(tIdx, sIdx)}>Remove Subtopic</Button>
+                            <div key={sIdx} className="grid grid-cols-12 gap-2 items-end p-3 border rounded bg-white">
+                              <div className="col-span-4 space-y-1">
+                                <label className="text-xs font-medium">Name</label>
+                                <Input
+                                  placeholder="Subtopic name"
+                                  value={sub.name}
+                                  onChange={(e) => updateSubtopic(tIdx, sIdx, "name", e.target.value)}
+                                  className="text-sm"
+                                />
+                              </div>
+                              <div className="col-span-5 space-y-1">
+                                <label className="text-xs font-medium">Video Link</label>
+                                <Input
+                                  placeholder="Video URL"
+                                  value={sub.link}
+                                  onChange={(e) => updateSubtopic(tIdx, sIdx, "link", e.target.value)}
+                                  className="text-sm"
+                                />
+                              </div>
+                              <div className="col-span-2 space-y-1">
+                                <label className="text-xs font-medium">Duration (min)</label>
+                                <Input
+                                  placeholder="Minutes"
+                                  value={String(sub.duration)}
+                                  type="number"
+                                  onChange={(e) => updateSubtopic(tIdx, sIdx, "duration", Number(e.target.value))}
+                                  className="text-sm"
+                                />
+                              </div>
+                              <div className="col-span-1">
+                                <Button variant="outline" size="sm" onClick={() => removeSubtopic(tIdx, sIdx)} className="w-full">
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
                               </div>
                             </div>
                           ))}
 
                           <div>
-                            <Button onClick={() => addSubtopic(tIdx)}>Add Subtopic</Button>
+                            <Button onClick={() => addSubtopic(tIdx)} size="sm" variant="outline">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add Subtopic
+                            </Button>
                           </div>
                         </div>
                       </div>
                     ))}
 
-                    <div className="flex space-x-2">
-                      <Button onClick={addTopic}>Add Topic</Button>
-                      <div className="ml-auto text-sm text-gray-600">
+                    <div className="flex justify-between items-center pt-4 border-t">
+                      <Button onClick={addTopic} variant="default">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Topic
+                      </Button>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <Clock className="h-4 w-4" />
                         Total Duration: {calculateTotalDuration(form.curriculum)} minutes
                       </div>
                     </div>
@@ -659,24 +740,52 @@ const APCourseManagement: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <div>
-                <label className="text-sm font-medium">Curriculum Document (pdf/doc)</label>
-                <input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setCurriculumDocFile(e.target.files?.[0] || null)} />
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Course Materials</CardTitle>
+                  <CardDescription>Upload supporting documents and exam files</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Curriculum Document (PDF/DOC)
+                    </label>
+                    <input 
+                      type="file" 
+                      accept=".pdf,.doc,.docx" 
+                      onChange={(e) => setCurriculumDocFile(e.target.files?.[0] || null)} 
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  </div>
 
-              {form.hasFinalExam && (
-                <div>
-                  <label className="text-sm font-medium">Final Exam (Excel - 60 rows)</label>
-                  <input type="file" accept=".xls,.xlsx" onChange={(e) => setFinalExamFile(e.target.files?.[0] || null)} />
-                </div>
-              )}
+                  {form.hasFinalExam && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Final Exam (Excel - 60 rows)</label>
+                      <input 
+                        type="file" 
+                        accept=".xls,.xlsx" 
+                        onChange={(e) => setFinalExamFile(e.target.files?.[0] || null)} 
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-              <DialogFooter>
+              <DialogFooter className="gap-2 sm:gap-0">
                 <Button type="button" variant="outline" onClick={() => { setShowCreateDialog(false); resetForm(); }}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Creating..." : "Create Course"}
+                <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Course"
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -688,7 +797,7 @@ const APCourseManagement: React.FC = () => {
         <TabsList className="grid w-full grid-cols-1">
           <TabsTrigger value="list" className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
-            AP Courses
+            AP Courses ({courses.length})
           </TabsTrigger>
         </TabsList>
 
@@ -700,7 +809,10 @@ const APCourseManagement: React.FC = () => {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8">Loading courses...</div>
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-500">Loading courses...</p>
+                </div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -709,8 +821,8 @@ const APCourseManagement: React.FC = () => {
                       <TableHead>Internship</TableHead>
                       <TableHead>Provider</TableHead>
                       <TableHead>Stream</TableHead>
-                      <TableHead>Total Duration</TableHead>
-                      <TableHead>Has Final Exam</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Exam</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -719,17 +831,33 @@ const APCourseManagement: React.FC = () => {
                       <TableRow key={c._id}>
                         <TableCell className="font-medium">{c.title}</TableCell>
                         <TableCell>
-                          {c.internshipRef?.title || "N/A"}
-                          {c.internshipRef?.companyName && (
-                            <div className="text-xs text-gray-500">{c.internshipRef.companyName}</div>
-                          )}
+                          <div>
+                            {c.internshipRef?.title || "N/A"}
+                            {c.internshipRef?.companyName && (
+                              <div className="text-xs text-gray-500">{c.internshipRef.companyName}</div>
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell>{c.providerName}</TableCell>
-                        <TableCell>{c.stream}</TableCell>
-                        <TableCell>{c.totalDuration ?? calculateTotalDuration(c.curriculum)} mins</TableCell>
-                        <TableCell>{c.hasFinalExam ? "Yes" : "No"}</TableCell>
                         <TableCell>
-                          <div className="flex space-x-2">
+                          <Badge variant="outline">{c.providerName}</Badge>
+                        </TableCell>
+                        <TableCell>{c.stream}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-gray-500" />
+                            {c.totalDuration ?? calculateTotalDuration(c.curriculum)} mins
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={c.hasFinalExam ? "default" : "secondary"}>
+                            {c.hasFinalExam ? "Yes" : "No"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            <Button variant="outline" size="sm" onClick={() => handleView(c._id)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => handleEdit(c._id)}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -743,7 +871,7 @@ const APCourseManagement: React.FC = () => {
                     {courses.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                          No AP courses found
+                          No AP courses found. Create your first course to get started.
                         </TableCell>
                       </TableRow>
                     )}
@@ -755,115 +883,301 @@ const APCourseManagement: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      {/* View Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit AP Course</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Course Details
+            </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={(e) => { e.preventDefault(); updateCourse(); }} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Internship</label>
-                <Input
-                  value={form.internshipId}
-                  disabled
-                  className="bg-gray-100"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Internship cannot be changed after course creation
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Title *</label>
-                <Input
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
+          {selectedCourse && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">{selectedCourse.title}</CardTitle>
+                  <CardDescription>
+                    {selectedCourse.internshipRef?.companyName && (
+                      <>Company: {selectedCourse.internshipRef.companyName} • </>
+                    )}
+                    Stream: {selectedCourse.stream}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Provider</p>
+                      <Badge variant="outline">{selectedCourse.providerName}</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Instructor</p>
+                      <p className="text-sm">{selectedCourse.instructorName}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Language</p>
+                      <p className="text-sm">{selectedCourse.courseLanguage}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Certification</p>
+                      <Badge variant={selectedCourse.certificationProvided === 'yes' ? 'default' : 'secondary'}>
+                        {selectedCourse.certificationProvided === 'yes' ? 'Yes' : 'No'}
+                      </Badge>
+                    </div>
+                  </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Stream</label>
-                <Input value={form.stream} onChange={(e) => setForm({ ...form, stream: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Provider</label>
-                <Select value={form.providerName} onValueChange={(v: string) => setForm({ ...form, providerName: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="triaright">triaright</SelectItem>
-                    <SelectItem value="etv">etv</SelectItem>
-                    <SelectItem value="kalasalingan">kalasalingan</SelectItem>
-                    <SelectItem value="instructor">instructor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Final Exam</p>
+                      <Badge variant={selectedCourse.hasFinalExam ? 'default' : 'secondary'}>
+                        {selectedCourse.hasFinalExam ? 'Yes' : 'No'}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Total Duration</p>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm">{selectedCourse.totalDuration ?? calculateTotalDuration(selectedCourse.curriculum)} minutes</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Topics</p>
+                      <p className="text-sm">{selectedCourse.curriculum.length}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-500">Created</p>
+                      <p className="text-sm">
+                        {selectedCourse.createdAt ? new Date(selectedCourse.createdAt).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Instructor Name</label>
-                <Input value={form.instructorName} onChange={(e) => setForm({ ...form, instructorName: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Course Language</label>
-                <Input value={form.courseLanguage} onChange={(e) => setForm({ ...form, courseLanguage: e.target.value })} />
-              </div>
-            </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Curriculum</CardTitle>
+                  <CardDescription>
+                    {selectedCourse.curriculum.length} topic(s) • {calculateTotalDuration(selectedCourse.curriculum)} total minutes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {selectedCourse.curriculum.map((topic, tIdx) => (
+                      <div key={tIdx} className="border rounded-lg p-4">
+                        <h3 className="font-semibold text-lg mb-3">{topic.topicName}</h3>
+                        <div className="space-y-2">
+                          {topic.subtopics.map((subtopic, sIdx) => (
+                            <div key={sIdx} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                              <div className="flex-1">
+                                <p className="font-medium">{subtopic.name}</p>
+                                {subtopic.link && (
+                                  <a 
+                                    href={subtopic.link} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 text-sm"
+                                  >
+                                    Watch Video
+                                  </a>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm">{subtopic.duration} min</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-            <div className="grid grid-cols-2 gap-4 items-end">
-              <div>
-                <label className="text-sm font-medium">Certification Provided</label>
-                <Select value={form.certificationProvided} onValueChange={(v: string) => setForm({ ...form, certificationProvided: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="yes">yes</SelectItem>
-                    <SelectItem value="no">no</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Has Final Exam</label>
-                <Select value={form.hasFinalExam ? "true" : "false"} onValueChange={(v: string) => setForm({ ...form, hasFinalExam: v === "true" })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Yes</SelectItem>
-                    <SelectItem value="false">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Materials</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {selectedCourse.curriculumDocLink && (
+                      <div className="flex justify-between items-center p-3 border rounded">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                          <span>Curriculum Document</span>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={selectedCourse.curriculumDocLink} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {selectedCourse.finalExamExcelLink && selectedCourse.hasFinalExam && (
+                      <div className="flex justify-between items-center p-3 border rounded">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-green-600" />
+                          <span>Final Exam</span>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={selectedCourse.finalExamExcelLink} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {!selectedCourse.curriculumDocLink && !selectedCourse.finalExamExcelLink && (
+                      <p className="text-gray-500 text-center py-4">No course materials available</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Edit AP Course
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={(e) => { e.preventDefault(); updateCourse(); }} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Course Information</CardTitle>
+                <CardDescription>Update course details</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Internship</label>
+                    <Input
+                      value={form.internshipId}
+                      disabled
+                      className="bg-gray-100"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Internship cannot be changed after course creation
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Title *</label>
+                    <Input
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Stream</label>
+                    <Input value={form.stream} onChange={(e) => setForm({ ...form, stream: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Provider</label>
+                    <Select value={form.providerName} onValueChange={(v: string) => setForm({ ...form, providerName: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="triaright">triaright</SelectItem>
+                        <SelectItem value="etv">etv</SelectItem>
+                        <SelectItem value="kalasalingan">kalasalingan</SelectItem>
+                        <SelectItem value="instructor">instructor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Instructor Name
+                    </label>
+                    <Input value={form.instructorName} onChange={(e) => setForm({ ...form, instructorName: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Languages className="h-4 w-4" />
+                      Course Language
+                    </label>
+                    <Input value={form.courseLanguage} onChange={(e) => setForm({ ...form, courseLanguage: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Award className="h-4 w-4" />
+                      Certification Provided
+                    </label>
+                    <Select value={form.certificationProvided} onValueChange={(v: string) => setForm({ ...form, certificationProvided: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Has Final Exam</label>
+                    <Select value={form.hasFinalExam ? "true" : "false"} onValueChange={(v: string) => setForm({ ...form, hasFinalExam: v === "true" })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Curriculum</CardTitle>
+                <CardTitle className="text-lg">Curriculum</CardTitle>
                 <CardDescription>Edit topics and subtopics. Upload topic exam files as needed</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {form.curriculum.map((topic, tIdx) => (
-                    <div key={tIdx} className="border rounded p-3 space-y-3">
+                    <div key={tIdx} className="border rounded-lg p-4 space-y-4 bg-gray-50/50">
                       <div className="flex justify-between items-center">
-                        <Input
-                          value={topic.topicName}
-                          onChange={(e) => updateTopicName(tIdx, e.target.value)}
-                          placeholder="Topic Name"
-                          className="flex-1 mr-2"
-                        />
-                        <Button variant="destructive" onClick={() => removeTopic(tIdx)}>Remove Topic</Button>
+                        <div className="flex-1 space-y-2">
+                          <label className="text-sm font-medium">Topic Name</label>
+                          <Input
+                            value={topic.topicName}
+                            onChange={(e) => updateTopicName(tIdx, e.target.value)}
+                            placeholder="Enter topic name"
+                            className="flex-1"
+                          />
+                        </div>
+                        <Button variant="destructive" size="sm" onClick={() => removeTopic(tIdx)} className="ml-4">
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
                       </div>
 
-                      <div>
+                      <div className="space-y-2">
                         <label className="text-sm font-medium">Topic Exam (Excel - 10 rows)</label>
                         <input
                           type="file"
@@ -872,47 +1186,73 @@ const APCourseManagement: React.FC = () => {
                             const f = e.target.files?.[0];
                             onTopicExamFileChange(topic.topicName, f);
                           }}
-                          className="block mt-1"
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Field name: <code>{`topicExam_${topic.topicName}`}</code></p>
+                        <p className="text-xs text-gray-500 mt-1">Field name: <code className="bg-gray-100 px-1 rounded">{`topicExam_${topic.topicName}`}</code></p>
                       </div>
 
-                      <div className="space-y-2">
-                        <h4 className="font-semibold">Subtopics</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-semibold text-sm">Subtopics</h4>
+                          <span className="text-xs text-gray-500">
+                            {topic.subtopics.length} subtopic(s)
+                          </span>
+                        </div>
                         {topic.subtopics.map((sub, sIdx) => (
-                          <div key={sIdx} className="grid grid-cols-3 gap-2 items-end">
-                            <Input
-                              placeholder="Subtopic name"
-                              value={sub.name}
-                              onChange={(e) => updateSubtopic(tIdx, sIdx, "name", e.target.value)}
-                            />
-                            <Input
-                              placeholder="Link (video)"
-                              value={sub.link}
-                              onChange={(e) => updateSubtopic(tIdx, sIdx, "link", e.target.value)}
-                            />
-                            <Input
-                              placeholder="Duration (minutes)"
-                              value={String(sub.duration)}
-                              type="number"
-                              onChange={(e) => updateSubtopic(tIdx, sIdx, "duration", Number(e.target.value))}
-                            />
-                            <div className="col-span-3 flex justify-end">
-                              <Button variant="outline" size="sm" onClick={() => removeSubtopic(tIdx, sIdx)}>Remove Subtopic</Button>
+                          <div key={sIdx} className="grid grid-cols-12 gap-2 items-end p-3 border rounded bg-white">
+                            <div className="col-span-4 space-y-1">
+                              <label className="text-xs font-medium">Name</label>
+                              <Input
+                                placeholder="Subtopic name"
+                                value={sub.name}
+                                onChange={(e) => updateSubtopic(tIdx, sIdx, "name", e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div className="col-span-5 space-y-1">
+                              <label className="text-xs font-medium">Video Link</label>
+                              <Input
+                                placeholder="Video URL"
+                                value={sub.link}
+                                onChange={(e) => updateSubtopic(tIdx, sIdx, "link", e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div className="col-span-2 space-y-1">
+                              <label className="text-xs font-medium">Duration (min)</label>
+                              <Input
+                                placeholder="Minutes"
+                                value={String(sub.duration)}
+                                type="number"
+                                onChange={(e) => updateSubtopic(tIdx, sIdx, "duration", Number(e.target.value))}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div className="col-span-1">
+                              <Button variant="outline" size="sm" onClick={() => removeSubtopic(tIdx, sIdx)} className="w-full">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
                             </div>
                           </div>
                         ))}
 
                         <div>
-                          <Button onClick={() => addSubtopic(tIdx)}>Add Subtopic</Button>
+                          <Button onClick={() => addSubtopic(tIdx)} size="sm" variant="outline">
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Subtopic
+                          </Button>
                         </div>
                       </div>
                     </div>
                   ))}
 
-                  <div className="flex space-x-2">
-                    <Button onClick={addTopic}>Add Topic</Button>
-                    <div className="ml-auto text-sm text-gray-600">
+                  <div className="flex justify-between items-center pt-4 border-t">
+                    <Button onClick={addTopic} variant="default">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Topic
+                    </Button>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <Clock className="h-4 w-4" />
                       Total Duration: {calculateTotalDuration(form.curriculum)} minutes
                     </div>
                   </div>
@@ -920,24 +1260,52 @@ const APCourseManagement: React.FC = () => {
               </CardContent>
             </Card>
 
-            <div>
-              <label className="text-sm font-medium">Replace Curriculum Document (optional)</label>
-              <input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setCurriculumDocFile(e.target.files?.[0] || null)} />
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Course Materials</CardTitle>
+                <CardDescription>Replace existing files if needed</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Replace Curriculum Document (optional)
+                  </label>
+                  <input 
+                    type="file" 
+                    accept=".pdf,.doc,.docx" 
+                    onChange={(e) => setCurriculumDocFile(e.target.files?.[0] || null)} 
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                </div>
 
-            {form.hasFinalExam && (
-              <div>
-                <label className="text-sm font-medium">Replace Final Exam Excel (optional)</label>
-                <input type="file" accept=".xls,.xlsx" onChange={(e) => setFinalExamFile(e.target.files?.[0] || null)} />
-              </div>
-            )}
+                {form.hasFinalExam && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Replace Final Exam Excel (optional)</label>
+                    <input 
+                      type="file" 
+                      accept=".xls,.xlsx" 
+                      onChange={(e) => setFinalExamFile(e.target.files?.[0] || null)} 
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button type="button" variant="outline" onClick={() => { setShowEditDialog(false); resetForm(); }}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Updating..." : "Update Course"}
+              <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Updating...
+                  </>
+                ) : (
+                  "Update Course"
+                )}
               </Button>
             </DialogFooter>
           </form>
