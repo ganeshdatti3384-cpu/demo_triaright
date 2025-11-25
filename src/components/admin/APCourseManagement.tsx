@@ -10,22 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Edit, Trash2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-/**
- * Fixed version of APCourseManagement.tsx
- *
- * Main fixes:
- * - Removed raw "<topicName>" text inside JSX that caused JSX parser to interpret it as a tag.
- *   Replaced with safe interpolations or escaped text.
- * - Used `{`topicExam_${topic.topicName}`}` inside <code> elements to avoid accidental JSX parsing.
- * - Ensured all JSX tags are balanced and closed.
- *
- * Backend field names and file keys are preserved:
- *   internshipId, title, curriculum, stream, providerName, instructorName,
- *   courseLanguage, certificationProvided, hasFinalExam
- * Files:
- *   curriculumDoc, finalExam, topicExam_<topicName>
- */
-
 type Subtopic = {
   name: string;
   link?: string;
@@ -36,6 +20,13 @@ type Topic = {
   topicName: string;
   topicCount?: number;
   subtopics: Subtopic[];
+};
+
+type APInternship = {
+  _id: string;
+  title: string;
+  companyName: string;
+  stream: string;
 };
 
 type APCourse = {
@@ -67,7 +58,9 @@ const defaultTopic = (): Topic => ({
 
 const APCourseManagement: React.FC = () => {
   const [courses, setCourses] = useState<APCourse[]>([]);
+  const [internships, setInternships] = useState<APInternship[]>([]);
   const [loading, setLoading] = useState(false);
+  const [internshipsLoading, setInternshipsLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<APCourse | null>(null);
@@ -101,6 +94,7 @@ const APCourseManagement: React.FC = () => {
 
   useEffect(() => {
     fetchCourses();
+    fetchInternships();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -139,6 +133,32 @@ const APCourseManagement: React.FC = () => {
     }
   };
 
+  const fetchInternships = async () => {
+    try {
+      setInternshipsLoading(true);
+      const res = await fetch("/api/internships/ap-internships");
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setInternships(data.internships || []);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to fetch internships",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error("fetchInternships", err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch internships",
+        variant: "destructive",
+      });
+    } finally {
+      setInternshipsLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setForm({
       internshipId: "",
@@ -167,6 +187,18 @@ const APCourseManagement: React.FC = () => {
     return total;
   };
 
+  const handleInternshipChange = (internshipId: string) => {
+    const selectedInternship = internships.find(internship => internship._id === internshipId);
+    if (selectedInternship) {
+      setForm(prev => ({
+        ...prev,
+        internshipId,
+        title: selectedInternship.title,
+        stream: selectedInternship.stream
+      }));
+    }
+  };
+
   const createCourse = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     try {
@@ -177,7 +209,7 @@ const APCourseManagement: React.FC = () => {
       }
 
       if (!form.internshipId || !form.title || form.curriculum.length === 0) {
-        toast({ title: "Validation", description: "Please fill internshipId, title and curriculum", variant: "destructive" });
+        toast({ title: "Validation", description: "Please select internship and add curriculum", variant: "destructive" });
         return;
       }
 
@@ -453,20 +485,36 @@ const APCourseManagement: React.FC = () => {
             <form onSubmit={(e) => { e.preventDefault(); createCourse(); }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Internship ID *</label>
-                  <Input
-                    value={form.internshipId}
-                    onChange={(e) => setForm({ ...form, internshipId: e.target.value })}
-                    required
-                    placeholder="MongoDB Internship _id (internshipRef)"
-                  />
+                  <label className="text-sm font-medium">Select Internship *</label>
+                  <Select 
+                    value={form.internshipId} 
+                    onValueChange={handleInternshipChange}
+                    disabled={internshipsLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={internshipsLoading ? "Loading internships..." : "Select an internship"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {internships.map((internship) => (
+                        <SelectItem key={internship._id} value={internship._id}>
+                          {internship.title} - {internship.companyName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.internshipId && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Selected: {form.title} ({form.stream})
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Title *</label>
+                  <label className="text-sm font-medium">Course Title *</label>
                   <Input
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                     required
+                    placeholder="Course title will be auto-filled from internship"
                   />
                 </div>
               </div>
@@ -534,7 +582,7 @@ const APCourseManagement: React.FC = () => {
                 <CardHeader>
                   <CardTitle>Curriculum</CardTitle>
                   <CardDescription>
-                    Add topics and subtopics. Each topic can have an Excel file named topicExam_{`<topicName>`} (10 questions)
+                    Add topics and subtopics. Each topic can have an Excel file named topicExam_&lt;topicName&gt; (10 questions)
                   </CardDescription>
                 </CardHeader>
 
@@ -627,7 +675,9 @@ const APCourseManagement: React.FC = () => {
                 <Button type="button" variant="outline" onClick={() => { setShowCreateDialog(false); resetForm(); }}>
                   Cancel
                 </Button>
-                <Button type="submit" onClick={() => createCourse()}>Create Course</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Creating..." : "Create Course"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -635,14 +685,10 @@ const APCourseManagement: React.FC = () => {
       </div>
 
       <Tabs defaultValue="list" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-1">
           <TabsTrigger value="list" className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
-            Courses
-          </TabsTrigger>
-          <TabsTrigger value="create" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Quick Create
+            AP Courses
           </TabsTrigger>
         </TabsList>
 
@@ -650,7 +696,7 @@ const APCourseManagement: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle>AP Courses</CardTitle>
-              <CardDescription>List of recorded courses</CardDescription>
+              <CardDescription>List of recorded courses linked to AP internships</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -660,6 +706,7 @@ const APCourseManagement: React.FC = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title</TableHead>
+                      <TableHead>Internship</TableHead>
                       <TableHead>Provider</TableHead>
                       <TableHead>Stream</TableHead>
                       <TableHead>Total Duration</TableHead>
@@ -671,6 +718,12 @@ const APCourseManagement: React.FC = () => {
                     {courses.map((c) => (
                       <TableRow key={c._id}>
                         <TableCell className="font-medium">{c.title}</TableCell>
+                        <TableCell>
+                          {c.internshipRef?.title || "N/A"}
+                          {c.internshipRef?.companyName && (
+                            <div className="text-xs text-gray-500">{c.internshipRef.companyName}</div>
+                          )}
+                        </TableCell>
                         <TableCell>{c.providerName}</TableCell>
                         <TableCell>{c.stream}</TableCell>
                         <TableCell>{c.totalDuration ?? calculateTotalDuration(c.curriculum)} mins</TableCell>
@@ -689,7 +742,7 @@ const APCourseManagement: React.FC = () => {
                     ))}
                     {courses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                           No AP courses found
                         </TableCell>
                       </TableRow>
@@ -697,26 +750,6 @@ const APCourseManagement: React.FC = () => {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="create">
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Create</CardTitle>
-              <CardDescription>Create a course with minimal fields</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); setShowCreateDialog(true); }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input placeholder="Internship ID" value={form.internshipId} onChange={(e) => setForm({ ...form, internshipId: e.target.value })} />
-                  <Input placeholder="Course Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-                </div>
-                <div className="flex justify-end">
-                  <Button onClick={() => setShowCreateDialog(true)}>Open Create Modal</Button>
-                </div>
-              </form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -732,12 +765,15 @@ const APCourseManagement: React.FC = () => {
           <form onSubmit={(e) => { e.preventDefault(); updateCourse(); }} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Internship ID *</label>
+                <label className="text-sm font-medium">Internship</label>
                 <Input
                   value={form.internshipId}
-                  onChange={(e) => setForm({ ...form, internshipId: e.target.value })}
-                  required
+                  disabled
+                  className="bg-gray-100"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Internship cannot be changed after course creation
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Title *</label>
@@ -765,6 +801,44 @@ const APCourseManagement: React.FC = () => {
                     <SelectItem value="etv">etv</SelectItem>
                     <SelectItem value="kalasalingan">kalasalingan</SelectItem>
                     <SelectItem value="instructor">instructor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Instructor Name</label>
+                <Input value={form.instructorName} onChange={(e) => setForm({ ...form, instructorName: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Course Language</label>
+                <Input value={form.courseLanguage} onChange={(e) => setForm({ ...form, courseLanguage: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 items-end">
+              <div>
+                <label className="text-sm font-medium">Certification Provided</label>
+                <Select value={form.certificationProvided} onValueChange={(v: string) => setForm({ ...form, certificationProvided: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">yes</SelectItem>
+                    <SelectItem value="no">no</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Has Final Exam</label>
+                <Select value={form.hasFinalExam ? "true" : "false"} onValueChange={(v: string) => setForm({ ...form, hasFinalExam: v === "true" })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Yes</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -862,7 +936,9 @@ const APCourseManagement: React.FC = () => {
               <Button type="button" variant="outline" onClick={() => { setShowEditDialog(false); resetForm(); }}>
                 Cancel
               </Button>
-              <Button type="submit" onClick={() => updateCourse()}>Update Course</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Updating..." : "Update Course"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
