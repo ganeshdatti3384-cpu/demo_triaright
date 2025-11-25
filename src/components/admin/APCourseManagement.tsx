@@ -2,54 +2,54 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Eye, Video, FileText, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, FileText, Download, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface APInternship {
-  _id: string;
-  title: string;
-  companyName: string;
-  stream: string;
-}
 
 interface APCourse {
   _id: string;
-  courseId: string;
   title: string;
   stream: string;
-  totalDuration: number;
-  providerName: string;
+  providerName: 'triaright' | 'etv' | 'kalasalingan' | 'instructor';
   instructorName: string;
   courseLanguage: string;
-  certificationProvided: string;
+  certificationProvided: 'yes' | 'no';
   hasFinalExam: boolean;
+  totalDuration: number;
+  curriculum: CurriculumTopic[];
+  exams: string[];
   internshipRef: {
     _id: string;
     title: string;
     companyName: string;
   };
-  curriculum: Topic[];
+  curriculumDocLink?: string;
+  finalExamExcelLink?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
-interface Topic {
+interface CurriculumTopic {
   topicName: string;
   topicCount: number;
   subtopics: Subtopic[];
-  directLink?: string;
-  examExcelLink?: string;
 }
 
 interface Subtopic {
   name: string;
   link: string;
   duration: number;
+}
+
+interface APInternship {
+  _id: string;
+  title: string;
+  companyName: string;
 }
 
 const APCourseManagement = () => {
@@ -59,63 +59,25 @@ const APCourseManagement = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<APCourse | null>(null);
   const [formData, setFormData] = useState({
     internshipId: '',
     title: '',
+    curriculum: [] as CurriculumTopic[],
     stream: '',
-    providerName: 'triaright',
+    providerName: 'triaright' as const,
     instructorName: '',
     courseLanguage: 'English',
-    certificationProvided: 'yes',
-    hasFinalExam: false,
-    curriculum: [] as Topic[]
+    certificationProvided: 'yes' as const,
+    hasFinalExam: false
   });
-  const [currentTopic, setCurrentTopic] = useState<Topic>({
-    topicName: '',
-    topicCount: 0,
-    subtopics: []
-  });
-  const [currentSubtopic, setCurrentSubtopic] = useState<Subtopic>({
-    name: '',
-    link: '',
-    duration: 0
-  });
-  const [topicExamFiles, setTopicExamFiles] = useState<{[key: string]: File}>({});
-  const [finalExamFile, setFinalExamFile] = useState<File | null>(null);
-  const [curriculumDocFile, setCurriculumDocFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [files, setFiles] = useState<{ [key: string]: File }>({});
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchInternships();
     fetchCourses();
+    fetchInternships();
   }, []);
-
-  const fetchInternships = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await fetch('/api/internships/ap-internships', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
-        setInternships(data.internships);
-      }
-    } catch (error) {
-      console.error('Error fetching internships:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load internships',
-        variant: 'destructive'
-      });
-    }
-  };
 
   const fetchCourses = async () => {
     const token = localStorage.getItem('token');
@@ -144,172 +106,82 @@ const APCourseManagement = () => {
     }
   };
 
+  const fetchInternships = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/internships/ap-internships', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setInternships(data.internships);
+      }
+    } catch (error) {
+      console.error('Error fetching internships:', error);
+    }
+  };
+
+  const handleFileChange = (fieldName: string, file: File) => {
+    setFiles(prev => ({
+      ...prev,
+      [fieldName]: file
+    }));
+  };
+
   const createCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    console.log('🚀 Starting course creation...');
-    
     const token = localStorage.getItem('token');
-    if (!token) {
-      toast({
-        title: 'Error',
-        description: 'No authentication token found',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Enhanced validation
-    if (!formData.internshipId) {
-      toast({
-        title: 'Error',
-        description: 'Please select an internship',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!formData.title.trim() || !formData.stream.trim() || !formData.instructorName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please fill all required fields (Title, Stream, Instructor)',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (formData.curriculum.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please add at least one topic with subtopics',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Validate each topic has subtopics
-    for (const topic of formData.curriculum) {
-      if (topic.subtopics.length === 0) {
-        toast({
-          title: 'Error',
-          description: `Topic "${topic.topicName}" must have at least one subtopic`,
-          variant: 'destructive'
-        });
-        return;
-      }
-    }
-
-    setIsSubmitting(true);
+    if (!token) return;
 
     try {
       const formDataToSend = new FormData();
       
-      console.log('📦 Creating course with data:', {
-        internshipId: formData.internshipId,
-        title: formData.title,
-        stream: formData.stream,
-        curriculumLength: formData.curriculum.length
-      });
-
-      // Append all required fields - MATCHING BACKEND EXPECTATIONS
-      formDataToSend.append('internshipId', formData.internshipId);
-      formDataToSend.append('title', formData.title);
-      formDataToSend.append('stream', formData.stream);
-      formDataToSend.append('providerName', formData.providerName);
-      formDataToSend.append('instructorName', formData.instructorName);
-      formDataToSend.append('courseLanguage', formData.courseLanguage);
-      formDataToSend.append('certificationProvided', formData.certificationProvided);
-      formDataToSend.append('hasFinalExam', formData.hasFinalExam.toString());
-      
-      // Stringify curriculum - PROPERLY FORMATTED FOR BACKEND
-      const curriculumData = formData.curriculum.map(topic => ({
-        topicName: topic.topicName.trim(),
-        topicCount: topic.subtopics.length,
-        subtopics: topic.subtopics.map(subtopic => ({
-          name: subtopic.name.trim(),
-          link: subtopic.link.trim(),
-          duration: parseInt(subtopic.duration.toString()) || 0
-        }))
-      }));
-      
-      const curriculumString = JSON.stringify(curriculumData);
-      console.log('📚 Curriculum JSON:', curriculumString);
-      formDataToSend.append('curriculum', curriculumString);
-
-      // Add curriculum document if provided
-      if (curriculumDocFile) {
-        formDataToSend.append('curriculumDoc', curriculumDocFile);
-        console.log('📄 Added curriculum doc:', curriculumDocFile.name);
-      }
-
-      // Add topic exam files - EXACT FIELD NAMES AS BACKEND EXPECTS
-      Object.entries(topicExamFiles).forEach(([topicName, file]) => {
-        const fieldName = `topicExam_${topicName}`; // Exact match with backend
-        formDataToSend.append(fieldName, file);
-        console.log('📝 Added topic exam:', fieldName, file.name);
-      });
-
-      // Add final exam file if exists
-      if (formData.hasFinalExam && finalExamFile) {
-        formDataToSend.append('finalExam', finalExamFile);
-        console.log('🎯 Added final exam:', finalExamFile.name);
-      }
-
-      // Debug: Log all FormData entries
-      console.log('📋 FormData entries:');
-      for (let [key, value] of formDataToSend.entries()) {
-        if (value instanceof File) {
-          console.log(`${key}: File - ${value.name} (${value.type})`);
+      // Append basic form data
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key === 'curriculum') {
+          formDataToSend.append(key, JSON.stringify(value));
         } else {
-          console.log(`${key}:`, value);
+          formDataToSend.append(key, value.toString());
         }
-      }
+      });
 
-      // IMPORTANT: Don't set Content-Type header for FormData
+      // Append files
+      Object.entries(files).forEach(([fieldName, file]) => {
+        formDataToSend.append(fieldName, file);
+      });
+
       const response = await fetch('/api/internships/apcourses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-          // Let browser set Content-Type automatically with boundary
         },
         body: formDataToSend
       });
 
-      const responseText = await response.text();
-      console.log('📨 Backend response status:', response.status);
-      console.log('📨 Backend raw response:', responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-        console.log('📨 Backend parsed response:', data);
-      } catch (parseError) {
-        console.error('❌ Failed to parse backend response:', parseError);
-        throw new Error('Invalid response from server');
-      }
+      const data = await response.json();
 
       if (response.ok && data.success) {
         toast({
           title: 'Success',
-          description: 'Course created successfully!'
+          description: 'Course created successfully with exams'
         });
         setShowCreateDialog(false);
         resetForm();
         fetchCourses();
       } else {
-        const errorMessage = data.message || data.error || `Server returned ${response.status}`;
-        console.error('❌ Backend error:', errorMessage);
-        throw new Error(errorMessage);
+        throw new Error(data.message || 'Failed to create course');
       }
     } catch (error: any) {
-      console.error('❌ Error creating course:', error);
+      console.error('Error creating course:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create course. Please check console for details.',
+        description: error.message || 'Failed to create course',
         variant: 'destructive'
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -320,8 +192,6 @@ const APCourseManagement = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    setIsSubmitting(true);
-
     try {
       const response = await fetch(`/api/internships/apcourses/${selectedCourse._id}`, {
         method: 'PUT',
@@ -329,16 +199,7 @@ const APCourseManagement = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          title: formData.title,
-          stream: formData.stream,
-          providerName: formData.providerName,
-          instructorName: formData.instructorName,
-          courseLanguage: formData.courseLanguage,
-          certificationProvided: formData.certificationProvided,
-          hasFinalExam: formData.hasFinalExam,
-          curriculum: formData.curriculum
-        })
+        body: JSON.stringify(formData)
       });
 
       const data = await response.json();
@@ -361,19 +222,17 @@ const APCourseManagement = () => {
         description: error.message || 'Failed to update course',
         variant: 'destructive'
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const deleteCourse = async () => {
-    if (!selectedCourse) return;
+  const deleteCourse = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this course?')) return;
 
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`/api/internships/apcourses/${selectedCourse._id}`, {
+      const response = await fetch(`/api/internships/apcourses/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -387,8 +246,6 @@ const APCourseManagement = () => {
           title: 'Success',
           description: 'Course deleted successfully'
         });
-        setShowDeleteDialog(false);
-        setSelectedCourse(null);
         fetchCourses();
       } else {
         throw new Error(data.message || 'Failed to delete course');
@@ -403,76 +260,63 @@ const APCourseManagement = () => {
     }
   };
 
-  const addSubtopic = () => {
-    if (!currentSubtopic.name.trim() || !currentSubtopic.link.trim() || currentSubtopic.duration <= 0) {
-      toast({
-        title: 'Error',
-        description: 'Please fill all subtopic fields with valid values',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Validate video link format
-    if (!currentSubtopic.link.startsWith('http')) {
-      toast({
-        title: 'Error',
-        description: 'Video link must be a valid URL starting with http/https',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setCurrentTopic(prev => ({
-      ...prev,
-      subtopics: [...prev.subtopics, { ...currentSubtopic }],
-      topicCount: prev.subtopics.length + 1
-    }));
-
-    setCurrentSubtopic({
-      name: '',
-      link: '',
-      duration: 0
+  const handleEdit = (course: APCourse) => {
+    setSelectedCourse(course);
+    setFormData({
+      internshipId: course.internshipRef._id,
+      title: course.title,
+      curriculum: course.curriculum,
+      stream: course.stream,
+      providerName: course.providerName,
+      instructorName: course.instructorName,
+      courseLanguage: course.courseLanguage,
+      certificationProvided: course.certificationProvided,
+      hasFinalExam: course.hasFinalExam
     });
+    setShowEditDialog(true);
+  };
 
-    toast({
-      title: 'Success',
-      description: 'Subtopic added successfully',
+  const handleView = (course: APCourse) => {
+    setSelectedCourse(course);
+    setShowViewDialog(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      internshipId: '',
+      title: '',
+      curriculum: [],
+      stream: '',
+      providerName: 'triaright',
+      instructorName: '',
+      courseLanguage: 'English',
+      certificationProvided: 'yes',
+      hasFinalExam: false
     });
+    setFiles({});
+    setSelectedCourse(null);
   };
 
   const addTopic = () => {
-    if (!currentTopic.topicName.trim() || currentTopic.subtopics.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please add topic name and at least one subtopic',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     setFormData(prev => ({
       ...prev,
-      curriculum: [...prev.curriculum, { ...currentTopic }]
+      curriculum: [
+        ...prev.curriculum,
+        {
+          topicName: '',
+          topicCount: 0,
+          subtopics: []
+        }
+      ]
     }));
-
-    setCurrentTopic({
-      topicName: '',
-      topicCount: 0,
-      subtopics: []
-    });
-
-    toast({
-      title: 'Success',
-      description: 'Topic added to curriculum'
-    });
   };
 
-  const removeSubtopic = (index: number) => {
-    setCurrentTopic(prev => ({
+  const updateTopic = (index: number, field: string, value: any) => {
+    setFormData(prev => ({
       ...prev,
-      subtopics: prev.subtopics.filter((_, i) => i !== index),
-      topicCount: prev.subtopics.length - 1
+      curriculum: prev.curriculum.map((topic, i) => 
+        i === index ? { ...topic, [field]: value } : topic
+      )
     }));
   };
 
@@ -483,91 +327,66 @@ const APCourseManagement = () => {
     }));
   };
 
-  const handleTopicExamFileChange = (topicName: string, file: File) => {
-    setTopicExamFiles(prev => ({
+  const addSubtopic = (topicIndex: number) => {
+    setFormData(prev => ({
       ...prev,
-      [topicName]: file
+      curriculum: prev.curriculum.map((topic, i) => 
+        i === topicIndex ? {
+          ...topic,
+          subtopics: [
+            ...topic.subtopics,
+            { name: '', link: '', duration: 0 }
+          ]
+        } : topic
+      )
     }));
-    toast({
-      title: 'Success',
-      description: `Exam file added for ${topicName}`
-    });
   };
 
-  const handleFinalExamFileChange = (file: File) => {
-    setFinalExamFile(file);
-    toast({
-      title: 'Success',
-      description: 'Final exam file added'
-    });
+  const updateSubtopic = (topicIndex: number, subtopicIndex: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      curriculum: prev.curriculum.map((topic, i) => 
+        i === topicIndex ? {
+          ...topic,
+          subtopics: topic.subtopics.map((subtopic, j) => 
+            j === subtopicIndex ? { ...subtopic, [field]: value } : subtopic
+          )
+        } : topic
+      )
+    }));
   };
 
-  const handleCurriculumDocChange = (file: File) => {
-    setCurriculumDocFile(file);
-    toast({
-      title: 'Success',
-      description: 'Curriculum document added'
-    });
+  const removeSubtopic = (topicIndex: number, subtopicIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      curriculum: prev.curriculum.map((topic, i) => 
+        i === topicIndex ? {
+          ...topic,
+          subtopics: topic.subtopics.filter((_, j) => j !== subtopicIndex)
+        } : topic
+      )
+    }));
   };
 
-  const resetForm = () => {
-    setFormData({
-      internshipId: '',
-      title: '',
-      stream: '',
-      providerName: 'triaright',
-      instructorName: '',
-      courseLanguage: 'English',
-      certificationProvided: 'yes',
-      hasFinalExam: false,
-      curriculum: []
-    });
-    setCurrentTopic({
-      topicName: '',
-      topicCount: 0,
-      subtopics: []
-    });
-    setCurrentSubtopic({
-      name: '',
-      link: '',
-      duration: 0
-    });
-    setTopicExamFiles({});
-    setFinalExamFile(null);
-    setCurriculumDocFile(null);
-    setSelectedCourse(null);
+  const getProviderBadge = (provider: string) => {
+    const variants = {
+      triaright: 'default',
+      etv: 'secondary',
+      kalasalingan: 'outline',
+      instructor: 'destructive'
+    } as const;
+
+    return (
+      <Badge variant={variants[provider as keyof typeof variants] || 'outline'}>
+        {provider}
+      </Badge>
+    );
   };
 
-  const handleViewCourse = (course: APCourse) => {
-    setSelectedCourse(course);
-    setShowViewDialog(true);
-  };
-
-  const handleEditCourse = (course: APCourse) => {
-    setSelectedCourse(course);
-    setFormData({
-      internshipId: course.internshipRef._id,
-      title: course.title,
-      stream: course.stream,
-      providerName: course.providerName,
-      instructorName: course.instructorName,
-      courseLanguage: course.courseLanguage,
-      certificationProvided: course.certificationProvided,
-      hasFinalExam: course.hasFinalExam,
-      curriculum: course.curriculum
-    });
-    setShowEditDialog(true);
-  };
-
-  const handleDeleteCourse = (course: APCourse) => {
-    setSelectedCourse(course);
-    setShowDeleteDialog(true);
-  };
-
-  const calculateTotalDuration = (curriculum: Topic[]) => {
-    return curriculum.reduce((total, topic) => {
-      return total + topic.subtopics.reduce((topicTotal, subtopic) => topicTotal + subtopic.duration, 0);
-    }, 0);
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
   return (
@@ -575,7 +394,7 @@ const APCourseManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">AP Course Management</h2>
-          <p className="text-gray-600">Manage course content for AP internships</p>
+          <p className="text-gray-600">Manage recorded courses for AP internships</p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
@@ -588,22 +407,23 @@ const APCourseManagement = () => {
             <DialogHeader>
               <DialogTitle>Create New Course</DialogTitle>
               <DialogDescription>
-                Add course content with topics, subtopics, and exams for AP internship.
+                Create a recorded course with topics, subtopics, and exams.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={createCourse} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Select Internship *</label>
+                  <label className="text-sm font-medium">Internship *</label>
                   <Select
                     value={formData.internshipId}
                     onValueChange={(value) => setFormData({...formData, internshipId: value})}
+                    required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select internship" />
                     </SelectTrigger>
                     <SelectContent>
-                      {internships.map((internship) => (
+                      {internships.map(internship => (
                         <SelectItem key={internship._id} value={internship._id}>
                           {internship.title} - {internship.companyName}
                         </SelectItem>
@@ -617,7 +437,6 @@ const APCourseManagement = () => {
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
                     required
-                    placeholder="e.g., Full Stack Web Development"
                   />
                 </div>
               </div>
@@ -629,62 +448,56 @@ const APCourseManagement = () => {
                     value={formData.stream}
                     onChange={(e) => setFormData({...formData, stream: e.target.value})}
                     required
-                    placeholder="e.g., Computer Science"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Instructor Name *</label>
-                  <Input
-                    value={formData.instructorName}
-                    onChange={(e) => setFormData({...formData, instructorName: e.target.value})}
-                    required
-                    placeholder="e.g., John Doe"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Provider</label>
+                  <label className="text-sm font-medium">Provider *</label>
                   <Select
                     value={formData.providerName}
-                    onValueChange={(value) => setFormData({...formData, providerName: value})}
+                    onValueChange={(value: 'triaright' | 'etv' | 'kalasalingan' | 'instructor') => 
+                      setFormData({...formData, providerName: value})
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="triaright">Triaright Education</SelectItem>
+                      <SelectItem value="triaright">Triaright</SelectItem>
                       <SelectItem value="etv">ETV</SelectItem>
                       <SelectItem value="kalasalingan">Kalasalingan</SelectItem>
                       <SelectItem value="instructor">Instructor</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Course Language</label>
-                  <Select
+                  <label className="text-sm font-medium">Instructor Name *</label>
+                  <Input
+                    value={formData.instructorName}
+                    onChange={(e) => setFormData({...formData, instructorName: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Course Language *</label>
+                  <Input
                     value={formData.courseLanguage}
-                    onValueChange={(value) => setFormData({...formData, courseLanguage: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="English">English</SelectItem>
-                      <SelectItem value="Telugu">Telugu</SelectItem>
-                      <SelectItem value="Hindi">Hindi</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onChange={(e) => setFormData({...formData, courseLanguage: e.target.value})}
+                    required
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Certification</label>
+                  <label className="text-sm font-medium">Certification Provided *</label>
                   <Select
                     value={formData.certificationProvided}
-                    onValueChange={(value: 'yes' | 'no') => setFormData({...formData, certificationProvided: value})}
+                    onValueChange={(value: 'yes' | 'no') => 
+                      setFormData({...formData, certificationProvided: value})
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -696,228 +509,186 @@ const APCourseManagement = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Final Exam</label>
+                  <label className="text-sm font-medium">Has Final Exam</label>
                   <Select
-                    value={formData.hasFinalExam ? 'yes' : 'no'}
-                    onValueChange={(value) => setFormData({...formData, hasFinalExam: value === 'yes'})}
+                    value={formData.hasFinalExam.toString()}
+                    onValueChange={(value) => setFormData({...formData, hasFinalExam: value === 'true'})}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="yes">Yes</SelectItem>
-                      <SelectItem value="no">No</SelectItem>
+                      <SelectItem value="true">Yes</SelectItem>
+                      <SelectItem value="false">No</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              {/* Curriculum Document Upload */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Curriculum Document (Optional)</label>
-                <Input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      handleCurriculumDocChange(e.target.files[0]);
-                    }
-                  }}
-                />
-                <p className="text-sm text-gray-600">Upload PDF or Word document containing course curriculum</p>
-              </div>
-
-              {/* Curriculum Builder */}
+              {/* Curriculum Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Curriculum Builder *</h3>
-                
-                {/* Current Topic */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Add Topic</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Topic Name *</label>
-                      <Input
-                        value={currentTopic.topicName}
-                        onChange={(e) => setCurrentTopic({...currentTopic, topicName: e.target.value})}
-                        placeholder="e.g., Introduction to Programming"
-                      />
-                    </div>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Curriculum</h3>
+                  <Button type="button" onClick={addTopic} variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Topic
+                  </Button>
+                </div>
 
-                    {/* Subtopic Builder */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium">Add Subtopic *</h4>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="text-sm font-medium">Subtopic Name *</label>
-                          <Input
-                            value={currentSubtopic.name}
-                            onChange={(e) => setCurrentSubtopic({...currentSubtopic, name: e.target.value})}
-                            placeholder="e.g., Variables and Data Types"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium">Video Link *</label>
-                          <Input
-                            value={currentSubtopic.link}
-                            onChange={(e) => setCurrentSubtopic({...currentSubtopic, link: e.target.value})}
-                            placeholder="https://youtube.com/embed/..."
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium">Duration (minutes) *</label>
-                          <Input
-                            type="number"
-                            value={currentSubtopic.duration || ''}
-                            onChange={(e) => setCurrentSubtopic({...currentSubtopic, duration: Number(e.target.value) || 0})}
-                            min="1"
-                            placeholder="e.g., 30"
-                          />
-                        </div>
-                      </div>
-                      <Button 
-                        type="button" 
-                        onClick={addSubtopic} 
-                        variant="outline" 
+                {formData.curriculum.map((topic, topicIndex) => (
+                  <div key={topicIndex} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <h4 className="font-medium">Topic {topicIndex + 1}</h4>
+                      <Button
+                        type="button"
+                        variant="destructive"
                         size="sm"
-                        disabled={!currentSubtopic.name || !currentSubtopic.link || !currentSubtopic.duration}
+                        onClick={() => removeTopic(topicIndex)}
                       >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Subtopic
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
 
-                    {/* Current Topic Subtopics */}
-                    {currentTopic.subtopics.length > 0 && (
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <h4 className="font-medium">Current Subtopics ({currentTopic.subtopics.length})</h4>
-                        <div className="space-y-2">
-                          {currentTopic.subtopics.map((subtopic, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 border rounded">
-                              <div>
-                                <span className="font-medium">{subtopic.name}</span>
-                                <span className="text-sm text-gray-600 ml-2">({subtopic.duration} mins)</span>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeSubtopic(index)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                        <Button 
-                          type="button" 
-                          onClick={addTopic} 
-                          className="w-full"
-                          disabled={!currentTopic.topicName}
+                        <label className="text-sm font-medium">Topic Name *</label>
+                        <Input
+                          value={topic.topicName}
+                          onChange={(e) => updateTopic(topicIndex, 'topicName', e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Subtopic Count</label>
+                        <Input
+                          type="number"
+                          value={topic.topicCount}
+                          onChange={(e) => updateTopic(topicIndex, 'topicCount', parseInt(e.target.value))}
+                          min="0"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <h5 className="font-medium">Subtopics</h5>
+                        <Button
+                          type="button"
+                          onClick={() => addSubtopic(topicIndex)}
+                          variant="outline"
+                          size="sm"
                         >
-                          Add Topic to Curriculum
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Subtopic
                         </Button>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
 
-                {/* Curriculum Preview */}
-                {formData.curriculum.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">
-                        Curriculum Preview ({formData.curriculum.length} topics, {calculateTotalDuration(formData.curriculum)} minutes)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {formData.curriculum.map((topic, index) => (
-                          <div key={index} className="border rounded-lg p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <h4 className="font-semibold">{topic.topicName}</h4>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeTopic(index)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
+                      {topic.subtopics.map((subtopic, subtopicIndex) => (
+                        <div key={subtopicIndex} className="border rounded p-3 space-y-3">
+                          <div className="flex justify-between items-start">
+                            <h6 className="font-medium">Subtopic {subtopicIndex + 1}</h6>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => removeSubtopic(topicIndex, subtopicIndex)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Name *</label>
+                              <Input
+                                value={subtopic.name}
+                                onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'name', e.target.value)}
+                                required
+                              />
                             </div>
                             <div className="space-y-2">
-                              {topic.subtopics.map((subtopic, subIndex) => (
-                                <div key={subIndex} className="flex justify-between text-sm">
-                                  <span>{subtopic.name}</span>
-                                  <span className="text-gray-600">{subtopic.duration} mins</span>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="mt-2">
-                              <label className="text-sm font-medium">Topic Exam (Excel - 10 questions, Optional)</label>
+                              <label className="text-sm font-medium">Video Link *</label>
                               <Input
-                                type="file"
-                                accept=".xlsx,.xls"
-                                className="mt-1"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) {
-                                    handleTopicExamFileChange(topic.topicName, e.target.files[0]);
-                                  }
-                                }}
+                                value={subtopic.link}
+                                onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'link', e.target.value)}
+                                required
                               />
-                              <p className="text-xs text-gray-600 mt-1">Upload Excel file with 10 questions for this topic</p>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Duration (minutes) *</label>
+                              <Input
+                                type="number"
+                                value={subtopic.duration}
+                                onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value))}
+                                min="1"
+                                required
+                              />
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                        </div>
+                      ))}
+                    </div>
 
-                {/* Final Exam Upload */}
+                    {/* Topic Exam Upload */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Topic Exam Excel File (10 questions) for "{topic.topicName}"
+                      </label>
+                      <Input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileChange(`topicExam_${topic.topicName}`, file);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* File Uploads Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">File Uploads</h3>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Curriculum Document (PDF/DOC)</label>
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleFileChange('curriculumDoc', file);
+                      }
+                    }}
+                  />
+                </div>
+
                 {formData.hasFinalExam && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Final Exam</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Final Exam Excel File (60 questions - Optional)</label>
-                        <Input
-                          type="file"
-                          accept=".xlsx,.xls"
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                              handleFinalExamFileChange(e.target.files[0]);
-                            }
-                          }}
-                        />
-                        <p className="text-sm text-gray-600">
-                          Upload Excel file with 60 questions for final exam
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Final Exam Excel File (60 questions)</label>
+                    <Input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileChange('finalExam', file);
+                        }
+                      }}
+                    />
+                  </div>
                 )}
               </div>
 
               <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setShowCreateDialog(false)}
-                  disabled={isSubmitting}
-                >
+                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting || formData.curriculum.length === 0}
-                >
-                  {isSubmitting ? 'Creating...' : 'Create Course'}
-                </Button>
+                <Button type="submit">Create Course</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -928,7 +699,7 @@ const APCourseManagement = () => {
         <CardHeader>
           <CardTitle>AP Courses</CardTitle>
           <CardDescription>
-            Manage course content for AP exclusive internships
+            Manage recorded courses for Andhra Pradesh internships
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -938,59 +709,63 @@ const APCourseManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Course ID</TableHead>
-                  <TableHead>Title</TableHead>
+                  <TableHead>Course Title</TableHead>
                   <TableHead>Internship</TableHead>
                   <TableHead>Stream</TableHead>
-                  <TableHead>Duration</TableHead>
+                  <TableHead>Provider</TableHead>
                   <TableHead>Instructor</TableHead>
+                  <TableHead>Duration</TableHead>
                   <TableHead>Topics</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>Certification</TableHead>
+                  <TableHead>Final Exam</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {courses.map((course) => (
                   <TableRow key={course._id}>
-                    <TableCell className="font-mono text-sm">{course.courseId}</TableCell>
                     <TableCell className="font-medium">{course.title}</TableCell>
                     <TableCell>
                       <div>
                         <div className="font-medium">{course.internshipRef.title}</div>
-                        <div className="text-sm text-gray-600">{course.internshipRef.companyName}</div>
+                        <div className="text-sm text-gray-500">{course.internshipRef.companyName}</div>
                       </div>
                     </TableCell>
                     <TableCell>{course.stream}</TableCell>
-                    <TableCell>{course.totalDuration} mins</TableCell>
+                    <TableCell>{getProviderBadge(course.providerName)}</TableCell>
                     <TableCell>{course.instructorName}</TableCell>
+                    <TableCell>{formatDuration(course.totalDuration)}</TableCell>
+                    <TableCell>{course.curriculum.length}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {course.curriculum.length} topics
+                      <Badge variant={course.certificationProvided === 'yes' ? 'default' : 'secondary'}>
+                        {course.certificationProvided === 'yes' ? 'Yes' : 'No'}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(course.createdAt).toLocaleDateString()}
+                      <Badge variant={course.hasFinalExam ? 'default' : 'secondary'}>
+                        {course.hasFinalExam ? 'Yes' : 'No'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleViewCourse(course)}
+                          onClick={() => handleView(course)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleEditCourse(course)}
+                          onClick={() => handleEdit(course)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="destructive" 
                           size="sm"
-                          onClick={() => handleDeleteCourse(course)}
+                          onClick={() => deleteCourse(course._id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -1000,8 +775,8 @@ const APCourseManagement = () => {
                 ))}
                 {courses.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                      No courses found. Create your first course to get started.
+                    <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                      No courses found
                     </TableCell>
                   </TableRow>
                 )}
@@ -1011,102 +786,13 @@ const APCourseManagement = () => {
         </CardContent>
       </Card>
 
-      {/* View Course Dialog */}
-      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Course Details</DialogTitle>
-            <DialogDescription>
-              Complete course information and curriculum
-            </DialogDescription>
-          </DialogHeader>
-          {selectedCourse && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold">Course Title</h4>
-                  <p className="text-sm text-gray-600">{selectedCourse.title}</p>
-                </div>
-                <div>
-                  <h4 className="font-semibold">Course ID</h4>
-                  <p className="text-sm text-gray-600 font-mono">{selectedCourse.courseId}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold">Internship</h4>
-                  <p className="text-sm text-gray-600">{selectedCourse.internshipRef.title}</p>
-                  <p className="text-sm text-gray-600">{selectedCourse.internshipRef.companyName}</p>
-                </div>
-                <div>
-                  <h4 className="font-semibold">Stream</h4>
-                  <p className="text-sm text-gray-600">{selectedCourse.stream}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold">Instructor</h4>
-                  <p className="text-sm text-gray-600">{selectedCourse.instructorName}</p>
-                </div>
-                <div>
-                  <h4 className="font-semibold">Provider</h4>
-                  <p className="text-sm text-gray-600">{selectedCourse.providerName}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold">Total Duration</h4>
-                  <p className="text-sm text-gray-600">{selectedCourse.totalDuration} minutes</p>
-                </div>
-                <div>
-                  <h4 className="font-semibold">Language</h4>
-                  <p className="text-sm text-gray-600">{selectedCourse.courseLanguage}</p>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-3">Curriculum</h4>
-                <div className="space-y-4">
-                  {selectedCourse.curriculum.map((topic, index) => (
-                    <Card key={index}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{topic.topicName}</CardTitle>
-                        <CardDescription>
-                          {topic.subtopics.length} subtopics • {topic.subtopics.reduce((sum, st) => sum + st.duration, 0)} minutes
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {topic.subtopics.map((subtopic, subIndex) => (
-                            <div key={subIndex} className="flex justify-between items-center p-2 border rounded">
-                              <div>
-                                <span className="font-medium">{subtopic.name}</span>
-                                <div className="text-sm text-gray-600">{subtopic.link}</div>
-                              </div>
-                              <Badge variant="outline">{subtopic.duration} mins</Badge>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Course Dialog */}
+      {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Course</DialogTitle>
             <DialogDescription>
-              Update course content and curriculum
+              Update course details and curriculum.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={updateCourse} className="space-y-6">
@@ -1131,6 +817,25 @@ const APCourseManagement = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <label className="text-sm font-medium">Provider *</label>
+                <Select
+                  value={formData.providerName}
+                  onValueChange={(value: 'triaright' | 'etv' | 'kalasalingan' | 'instructor') => 
+                    setFormData({...formData, providerName: value})
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="triaright">Triaright</SelectItem>
+                    <SelectItem value="etv">ETV</SelectItem>
+                    <SelectItem value="kalasalingan">Kalasalingan</SelectItem>
+                    <SelectItem value="instructor">Instructor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <label className="text-sm font-medium">Instructor Name *</label>
                 <Input
                   value={formData.instructorName}
@@ -1138,47 +843,24 @@ const APCourseManagement = () => {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Provider</label>
-                <Select
-                  value={formData.providerName}
-                  onValueChange={(value) => setFormData({...formData, providerName: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="triaright">Triaright Education</SelectItem>
-                    <SelectItem value="etv">ETV</SelectItem>
-                    <SelectItem value="kalasalingan">Kalasalingan</SelectItem>
-                    <SelectItem value="instructor">Instructor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Course Language</label>
-                <Select
+                <label className="text-sm font-medium">Course Language *</label>
+                <Input
                   value={formData.courseLanguage}
-                  onValueChange={(value) => setFormData({...formData, courseLanguage: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="English">English</SelectItem>
-                    <SelectItem value="Telugu">Telugu</SelectItem>
-                    <SelectItem value="Hindi">Hindi</SelectItem>
-                  </SelectContent>
-                </Select>
+                  onChange={(e) => setFormData({...formData, courseLanguage: e.target.value})}
+                  required
+                />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Certification</label>
+                <label className="text-sm font-medium">Certification Provided *</label>
                 <Select
                   value={formData.certificationProvided}
-                  onValueChange={(value: 'yes' | 'no') => setFormData({...formData, certificationProvided: value})}
+                  onValueChange={(value: 'yes' | 'no') => 
+                    setFormData({...formData, certificationProvided: value})
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1191,92 +873,248 @@ const APCourseManagement = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Final Exam</label>
-              <Select
-                value={formData.hasFinalExam ? 'yes' : 'no'}
-                onValueChange={(value) => setFormData({...formData, hasFinalExam: value === 'yes'})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Yes</SelectItem>
-                  <SelectItem value="no">No</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Curriculum Preview for Edit */}
-            {formData.curriculum.length > 0 && (
-              <div className="space-y-4">
+            {/* Curriculum Section for Edit */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Curriculum</h3>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      Current Curriculum ({formData.curriculum.length} topics, {calculateTotalDuration(formData.curriculum)} minutes)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {formData.curriculum.map((topic, index) => (
-                        <div key={index} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-semibold">{topic.topicName}</h4>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeTopic(index)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
+                <Button type="button" onClick={addTopic} variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Topic
+                </Button>
+              </div>
+
+              {formData.curriculum.map((topic, topicIndex) => (
+                <div key={topicIndex} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-medium">Topic {topicIndex + 1}</h4>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeTopic(topicIndex)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Topic Name *</label>
+                      <Input
+                        value={topic.topicName}
+                        onChange={(e) => updateTopic(topicIndex, 'topicName', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Subtopic Count</label>
+                      <Input
+                        type="number"
+                        value={topic.topicCount}
+                        onChange={(e) => updateTopic(topicIndex, 'topicCount', parseInt(e.target.value))}
+                        min="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h5 className="font-medium">Subtopics</h5>
+                      <Button
+                        type="button"
+                        onClick={() => addSubtopic(topicIndex)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Subtopic
+                      </Button>
+                    </div>
+
+                    {topic.subtopics.map((subtopic, subtopicIndex) => (
+                      <div key={subtopicIndex} className="border rounded p-3 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <h6 className="font-medium">Subtopic {subtopicIndex + 1}</h6>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removeSubtopic(topicIndex, subtopicIndex)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Name *</label>
+                            <Input
+                              value={subtopic.name}
+                              onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'name', e.target.value)}
+                              required
+                            />
                           </div>
                           <div className="space-y-2">
-                            {topic.subtopics.map((subtopic, subIndex) => (
-                              <div key={subIndex} className="flex justify-between text-sm">
-                                <span>{subtopic.name}</span>
-                                <span className="text-gray-600">{subtopic.duration} mins</span>
-                              </div>
-                            ))}
+                            <label className="text-sm font-medium">Video Link *</label>
+                            <Input
+                              value={subtopic.link}
+                              onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'link', e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Duration (minutes) *</label>
+                            <Input
+                              type="number"
+                              value={subtopic.duration}
+                              onChange={(e) => updateSubtopic(topicIndex, subtopicIndex, 'duration', parseInt(e.target.value))}
+                              min="1"
+                              required
+                            />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Updating...' : 'Update Course'}
-              </Button>
+              <Button type="submit">Update Course</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
+      {/* View Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Delete Course</DialogTitle>
+            <DialogTitle>
+              {selectedCourse?.title}
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this course? This action cannot be undone.
+              Course Details
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={deleteCourse}>
-              Delete Course
-            </Button>
-          </div>
+          {selectedCourse && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Internship</h4>
+                  <p className="text-sm text-gray-600">
+                    {selectedCourse.internshipRef.title} - {selectedCourse.internshipRef.companyName}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Stream</h4>
+                  <p className="text-sm text-gray-600">{selectedCourse.stream}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Provider</h4>
+                  <p className="text-sm text-gray-600">{selectedCourse.providerName}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Instructor</h4>
+                  <p className="text-sm text-gray-600">{selectedCourse.instructorName}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Course Language</h4>
+                  <p className="text-sm text-gray-600">{selectedCourse.courseLanguage}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Total Duration</h4>
+                  <p className="text-sm text-gray-600">{formatDuration(selectedCourse.totalDuration)}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Certification</h4>
+                  <Badge variant={selectedCourse.certificationProvided === 'yes' ? 'default' : 'secondary'}>
+                    {selectedCourse.certificationProvided === 'yes' ? 'Yes' : 'No'}
+                  </Badge>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Final Exam</h4>
+                  <Badge variant={selectedCourse.hasFinalExam ? 'default' : 'secondary'}>
+                    {selectedCourse.hasFinalExam ? 'Yes' : 'No'}
+                  </Badge>
+                </div>
+              </div>
+
+              {selectedCourse.curriculumDocLink && (
+                <div>
+                  <h4 className="font-semibold">Curriculum Document</h4>
+                  <a 
+                    href={selectedCourse.curriculumDocLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center text-blue-600 hover:text-blue-800"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Curriculum Document
+                  </a>
+                </div>
+              )}
+
+              {selectedCourse.finalExamExcelLink && (
+                <div>
+                  <h4 className="font-semibold">Final Exam</h4>
+                  <a 
+                    href={selectedCourse.finalExamExcelLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center text-blue-600 hover:text-blue-800"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Final Exam
+                  </a>
+                </div>
+              )}
+
+              <div>
+                <h4 className="font-semibold mb-4">Curriculum</h4>
+                <div className="space-y-4">
+                  {selectedCourse.curriculum.map((topic, topicIndex) => (
+                    <div key={topicIndex} className="border rounded-lg p-4">
+                      <h5 className="font-medium mb-3">{topic.topicName}</h5>
+                      <div className="space-y-2">
+                        {topic.subtopics.map((subtopic, subtopicIndex) => (
+                          <div key={subtopicIndex} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                            <div>
+                              <p className="font-medium">{subtopic.name}</p>
+                              <a 
+                                href={subtopic.link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:text-blue-800"
+                              >
+                                Watch Video
+                              </a>
+                            </div>
+                            <span className="text-sm text-gray-500">
+                              {formatDuration(subtopic.duration)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
