@@ -60,13 +60,8 @@ import APExclusiveInternshipsPage from '@/components/internships/APExclusiveInte
 import JobsPage from '@/pages/JobsPage';
 import CommunityPage from '@/components/community/CommunityPage';
 
-// Import new AP Internship Learning Components
 import APStudentDashboard from '@/components/student/APStudentDashboard';
 import APInternshipLearningPage from '@/components/student/APInternshipLearningPage';
-import TopicExamComponent from '@/components/exams/TopicExamComponent';
-import FinalExamComponent from '@/components/exams/FinalExamComponent';
-import CertificateComponent from '@/components/certificate/CertificateComponent';
-
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -235,37 +230,7 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          
-          {/* AP Internship Exam Routes */}
-          <Route
-            path="/exams/topic/:courseId/:topicName"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <TopicExamComponent />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="/exams/final/:courseId"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <FinalExamComponent />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* AP Internship Certificate Route */}
-          <Route
-            path="/certificate/:enrollmentId"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <CertificateComponent />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Profile Routes */}
+               {/* Profile Routes */}
           <Route
             path="/student/profile"
             element={
