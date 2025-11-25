@@ -78,14 +78,16 @@ interface TopicProgress {
 
 interface APEnrollment {
   _id: string;
-  internshipId: string;
-  courseId: {
+  internshipId: {
     _id: string;
     title: string;
+    companyName: string;
+    duration: string;
+    mode: string;
     stream: string;
-    totalDuration: number;
-    providerName: string;
+    internshipType: string;
   };
+  courseId: APCourse;
   userId: string;
   enrollmentDate: string;
   isPaid: boolean;
@@ -128,7 +130,6 @@ const APInternshipLearningPage = () => {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
   const navigate = useNavigate();
   const [enrollment, setEnrollment] = useState<APEnrollment | null>(null);
-  const [courseDetails, setCourseDetails] = useState<APCourse | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTopic, setActiveTopic] = useState<string>('');
   const [activeSubtopic, setActiveSubtopic] = useState<Subtopic | null>(null);
@@ -153,7 +154,6 @@ const APInternshipLearningPage = () => {
 
   useEffect(() => {
     if (enrollment?.courseId?._id) {
-      fetchCourseDetails();
       fetchExamStatus();
     }
   }, [enrollment]);
@@ -195,9 +195,28 @@ const APInternshipLearningPage = () => {
         const foundEnrollment = data.enrollments.find((e: any) => e._id === enrollmentId);
         
         if (foundEnrollment) {
+          console.log('Found enrollment:', foundEnrollment);
           setEnrollment(foundEnrollment);
+          
+          // Initialize active content from the enrollment data
+          if (foundEnrollment.courseId?.curriculum?.length > 0) {
+            const firstTopic = foundEnrollment.courseId.curriculum[0];
+            const firstSubtopic = firstTopic.subtopics[0];
+            
+            setActiveTopic(firstTopic.topicName);
+            setActiveSubtopic(firstSubtopic);
+
+            // Set initial progress for the first subtopic
+            const topicProgress = foundEnrollment.progress?.find(t => t.topicName === firstTopic.topicName);
+            const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === firstSubtopic.name);
+            
+            if (subtopicProgress && subtopicProgress.totalDuration > 0) {
+              const progressPercent = (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100;
+              setVideoProgress(progressPercent);
+            }
+          }
         } else {
-          throw new Error('Enrollment not found');
+          throw new Error('Enrollment not found in your enrollments list');
         }
       } else {
         throw new Error(data.message || 'Failed to fetch enrollments');
@@ -215,55 +234,6 @@ const APInternshipLearningPage = () => {
     }
   };
 
-  const fetchCourseDetails = async () => {
-    if (!enrollment?.courseId?._id) return;
-    
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      // Use the new student endpoint (Option 1) or modified endpoint (Option 2)
-      const response = await fetch(`/api/internships/apcourses/student/${enrollment.courseId._id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setCourseDetails(data.course);
-        initializeActiveContent(data.course);
-      } else {
-        throw new Error(data.message || 'Failed to fetch course details');
-      }
-    } catch (error: any) {
-      console.error('Error fetching course details:', error);
-      setError(error.message || 'Failed to load course content');
-    }
-  };
-
-  const initializeActiveContent = (courseData: APCourse) => {
-    if (courseData?.curriculum?.length > 0) {
-      const firstTopic = courseData.curriculum[0];
-      const firstSubtopic = firstTopic.subtopics[0];
-      
-      setActiveTopic(firstTopic.topicName);
-      setActiveSubtopic(firstSubtopic);
-
-      // Set initial progress for the first subtopic
-      if (enrollment) {
-        const topicProgress = enrollment.progress?.find(t => t.topicName === firstTopic.topicName);
-        const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === firstSubtopic.name);
-        
-        if (subtopicProgress && subtopicProgress.totalDuration > 0) {
-          const progressPercent = (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100;
-          setVideoProgress(progressPercent);
-        }
-      }
-    }
-  };
-
   const fetchExamStatus = async () => {
     if (!enrollmentId || !enrollment?.courseId?._id) return;
     
@@ -276,6 +246,13 @@ const APInternshipLearningPage = () => {
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      if (response.status === 304) {
+        // Not modified - use cached data
+        console.log('Exam status not modified');
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.success) {
@@ -313,10 +290,10 @@ const APInternshipLearningPage = () => {
       
       if (!data.success) {
         console.error('Progress update failed:', data.message);
+      } else {
+        // Update local state immediately for better UX
+        fetchEnrollmentData(); // Refresh data
       }
-      
-      // Refresh enrollment data to get updated progress
-      fetchEnrollmentData();
     } catch (error) {
       console.error('Error updating progress:', error);
     } finally {
@@ -474,10 +451,16 @@ const APInternshipLearningPage = () => {
               <p className="text-gray-600 text-lg mb-6 max-w-md mx-auto">
                 {error || 'The requested course could not be found or you don\'t have access to it.'}
               </p>
-              <Button onClick={() => navigate('/student-dashboard')}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
+              <div className="space-y-3">
+                <Button onClick={() => navigate('/student-dashboard')} className="w-full">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+                <Button variant="outline" onClick={fetchEnrollmentData} className="w-full">
+                  <Loader2 className="h-4 w-4 mr-2" />
+                  Retry Loading Course
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -489,7 +472,7 @@ const APInternshipLearningPage = () => {
     ? (enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100 
     : 0;
 
-  const course = courseDetails || enrollment.courseId;
+  const course = enrollment.courseId;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -512,7 +495,7 @@ const APInternshipLearningPage = () => {
                   {course?.title || 'Course Content'}
                 </h1>
                 <p className="text-gray-600">
-                  {course?.providerName} • {course?.stream}
+                  {enrollment.internshipId?.companyName} • {course?.stream}
                 </p>
               </div>
             </div>
@@ -542,12 +525,12 @@ const APInternshipLearningPage = () => {
                   Curriculum
                 </CardTitle>
                 <CardDescription>
-                  {courseDetails?.curriculum?.length || 0} topics • {Math.ceil(course?.totalDuration / 60) || 0} min total
+                  {course?.curriculum?.length || 0} topics • {Math.ceil(course?.totalDuration / 60) || 0} min total
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-                  {courseDetails?.curriculum?.map((topic, topicIndex) => {
+                  {course?.curriculum?.map((topic, topicIndex) => {
                     const topicProgress = getTopicProgress(topic.topicName);
                     const isTopicCompleted = topicProgress >= 95;
                     
@@ -658,13 +641,13 @@ const APInternshipLearningPage = () => {
                   <div className="flex justify-between text-sm mb-1">
                     <span>Topic Exams Passed</span>
                     <span>
-                      {examStatus?.topicExams.passedCount || 0} / {courseDetails?.curriculum?.length || 0}
+                      {examStatus?.topicExams.passedCount || 0} / {course?.curriculum?.length || 0}
                     </span>
                   </div>
                   <Progress 
                     value={
-                      courseDetails?.curriculum?.length 
-                        ? ((examStatus?.topicExams.passedCount || 0) / courseDetails.curriculum.length) * 100 
+                      course?.curriculum?.length 
+                        ? ((examStatus?.topicExams.passedCount || 0) / course.curriculum.length) * 100 
                         : 0
                     } 
                     className="h-2" 
@@ -840,7 +823,7 @@ const APInternshipLearningPage = () => {
                       Pass all topic exams to unlock the final exam
                     </p>
                     <div className="text-sm">
-                      {examStatus?.topicExams.passedCount || 0} of {courseDetails?.curriculum?.length || 0} passed
+                      {examStatus?.topicExams.passedCount || 0} of {course?.curriculum?.length || 0} passed
                     </div>
                   </div>
 
