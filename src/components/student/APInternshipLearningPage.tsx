@@ -133,24 +133,33 @@ const APInternshipLearningPage = () => {
     try {
       setLoading(true);
       
-      // Fetch enrollment with progress
-      const enrollmentResponse = await fetch(`/api/internships/apinternshipenrollments/${enrollmentId}`, {
+      // Get all user enrollments and find the specific one
+      const enrollmentsResponse = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      if (!enrollmentResponse.ok) {
-        throw new Error('Failed to fetch enrollment data');
+      if (!enrollmentsResponse.ok) {
+        throw new Error('Failed to fetch enrollments data');
       }
 
-      const enrollmentData = await enrollmentResponse.json();
+      const enrollmentsData = await enrollmentsResponse.json();
       
-      if (enrollmentData.success) {
-        setEnrollment(enrollmentData.enrollment);
+      if (enrollmentsData.success) {
+        // Find the specific enrollment from user's enrollments
+        const specificEnrollment = enrollmentsData.enrollments.find(
+          (e: APEnrollment) => e._id === enrollmentId
+        );
         
-        // Fetch course details
-        const courseResponse = await fetch(`/api/internships/apcourses/${enrollmentData.enrollment.courseId._id}`, {
+        if (!specificEnrollment) {
+          throw new Error('Enrollment not found in your enrollments');
+        }
+
+        setEnrollment(specificEnrollment);
+        
+        // Fetch course details using the courseId from enrollment
+        const courseResponse = await fetch(`/api/internships/apcourses/${specificEnrollment.courseId._id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -164,15 +173,15 @@ const APInternshipLearningPage = () => {
         }
 
         // Fetch exam results
-        await fetchExamResults(enrollmentData.enrollment.courseId._id, token);
+        await fetchExamResults(specificEnrollment.courseId._id, token);
       } else {
-        throw new Error(enrollmentData.message || 'Failed to load enrollment');
+        throw new Error(enrollmentsData.message || 'Failed to load enrollments');
       }
     } catch (error) {
       console.error('Error fetching enrollment data:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load learning content',
+        description: error instanceof Error ? error.message : 'Failed to load learning content',
         variant: 'destructive'
       });
     } finally {
@@ -223,17 +232,8 @@ const APInternshipLearningPage = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          // Update local state with new progress
-          setEnrollment(prev => prev ? {
-            ...prev,
-            totalWatchedDuration: data.data.totalWatchedDuration,
-            finalExamEligible: data.data.finalExamEligible,
-            progress: prev.progress.map(topic => 
-              topic.topicName === topicName 
-                ? { ...topic, topicWatchedDuration: data.data.updatedTopic.topicWatchedDuration }
-                : topic
-            )
-          } : null);
+          // Refresh enrollment data to get updated progress
+          await fetchEnrollmentData();
         }
       }
     } catch (error) {
