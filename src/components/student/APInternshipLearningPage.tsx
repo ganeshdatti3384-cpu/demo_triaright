@@ -22,18 +22,18 @@ import {
   Zap
 } from 'lucide-react';
 
+interface Subtopic {
+  name: string;
+  link: string;
+  duration: number;
+}
+
 interface Topic {
   topicName: string;
   topicCount: number;
   subtopics: Subtopic[];
   directLink?: string;
   examExcelLink?: string;
-}
-
-interface Subtopic {
-  name: string;
-  link: string;
-  duration: number;
 }
 
 interface Course {
@@ -46,14 +46,16 @@ interface Course {
   instructorName: string;
 }
 
-interface EnrollmentProgress {
+interface SubtopicProgress {
+  subTopicName: string;
+  subTopicLink: string;
+  watchedDuration: number;
+  totalDuration: number;
+}
+
+interface TopicProgress {
   topicName: string;
-  subtopics: {
-    subTopicName: string;
-    subTopicLink: string;
-    watchedDuration: number;
-    totalDuration: number;
-  }[];
+  subtopics: SubtopicProgress[];
   topicWatchedDuration: number;
   topicTotalDuration: number;
   examAttempted: boolean;
@@ -63,13 +65,13 @@ interface EnrollmentProgress {
 
 interface Enrollment {
   _id: string;
-  courseId: Course;
+  courseId: Course | string;
   internshipId: {
     _id: string;
     title: string;
     companyName: string;
   };
-  progress: EnrollmentProgress[];
+  progress: TopicProgress[];
   totalWatchedDuration: number;
   totalVideoDuration: number;
   finalExamEligible: boolean;
@@ -98,52 +100,54 @@ const APInternshipLearningPage = () => {
   const fetchEnrollmentData = async () => {
     try {
       const token = localStorage.getItem('token');
-      
-      // First, get all enrollments to find the specific one
-      const response = await fetch('/api/internships/apinternshipmy-enrollments', {
+      const response = await fetch(`/api/internships/apinternshipmy-enrollments`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
       const data = await response.json();
-      console.log('Enrollments API Response:', data);
+      console.log('Enrollments API Response:', data); // Debug log
       
       if (data.success && data.enrollments) {
-        // Find the specific enrollment by ID
         const currentEnrollment = data.enrollments.find((e: any) => e._id === enrollmentId);
-        console.log('Found Enrollment:', currentEnrollment);
+        console.log('Found Enrollment:', currentEnrollment); // Debug log
         
         if (currentEnrollment) {
-          // Check if course data is properly structured
-          let enrollmentData = currentEnrollment;
+          // Transform the enrollment data to match our frontend interface
+          const transformedEnrollment: Enrollment = {
+            ...currentEnrollment,
+            // Ensure courseId is properly formatted
+            courseId: typeof currentEnrollment.courseId === 'object' 
+              ? currentEnrollment.courseId 
+              : { 
+                  _id: '',
+                  title: 'Course',
+                  curriculum: [],
+                  totalDuration: 0,
+                  stream: '',
+                  providerName: '',
+                  instructorName: ''
+                },
+            // Ensure progress array exists
+            progress: currentEnrollment.progress || []
+          };
           
-          // If course data is nested in courseId object, use it directly
-          if (currentEnrollment.courseId && typeof currentEnrollment.courseId === 'object') {
-            enrollmentData = {
-              ...currentEnrollment,
-              courseId: currentEnrollment.courseId
-            };
-          }
-          
-          setEnrollment(enrollmentData);
+          setEnrollment(transformedEnrollment);
           
           // Set first topic and subtopic as active if curriculum exists
-          if (enrollmentData.courseId?.curriculum?.length > 0) {
-            const firstTopic = enrollmentData.courseId.curriculum[0];
+          const course = transformedEnrollment.courseId as Course;
+          if (course?.curriculum?.length > 0) {
+            const firstTopic = course.curriculum[0];
             setActiveTopic(firstTopic.topicName);
-            if (firstTopic.subtopics && firstTopic.subtopics.length > 0) {
+            if (firstTopic.subtopics.length > 0) {
               setActiveSubtopic(firstTopic.subtopics[0].name);
             }
           } else {
-            console.warn('No curriculum found for course:', enrollmentData.courseId);
-            // If no curriculum in course data, check if we have progress data that can be used
-            if (enrollmentData.progress && enrollmentData.progress.length > 0) {
-              setActiveTopic(enrollmentData.progress[0].topicName);
-              if (enrollmentData.progress[0].subtopics && enrollmentData.progress[0].subtopics.length > 0) {
-                setActiveSubtopic(enrollmentData.progress[0].subtopics[0].subTopicName);
-              }
-            }
+            console.warn('No curriculum found for course');
+            // Set default values to prevent errors
+            setActiveTopic('');
+            setActiveSubtopic('');
           }
         } else {
           toast({
@@ -226,36 +230,24 @@ const APInternshipLearningPage = () => {
     }
   };
 
-  // Get curriculum topics - either from course data or progress data
-  const getCurriculumTopics = () => {
-    if (enrollment?.courseId?.curriculum) {
-      return enrollment.courseId.curriculum;
+  // Helper function to get course data safely
+  const getCourseData = () => {
+    if (!enrollment) return null;
+    
+    if (typeof enrollment.courseId === 'object' && enrollment.courseId !== null) {
+      return enrollment.courseId as Course;
     }
-    // If no curriculum in course data, create topics from progress data
-    if (enrollment?.progress) {
-      return enrollment.progress.map(progressItem => ({
-        topicName: progressItem.topicName,
-        topicCount: progressItem.subtopics?.length || 0,
-        subtopics: progressItem.subtopics?.map(sub => ({
-          name: sub.subTopicName,
-          link: sub.subTopicLink,
-          duration: sub.totalDuration
-        })) || []
-      }));
-    }
-    return [];
-  };
-
-  // Get current topic data
-  const getCurrentTopic = () => {
-    const topics = getCurriculumTopics();
-    return topics.find(t => t.topicName === activeTopic);
-  };
-
-  // Get current subtopic data
-  const getCurrentSubtopic = () => {
-    const topic = getCurrentTopic();
-    return topic?.subtopics?.find(s => s.name === activeSubtopic);
+    
+    // Fallback course data if courseId is just a string
+    return {
+      _id: typeof enrollment.courseId === 'string' ? enrollment.courseId : '',
+      title: 'Course',
+      curriculum: [],
+      totalDuration: 0,
+      stream: '',
+      providerName: '',
+      instructorName: ''
+    };
   };
 
   if (loading) {
@@ -284,9 +276,9 @@ const APInternshipLearningPage = () => {
     );
   }
 
-  const curriculumTopics = getCurriculumTopics();
-  const currentTopic = getCurrentTopic();
-  const currentSubtopic = getCurrentSubtopic();
+  const course = getCourseData();
+  const currentTopic = course?.curriculum?.find(t => t.topicName === activeTopic);
+  const currentSubtopic = currentTopic?.subtopics.find(s => s.name === activeSubtopic);
 
   const overallProgress = enrollment.totalVideoDuration > 0 
     ? (enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100 
@@ -305,10 +297,10 @@ const APInternshipLearningPage = () => {
               </Button>
               <div className="ml-6">
                 <h1 className="text-xl font-bold text-gray-900">
-                  {enrollment.courseId?.title || 'Course Content'}
+                  {course?.title || 'Course Content'}
                 </h1>
                 <p className="text-sm text-gray-600">
-                  {enrollment.courseId?.stream || 'General'} • {enrollment.courseId?.providerName || 'Provider'}
+                  {course?.stream || 'General'} • {course?.providerName || 'Provider'}
                 </p>
               </div>
             </div>
@@ -324,7 +316,7 @@ const APInternshipLearningPage = () => {
               
               {enrollment.finalExamEligible && (
                 <Button 
-                  onClick={() => navigate(`/exams/final/${enrollment.courseId?._id}`)}
+                  onClick={() => navigate(`/exams/final/${course?._id}`)}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <Zap className="h-4 w-4 mr-2" />
@@ -349,12 +341,8 @@ const APInternshipLearningPage = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-                  {curriculumTopics.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">
-                      No course content available
-                    </div>
-                  ) : (
-                    curriculumTopics.map((topic, topicIndex) => (
+                  {course?.curriculum && course.curriculum.length > 0 ? (
+                    course.curriculum.map((topic, topicIndex) => (
                       <div key={topic.topicName} className="border-b last:border-b-0">
                         <div
                           className={`p-4 cursor-pointer hover:bg-gray-50 ${
@@ -385,13 +373,13 @@ const APInternshipLearningPage = () => {
                             />
                             <div className="flex justify-between text-xs text-gray-600 mt-1">
                               <span>{Math.round(getTopicProgress(topic.topicName))}% complete</span>
-                              <span>{topic.subtopics?.length || 0} lessons</span>
+                              <span>{topic.subtopics.length} lessons</span>
                             </div>
                           </div>
                         </div>
 
                         {/* Subtopic List */}
-                        {activeTopic === topic.topicName && topic.subtopics && (
+                        {activeTopic === topic.topicName && (
                           <div className="bg-gray-50">
                             {topic.subtopics.map((subtopic, subtopicIndex) => {
                               const progress = getSubtopicProgress(topic.topicName, subtopic.name);
@@ -430,7 +418,7 @@ const APInternshipLearningPage = () => {
                                 variant="outline"
                                 size="sm"
                                 className="w-full"
-                                onClick={() => navigate(`/exams/topic/${enrollment.courseId?._id}/${topic.topicName}`)}
+                                onClick={() => navigate(`/exams/topic/${course?._id}/${topic.topicName}`)}
                                 disabled={getTopicProgress(topic.topicName) < 100}
                               >
                                 <FileText className="h-4 w-4 mr-2" />
@@ -446,6 +434,14 @@ const APInternshipLearningPage = () => {
                         )}
                       </div>
                     ))
+                  ) : (
+                    <div className="p-6 text-center">
+                      <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Course Content</h3>
+                      <p className="text-gray-600 text-sm">
+                        Course curriculum is not available yet. Please check back later.
+                      </p>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -486,8 +482,8 @@ const APInternshipLearningPage = () => {
                         variant="outline"
                         onClick={() => {
                           // Navigate to previous subtopic
-                          const topic = curriculumTopics.find(t => t.topicName === activeTopic);
-                          if (topic?.subtopics) {
+                          const topic = course?.curriculum?.find(t => t.topicName === activeTopic);
+                          if (topic) {
                             const currentIndex = topic.subtopics.findIndex(s => s.name === activeSubtopic);
                             if (currentIndex > 0) {
                               setActiveSubtopic(topic.subtopics[currentIndex - 1].name);
@@ -501,8 +497,8 @@ const APInternshipLearningPage = () => {
                       <Button
                         onClick={() => {
                           // Navigate to next subtopic
-                          const topic = curriculumTopics.find(t => t.topicName === activeTopic);
-                          if (topic?.subtopics) {
+                          const topic = course?.curriculum?.find(t => t.topicName === activeTopic);
+                          if (topic) {
                             const currentIndex = topic.subtopics.findIndex(s => s.name === activeSubtopic);
                             if (currentIndex < topic.subtopics.length - 1) {
                               setActiveSubtopic(topic.subtopics[currentIndex + 1].name);
@@ -521,11 +517,13 @@ const APInternshipLearningPage = () => {
               <Card>
                 <CardContent className="text-center py-12">
                   <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Lesson</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {course?.curriculum && course.curriculum.length > 0 ? 'Select a Lesson' : 'Course Content Not Available'}
+                  </h3>
                   <p className="text-gray-600">
-                    {curriculumTopics.length === 0 
-                      ? 'Course content is not available. Please contact support.'
-                      : 'Choose a topic and lesson from the sidebar to start learning'
+                    {course?.curriculum && course.curriculum.length > 0 
+                      ? 'Choose a topic and lesson from the sidebar to start learning'
+                      : 'The course content is not available yet. Please contact support if you believe this is an error.'
                     }
                   </p>
                 </CardContent>
