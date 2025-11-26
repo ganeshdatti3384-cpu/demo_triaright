@@ -15,8 +15,6 @@ import Pack365 from '@/pages/Pack365';
 import Pack365BundleDetail from '@/pages/Pack365BundleDetail';
 import JobAssurance from '@/pages/JobAssurance';
 import JobAssistance from '@/pages/JobAssistance';
-import OnlineInternships from '@/pages/OnlineInternships';
-import OfflineInternships from '@/pages/OfflineInternships';
 import TermsConditions from '@/pages/TermsConditions';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import RefundPolicy from '@/pages/RefundPolicy';
@@ -107,8 +105,6 @@ const App = () => {
           {/* Internship Routes */}
           <Route path="/internships/regular" element={<RegularInternshipsPage />} />
           <Route path="/internships/ap-exclusive" element={<APExclusiveInternshipsPage />} />
-          <Route path="/internships/online" element={<OnlineInternships />} />
-          <Route path="/internships/offline" element={<OfflineInternships />} />
           <Route path="/internships/:id" element={<InternshipDetailsPage />} />
           
           <Route path="/terms-conditions" element={<TermsConditions />} />
