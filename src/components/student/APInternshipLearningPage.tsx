@@ -1165,9 +1165,10 @@ const APInternshipLearningPage = () => {
                     </div>
                   </div>
 
+                  {/* Updated Certificate Section */}
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center mb-2">
-                      <Bookmark className="h-5 w-5 text-orange-600 mr-2" />
+                      <Award className="h-5 w-5 text-green-600 mr-2" />
                       <h3 className="font-semibold">Certificate</h3>
                     </div>
                     <p className="text-sm text-gray-600 mb-3">
@@ -1175,24 +1176,36 @@ const APInternshipLearningPage = () => {
                     </p>
                     <Button 
                       size="sm" 
-                      variant="outline"
+                      variant={examStatus?.courseProgress.courseCompleted ? "default" : "outline"}
                       disabled={!examStatus?.courseProgress.courseCompleted}
                       onClick={() => {
-                        if (enrollmentId) {
-                          // Fixed: Navigate to certificate page with enrollmentId
+                        if (enrollmentId && examStatus?.courseProgress.courseCompleted) {
                           navigate(`/ap-internship-certificate/${enrollmentId}`);
                         } else {
                           toast({
-                            title: 'Error',
-                            description: 'Enrollment ID not found',
+                            title: 'Certificate Not Available',
+                            description: 'Complete the course and final exam to unlock your certificate',
                             variant: 'destructive'
                           });
                         }
                       }}
+                      className={`w-full ${
+                        examStatus?.courseProgress.courseCompleted 
+                          ? 'bg-green-600 hover:bg-green-700' 
+                          : ''
+                      }`}
                     >
-                      <Bookmark className="h-4 w-4 mr-2" />
-                      {examStatus?.courseProgress.courseCompleted ? 'View Certificate' : 'Certificate Locked'}
+                      <Award className="h-4 w-4 mr-2" />
+                      {examStatus?.courseProgress.courseCompleted ? 'View Certificate' : 'Complete Course'}
                     </Button>
+                    
+                    {/* Certificate Status Badge */}
+                    {examStatus?.courseProgress.courseCompleted && (
+                      <div className="mt-2 flex items-center text-xs text-green-600">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Certificate Ready
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
