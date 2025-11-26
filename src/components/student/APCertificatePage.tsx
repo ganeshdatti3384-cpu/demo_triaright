@@ -22,6 +22,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import APCertificateGenerator from './APCertificateGenerator';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface CertificateData {
   studentName: string;
@@ -107,28 +109,36 @@ const APCertificatePage = () => {
 
     setGenerating(true);
     try {
-      const { toPng, toJpeg, toBlob, toPixelData, toSvg } = await import('html-to-image');
-      
-      const dataUrl = await toPng(certificateRef.current, { 
-        quality: 1.0,
-        backgroundColor: '#ffffff'
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: certificateRef.current.scrollWidth,
+        height: certificateRef.current.scrollHeight
       });
-      
-      const link = document.createElement('a');
-      link.download = `${certificateData.certificateId}.png`;
-      link.href = dataUrl;
-      link.click();
-      
+
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`${certificateData.certificateId}.pdf`);
+
       toast({
-        title: 'Download Started',
-        description: 'Certificate downloaded successfully',
+        title: 'Download Successful',
+        description: 'Certificate downloaded as PDF',
         variant: 'default'
       });
     } catch (error) {
       console.error('Error generating certificate:', error);
       toast({
         title: 'Download Failed',
-        description: 'Failed to generate certificate image',
+        description: 'Failed to generate certificate PDF',
         variant: 'destructive'
       });
     } finally {
@@ -137,7 +147,48 @@ const APCertificatePage = () => {
   };
 
   const handlePrint = () => {
-    window.print();
+    const certificateElement = certificateRef.current;
+    if (!certificateElement) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Certificate - ${certificateData?.certificateId}</title>
+          <style>
+            body { margin: 0; padding: 20px; background: white; }
+            .certificate-container { 
+              transform: scale(0.8); 
+              transform-origin: top center;
+              margin: 0 auto;
+            }
+            @media print {
+              body { margin: 0; padding: 0; }
+              .certificate-container { 
+                transform: none;
+                width: 100% !important;
+                height: 100% !important;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${certificateElement.outerHTML}
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.onafterprint = () => printWindow.close();
+    };
   };
 
   const handleShare = async () => {
@@ -357,9 +408,9 @@ const APCertificatePage = () => {
               This is a preview of your digital certificate
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex justify-center">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white">
-              <div ref={certificateRef}>
+          <CardContent className="flex justify-center p-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white shadow-lg">
+              <div ref={certificateRef} className="scale-90 origin-top">
                 <APCertificateGenerator certificateData={certificateData} />
               </div>
             </div>
