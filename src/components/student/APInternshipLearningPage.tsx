@@ -26,8 +26,7 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  Download,
-  RefreshCw
+  Download
 } from 'lucide-react';
 
 interface Subtopic {
@@ -268,8 +267,6 @@ const APInternshipLearningPage = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [updatingProgress, setUpdatingProgress] = useState(false);
-  const [isCertificateAvailable, setIsCertificateAvailable] = useState(false);
-  const [checkingCertificate, setCheckingCertificate] = useState(false);
   const [error, setError] = useState<string>('');
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -297,37 +294,6 @@ const APInternshipLearningPage = () => {
       }
     };
   }, []);
-
-  // Check certificate eligibility when exam status changes
-  useEffect(() => {
-    const checkCertificateAvailability = async () => {
-      if (examStatus?.courseProgress.courseCompleted) {
-        console.log('Course marked as completed, checking certificate eligibility...');
-        const available = await checkCertificateEligibility();
-        setIsCertificateAvailable(available);
-      } else {
-        console.log('Course not marked as completed, certificate not available');
-        setIsCertificateAvailable(false);
-      }
-    };
-
-    if (examStatus) {
-      checkCertificateAvailability();
-    }
-  }, [examStatus, enrollmentId]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Current Certificate Status:', {
-      isCertificateAvailable,
-      examStatus: examStatus?.courseProgress,
-      overallProgress,
-      topicExamsPassed: examStatus?.topicExams.passedCount,
-      totalTopics: enrollment?.courseId?.curriculum?.length,
-      finalExamPassed: examStatus?.finalExam.passed,
-      enrollmentId
-    });
-  }, [isCertificateAvailable, examStatus, overallProgress, enrollment]);
 
   // Initialize progress when enrollment data loads
   useEffect(() => {
@@ -448,138 +414,10 @@ const APInternshipLearningPage = () => {
       
       if (data.success) {
         setExamStatus(data.examStatus);
-        
-        // Check certificate eligibility when exam status is loaded
-        if (data.examStatus.courseProgress.courseCompleted) {
-          console.log('Course completed in exam status, checking certificate...');
-          const certificateAvailable = await checkCertificateEligibility();
-          setIsCertificateAvailable(certificateAvailable);
-        }
       }
     } catch (error) {
       console.error('Error fetching exam status:', error);
     }
-  };
-
-  const checkCertificateEligibility = async (): Promise<boolean> => {
-    if (!enrollmentId) return false;
-
-    const token = localStorage.getItem('token');
-    if (!token) return false;
-
-    try {
-      setCheckingCertificate(true);
-      const response = await fetch(`/api/internships/apinternshipcertificate/${enrollmentId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        console.log('✅ Certificate is available:', data.certificateData);
-        return true;
-      } else {
-        console.log('❌ Certificate not available:', data.message);
-        return false;
-      }
-    } catch (error) {
-      console.error('Error checking certificate eligibility:', error);
-      return false;
-    } finally {
-      setCheckingCertificate(false);
-    }
-  };
-
-  const getCertificateEligibilityMessage = (): string => {
-    if (!examStatus || !enrollment) return "Loading requirements...";
-    
-    const requirements = [];
-    
-    // Check video completion (80% threshold from backend)
-    if (overallProgress < 80) {
-      requirements.push(`Complete videos (${overallProgress.toFixed(1)}%/80%)`);
-    }
-    
-    // Check topic exams
-    if (examStatus.topicExams.passedCount !== enrollment.courseId?.curriculum?.length) {
-      requirements.push(`Pass all topic exams (${examStatus.topicExams.passedCount}/${enrollment.courseId?.curriculum?.length})`);
-    }
-    
-    // Check final exam
-    if (!examStatus.finalExam.passed) {
-      requirements.push("Pass final exam");
-    }
-    
-    return requirements.length > 0 
-      ? `Complete: ${requirements.join(', ')}`
-      : "All requirements met - refreshing certificate status...";
-  };
-
-  const handleDownloadCertificate = async () => {
-    if (!enrollmentId) return;
-
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      // First check if certificate is available
-      const response = await fetch(`/api/internships/apinternshipcertificate/${enrollmentId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        // Certificate is available, navigate to certificate page
-        navigate(`/ap-internship-certificate/${enrollmentId}`);
-      } else {
-        // Certificate not available, show why
-        toast({
-          title: 'Certificate Not Available',
-          description: data.message || 'Complete all course requirements to unlock your certificate',
-          variant: 'destructive'
-        });
-        
-        // Update local state based on backend response
-        if (data.progress) {
-          setEnrollment(prev => prev ? {
-            ...prev,
-            totalWatchedDuration: data.progress.totalWatched,
-            totalVideoDuration: data.progress.totalDuration
-          } : prev);
-        }
-      }
-    } catch (error: any) {
-      console.error('Error checking certificate:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to check certificate eligibility',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleForceRefresh = async () => {
-    toast({
-      title: 'Refreshing Status',
-      description: 'Checking certificate eligibility...',
-      variant: 'default'
-    });
-    
-    await fetchEnrollmentData();
-    await fetchExamStatus();
-    const available = await checkCertificateEligibility();
-    setIsCertificateAvailable(available);
-    
-    toast({
-      title: 'Status Updated',
-      description: available ? 'Certificate is now available!' : 'Certificate requirements not yet met',
-      variant: available ? 'default' : 'destructive'
-    });
   };
 
   const updateProgress = async (watchedDuration: number) => {
@@ -649,11 +487,6 @@ const APInternshipLearningPage = () => {
           };
         });
         
-        // Re-check certificate eligibility if we just crossed the 80% threshold
-        if (overallProgress < 80 && (totalWatchedDuration / enrollment.totalVideoDuration * 100) >= 80) {
-          setTimeout(() => checkCertificateEligibility(), 1000);
-        }
-        
         toast({
           title: 'Progress Saved',
           description: 'Your learning progress has been updated',
@@ -676,6 +509,27 @@ const APInternshipLearningPage = () => {
       });
     } finally {
       setUpdatingProgress(false);
+    }
+  };
+
+  const checkCertificateEligibility = async (): Promise<boolean> => {
+    if (!enrollmentId) return false;
+
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+
+    try {
+      const response = await fetch(`/api/internships/apinternshipcertificate/${enrollmentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Error checking certificate eligibility:', error);
+      return false;
     }
   };
 
@@ -887,6 +741,21 @@ const APInternshipLearningPage = () => {
     navigate(`/ap-internship-final-exam/${enrollment.courseId._id}?enrollmentId=${enrollmentId}`);
   };
 
+  const handleDownloadCertificate = async () => {
+    if (!enrollmentId) return;
+
+    const isEligible = await checkCertificateEligibility();
+    if (isEligible) {
+      navigate(`/ap-internship-certificate/${enrollmentId}`);
+    } else {
+      toast({
+        title: 'Certificate Not Available',
+        description: 'Complete the course and final exam to unlock your certificate',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -897,6 +766,9 @@ const APInternshipLearningPage = () => {
   const overallProgress = enrollment?.totalVideoDuration > 0 
     ? ((enrollment.totalWatchedDuration || 0) / enrollment.totalVideoDuration) * 100 
     : 0;
+
+  // Check if certificate is available
+  const isCertificateAvailable = examStatus?.courseProgress.courseCompleted || false;
 
   if (loading) {
     return (
@@ -1150,32 +1022,11 @@ const APInternshipLearningPage = () => {
                       <Award className="h-6 w-6 text-green-600 mr-3" />
                       <div>
                         <p className="font-medium text-green-800">Course Completed!</p>
-                        <p className="text-sm text-green-600">
-                          {isCertificateAvailable 
-                            ? 'You can now download your certificate' 
-                            : 'Checking certificate eligibility...'
-                          }
-                        </p>
+                        <p className="text-sm text-green-600">You can now download your certificate</p>
                       </div>
                     </div>
                   </div>
                 )}
-
-                {/* Refresh Button */}
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={handleForceRefresh}
-                  disabled={checkingCertificate}
-                  className="w-full"
-                >
-                  {checkingCertificate ? (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                  )}
-                  Refresh Status
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -1366,66 +1217,32 @@ const APInternshipLearningPage = () => {
                         : 'Complete the course and final exam to unlock your certificate'
                       }
                     </p>
-                    
-                    {/* Certificate Status Check */}
-                    {isCertificateAvailable ? (
-                      <Button 
-                        size="sm" 
-                        className="w-full bg-green-600 hover:bg-green-700"
-                        onClick={handleDownloadCertificate}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Certificate
-                      </Button>
-                    ) : (
-                      <div className="space-y-3">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="w-full cursor-not-allowed"
-                          disabled
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Complete Course
-                        </Button>
-                        
-                        {/* Progress Requirements */}
-                        <div className="text-xs text-gray-600 space-y-1">
-                          <div className="flex justify-between">
-                            <span>Course Videos:</span>
-                            <span className={overallProgress >= 80 ? "text-green-600 font-medium" : "text-orange-600"}>
-                              {overallProgress >= 80 ? "✓ Completed" : `${overallProgress.toFixed(1)}% / 80%`}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Topic Exams:</span>
-                            <span className={examStatus?.topicExams.passedCount === course?.curriculum?.length ? "text-green-600 font-medium" : "text-orange-600"}>
-                              {examStatus?.topicExams.passedCount === course?.curriculum?.length 
-                                ? "✓ All Passed" 
-                                : `${examStatus?.topicExams.passedCount || 0} / ${course?.curriculum?.length || 0} Passed`}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Final Exam:</span>
-                            <span className={examStatus?.finalExam.passed ? "text-green-600 font-medium" : "text-orange-600"}>
-                              {examStatus?.finalExam.passed ? "✓ Passed" : "Not Passed"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    <Button 
+                      size="sm" 
+                      variant={isCertificateAvailable ? "default" : "outline"}
+                      disabled={!isCertificateAvailable}
+                      onClick={handleDownloadCertificate}
+                      className={`w-full ${
+                        isCertificateAvailable 
+                          ? 'bg-green-600 hover:bg-green-700' 
+                          : 'cursor-not-allowed'
+                      }`}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      {isCertificateAvailable ? 'Download Certificate' : 'Complete Course'}
+                    </Button>
                     
                     {/* Certificate Status Badge */}
                     <div className="mt-2 flex items-center text-xs">
                       {isCertificateAvailable ? (
                         <div className="flex items-center text-green-600">
                           <CheckCircle className="h-3 w-3 mr-1" />
-                          Certificate Ready - Click to Download
+                          Certificate Ready
                         </div>
                       ) : (
                         <div className="flex items-center text-orange-600">
                           <AlertCircle className="h-3 w-3 mr-1" />
-                          {getCertificateEligibilityMessage()}
+                          Complete course to unlock
                         </div>
                       )}
                     </div>
