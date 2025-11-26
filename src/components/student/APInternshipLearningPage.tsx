@@ -25,7 +25,8 @@ import {
   Bookmark,
   ArrowLeft,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Download
 } from 'lucide-react';
 
 interface Subtopic {
@@ -511,6 +512,27 @@ const APInternshipLearningPage = () => {
     }
   };
 
+  const checkCertificateEligibility = async (): Promise<boolean> => {
+    if (!enrollmentId) return false;
+
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+
+    try {
+      const response = await fetch(`/api/internships/apinternshipcertificate/${enrollmentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Error checking certificate eligibility:', error);
+      return false;
+    }
+  };
+
   const handleVideoLoaded = () => {
     if (videoRef.current && activeSubtopic) {
       console.log('Video loaded successfully');
@@ -719,6 +741,21 @@ const APInternshipLearningPage = () => {
     navigate(`/ap-internship-final-exam/${enrollment.courseId._id}?enrollmentId=${enrollmentId}`);
   };
 
+  const handleDownloadCertificate = async () => {
+    if (!enrollmentId) return;
+
+    const isEligible = await checkCertificateEligibility();
+    if (isEligible) {
+      navigate(`/ap-internship-certificate/${enrollmentId}`);
+    } else {
+      toast({
+        title: 'Certificate Not Available',
+        description: 'Complete the course and final exam to unlock your certificate',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -729,6 +766,9 @@ const APInternshipLearningPage = () => {
   const overallProgress = enrollment?.totalVideoDuration > 0 
     ? ((enrollment.totalWatchedDuration || 0) / enrollment.totalVideoDuration) * 100 
     : 0;
+
+  // Check if certificate is available
+  const isCertificateAvailable = examStatus?.courseProgress.courseCompleted || false;
 
   if (loading) {
     return (
@@ -1168,44 +1208,44 @@ const APInternshipLearningPage = () => {
                   {/* Updated Certificate Section */}
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center mb-2">
-                      <Award className="h-5 w-5 text-green-600 mr-2" />
+                      <Download className="h-5 w-5 text-green-600 mr-2" />
                       <h3 className="font-semibold">Certificate</h3>
                     </div>
                     <p className="text-sm text-gray-600 mb-3">
-                      Download your completion certificate
+                      {isCertificateAvailable 
+                        ? 'Download your completion certificate' 
+                        : 'Complete the course and final exam to unlock your certificate'
+                      }
                     </p>
                     <Button 
                       size="sm" 
-                      variant={examStatus?.courseProgress.courseCompleted ? "default" : "outline"}
-                      disabled={!examStatus?.courseProgress.courseCompleted}
-                      onClick={() => {
-                        if (enrollmentId && examStatus?.courseProgress.courseCompleted) {
-                          navigate(`/ap-internship-certificate/${enrollmentId}`);
-                        } else {
-                          toast({
-                            title: 'Certificate Not Available',
-                            description: 'Complete the course and final exam to unlock your certificate',
-                            variant: 'destructive'
-                          });
-                        }
-                      }}
+                      variant={isCertificateAvailable ? "default" : "outline"}
+                      disabled={!isCertificateAvailable}
+                      onClick={handleDownloadCertificate}
                       className={`w-full ${
-                        examStatus?.courseProgress.courseCompleted 
+                        isCertificateAvailable 
                           ? 'bg-green-600 hover:bg-green-700' 
-                          : ''
+                          : 'cursor-not-allowed'
                       }`}
                     >
-                      <Award className="h-4 w-4 mr-2" />
-                      {examStatus?.courseProgress.courseCompleted ? 'View Certificate' : 'Complete Course'}
+                      <Download className="h-4 w-4 mr-2" />
+                      {isCertificateAvailable ? 'Download Certificate' : 'Complete Course'}
                     </Button>
                     
                     {/* Certificate Status Badge */}
-                    {examStatus?.courseProgress.courseCompleted && (
-                      <div className="mt-2 flex items-center text-xs text-green-600">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Certificate Ready
-                      </div>
-                    )}
+                    <div className="mt-2 flex items-center text-xs">
+                      {isCertificateAvailable ? (
+                        <div className="flex items-center text-green-600">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Certificate Ready
+                        </div>
+                      ) : (
+                        <div className="flex items-center text-orange-600">
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          Complete course to unlock
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
