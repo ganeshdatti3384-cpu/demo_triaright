@@ -47,7 +47,8 @@ const APCertificatePage = () => {
       setLoading(true);
       setError('');
       
-      const response = await fetch(`/api/internships/apinternshipenrollment/${enrollmentId}`, {
+      // Get all enrollments and find the specific one
+      const response = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -56,7 +57,12 @@ const APCertificatePage = () => {
       const data = await response.json();
 
       if (data.success) {
-        setEnrollment(data.enrollment);
+        const foundEnrollment = data.enrollments.find((e: any) => e._id === enrollmentId);
+        if (foundEnrollment) {
+          setEnrollment(foundEnrollment);
+        } else {
+          throw new Error('Enrollment not found');
+        }
       } else {
         throw new Error(data.message || 'Failed to fetch enrollment');
       }
