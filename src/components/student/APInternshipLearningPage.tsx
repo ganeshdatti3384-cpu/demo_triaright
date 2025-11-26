@@ -305,6 +305,51 @@ const APInternshipLearningPage = () => {
     }
   };
 
+  const handleVideoLoaded = () => {
+    if (videoRef.current && activeSubtopic) {
+      console.log('Video loaded successfully');
+      // Set initial time based on progress
+      const topicProgress = enrollment?.progress?.find(t => t.topicName === activeTopic);
+      const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === activeSubtopic.name);
+      
+      if (subtopicProgress && subtopicProgress.watchedDuration > 0) {
+        videoRef.current.currentTime = subtopicProgress.watchedDuration;
+      }
+    }
+  };
+
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    console.error('Video loading error:', e);
+    const video = e.currentTarget;
+    const error = video.error;
+    
+    let errorMessage = 'Failed to load video';
+    if (error) {
+      switch (error.code) {
+        case error.MEDIA_ERR_ABORTED:
+          errorMessage = 'Video playback was aborted';
+          break;
+        case error.MEDIA_ERR_NETWORK:
+          errorMessage = 'Network error occurred while loading video';
+          break;
+        case error.MEDIA_ERR_DECODE:
+          errorMessage = 'Video format not supported or corrupted';
+          break;
+        case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage = 'Video format not supported by your browser';
+          break;
+        default:
+          errorMessage = 'Unknown video error occurred';
+      }
+    }
+    
+    toast({
+      title: 'Video Error',
+      description: errorMessage,
+      variant: 'destructive'
+    });
+  };
+
   const handleVideoPlay = () => {
     if (videoRef.current) {
       if (isPlaying) {
@@ -313,17 +358,29 @@ const APInternshipLearningPage = () => {
           clearInterval(progressIntervalRef.current);
         }
       } else {
-        videoRef.current.play();
-        
-        // Start progress tracking interval
-        progressIntervalRef.current = setInterval(() => {
-          if (videoRef.current && activeSubtopic) {
-            const currentTime = videoRef.current.currentTime;
-            updateProgress(currentTime);
-          }
-        }, 10000); // Update every 10 seconds
+        // Use promise-based play to handle autoplay restrictions
+        videoRef.current.play().then(() => {
+          setIsPlaying(true);
+          
+          // Start progress tracking interval only after successful play
+          progressIntervalRef.current = setInterval(() => {
+            if (videoRef.current && activeSubtopic && !videoRef.current.paused) {
+              const currentTime = videoRef.current.currentTime;
+              updateProgress(currentTime);
+            }
+          }, 10000); // Update every 10 seconds
+        }).catch((error) => {
+          console.error('Video play failed:', error);
+          setIsPlaying(false);
+          
+          // Show user-friendly error message
+          toast({
+            title: 'Video Playback Error',
+            description: 'Please click the play button to start the video',
+            variant: 'destructive'
+          });
+        });
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -350,7 +407,7 @@ const APInternshipLearningPage = () => {
     }
   };
 
-  const handleSubtopicSelect = (topicName: string, subtopic: Subtopic) => {
+  const handleSubtopicSelect = async (topicName: string, subtopic: Subtopic) => {
     setActiveTopic(topicName);
     setActiveSubtopic(subtopic);
     setVideoProgress(0);
@@ -362,6 +419,12 @@ const APInternshipLearningPage = () => {
       clearInterval(progressIntervalRef.current);
     }
 
+    // Reset video element if it exists
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+
     // Find existing progress for this subtopic
     const topicProgress = enrollment?.progress?.find(t => t.topicName === topicName);
     const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === subtopic.name);
@@ -369,6 +432,13 @@ const APInternshipLearningPage = () => {
     if (subtopicProgress && subtopicProgress.totalDuration > 0) {
       const progressPercent = (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100;
       setVideoProgress(progressPercent);
+      
+      // Set the time once video is loaded
+      setTimeout(() => {
+        if (videoRef.current && subtopicProgress.watchedDuration > 0) {
+          videoRef.current.currentTime = subtopicProgress.watchedDuration;
+        }
+      }, 500);
     }
   };
 
@@ -426,6 +496,14 @@ const APInternshipLearningPage = () => {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Debug effect for video URLs
+  useEffect(() => {
+    if (activeSubtopic) {
+      console.log('Current video URL:', activeSubtopic.link);
+      console.log('Video element:', videoRef.current);
+    }
+  }, [activeSubtopic]);
 
   if (loading) {
     return (
@@ -723,9 +801,19 @@ const APInternshipLearningPage = () => {
                       onPause={() => setIsPlaying(false)}
                       onTimeUpdate={handleTimeUpdate}
                       onEnded={handleVideoEnd}
-                      src={activeSubtopic.link}
+                      onError={handleVideoError}
+                      onLoadedMetadata={handleVideoLoaded}
+                      preload="metadata"
+                      playsInline
                     >
+                      <source src={activeSubtopic.link} type="video/mp4" />
+                      <source src={activeSubtopic.link} type="video/webm" />
+                      <source src={activeSubtopic.link} type="video/ogg" />
                       Your browser does not support the video tag.
+                      <p>
+                        If you're having trouble playing the video, please{' '}
+                        <a href={activeSubtopic.link} download>download it</a> instead.
+                      </p>
                     </video>
                   </div>
                 ) : (
