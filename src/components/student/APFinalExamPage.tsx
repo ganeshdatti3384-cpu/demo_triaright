@@ -376,7 +376,8 @@ const APFinalExamPage = () => {
                     onClick={() => navigate(`/ap-internship-certificate/${enrollmentId}`)}
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    Download Certificate
+                    <Award className="h-4 w-4 mr-2" />
+                    View Certificate
                   </Button>
                 )}
               </div>
