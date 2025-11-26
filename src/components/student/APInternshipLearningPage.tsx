@@ -118,6 +118,81 @@ interface ExamStatus {
   };
 }
 
+// YouTube Embed Component
+const YouTubeEmbed: React.FC<{
+  url: string;
+  onTimeUpdate: (currentTime: number) => void;
+  onEnd: () => void;
+}> = ({ url, onEnd }) => {
+  const videoId = getYouTubeVideoId(url);
+  
+  if (!videoId) {
+    return (
+      <div className="h-64 flex items-center justify-center text-white bg-gray-800">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-lg font-medium">Invalid YouTube URL</p>
+          <p className="text-sm text-gray-300 mt-2">Please check the video link</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative pb-[56.25%] h-0"> {/* 16:9 aspect ratio */}
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0`}
+        className="absolute top-0 left-0 w-full h-full rounded-lg"
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        title="YouTube video player"
+      />
+    </div>
+  );
+};
+
+// Check if URL is YouTube
+const isYouTubeUrl = (url: string): boolean => {
+  return url.includes('youtube.com') || url.includes('youtu.be');
+};
+
+// Extract YouTube video ID
+const getYouTubeVideoId = (url: string): string | null => {
+  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const match = url.match(regex);
+  return match ? match[1] : null;
+};
+
+// Validate video URL
+const validateVideoUrl = (url: string): { isValid: boolean; type: string; message: string } => {
+  if (!url) {
+    return { isValid: false, type: 'invalid', message: 'URL is required' };
+  }
+
+  if (url.includes('youtube.com') || url.includes('youtu.be')) {
+    return { 
+      isValid: true, 
+      type: 'youtube', 
+      message: 'YouTube URL detected - using embedded player' 
+    };
+  }
+
+  if (url.match(/\.(mp4|webm|ogg|mov|avi|mkv)$/i)) {
+    return { 
+      isValid: true, 
+      type: 'direct', 
+      message: 'Direct video URL detected' 
+    };
+  }
+
+  return { 
+    isValid: false, 
+    type: 'unknown', 
+    message: 'Unsupported video URL format' 
+  };
+};
+
 const APInternshipLearningPage = () => {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
   const navigate = useNavigate();
@@ -157,6 +232,22 @@ const APInternshipLearningPage = () => {
       }
     };
   }, []);
+
+  // Validate video URLs when active subtopic changes
+  useEffect(() => {
+    if (activeSubtopic) {
+      const validation = validateVideoUrl(activeSubtopic.link);
+      console.log('Video URL validation:', validation);
+      
+      if (!validation.isValid) {
+        toast({
+          title: 'Video Format Issue',
+          description: validation.message,
+          variant: 'destructive'
+        });
+      }
+    }
+  }, [activeSubtopic]);
 
   const fetchEnrollmentData = async () => {
     const token = localStorage.getItem('token');
@@ -407,6 +498,29 @@ const APInternshipLearningPage = () => {
     }
   };
 
+  // Mock YouTube progress tracking
+  const handleYouTubeTimeUpdate = (currentTime: number) => {
+    setCurrentTime(currentTime);
+    // Update progress based on estimated duration
+    if (activeSubtopic) {
+      const progress = (currentTime / activeSubtopic.duration) * 100;
+      setVideoProgress(progress);
+      
+      // Update progress every 30 seconds for YouTube videos
+      if (Math.floor(currentTime) % 30 === 0) {
+        updateProgress(currentTime);
+      }
+    }
+  };
+
+  const handleYouTubeEnd = () => {
+    if (activeSubtopic) {
+      // Mark YouTube video as fully watched
+      updateProgress(activeSubtopic.duration);
+      setIsPlaying(false);
+    }
+  };
+
   const handleSubtopicSelect = async (topicName: string, subtopic: Subtopic) => {
     setActiveTopic(topicName);
     setActiveSubtopic(subtopic);
@@ -419,8 +533,8 @@ const APInternshipLearningPage = () => {
       clearInterval(progressIntervalRef.current);
     }
 
-    // Reset video element if it exists
-    if (videoRef.current) {
+    // Reset video element if it exists and it's not a YouTube URL
+    if (videoRef.current && !isYouTubeUrl(subtopic.link)) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
@@ -433,12 +547,14 @@ const APInternshipLearningPage = () => {
       const progressPercent = (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100;
       setVideoProgress(progressPercent);
       
-      // Set the time once video is loaded
-      setTimeout(() => {
-        if (videoRef.current && subtopicProgress.watchedDuration > 0) {
-          videoRef.current.currentTime = subtopicProgress.watchedDuration;
-        }
-      }, 500);
+      // Set the time once video is loaded (for direct videos only)
+      if (!isYouTubeUrl(subtopic.link)) {
+        setTimeout(() => {
+          if (videoRef.current && subtopicProgress.watchedDuration > 0) {
+            videoRef.current.currentTime = subtopicProgress.watchedDuration;
+          }
+        }, 500);
+      }
     }
   };
 
@@ -496,14 +612,6 @@ const APInternshipLearningPage = () => {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
-  // Debug effect for video URLs
-  useEffect(() => {
-    if (activeSubtopic) {
-      console.log('Current video URL:', activeSubtopic.link);
-      console.log('Video element:', videoRef.current);
-    }
-  }, [activeSubtopic]);
 
   if (loading) {
     return (
@@ -638,6 +746,7 @@ const APInternshipLearningPage = () => {
                             const subtopicProgress = getSubtopicProgress(topic.topicName, subtopic.name);
                             const isCompleted = isSubtopicCompleted(topic.topicName, subtopic.name);
                             const isActive = activeSubtopic?.name === subtopic.name && activeTopic === topic.topicName;
+                            const isYouTube = isYouTubeUrl(subtopic.link);
                             
                             return (
                               <div
@@ -653,6 +762,11 @@ const APInternshipLearningPage = () => {
                                   <div className="flex-shrink-0">
                                     {isCompleted ? (
                                       <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                                    ) : isYouTube ? (
+                                      <div className="relative">
+                                        <Video className="h-4 w-4 text-red-600 mt-0.5" />
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full"></div>
+                                      </div>
                                     ) : (
                                       <Video className="h-4 w-4 text-gray-400 mt-0.5" />
                                     )}
@@ -662,6 +776,11 @@ const APInternshipLearningPage = () => {
                                       isActive ? 'text-blue-700' : 'text-gray-900'
                                     }`}>
                                       {subtopic.name}
+                                      {isYouTube && (
+                                        <span className="ml-2 text-xs text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
+                                          YouTube
+                                        </span>
+                                      )}
                                     </p>
                                     <div className="flex items-center justify-between mt-1">
                                       <span className="text-xs text-gray-500 flex items-center">
@@ -776,6 +895,9 @@ const APInternshipLearningPage = () => {
                     </CardTitle>
                     <CardDescription>
                       {activeTopic} • {activeSubtopic ? formatTime(activeSubtopic.duration) : '0:00'}
+                      {activeSubtopic && isYouTubeUrl(activeSubtopic.link) && (
+                        <span className="ml-2 text-red-600">• YouTube Video</span>
+                      )}
                     </CardDescription>
                   </div>
                   {activeSubtopic && (
@@ -793,28 +915,36 @@ const APInternshipLearningPage = () => {
                 {/* Video Player */}
                 {activeSubtopic ? (
                   <div className="bg-black rounded-lg overflow-hidden">
-                    <video
-                      ref={videoRef}
-                      className="w-full h-auto max-h-[480px]"
-                      controls
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                      onTimeUpdate={handleTimeUpdate}
-                      onEnded={handleVideoEnd}
-                      onError={handleVideoError}
-                      onLoadedMetadata={handleVideoLoaded}
-                      preload="metadata"
-                      playsInline
-                    >
-                      <source src={activeSubtopic.link} type="video/mp4" />
-                      <source src={activeSubtopic.link} type="video/webm" />
-                      <source src={activeSubtopic.link} type="video/ogg" />
-                      Your browser does not support the video tag.
-                      <p>
-                        If you're having trouble playing the video, please{' '}
-                        <a href={activeSubtopic.link} download>download it</a> instead.
-                      </p>
-                    </video>
+                    {isYouTubeUrl(activeSubtopic.link) ? (
+                      <YouTubeEmbed 
+                        url={activeSubtopic.link} 
+                        onTimeUpdate={handleYouTubeTimeUpdate}
+                        onEnd={handleYouTubeEnd}
+                      />
+                    ) : (
+                      <video
+                        ref={videoRef}
+                        className="w-full h-auto max-h-[480px]"
+                        controls
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        onTimeUpdate={handleTimeUpdate}
+                        onEnded={handleVideoEnd}
+                        onError={handleVideoError}
+                        onLoadedMetadata={handleVideoLoaded}
+                        preload="metadata"
+                        playsInline
+                      >
+                        <source src={activeSubtopic.link} type="video/mp4" />
+                        <source src={activeSubtopic.link} type="video/webm" />
+                        <source src={activeSubtopic.link} type="video/ogg" />
+                        Your browser does not support the video tag.
+                        <p>
+                          If you're having trouble playing the video, please{' '}
+                          <a href={activeSubtopic.link} download className="text-blue-400 underline">download it</a> instead.
+                        </p>
+                      </video>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center">
@@ -825,8 +955,8 @@ const APInternshipLearningPage = () => {
                   </div>
                 )}
 
-                {/* Video Controls */}
-                {activeSubtopic && (
+                {/* Video Controls - Only show for direct videos */}
+                {activeSubtopic && !isYouTubeUrl(activeSubtopic.link) && (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <Button
@@ -851,6 +981,28 @@ const APInternshipLearningPage = () => {
                     </div>
 
                     <Progress value={videoProgress} className="w-48" />
+                  </div>
+                )}
+
+                {/* YouTube Notice */}
+                {activeSubtopic && isYouTubeUrl(activeSubtopic.link) && (
+                  <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <AlertCircle className="h-5 w-5 text-yellow-600" />
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">
+                          YouTube Video
+                        </h3>
+                        <div className="mt-1 text-sm text-yellow-700">
+                          <p>
+                            This is an embedded YouTube video. Progress tracking is estimated and 
+                            may not be as accurate as direct video files.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
