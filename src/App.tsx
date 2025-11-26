@@ -33,7 +33,7 @@ import StudentDashboard from '@/components/dashboards/StudentDashboard';
 import JobSeekerDashboard from '@/components/dashboards/JobSeekerDashboard';
 import EmployeeDashboard from '@/components/dashboards/EmployeeDashboard';
 import EmployerDashboard from '@/components/dashboards/EmployerDashboard';
-import CollegeDashboard from '@/components/dashboards/CollegeDashboard';
+import CollegeDashboard from '@/components/dashboards/CollegeDashboard'];
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 import SuperAdminDashboard from '@/components/dashboards/SuperAdminDashboard';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -64,6 +64,8 @@ import APStudentDashboard from '@/components/student/APStudentDashboard';
 import APInternshipLearningPage from '@/components/student/APInternshipLearningPage';
 import APTopicExamPage from './components/student/APTopicExamPage';
 import APFinalExamPage from './components/student/APFinalExamPage';
+import APCertificatePage from './components/student/APCertificatePage'; // ADD THIS IMPORT
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -122,8 +124,11 @@ const App = () => {
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
           <Route path="/pack365-stream/:streamName" element={<Pack365BundleDetail />} />
+          
+          {/* AP Internship Routes */}
           <Route path="/ap-internship-exam/:courseId/:topicName" element={<APTopicExamPage />} />
-<Route path="/ap-internship-final-exam/:courseId" element={<APFinalExamPage />} />
+          <Route path="/ap-internship-final-exam/:courseId" element={<APFinalExamPage />} />
+          <Route path="/ap-internship-certificate/:enrollmentId" element={<APCertificatePage />} /> {/* ADD THIS ROUTE */}
           
           {/* Protected Payment Routes */}
           <Route
