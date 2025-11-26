@@ -64,7 +64,7 @@ import APStudentDashboard from '@/components/student/APStudentDashboard';
 import APInternshipLearningPage from '@/components/student/APInternshipLearningPage';
 import APTopicExamPage from './components/student/APTopicExamPage';
 import APFinalExamPage from './components/student/APFinalExamPage';
-import APCertificatePage from './components/student/APCertificatePage'; // ADD THIS IMPORT
+import APCertificatePage from './components/student/APCertificatePage';
 
 const queryClient = new QueryClient();
 
