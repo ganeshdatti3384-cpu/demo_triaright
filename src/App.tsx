@@ -33,7 +33,7 @@ import StudentDashboard from '@/components/dashboards/StudentDashboard';
 import JobSeekerDashboard from '@/components/dashboards/JobSeekerDashboard';
 import EmployeeDashboard from '@/components/dashboards/EmployeeDashboard';
 import EmployerDashboard from '@/components/dashboards/EmployerDashboard';
-import CollegeDashboard from '@/components/dashboards/CollegeDashboard'];
+import CollegeDashboard from '@/components/dashboards/CollegeDashboard';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 import SuperAdminDashboard from '@/components/dashboards/SuperAdminDashboard';
 import ProtectedRoute from '@/components/ProtectedRoute';
