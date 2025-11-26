@@ -49,6 +49,7 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
         return;
       }
 
+      // Fixed: Use the correct API endpoint from backend routes
       const response = await fetch(
         `/api/internships/apinternshipcertificate/${enrollment._id}`,
         {
@@ -78,11 +79,11 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
     }
   };
 
-  // ... rest of the drawCertificate function remains the same
   const drawCertificate = (ctx: CanvasRenderingContext2D, data: CertificateData) => {
-    // Your existing drawCertificate implementation
+    // Clear canvas
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     
+    // Background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
