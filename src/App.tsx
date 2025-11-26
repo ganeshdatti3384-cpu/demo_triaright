@@ -126,9 +126,30 @@ const App = () => {
           <Route path="/pack365-stream/:streamName" element={<Pack365BundleDetail />} />
           
           {/* AP Internship Routes */}
-          <Route path="/ap-internship-exam/:courseId/:topicName" element={<APTopicExamPage />} />
-          <Route path="/ap-internship-final-exam/:courseId" element={<APFinalExamPage />} />
-          <Route path="/ap-internship-certificate/:enrollmentId" element={<APCertificatePage />} />
+          <Route 
+            path="/ap-internship-exam/:courseId/:topicName" 
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <APTopicExamPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/ap-internship-final-exam/:courseId" 
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <APFinalExamPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/ap-internship-certificate/:enrollmentId" 
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <APCertificatePage />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Protected Payment Routes */}
           <Route
