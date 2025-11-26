@@ -1189,7 +1189,8 @@ const APInternshipLearningPage = () => {
                         }
                       }}
                     >
-                      Download Certificate
+                      <Bookmark className="h-4 w-4 mr-2" />
+                      View Certificate
                     </Button>
                   </div>
                 </div>
