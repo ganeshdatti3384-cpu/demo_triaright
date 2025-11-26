@@ -1179,6 +1179,7 @@ const APInternshipLearningPage = () => {
                       disabled={!examStatus?.courseProgress.courseCompleted}
                       onClick={() => {
                         if (enrollmentId) {
+                          // Fixed: Navigate to certificate page with enrollmentId
                           navigate(`/ap-internship-certificate/${enrollmentId}`);
                         } else {
                           toast({
@@ -1190,7 +1191,7 @@ const APInternshipLearningPage = () => {
                       }}
                     >
                       <Bookmark className="h-4 w-4 mr-2" />
-                      View Certificate
+                      {examStatus?.courseProgress.courseCompleted ? 'View Certificate' : 'Certificate Locked'}
                     </Button>
                   </div>
                 </div>
