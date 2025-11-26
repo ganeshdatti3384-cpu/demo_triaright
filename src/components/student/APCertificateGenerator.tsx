@@ -31,10 +31,6 @@ interface Props {
   enrollment: Enrollment;
 }
 
-// Updated API URLs
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
-const PRODUCTION_API_URL = 'https://triaright.com/api';
-
 const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
   const [certificateData, setCertificateData] = useState<CertificateData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -48,11 +44,13 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
       setError('');
       
       const token = localStorage.getItem('token');
-      // Use the appropriate API URL based on environment
-      const apiUrl = window.location.hostname === 'triaright.com' ? PRODUCTION_API_URL : API_BASE_URL;
-      
+      if (!token) {
+        setError('Authentication required');
+        return;
+      }
+
       const response = await fetch(
-        `${apiUrl}/internships/apinternshipcertificate/${enrollment._id}`,
+        `/api/internships/apinternshipcertificate/${enrollment._id}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -60,23 +58,31 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
         }
       );
 
-      if (!response.ok) throw new Error('Failed to generate certificate');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to generate certificate');
+      }
       
       const data = await response.json();
-      setCertificateData(data.certificateData);
+      
+      if (data.success) {
+        setCertificateData(data.certificateData);
+      } else {
+        throw new Error(data.message || 'Failed to generate certificate');
+      }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to generate certificate');
+      setError(err.message || 'Failed to generate certificate');
       console.error('Certificate generation error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  // ... rest of the drawCertificate function remains the same
   const drawCertificate = (ctx: CanvasRenderingContext2D, data: CertificateData) => {
-    // Clear canvas first
+    // Your existing drawCertificate implementation
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     
-    // Set canvas background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -177,16 +183,13 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
       const ctx = canvas.getContext('2d');
       
       if (ctx) {
-        // Set display size (smaller for preview)
         canvas.width = 800;
         canvas.height = 565;
         
-        // Wait for fonts to load
         document.fonts.ready.then(() => {
           drawCertificate(ctx, certificateData);
           setIsCanvasReady(true);
         }).catch(() => {
-          // Fallback if font loading fails
           drawCertificate(ctx, certificateData);
           setIsCanvasReady(true);
         });
@@ -201,7 +204,6 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
     }
 
     try {
-      // Create a temporary canvas for high-quality download
       const tempCanvas = document.createElement('canvas');
       const tempCtx = tempCanvas.getContext('2d');
       
@@ -210,15 +212,12 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
         return;
       }
 
-      // Set high resolution for download
       tempCanvas.width = 1200;
       tempCanvas.height = 848;
       
-      // Wait for fonts to load before drawing
       document.fonts.ready.then(() => {
         drawCertificate(tempCtx, certificateData);
         
-        // Create download link
         const link = document.createElement('a');
         link.download = `certificate-${certificateData.certificateId}.png`;
         link.href = tempCanvas.toDataURL('image/png');
@@ -228,7 +227,6 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
         link.click();
         document.body.removeChild(link);
       }).catch(() => {
-        // Fallback if font loading fails
         drawCertificate(tempCtx, certificateData);
         
         const link = document.createElement('a');
@@ -246,7 +244,6 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
     }
   };
 
-  // Progress section component
   const ProgressSection = () => (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
       <h3 className="text-xl font-bold mb-4">Your Progress</h3>
@@ -292,7 +289,6 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
     </div>
   );
 
-  // Certificate generation section
   const CertificateSection = () => {
     if (loading) {
       return (
@@ -357,7 +353,6 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
             />
           </div>
           
-          {/* Certificate details */}
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <h4 className="font-semibold text-gray-800 mb-3">Certificate Details</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
