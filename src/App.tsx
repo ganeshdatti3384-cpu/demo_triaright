@@ -64,6 +64,8 @@ import APStudentDashboard from '@/components/student/APStudentDashboard';
 import APInternshipLearningPage from '@/components/student/APInternshipLearningPage';
 import APTopicExamPage from './components/student/APTopicExamPage';
 import APFinalExamPage from './components/student/APFinalExamPage';
+import APCertificatePage from './components/student/APCertificatePage';
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -123,7 +125,17 @@ const App = () => {
           <Route path="/payment-failed" element={<PaymentFailed />} />
           <Route path="/pack365-stream/:streamName" element={<Pack365BundleDetail />} />
           <Route path="/ap-internship-exam/:courseId/:topicName" element={<APTopicExamPage />} />
-<Route path="/ap-internship-final-exam/:courseId" element={<APFinalExamPage />} />
+          <Route path="/ap-internship-final-exam/:courseId" element={<APFinalExamPage />} />
+          
+          {/* Certificate Route */}
+          <Route
+            path="/ap-internship-certificate/:enrollmentId"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <APCertificatePage />
+              </ProtectedRoute>
+            }
+          />
           
           {/* Protected Payment Routes */}
           <Route
@@ -234,7 +246,8 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-               {/* Profile Routes */}
+          
+          {/* Profile Routes */}
           <Route
             path="/student/profile"
             element={
