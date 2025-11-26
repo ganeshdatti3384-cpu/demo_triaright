@@ -54,6 +54,8 @@ interface APEnrollment {
     stream: string;
     totalDuration: number;
     curriculum: Topic[];
+    providerName: string;
+    instructorName: string;
   };
   enrollmentDate: string;
   isPaid: boolean;
@@ -95,6 +97,16 @@ interface ExamResult {
   attemptedAt: string;
 }
 
+interface APApplication {
+  _id: string;
+  enrollmentId: APEnrollment;
+  internshipId: {
+    _id: string;
+    title: string;
+    companyName: string;
+  };
+}
+
 const APInternshipLearningPage = () => {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
   const navigate = useNavigate();
@@ -133,47 +145,105 @@ const APInternshipLearningPage = () => {
     try {
       setLoading(true);
       
-      // ✅ CORRECTED: Use the application details endpoint which is accessible to students
-      const applicationResponse = await fetch(`/api/internships/apinternshipapplications/${enrollmentId}`, {
+      // ✅ OPTION 1: Get enrollment from my-enrollments endpoint
+      const enrollmentsResponse = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      if (!applicationResponse.ok) {
-        throw new Error('Failed to fetch application data');
+      if (!enrollmentsResponse.ok) {
+        throw new Error('Failed to fetch enrollments');
       }
 
-      const applicationData = await applicationResponse.json();
+      const enrollmentsData = await enrollmentsResponse.json();
       
-      if (applicationData.success && applicationData.application.enrollmentId) {
-        // ✅ Use the enrollment data from the application response
-        const enrollmentData = applicationData.application.enrollmentId;
-        setEnrollment(enrollmentData);
+      if (enrollmentsData.success && enrollmentsData.enrollments) {
+        // Find the specific enrollment by ID
+        const foundEnrollment = enrollmentsData.enrollments.find(
+          (enroll: APEnrollment) => enroll._id === enrollmentId
+        );
         
-        // ✅ Course details are already populated in enrollment data
-        if (enrollmentData.courseId) {
-          setCourse(enrollmentData.courseId);
-        }
+        if (foundEnrollment) {
+          setEnrollment(foundEnrollment);
+          
+          // If course data is populated, use it
+          if (foundEnrollment.courseId) {
+            setCourse(foundEnrollment.courseId);
+          } else if (foundEnrollment.courseId?._id) {
+            // If only course ID is available, try to fetch course details
+            await fetchCourseDetails(foundEnrollment.courseId._id, token);
+          }
 
-        // ✅ Fetch exam results using course ID from enrollment
-        await fetchExamResults(enrollmentData.courseId._id, token);
+          // Fetch exam results
+          await fetchExamResults(foundEnrollment.courseId?._id, token);
+        } else {
+          throw new Error('Enrollment not found in your enrollments');
+        }
       } else {
-        throw new Error('No enrollment found for this application');
+        throw new Error('No enrollments found');
       }
     } catch (error) {
       console.error('Error fetching enrollment data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load learning content',
-        variant: 'destructive'
-      });
+      
+      // ✅ OPTION 2: Fallback - Try to get progress directly
+      await fetchProgressDirectly(enrollmentId, token);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchExamResults = async (courseId: string, token: string) => {
+  const fetchProgressDirectly = async (enrollmentId: string, token: string) => {
+    try {
+      const response = await fetch(`/api/internships/apinternshipmy-progress/${enrollmentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setEnrollment(data.enrollment);
+          if (data.enrollment.courseId) {
+            setCourse(data.enrollment.courseId);
+          }
+          await fetchExamResults(data.enrollment.courseId?._id, token);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching progress directly:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load learning content. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const fetchCourseDetails = async (courseId: string, token: string) => {
+    try {
+      // Note: This endpoint might be admin-only, so we'll handle errors gracefully
+      const response = await fetch(`/api/internships/apcourses/${courseId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setCourse(data.course);
+        }
+      }
+    } catch (error) {
+      console.warn('Could not fetch course details, using enrollment data only');
+    }
+  };
+
+  const fetchExamResults = async (courseId: string | undefined, token: string) => {
+    if (!courseId) return;
+    
     try {
       const response = await fetch(`/api/internships/exams/history/${courseId}`, {
         headers: {
@@ -235,18 +305,29 @@ const APInternshipLearningPage = () => {
                 : topic
             )
           } : null);
+          
+          toast({
+            title: 'Progress Updated',
+            description: 'Your learning progress has been saved',
+            variant: 'default'
+          });
         }
       }
     } catch (error) {
       console.error('Error updating progress:', error);
+      toast({
+        title: 'Update Failed',
+        description: 'Failed to update progress. Please try again.',
+        variant: 'destructive'
+      });
     }
   };
 
   const handleVideoProgress = (topicName: string, subTopic: Subtopic, progress: number) => {
     setVideoProgress(progress);
     
-    // Update progress when video reaches significant milestones (every 10%)
-    if (progress % 10 === 0) {
+    // Update progress when video reaches significant milestones (every 25%)
+    if (progress % 25 === 0) {
       const watchedDuration = Math.floor((progress / 100) * subTopic.duration);
       updateProgress(topicName, subTopic.name, watchedDuration);
     }
@@ -256,17 +337,25 @@ const APInternshipLearningPage = () => {
     // Mark as fully watched
     updateProgress(topicName, subTopic.name, subTopic.duration);
     setVideoProgress(100);
+    
+    toast({
+      title: 'Video Completed',
+      description: `You've completed ${subTopic.name}`,
+      variant: 'default'
+    });
   };
 
   const getTopicProgress = (topicName: string) => {
-    if (!enrollment) return 0;
+    if (!enrollment || !enrollment.progress) return 0;
     
     const topic = enrollment.progress.find(t => t.topicName === topicName);
-    return topic ? (topic.topicWatchedDuration / topic.topicTotalDuration) * 100 : 0;
+    return topic && topic.topicTotalDuration > 0 
+      ? (topic.topicWatchedDuration / topic.topicTotalDuration) * 100 
+      : 0;
   };
 
   const getOverallProgress = () => {
-    if (!enrollment || !enrollment.totalVideoDuration) return 0;
+    if (!enrollment || !enrollment.totalVideoDuration || enrollment.totalVideoDuration === 0) return 0;
     return (enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100;
   };
 
@@ -279,7 +368,7 @@ const APInternshipLearningPage = () => {
   };
 
   const handleTakeExam = (topicName: string) => {
-    if (!enrollment) return;
+    if (!enrollment || !enrollment.courseId) return;
 
     // Check if topic content is completed
     const topicProgress = getTopicProgress(topicName);
@@ -305,6 +394,15 @@ const APInternshipLearningPage = () => {
       return;
     }
 
+    if (!enrollment.courseId) {
+      toast({
+        title: 'Error',
+        description: 'Course information not available',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     navigate(`/ap-internship-exam/${enrollment.courseId._id}/final`);
   };
 
@@ -324,23 +422,29 @@ const APInternshipLearningPage = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          // Handle certificate download/generation
+          // Handle certificate download
           toast({
             title: 'Certificate Available',
             description: 'Your certificate is ready for download',
             variant: 'default'
           });
-          // You can implement certificate download logic here
+          // Implement certificate download logic here
         }
       } else {
+        const errorData = await response.json();
         toast({
           title: 'Certificate Not Available',
-          description: 'Complete the course to generate certificate',
+          description: errorData.message || 'Complete the course to generate certificate',
           variant: 'destructive'
         });
       }
     } catch (error) {
       console.error('Error fetching certificate:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch certificate',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -352,6 +456,7 @@ const APInternshipLearningPage = () => {
             <div className="text-center text-gray-500">
               <Video className="h-12 w-12 mx-auto mb-4 text-gray-300" />
               <p>Select a video to start learning</p>
+              <p className="text-sm text-gray-400">Choose a topic from the curriculum</p>
             </div>
           </CardContent>
         </Card>
@@ -364,6 +469,7 @@ const APInternshipLearningPage = () => {
           <CardTitle className="text-xl">{selectedSubtopic.name}</CardTitle>
           <CardDescription>
             Duration: {Math.floor(selectedSubtopic.duration / 60)}min {selectedSubtopic.duration % 60}sec
+            {selectedTopic && ` • Topic: ${selectedTopic}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -374,11 +480,13 @@ const APInternshipLearningPage = () => {
                 className="w-full h-full rounded-lg"
                 allowFullScreen
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                title={selectedSubtopic.name}
               />
             ) : (
               <div className="text-white text-center">
                 <Video className="h-16 w-16 mx-auto mb-4" />
                 <p>Video content not available</p>
+                <p className="text-sm text-gray-300 mt-2">Please contact support</p>
               </div>
             )}
           </div>
@@ -407,9 +515,10 @@ const APInternshipLearningPage = () => {
                 handleVideoEnd(selectedTopic, selectedSubtopic);
               }
             }}
+            disabled={videoProgress >= 100}
           >
             <CheckCircle className="h-4 w-4 mr-2" />
-            Mark as Completed
+            {videoProgress >= 100 ? 'Completed' : 'Mark as Completed'}
           </Button>
         </CardFooter>
       </Card>
@@ -424,6 +533,7 @@ const APInternshipLearningPage = () => {
             <div className="text-center text-gray-500">
               <BookOpen className="h-8 w-8 mx-auto mb-2" />
               <p>No curriculum available</p>
+              <p className="text-sm">Please check back later</p>
             </div>
           </CardContent>
         </Card>
@@ -448,7 +558,7 @@ const APInternshipLearningPage = () => {
                       )}
                     </CardTitle>
                     <CardDescription>
-                      {topic.subtopics.length} videos • {Math.floor(topic.topicTotalDuration / 60)} minutes
+                      {topic.subtopics?.length || 0} videos • {Math.floor(topic.topicTotalDuration / 60)} minutes
                     </CardDescription>
                   </div>
                   <div className="text-right">
@@ -470,7 +580,7 @@ const APInternshipLearningPage = () => {
               
               <CardContent>
                 <div className="space-y-2">
-                  {topic.subtopics.map((subtopic, subtopicIndex) => {
+                  {topic.subtopics?.map((subtopic, subtopicIndex) => {
                     const subtopicProgress = subtopic.watchedDuration || 0;
                     const progressPercent = subtopic.totalDuration > 0 
                       ? (subtopicProgress / subtopic.totalDuration) * 100 
@@ -480,7 +590,7 @@ const APInternshipLearningPage = () => {
                       <div
                         key={subtopicIndex}
                         className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
-                          selectedSubtopic?.subTopicName === subtopic.subTopicName 
+                          selectedSubtopic?.name === subtopic.subTopicName 
                             ? 'bg-blue-50 border-blue-200' 
                             : 'hover:bg-gray-50'
                         }`}
@@ -544,10 +654,10 @@ const APInternshipLearningPage = () => {
     if (!enrollment) return null;
 
     const overallProgress = getOverallProgress();
-    const completedTopics = enrollment.progress.filter(topic => 
+    const completedTopics = enrollment.progress?.filter(topic => 
       topic.topicWatchedDuration >= topic.topicTotalDuration
-    ).length;
-    const totalTopics = enrollment.progress.length;
+    ).length || 0;
+    const totalTopics = enrollment.progress?.length || 0;
 
     return (
       <div className="space-y-6">
@@ -575,7 +685,7 @@ const APInternshipLearningPage = () => {
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <p className="text-2xl font-bold text-green-600">
-                  {enrollment.progress.filter(t => t.passed).length}
+                  {enrollment.progress?.filter(t => t.passed).length || 0}
                 </p>
                 <p className="text-sm text-gray-600">Exams Passed</p>
               </div>
@@ -716,12 +826,12 @@ const APInternshipLearningPage = () => {
                   {enrollment.courseId?.title || 'Course Title Not Available'}
                 </h1>
                 <p className="text-lg text-gray-600 mb-4">
-                  {enrollment.internshipId?.title || 'Internship'} • {enrollment.internshipId?.companyName || 'Company'}
+                  {course?.internshipRef?.title || enrollment.internshipId || 'Internship'} • {course?.internshipRef?.companyName || 'Company'}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="bg-blue-50 text-blue-700">
                     <BookOpen className="h-3 w-3 mr-1" />
-                    {enrollment.courseId?.stream || 'Stream'}
+                    {enrollment.courseId?.stream || course?.stream || 'Stream'}
                   </Badge>
                   <Badge variant="outline">
                     <Clock className="h-3 w-3 mr-1" />
@@ -729,7 +839,7 @@ const APInternshipLearningPage = () => {
                   </Badge>
                   <Badge variant="outline">
                     <Video className="h-3 w-3 mr-1" />
-                    {enrollment.progress?.reduce((total, topic) => total + topic.subtopics.length, 0) || 0} videos
+                    {enrollment.progress?.reduce((total, topic) => total + (topic.subtopics?.length || 0), 0) || 0} videos
                   </Badge>
                   {enrollment.isPaid && (
                     <Badge variant="default" className="bg-green-600">
@@ -776,7 +886,7 @@ const APInternshipLearningPage = () => {
                   <CardHeader>
                     <CardTitle>Course Content</CardTitle>
                     <CardDescription>
-                      {enrollment.progress?.length || 0} topics • {enrollment.progress?.reduce((total, topic) => total + topic.subtopics.length, 0) || 0} videos
+                      {enrollment.progress?.length || 0} topics • {enrollment.progress?.reduce((total, topic) => total + (topic.subtopics?.length || 0), 0) || 0} videos
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
