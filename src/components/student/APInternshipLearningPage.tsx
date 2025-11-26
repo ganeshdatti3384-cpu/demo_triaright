@@ -1177,7 +1177,17 @@ const APInternshipLearningPage = () => {
                       size="sm" 
                       variant="outline"
                       disabled={!examStatus?.courseProgress.courseCompleted}
-                      onClick={() => navigate(`/ap-internship-certificate/${enrollmentId}`)}
+                      onClick={() => {
+                        if (enrollmentId) {
+                          navigate(`/ap-internship-certificate/${enrollmentId}`);
+                        } else {
+                          toast({
+                            title: 'Error',
+                            description: 'Enrollment ID not found',
+                            variant: 'destructive'
+                          });
+                        }
+                      }}
                     >
                       Download Certificate
                     </Button>
