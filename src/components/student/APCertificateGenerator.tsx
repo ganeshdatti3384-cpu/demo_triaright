@@ -31,6 +31,10 @@ interface Props {
   enrollment: Enrollment;
 }
 
+// Updated API URLs
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
+const PRODUCTION_API_URL = 'https://triaright.com/api';
+
 const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
   const [certificateData, setCertificateData] = useState<CertificateData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,8 +48,11 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
       setError('');
       
       const token = localStorage.getItem('token');
+      // Use the appropriate API URL based on environment
+      const apiUrl = window.location.hostname === 'triaright.com' ? PRODUCTION_API_URL : API_BASE_URL;
+      
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/internships/apinternshipcertificate/${enrollment._id}`,
+        `${apiUrl}/internships/apinternshipcertificate/${enrollment._id}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -59,12 +66,16 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
       setCertificateData(data.certificateData);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to generate certificate');
+      console.error('Certificate generation error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const drawCertificate = (ctx: CanvasRenderingContext2D, data: CertificateData) => {
+    // Clear canvas first
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    
     // Set canvas background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -169,33 +180,70 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
         // Set display size (smaller for preview)
         canvas.width = 800;
         canvas.height = 565;
-        drawCertificate(ctx, certificateData);
-        setIsCanvasReady(true);
+        
+        // Wait for fonts to load
+        document.fonts.ready.then(() => {
+          drawCertificate(ctx, certificateData);
+          setIsCanvasReady(true);
+        }).catch(() => {
+          // Fallback if font loading fails
+          drawCertificate(ctx, certificateData);
+          setIsCanvasReady(true);
+        });
       }
     }
   }, [certificateData]);
 
   const downloadCertificate = () => {
-    if (!certificateData) return;
+    if (!certificateData || !canvasRef.current) {
+      console.error('Certificate data or canvas not available');
+      return;
+    }
 
-    // Create a temporary canvas for high-quality download
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    
-    if (!tempCtx) return;
+    try {
+      // Create a temporary canvas for high-quality download
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (!tempCtx) {
+        console.error('Could not get 2D context');
+        return;
+      }
 
-    // Set high resolution for download
-    tempCanvas.width = 1200;
-    tempCanvas.height = 848;
-    drawCertificate(tempCtx, certificateData);
-
-    // Download
-    const link = document.createElement('a');
-    link.download = `certificate-${certificateData.certificateId}.png`;
-    link.href = tempCanvas.toDataURL('image/png');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Set high resolution for download
+      tempCanvas.width = 1200;
+      tempCanvas.height = 848;
+      
+      // Wait for fonts to load before drawing
+      document.fonts.ready.then(() => {
+        drawCertificate(tempCtx, certificateData);
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `certificate-${certificateData.certificateId}.png`;
+        link.href = tempCanvas.toDataURL('image/png');
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }).catch(() => {
+        // Fallback if font loading fails
+        drawCertificate(tempCtx, certificateData);
+        
+        const link = document.createElement('a');
+        link.download = `certificate-${certificateData.certificateId}.png`;
+        link.href = tempCanvas.toDataURL('image/png');
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+    } catch (err) {
+      console.error('Download error:', err);
+      setError('Failed to download certificate');
+    }
   };
 
   // Progress section component
