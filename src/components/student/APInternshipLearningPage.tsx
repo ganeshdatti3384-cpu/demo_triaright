@@ -760,7 +760,7 @@ const APInternshipLearningPage = () => {
               </p>
               <Button onClick={() => navigate('/student-dashboard')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
+                Back to Student Dashboard
               </Button>
             </CardContent>
           </Card>
@@ -785,7 +785,7 @@ const APInternshipLearningPage = () => {
                 className="flex items-center"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
+                Back to Student Dashboard
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
@@ -797,15 +797,9 @@ const APInternshipLearningPage = () => {
               </div>
             </div>
             <div className="text-right">
-              <div className="flex items-center space-x-4">
-                <div className="text-sm text-gray-600">
-                  Overall Progress: {overallProgress.toFixed(1)}%
-                </div>
-                <Badge variant={enrollment.courseCompleted ? "default" : "secondary"}>
-                  {enrollment.courseCompleted ? 'Completed' : 'In Progress'}
-                </Badge>
-              </div>
-              <Progress value={overallProgress} className="w-48 mt-2" />
+              <Badge variant={enrollment.courseCompleted ? "default" : "secondary"}>
+                {enrollment.courseCompleted ? 'Completed' : 'In Progress'}
+              </Badge>
             </div>
           </div>
         </div>
@@ -1095,28 +1089,6 @@ const APInternshipLearningPage = () => {
                     </div>
 
                     <Progress value={videoProgress} className="w-48" />
-                  </div>
-                )}
-
-                {/* YouTube Notice */}
-                {activeSubtopic && isYouTubeUrl(activeSubtopic.link) && (
-                  <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <AlertCircle className="h-5 w-5 text-yellow-600" />
-                      </div>
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-yellow-800">
-                          YouTube Video
-                        </h3>
-                        <div className="mt-1 text-sm text-yellow-700">
-                          <p>
-                            This is an embedded YouTube video. Progress tracking is estimated and 
-                            may not be as accurate as direct video files.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
 
