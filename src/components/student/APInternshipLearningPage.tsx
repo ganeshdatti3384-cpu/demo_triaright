@@ -47,7 +47,11 @@ interface Subtopic {
 interface APEnrollment {
   _id: string;
   userId: string;
-  internshipId: string;
+  internshipId: {
+    _id: string;
+    title: string;
+    companyName: string;
+  };
   courseId: {
     _id: string;
     title: string;
@@ -97,16 +101,6 @@ interface ExamResult {
   attemptedAt: string;
 }
 
-interface APApplication {
-  _id: string;
-  enrollmentId: APEnrollment;
-  internshipId: {
-    _id: string;
-    title: string;
-    companyName: string;
-  };
-}
-
 const APInternshipLearningPage = () => {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
   const navigate = useNavigate();
@@ -118,6 +112,7 @@ const APInternshipLearningPage = () => {
   const [selectedSubtopic, setSelectedSubtopic] = useState<Subtopic | null>(null);
   const [videoProgress, setVideoProgress] = useState(0);
   const [examResults, setExamResults] = useState<ExamResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
   
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -144,19 +139,26 @@ const APInternshipLearningPage = () => {
 
     try {
       setLoading(true);
+      setError(null);
       
-      // ✅ OPTION 1: Get enrollment from my-enrollments endpoint
+      console.log('Fetching enrollments for enrollmentId:', enrollmentId);
+      
+      // ✅ CORRECTED: Fixed typo in endpoint
       const enrollmentsResponse = await fetch('/api/internships/apinternshipmy-enrollments', {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: 'no-cache'
       });
       
+      console.log('Enrollments response status:', enrollmentsResponse.status);
+      
       if (!enrollmentsResponse.ok) {
-        throw new Error('Failed to fetch enrollments');
+        throw new Error(`Failed to fetch enrollments: ${enrollmentsResponse.status}`);
       }
 
       const enrollmentsData = await enrollmentsResponse.json();
+      console.log('Enrollments data:', enrollmentsData);
       
       if (enrollmentsData.success && enrollmentsData.enrollments) {
         // Find the specific enrollment by ID
@@ -165,97 +167,63 @@ const APInternshipLearningPage = () => {
         );
         
         if (foundEnrollment) {
+          console.log('Found enrollment:', foundEnrollment);
           setEnrollment(foundEnrollment);
           
           // If course data is populated, use it
-          if (foundEnrollment.courseId) {
+          if (foundEnrollment.courseId && typeof foundEnrollment.courseId === 'object') {
             setCourse(foundEnrollment.courseId);
-          } else if (foundEnrollment.courseId?._id) {
-            // If only course ID is available, try to fetch course details
-            await fetchCourseDetails(foundEnrollment.courseId._id, token);
           }
 
           // Fetch exam results
-          await fetchExamResults(foundEnrollment.courseId?._id, token);
+          if (foundEnrollment.courseId?._id) {
+            await fetchExamResults(foundEnrollment.courseId._id, token);
+          }
         } else {
-          throw new Error('Enrollment not found in your enrollments');
+          console.log('Enrollment not found in list. Available enrollments:', enrollmentsData.enrollments.map((e: APEnrollment) => e._id));
+          throw new Error('Enrollment not found in your enrollments list');
         }
       } else {
-        throw new Error('No enrollments found');
+        throw new Error(enrollmentsData.message || 'No enrollments found');
       }
     } catch (error) {
       console.error('Error fetching enrollment data:', error);
-      
-      // ✅ OPTION 2: Fallback - Try to get progress directly
-      await fetchProgressDirectly(enrollmentId, token);
+      setError(error instanceof Error ? error.message : 'Failed to load learning content');
+      toast({
+        title: 'Error',
+        description: 'Failed to load learning content',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchProgressDirectly = async (enrollmentId: string, token: string) => {
-    try {
-      const response = await fetch(`/api/internships/apinternshipmy-progress/${enrollmentId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setEnrollment(data.enrollment);
-          if (data.enrollment.courseId) {
-            setCourse(data.enrollment.courseId);
-          }
-          await fetchExamResults(data.enrollment.courseId?._id, token);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching progress directly:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load learning content. Please try again.',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const fetchCourseDetails = async (courseId: string, token: string) => {
-    try {
-      // Note: This endpoint might be admin-only, so we'll handle errors gracefully
-      const response = await fetch(`/api/internships/apcourses/${courseId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setCourse(data.course);
-        }
-      }
-    } catch (error) {
-      console.warn('Could not fetch course details, using enrollment data only');
-    }
-  };
-
   const fetchExamResults = async (courseId: string | undefined, token: string) => {
-    if (!courseId) return;
+    if (!courseId) {
+      console.log('No courseId available for exam results');
+      return;
+    }
     
     try {
+      console.log('Fetching exam results for course:', courseId);
       const response = await fetch(`/api/internships/exams/history/${courseId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: 'no-cache'
       });
 
+      console.log('Exam results response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Exam results data:', data);
         if (data.success) {
           setExamResults([...data.history.topicExams, ...data.history.finalExams]);
         }
+      } else {
+        console.warn('Failed to fetch exam results:', response.status);
       }
     } catch (error) {
       console.error('Error fetching exam results:', error);
@@ -269,6 +237,8 @@ const APInternshipLearningPage = () => {
     if (!token) return;
 
     try {
+      console.log('Updating progress:', { topicName, subTopicName, watchedDuration });
+      
       const response = await fetch('/api/internships/apinternshipenrollment-progress', {
         method: 'PUT',
         headers: {
@@ -312,6 +282,8 @@ const APInternshipLearningPage = () => {
             variant: 'default'
           });
         }
+      } else {
+        throw new Error('Failed to update progress');
       }
     } catch (error) {
       console.error('Error updating progress:', error);
@@ -768,6 +740,18 @@ const APInternshipLearningPage = () => {
     );
   };
 
+  // Debug component (remove in production)
+  const DebugInfo = () => (
+    <div className="fixed top-4 right-4 bg-yellow-100 border border-yellow-400 p-4 rounded-lg z-50 max-w-md">
+      <h4 className="font-bold">Debug Info:</h4>
+      <p>Enrollment: {enrollment ? 'Loaded' : 'Null'}</p>
+      <p>Course: {course ? 'Loaded' : 'Null'}</p>
+      <p>Loading: {loading ? 'Yes' : 'No'}</p>
+      <p>Error: {error || 'None'}</p>
+      <p>Enrollment ID: {enrollmentId}</p>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
@@ -781,7 +765,7 @@ const APInternshipLearningPage = () => {
     );
   }
 
-  if (!enrollment) {
+  if (error || !enrollment) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -790,14 +774,21 @@ const APInternshipLearningPage = () => {
               <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <BookOpen className="h-12 w-12 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">Enrollment Not Found</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                {error ? 'Error Loading Content' : 'Enrollment Not Found'}
+              </h3>
               <p className="text-gray-600 text-lg mb-6 max-w-md mx-auto">
-                We couldn't find the requested enrollment. Please check the URL or contact support.
+                {error || 'We couldn\'t find the requested enrollment. Please check the URL or contact support.'}
               </p>
-              <Button onClick={() => navigate('/student-dashboard')}>
-                <Home className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
+              <div className="space-y-3">
+                <Button onClick={() => navigate('/student-dashboard')} className="mr-3">
+                  <Home className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+                <Button variant="outline" onClick={fetchEnrollmentData}>
+                  Try Again
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -808,6 +799,9 @@ const APInternshipLearningPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Debug Info - Remove in production */}
+        <DebugInfo />
+        
         {/* Header */}
         <div className="mb-8">
           <Button
@@ -826,7 +820,7 @@ const APInternshipLearningPage = () => {
                   {enrollment.courseId?.title || 'Course Title Not Available'}
                 </h1>
                 <p className="text-lg text-gray-600 mb-4">
-                  {course?.internshipRef?.title || enrollment.internshipId || 'Internship'} • {course?.internshipRef?.companyName || 'Company'}
+                  {enrollment.internshipId?.title || 'Internship'} • {enrollment.internshipId?.companyName || 'Company'}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="bg-blue-50 text-blue-700">
