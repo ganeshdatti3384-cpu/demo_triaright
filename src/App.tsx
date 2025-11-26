@@ -62,6 +62,8 @@ import CommunityPage from '@/components/community/CommunityPage';
 
 import APStudentDashboard from '@/components/student/APStudentDashboard';
 import APInternshipLearningPage from '@/components/student/APInternshipLearningPage';
+import APTopicExamPage from './components/student/APTopicExamPage';
+import APFinalExamPage from './components/student/APFinalExamPage';
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -120,6 +122,8 @@ const App = () => {
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
           <Route path="/pack365-stream/:streamName" element={<Pack365BundleDetail />} />
+          <Route path="/ap-internship-exam/:courseId/:topicName" element={<APTopicExamPage />} />
+<Route path="/ap-internship-final-exam/:courseId" element={<APFinalExamPage />} />
           
           {/* Protected Payment Routes */}
           <Route
