@@ -19,11 +19,19 @@ interface CertificateData {
   certificateId: string;
 }
 
-interface Props {
-  enrollmentId: string;
+interface Enrollment {
+  _id: string;
+  completionPercentage: number;
+  courseId: {
+    title: string;
+  };
 }
 
-const APCertificateGenerator: React.FC<Props> = ({ enrollmentId }) => {
+interface Props {
+  enrollment: Enrollment;
+}
+
+const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
   const [certificateData, setCertificateData] = useState<CertificateData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,7 +44,7 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollmentId }) => {
       
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/internships/apinternshipcertificate/${enrollmentId}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/internships/apinternshipcertificate/${enrollment._id}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -169,36 +177,30 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollmentId }) => {
     link.click();
   };
 
-  if (loading) {
-    return (
-      <div className="text-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Generating Certificate...</p>
+  // Progress section component
+  const ProgressSection = () => (
+    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <h3 className="text-xl font-bold mb-4">Your Progress</h3>
+      <div className="mb-4">
+        <div className="flex justify-between mb-1">
+          <span>Completion</span>
+          <span>{enrollment.completionPercentage}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-green-600 h-2 rounded-full" 
+            style={{ width: `${enrollment.completionPercentage}%` }}
+          ></div>
+        </div>
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-        <h3 className="text-red-800 font-semibold mb-2">Certificate Not Available</h3>
-        <p className="text-red-600 mb-4">{error}</p>
-        <button 
-          onClick={generateCertificate}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto p-4">
-      {!certificateData ? (
-        <div className="text-center bg-gray-50 rounded-lg p-8 border-2 border-dashed border-gray-300">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Generate Certificate</h2>
-          <p className="text-gray-600 mb-6">Click below to generate your internship certificate</p>
+      
+      {enrollment.completionPercentage >= 80 && (
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <h4 className="font-semibold text-blue-800 mb-2">Certificate Available!</h4>
+          <p className="text-blue-600 mb-4">
+            You've completed {enrollment.completionPercentage}% of "{enrollment.courseId.title}".
+            Generate your certificate now.
+          </p>
           <button 
             onClick={generateCertificate}
             className="bg-gradient-to-r from-blue-700 to-blue-800 text-white px-8 py-3 rounded-full font-semibold hover:shadow-lg transition-all duration-300"
@@ -206,38 +208,78 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollmentId }) => {
             Generate Certificate
           </button>
         </div>
-      ) : (
-        <div>
-          <div className="flex gap-4 justify-center mb-6 flex-wrap">
-            <button 
-              onClick={downloadCertificate}
-              className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-            >
-              Download Certificate
-            </button>
-            <button 
-              onClick={() => window.print()}
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-            >
-              Print Certificate
-            </button>
-            <button 
-              onClick={() => setCertificateData(null)}
-              className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700"
-            >
-              Generate New
-            </button>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <canvas 
-              ref={canvasRef}
-              className="w-full h-auto border border-gray-300 rounded"
-              style={{ width: '100%', height: 'auto', maxWidth: '1200px' }}
-            />
-          </div>
-        </div>
       )}
+    </div>
+  );
+
+  // Certificate generation section
+  const CertificateSection = () => {
+    if (loading) {
+      return (
+        <div className="text-center p-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Generating Certificate...</p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <h3 className="text-red-800 font-semibold mb-2">Certificate Not Available</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={generateCertificate}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
+    if (!certificateData) {
+      return null;
+    }
+
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="flex gap-4 justify-center mb-6 flex-wrap">
+          <button 
+            onClick={downloadCertificate}
+            className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+          >
+            Download Certificate
+          </button>
+          <button 
+            onClick={() => window.print()}
+            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+          >
+            Print Certificate
+          </button>
+          <button 
+            onClick={() => setCertificateData(null)}
+            className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700"
+          >
+            Generate New
+          </button>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+          <canvas 
+            ref={canvasRef}
+            className="w-full h-auto border border-gray-300 rounded"
+            style={{ width: '100%', height: 'auto', maxWidth: '1200px' }}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="p-4">
+      <ProgressSection />
+      <CertificateSection />
     </div>
   );
 };
