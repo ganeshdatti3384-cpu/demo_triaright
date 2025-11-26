@@ -128,7 +128,7 @@ const App = () => {
           {/* AP Internship Routes */}
           <Route path="/ap-internship-exam/:courseId/:topicName" element={<APTopicExamPage />} />
           <Route path="/ap-internship-final-exam/:courseId" element={<APFinalExamPage />} />
-          <Route path="/ap-internship-certificate/:enrollmentId" element={<APCertificatePage />} /> {/* ADD THIS ROUTE */}
+          <Route path="/ap-internship-certificate/:enrollmentId" element={<APCertificatePage />} />
           
           {/* Protected Payment Routes */}
           <Route
@@ -239,7 +239,8 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-               {/* Profile Routes */}
+          
+          {/* Profile Routes */}
           <Route
             path="/student/profile"
             element={
@@ -298,6 +299,7 @@ const App = () => {
               </ProtectedRoute>
             }
           />          
+          
           {/* Exam Routes */}
           <Route
             path="/exam/:stream"
