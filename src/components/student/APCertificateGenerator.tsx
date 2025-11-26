@@ -1,5 +1,5 @@
 // components/student/APCertificateGenerator.tsx
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 interface CertificateData {
   studentName: string;
@@ -36,6 +36,7 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isCanvasReady, setIsCanvasReady] = useState(false);
 
   const generateCertificate = async () => {
     try {
@@ -64,7 +65,7 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
   };
 
   const drawCertificate = (ctx: CanvasRenderingContext2D, data: CertificateData) => {
-    // Clear canvas
+    // Set canvas background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -158,23 +159,43 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
     ctx.fillText('7-1-58, 404B, 4th Floor, Surekha Chambers, Ameerpet, Hyderabad, Telangana - 500016', ctx.canvas.width / 2, 810);
   };
 
+  // Initialize canvas when certificate data is available
+  useEffect(() => {
+    if (certificateData && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx) {
+        // Set display size (smaller for preview)
+        canvas.width = 800;
+        canvas.height = 565;
+        drawCertificate(ctx, certificateData);
+        setIsCanvasReady(true);
+      }
+    }
+  }, [certificateData]);
+
   const downloadCertificate = () => {
-    if (!canvasRef.current || !certificateData) return;
+    if (!certificateData) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // Create a temporary canvas for high-quality download
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    if (!tempCtx) return;
 
-    // Set canvas size and draw
-    canvas.width = 1200;
-    canvas.height = 848;
-    drawCertificate(ctx, certificateData);
+    // Set high resolution for download
+    tempCanvas.width = 1200;
+    tempCanvas.height = 848;
+    drawCertificate(tempCtx, certificateData);
 
     // Download
     const link = document.createElement('a');
     link.download = `certificate-${certificateData.certificateId}.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.href = tempCanvas.toDataURL('image/png');
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   };
 
   // Progress section component
@@ -203,10 +224,21 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
           </p>
           <button 
             onClick={generateCertificate}
-            className="bg-gradient-to-r from-blue-700 to-blue-800 text-white px-8 py-3 rounded-full font-semibold hover:shadow-lg transition-all duration-300"
+            disabled={loading}
+            className="bg-gradient-to-r from-blue-700 to-blue-800 text-white px-8 py-3 rounded-full font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Generate Certificate
+            {loading ? 'Generating...' : 'Generate Certificate'}
           </button>
+        </div>
+      )}
+
+      {enrollment.completionPercentage < 80 && (
+        <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
+          <h4 className="font-semibold text-yellow-800 mb-2">Certificate Not Available Yet</h4>
+          <p className="text-yellow-600">
+            You need to complete at least 80% of the course to generate your certificate. 
+            Current progress: {enrollment.completionPercentage}%
+          </p>
         </div>
       )}
     </div>
@@ -247,7 +279,8 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
         <div className="flex gap-4 justify-center mb-6 flex-wrap">
           <button 
             onClick={downloadCertificate}
-            className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+            disabled={!isCanvasReady}
+            className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Download Certificate
           </button>
@@ -258,7 +291,10 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
             Print Certificate
           </button>
           <button 
-            onClick={() => setCertificateData(null)}
+            onClick={() => {
+              setCertificateData(null);
+              setIsCanvasReady(false);
+            }}
             className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700"
           >
             Generate New
@@ -266,11 +302,31 @@ const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow-lg">
-          <canvas 
-            ref={canvasRef}
-            className="w-full h-auto border border-gray-300 rounded"
-            style={{ width: '100%', height: 'auto', maxWidth: '1200px' }}
-          />
+          <div className="border-2 border-gray-200 rounded-lg p-2 bg-white">
+            <canvas 
+              ref={canvasRef}
+              className="w-full h-auto mx-auto"
+            />
+          </div>
+          
+          {/* Certificate details */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-semibold text-gray-800 mb-3">Certificate Details</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p><strong>Certificate ID:</strong> {certificateData.certificateId}</p>
+                <p><strong>Student Name:</strong> {certificateData.studentName}</p>
+                <p><strong>Course:</strong> {certificateData.courseTitle}</p>
+                <p><strong>Internship:</strong> {certificateData.internshipTitle}</p>
+              </div>
+              <div>
+                <p><strong>Company:</strong> {certificateData.companyName}</p>
+                <p><strong>Completion:</strong> {certificateData.completionPercentage}%</p>
+                <p><strong>Issue Date:</strong> {new Date(certificateData.completionDate).toLocaleDateString()}</p>
+                <p><strong>Provider:</strong> {certificateData.providerName}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
