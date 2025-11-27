@@ -5,19 +5,20 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
   BookOpen,
   Play,
   Clock,
-  CheckCircle2,
   ArrowLeft,
   Calendar,
   GraduationCap,
   Award,
   BookCopy,
-  BarChart2
+  Users,
+  FileText,
+  Target
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -29,67 +30,25 @@ interface Course {
   description: string;
   totalDuration: number;
   topicsCount: number;
+  _id: string;
+  stream: string;
+  topics: Array<{
+    name: string;
+    link: string;
+    duration: number;
+  }>;
+  documentLink?: string;
 }
 
 interface StreamEnrollment {
   stream: string;
   enrollmentDate: string;
   expiresAt: string;
-  totalWatchedPercentage: number;
-  isExamCompleted: boolean;
   coursesCount: number;
   totalTopics: number;
-  watchedTopics: number;
   courses: Course[];
 }
 
-// --- Helper Components ---
-
-// A more visually engaging circular progress bar
-const CircularProgress = ({ percentage }: { percentage: number }) => {
-  const sqSize = 120;
-  const strokeWidth = 10;
-  const radius = (sqSize - strokeWidth) / 2;
-  const viewBox = `0 0 ${sqSize} ${sqSize}`;
-  const dashArray = radius * Math.PI * 2;
-  const dashOffset = dashArray - (dashArray * percentage) / 100;
-
-  return (
-    <div className="relative w-32 h-32">
-      <svg width={sqSize} height={sqSize} viewBox={viewBox}>
-        <circle
-          className="text-gray-200"
-          cx={sqSize / 2}
-          cy={sqSize / 2}
-          r={radius}
-          strokeWidth={`${strokeWidth}px`}
-          fill="none"
-          stroke="currentColor"
-        />
-        <circle
-          className="text-blue-600 transition-all duration-500"
-          cx={sqSize / 2}
-          cy={sqSize / 2}
-          r={radius}
-          strokeWidth={`${strokeWidth}px`}
-          transform={`rotate(-90 ${sqSize / 2} ${sqSize / 2})`}
-          style={{
-            strokeDasharray: dashArray,
-            strokeDashoffset: dashOffset,
-            strokeLinecap: 'round',
-          }}
-          fill="none"
-          stroke="currentColor"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-2xl font-bold text-gray-800">{Math.round(percentage)}%</span>
-      </div>
-    </div>
-  );
-};
-
-// Skeleton loader for a better loading experience
 const SkeletonLoader = () => (
   <div className="min-h-screen bg-gray-50 py-8 px-4">
     <div className="max-w-7xl mx-auto">
@@ -116,13 +75,13 @@ const SkeletonLoader = () => (
   </div>
 );
 
-
 const Pack365StreamLearning = () => {
   const { stream } = useParams<{ stream: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [enrollment, setEnrollment] = useState<StreamEnrollment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
 
   useEffect(() => {
     const fetchStreamEnrollment = async () => {
@@ -135,6 +94,8 @@ const Pack365StreamLearning = () => {
 
       try {
         setLoading(true);
+        
+        // Fetch enrollments
         const response = await pack365Api.getMyEnrollments(token);
         
         if (response.success && response.enrollments) {
@@ -144,11 +105,40 @@ const Pack365StreamLearning = () => {
           );
 
           if (currentEnrollment) {
-            setEnrollment(currentEnrollment);
+            // Fetch all courses to get complete course data
+            const coursesResponse = await pack365Api.getAllCourses();
+            if (coursesResponse.success && coursesResponse.data) {
+              const streamCourses = coursesResponse.data.filter(
+                (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
+              );
+              setAllCourses(streamCourses);
+              
+              // Calculate total topics
+              let totalTopicsInStream = 0;
+              streamCourses.forEach(course => {
+                const courseTopics = course.topics?.length || 0;
+                totalTopicsInStream += courseTopics;
+              });
+
+              // Enhance enrollment with data
+              const enhancedEnrollment = {
+                ...currentEnrollment,
+                courses: streamCourses,
+                totalTopics: totalTopicsInStream,
+                coursesCount: streamCourses.length
+              };
+              
+              setEnrollment(enhancedEnrollment);
+            } else {
+              setEnrollment(currentEnrollment);
+            }
           } else {
             toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
             navigate('/pack365');
           }
+        } else {
+          toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
+          navigate('/pack365');
         }
       } catch (error: any) {
         console.error('Error fetching stream enrollment:', error);
@@ -162,8 +152,23 @@ const Pack365StreamLearning = () => {
     fetchStreamEnrollment();
   }, [stream]);
 
-  const handleCourseStart = (courseId: string) => {
-    navigate(`/course-learning/${courseId}`);
+  const handleCourseStart = (course: Course) => {
+    navigate(`/pack365-learning/${stream}/course`, { 
+      state: { 
+        selectedCourse: course,
+        selectedCourseId: course.courseId,
+        streamName: stream,
+        enrollment: enrollment
+      } 
+    });
+  };
+
+  const handleTakeExam = () => {
+    navigate(`/exam/${stream}`);
+  };
+
+  const handleTakeFinalExam = () => {
+    navigate(`/exam/${stream}/final`);
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
@@ -192,6 +197,20 @@ const Pack365StreamLearning = () => {
       <Navbar />
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <Button 
+              onClick={() => navigate('/pack365-dashboard')}
+              variant="outline"
+              className="mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+            <h1 className="text-3xl font-bold text-gray-900 capitalize">{stream} Stream</h1>
+            <p className="text-gray-600 mt-2">Continue your learning journey</p>
+          </div>
+
           {/* --- Main Content Grid --- */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             
@@ -199,20 +218,7 @@ const Pack365StreamLearning = () => {
             <aside className="lg:col-span-1 lg:sticky lg:top-24 space-y-6">
               <Card className="shadow-md">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart2 className="h-6 w-6 text-blue-600" />
-                    Your Progress
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                  <CircularProgress percentage={enrollment.totalWatchedPercentage} />
-                   <p className="text-gray-600 mt-4">Overall Completion</p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-md">
-                <CardHeader>
-                   <CardTitle className="text-lg">Key Information</CardTitle>
+                  <CardTitle className="text-lg">Key Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
                    <div className="flex items-center justify-between">
@@ -224,26 +230,58 @@ const Pack365StreamLearning = () => {
                       <span className="font-semibold text-gray-800">{enrollment.coursesCount}</span>
                    </div>
                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4"/>Topics Completed</span>
-                      <span className="font-semibold text-gray-800">{enrollment.watchedTopics} / {enrollment.totalTopics}</span>
+                      <span className="text-gray-500 flex items-center gap-2"><BookCopy className="h-4 w-4"/>Total Topics</span>
+                      <span className="font-semibold text-gray-800">{enrollment.totalTopics}</span>
                    </div>
-                   <Progress value={(enrollment.watchedTopics / enrollment.totalTopics) * 100} className="h-2 mt-2" />
+                   <div className="flex items-center justify-between">
+                      <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4"/>Access Until</span>
+                      <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
+                   </div>
                 </CardContent>
               </Card>
               
-              {enrollment.totalWatchedPercentage >= 80 && (
-                <Card className="shadow-md bg-gradient-to-r from-green-500 to-teal-500 text-white">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Award className="h-6 w-6"/>Ready for the Exam?</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="mb-4 text-green-100">You've completed enough of the stream to take the final exam. Good luck!</p>
-                        <Button variant="secondary" className="w-full bg-white text-green-600 hover:bg-green-50" onClick={() => navigate(`/exam/${enrollment.stream}`)}>
-                            Take Stream Exam
-                        </Button>
-                    </CardContent>
-                </Card>
-              )}
+              {/* Exam Cards */}
+              <Card className="shadow-md bg-gradient-to-r from-green-500 to-teal-500 text-white">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-6 w-6"/>
+                    Stream Exam
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="mb-4 text-green-100">
+                    Take the stream exam to test your knowledge.
+                  </p>
+                  <Button 
+                    variant="secondary" 
+                    className="w-full bg-white text-green-600 hover:bg-green-50"
+                    onClick={handleTakeExam}
+                  >
+                    Take Stream Exam
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-md bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-6 w-6"/>
+                    Final Exam
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="mb-4 text-purple-100">
+                    Take the final comprehensive exam.
+                  </p>
+                  <Button 
+                    variant="secondary" 
+                    className="w-full bg-white text-purple-600 hover:bg-purple-50"
+                    onClick={handleTakeFinalExam}
+                  >
+                    Take Final Exam
+                  </Button>
+                </CardContent>
+              </Card>
             </aside>
 
             {/* --- Right Content (Course List) --- */}
@@ -253,23 +291,82 @@ const Pack365StreamLearning = () => {
                   <CardTitle className="text-2xl">Courses in this Stream</CardTitle>
                   <CardDescription>Select a course below to start learning.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {enrollment.courses.map((course) => (
-                    <div key={course.courseId} className="border bg-white rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4 hover:border-blue-300 hover:shadow-sm transition-all">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-800 text-lg">{course.courseName}</h3>
-                        <p className="text-sm text-gray-600 mt-1 mb-3 line-clamp-2">{course.description}</p>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {course.totalDuration} minutes</span>
-                          <span className="flex items-center gap-1.5"><BookOpen className="h-4 w-4" /> {course.topicsCount} topics</span>
+                <CardContent className="space-y-6">
+                  {enrollment.courses && enrollment.courses.length > 0 ? (
+                    enrollment.courses.map((course) => (
+                      <div key={course.courseId} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between mb-3">
+                              <h3 className="font-semibold text-gray-800 text-lg">{course.courseName}</h3>
+                              <Badge variant="secondary">
+                                {course.topics?.length || 0} topics
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
+                            
+                            <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
+                              <span className="flex items-center gap-1.5">
+                                <Clock className="h-4 w-4" /> 
+                                {course.totalDuration} minutes
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <BookOpen className="h-4 w-4" /> 
+                                {course.topics?.length || 0} topics
+                              </span>
+                              {course.documentLink && (
+                                <span className="flex items-center gap-1.5">
+                                  <FileText className="h-4 w-4" /> 
+                                  Resources
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <Button 
+                            onClick={() => handleCourseStart(course)}
+                            className="w-full sm:w-auto flex-shrink-0"
+                            variant="default"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Start Learning
+                          </Button>
                         </div>
                       </div>
-                      <Button onClick={() => handleCourseStart(course.courseId)} className="w-full sm:w-auto flex-shrink-0">
-                        <Play className="h-4 w-4 mr-2" />
-                        Start Learning
-                      </Button>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-600 mb-2">No Courses Available</h3>
+                      <p className="text-gray-500">Courses for this stream are being prepared.</p>
                     </div>
-                  ))}
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Stream Information */}
+              <Card className="shadow-md mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5" />
+                    Stream Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Total courses in stream:</span>
+                      <span className="text-sm font-medium">{enrollment.coursesCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Total topics available:</span>
+                      <span className="text-sm font-medium">{enrollment.totalTopics}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Access expires:</span>
+                      <span className="text-sm font-medium">{formatDate(enrollment.expiresAt)}</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </main>
