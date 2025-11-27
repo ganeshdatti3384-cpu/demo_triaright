@@ -974,7 +974,7 @@ const APInternshipLearningPage = () => {
               </CardContent>
             </Card>
 
-            {/* Exam Status Card */}
+            {/* Exam Status Card - KEEP ORIGINAL LAYOUT */}
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -1020,15 +1020,15 @@ const APInternshipLearningPage = () => {
                   )}
                 </div>
 
-                {/* FIXED: Certificate Status Display */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
+                {/* Certificate Status - KEEP ORIGINAL STYLING */}
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
                   <div className="flex items-center">
-                    <Award className="h-6 w-6 text-green-600 mr-3" />
+                    <Award className="h-5 w-5 text-blue-600 mr-2" />
                     <div>
-                      <p className="font-medium text-green-800">Certificate Status</p>
-                      <p className="text-sm text-green-600">
+                      <p className="font-medium text-blue-800">Certificate Status</p>
+                      <p className="text-sm text-blue-600">
                         {isCertificateAvailable 
-                          ? 'Certificate ready for download!' 
+                          ? 'Certificate ready for download' 
                           : 'Complete course and final exam to unlock certificate'
                         }
                       </p>
@@ -1168,7 +1168,7 @@ const APInternshipLearningPage = () => {
               </CardContent>
             </Card>
 
-            {/* Next Steps Card - UPDATED */}
+            {/* Next Steps Card - UPDATED: Remove celebration banner, keep only certificate section */}
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Next Steps</CardTitle>
@@ -1220,7 +1220,7 @@ const APInternshipLearningPage = () => {
                     </div>
                   </div>
 
-                  {/* UPDATED: Certificate Section - Now properly checks all conditions */}
+                  {/* Certificate Section - UPDATED: Keep original styling */}
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center mb-2">
                       <Download className="h-5 w-5 text-green-600 mr-2" />
@@ -1264,31 +1264,6 @@ const APInternshipLearningPage = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* Course Completion Celebration Banner */}
-                {isCertificateAvailable && (
-                  <div className="mt-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-4 text-white">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Award className="h-8 w-8 mr-3" />
-                        <div>
-                          <h3 className="font-bold text-lg">Congratulations!</h3>
-                          <p className="text-green-100">
-                            You have successfully completed the course and passed the final exam. 
-                            Your certificate is now available for download.
-                          </p>
-                        </div>
-                      </div>
-                      <Button 
-                        onClick={handleDownloadCertificate}
-                        className="bg-white text-green-700 hover:bg-green-50 font-semibold"
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Get Certificate
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
