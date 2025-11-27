@@ -204,6 +204,31 @@ const SkeletonLoader = () => (
   </div>
 );
 
+// Learning View Guard Component
+const LearningViewGuard = ({ 
+  children, 
+  isLearningView, 
+  selectedCourse 
+}: { 
+  children: React.ReactNode;
+  isLearningView: boolean;
+  selectedCourse: Course | null;
+}) => {
+  if (!isLearningView || !selectedCourse) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700">Loading Course...</h3>
+          <p className="text-gray-500 mt-2">Preparing your learning environment</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
 // --- Video Modal Component ---
 const VideoLearningModal = ({
   isOpen,
@@ -702,6 +727,16 @@ const Pack365StreamLearning = () => {
   const [isLearningView, setIsLearningView] = useState(false);
   const [syncingOverview, setSyncingOverview] = useState(false);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Current State:', {
+      isLearningView,
+      selectedCourse: selectedCourse?.courseName,
+      enrollment: enrollment?.stream,
+      loading
+    });
+  }, [isLearningView, selectedCourse, enrollment, loading]);
+
   useEffect(() => {
     const fetchStreamEnrollment = async () => {
       const token = localStorage.getItem('token');
@@ -726,20 +761,34 @@ const Pack365StreamLearning = () => {
             setEnrollment(currentEnrollment);
             setTopicProgress(currentEnrollment.topicProgress || []);
 
-            // Handle navigation to specific course
-            const selectedCourseFromState = (location.state as any)?.selectedCourse;
-            const selectedCourseId = (location.state as any)?.selectedCourseId;
+            // Handle navigation to specific course - FIXED LOGIC
+            const locationState = location.state as any;
+            const selectedCourseFromState = locationState?.selectedCourse;
+            const selectedCourseId = locationState?.selectedCourseId;
 
+            let courseToSet: Course | null = null;
+            
             if (selectedCourseFromState || selectedCourseId) {
-              setIsLearningView(true);
               if (selectedCourseFromState) {
-                setSelectedCourse(selectedCourseFromState);
+                courseToSet = selectedCourseFromState;
               } else if (selectedCourseId) {
-                const course = currentEnrollment.courses.find(
+                courseToSet = currentEnrollment.courses.find(
                   (c: Course) => c.courseId === selectedCourseId || c._id === selectedCourseId
-                );
-                setSelectedCourse(course || currentEnrollment.courses[0]);
+                ) || null;
               }
+
+              if (courseToSet) {
+                setSelectedCourse(courseToSet);
+                setIsLearningView(true);
+              } else {
+                // If we cannot find the course, stay in overview
+                setIsLearningView(false);
+                setSelectedCourse(null);
+              }
+            } else {
+              // Default to overview mode
+              setIsLearningView(false);
+              setSelectedCourse(null);
             }
           } else {
             toast({ 
@@ -787,14 +836,23 @@ const Pack365StreamLearning = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // FIXED: Improved course start function
   const handleCourseStart = (course: Course) => {
+    console.log('Starting course:', course.courseName);
     setSelectedCourse(course);
     setIsLearningView(true);
+    
+    // Clear any previous navigation state to avoid conflicts
+    window.history.replaceState({}, document.title);
   };
 
+  // FIXED: Improved back to stream function
   const handleBackToStream = () => {
     setIsLearningView(false);
     setSelectedCourse(null);
+    
+    // Clear the navigation state when going back
+    window.history.replaceState({}, document.title);
   };
 
   const handleTopicClick = (topic: Topic) => {
@@ -860,10 +918,10 @@ const Pack365StreamLearning = () => {
     );
   }
 
-  // Learning View (Course Details)
-  if (isLearningView && selectedCourse) {
+  // Learning View (Course Details) - FIXED with LearningViewGuard
+  if (isLearningView) {
     return (
-      <>
+      <LearningViewGuard isLearningView={isLearningView} selectedCourse={selectedCourse}>
         <Navbar />
         <VideoLearningModal
           isOpen={isVideoModalOpen}
@@ -896,17 +954,17 @@ const Pack365StreamLearning = () => {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-2xl">{selectedCourse.courseName}</CardTitle>
-                      <p className="text-gray-600 mt-1">{selectedCourse.description}</p>
+                      <CardTitle className="text-2xl">{selectedCourse!.courseName}</CardTitle>
+                      <p className="text-gray-600 mt-1">{selectedCourse!.description}</p>
                     </div>
                     <Badge variant="outline">
                       <Clock className="h-4 w-4 mr-1" />
-                      {secondsToMinutesLabel(selectedCourse.totalDuration)}
+                      {secondsToMinutesLabel(selectedCourse!.totalDuration)}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {selectedCourse.documentLink && (
+                  {selectedCourse!.documentLink && (
                     <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
@@ -917,7 +975,7 @@ const Pack365StreamLearning = () => {
                           </div>
                         </div>
                         <Button
-                          onClick={() => window.open(selectedCourse.documentLink, '_blank')}
+                          onClick={() => window.open(selectedCourse!.documentLink, '_blank')}
                           variant="outline"
                         >
                           Download
@@ -928,8 +986,8 @@ const Pack365StreamLearning = () => {
 
                   <div className="space-y-3">
                     <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
-                    {selectedCourse.topics.map((topic, index) => {
-                      const progress = getTopicProgress(selectedCourse._id, topic.name);
+                    {selectedCourse!.topics.map((topic, index) => {
+                      const progress = getTopicProgress(selectedCourse!._id, topic.name);
                       const isWatched = !!progress?.watched;
                       const watchedDuration = progress?.watchedDuration || 0;
                       const percent = topic.duration ? Math.min(100, (watchedDuration / topic.duration) * 100) : 0;
@@ -1002,7 +1060,7 @@ const Pack365StreamLearning = () => {
             </div>
           </div>
         </div>
-      </>
+      </LearningViewGuard>
     );
   }
 
