@@ -18,7 +18,10 @@ import {
   Award,
   Lock,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  CheckCircle2,
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -96,6 +99,9 @@ const StreamLearningInterface = () => {
   const [videoProgress, setVideoProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [courseProgress, setCourseProgress] = useState(0);
+  const [isTrackingProgress, setIsTrackingProgress] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // Get current topic
   const currentTopic = currentCourse?.topics?.[currentTopicIndex];
@@ -139,6 +145,15 @@ const StreamLearningInterface = () => {
 
     initializeLearning();
   }, [stream, location.state]);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
 
   const fetchEnrollmentData = async (token: string) => {
     try {
@@ -186,6 +201,170 @@ const StreamLearningInterface = () => {
     const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(regex);
     return match ? match[1] : null;
+  };
+
+  // Start progress tracking (from old file)
+  const startProgressTracking = (topic: Topic): NodeJS.Timeout => {
+    let progress = 0;
+    const interval = setInterval(() => {
+      if (progress >= 100) {
+        clearInterval(interval);
+        markTopicAsCompleted(topic);
+        return;
+      }
+      
+      progress += (100 / (topic.duration * 60)) * 5;
+      if (progress > 100) progress = 100;
+      
+      setVideoProgress(progress);
+      
+      if (progress >= 80 && isTrackingProgress) {
+        markTopicAsCompleted(topic);
+        clearInterval(interval);
+      }
+    }, 5000);
+
+    setIsTrackingProgress(true);
+    return interval;
+  };
+
+  // Mark topic as completed (from old file)
+  const markTopicAsCompleted = async (topic: Topic) => {
+    if (!currentCourse || !enrollment) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const currentTopicProgress = getTopicProgress(currentCourse._id, topic.name);
+      if (currentTopicProgress?.watched) {
+        setIsTrackingProgress(false);
+        return;
+      }
+
+      // Calculate total course duration for progress calculation
+      const totalCourseDuration = currentCourse.topics.reduce((sum, t) => sum + t.duration, 0);
+      const newWatchedPercentage = calculateNewProgress();
+
+      const response = await pack365Api.updateTopicProgress(token, {
+        courseId: currentCourse.courseId || currentCourse._id,
+        topicName: topic.name,
+        watchedDuration: topic.duration * 60, // Convert to seconds
+        totalCourseDuration: totalCourseDuration * 60, // Convert to seconds
+        totalWatchedPercentage: newWatchedPercentage
+      });
+
+      if (response.success) {
+        // Update local state
+        const updatedEnrollment = { ...enrollment };
+        const existingIndex = updatedEnrollment.topicProgress.findIndex(
+          tp => tp.topicName === topic.name && 
+          (tp.courseId === currentCourse._id || tp.courseId === currentCourse.courseId)
+        );
+        
+        if (existingIndex >= 0) {
+          updatedEnrollment.topicProgress[existingIndex] = { 
+            ...updatedEnrollment.topicProgress[existingIndex],
+            watched: true, 
+            watchedDuration: topic.duration * 60
+          };
+        } else {
+          updatedEnrollment.topicProgress.push({
+            courseId: currentCourse._id,
+            topicName: topic.name,
+            watched: true,
+            watchedDuration: topic.duration * 60
+          });
+        }
+
+        // Update enrollment progress
+        updatedEnrollment.totalWatchedPercentage = newWatchedPercentage;
+
+        setEnrollment(updatedEnrollment);
+        calculateCourseProgress(currentCourse, updatedEnrollment.topicProgress);
+        
+        setIsTrackingProgress(false);
+        
+        toast({
+          title: 'Progress Updated',
+          description: `"${topic.name}" marked as completed!`,
+          variant: 'default'
+        });
+      }
+    } catch (error: any) {
+      console.error('Error updating progress:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to update progress', 
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  // Calculate new progress (from old file)
+  const calculateNewProgress = (): number => {
+    if (!currentCourse) return 0;
+    
+    const courseTopics = currentCourse.topics || [];
+    const currentWatched = enrollment?.topicProgress.filter(tp => 
+      (tp.courseId === currentCourse._id || tp.courseId === currentCourse.courseId) && tp.watched
+    ).length || 0;
+    
+    const newWatchedCount = currentWatched + 1;
+    return Math.round((newWatchedCount / courseTopics.length) * 100);
+  };
+
+  // Get topic progress (from old file)
+  const getTopicProgress = (courseId: string, topicName: string) => {
+    if (!enrollment?.topicProgress) return null;
+    
+    return enrollment.topicProgress.find(
+      tp => (tp.courseId === courseId || tp.courseId === currentCourse?.courseId) && tp.topicName === topicName
+    );
+  };
+
+  // Handle topic click with modal (from old file)
+  const handleTopicClick = async (topic: Topic) => {
+    if (!currentCourse) return;
+
+    setSelectedTopic(topic);
+    setIsVideoModalOpen(true);
+    setVideoProgress(0);
+    setIsTrackingProgress(false);
+
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
+    const intervalId = startProgressTracking(topic);
+    progressIntervalRef.current = intervalId;
+  };
+
+  // Handle manual complete (from old file)
+  const handleManualComplete = async (topic: Topic) => {
+    await markTopicAsCompleted(topic);
+    setIsVideoModalOpen(false);
+    setSelectedTopic(null);
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+  };
+
+  // Handle close modal (from old file)
+  const handleCloseModal = () => {
+    setIsVideoModalOpen(false);
+    setSelectedTopic(null);
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    setIsTrackingProgress(false);
+  };
+
+  // Handle open in new tab (from old file)
+  const handleOpenInNewTab = (topic: Topic) => {
+    window.open(topic.link, '_blank');
   };
 
   // Update topic progress using backend API
@@ -271,7 +450,7 @@ const StreamLearningInterface = () => {
   };
 
   // Handle video progress tracking
-  const startProgressTracking = () => {
+  const startProgressTrackingNew = () => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
     }
@@ -299,7 +478,7 @@ const StreamLearningInterface = () => {
 
   useEffect(() => {
     if (isPlaying) {
-      startProgressTracking();
+      startProgressTrackingNew();
     } else {
       stopProgressTracking();
     }
@@ -442,6 +621,100 @@ const StreamLearningInterface = () => {
   return (
     <>
       <Navbar />
+      
+      {/* Video Modal from old file */}
+      <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 ${isVideoModalOpen ? 'block' : 'hidden'}`}>
+        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h3 className="text-lg font-semibold">{selectedTopic?.name}</h3>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => selectedTopic && handleOpenInNewTab(selectedTopic)}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                Open in New Tab
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCloseModal}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          
+          <div className="flex-1 flex flex-col p-4">
+            {selectedTopic && (
+              <>
+                {/* YouTube Video Embed */}
+                <div className="flex-1 bg-black rounded-lg mb-4">
+                  {getYouTubeVideoId(selectedTopic.link) ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${getYouTubeVideoId(selectedTopic.link)}?autoplay=1`}
+                      title={selectedTopic.name}
+                      className="w-full h-96 rounded-lg"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="w-full h-96 flex items-center justify-center text-white">
+                      <div className="text-center">
+                        <BookOpen className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                        <p className="text-lg mb-2">Video not available</p>
+                        <Button 
+                          onClick={() => handleOpenInNewTab(selectedTopic)}
+                          variant="default"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open Video Link
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Progress Tracking */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Watching Progress</span>
+                    <span className="text-sm text-gray-600">{Math.round(videoProgress)}%</span>
+                  </div>
+                  <Progress value={videoProgress} className="h-2 mb-4" />
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-600">
+                      {isTrackingProgress ? (
+                        <span className="flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          Tracking your progress...
+                        </span>
+                      ) : (
+                        <span className="flex items-center text-green-600">
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Completed
+                        </span>
+                      )}
+                    </div>
+                    
+                    <Button
+                      onClick={() => selectedTopic && handleManualComplete(selectedTopic)}
+                      variant="default"
+                      size="sm"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Mark as Completed
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -514,6 +787,15 @@ const StreamLearningInterface = () => {
                       <div className="text-center">
                         <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500">No video available for this topic</p>
+                        {currentTopic && (
+                          <Button 
+                            onClick={() => handleTopicClick(currentTopic)}
+                            className="mt-4"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Open in Player
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -558,6 +840,26 @@ const StreamLearningInterface = () => {
                         >
                           Next
                           <ChevronRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </div>
+
+                      {/* Additional action buttons */}
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleTopicClick(currentTopic)}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Open in Enhanced Player
+                        </Button>
+                        <Button
+                          onClick={() => handleOpenInNewTab(currentTopic)}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open in New Tab
                         </Button>
                       </div>
                     </div>
