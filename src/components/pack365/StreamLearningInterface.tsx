@@ -188,28 +188,31 @@ const StreamLearningInterface = () => {
     return match ? match[1] : null;
   };
 
-  // Update topic progress
+  // Update topic progress using backend API
   const updateTopicProgress = async (watchedDuration: number, markAsWatched: boolean = false) => {
     if (!currentCourse || !currentTopic || !enrollment) return;
 
     try {
       setUpdatingProgress(true);
       
-      const progressData = {
-        courseId: currentCourse.courseId || currentCourse._id,
-        topicName: currentTopic.name,
-        watchedDuration: watchedDuration,
-        ...(markAsWatched && { watched: true })
-      };
-
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Assuming you have this API method in your pack365Api
-      const response = await pack365Api.updateTopicProgress(progressData, token);
+      // Calculate total course duration and watched percentage
+      const totalCourseDuration = currentCourse.totalDuration || 0;
+      const totalWatchedPercentage = calculateTotalWatchedPercentage();
+
+      // Call backend API to update progress
+      const response = await pack365Api.updateTopicProgress(token, {
+        courseId: currentCourse.courseId || currentCourse._id,
+        topicName: currentTopic.name,
+        watchedDuration: watchedDuration,
+        totalCourseDuration: totalCourseDuration,
+        totalWatchedPercentage: totalWatchedPercentage
+      });
       
       if (response.success) {
-        // Update local state
+        // Update local state with new progress data
         const updatedEnrollment = { ...enrollment };
         const existingProgressIndex = updatedEnrollment.topicProgress.findIndex(
           progress => 
@@ -232,6 +235,9 @@ const StreamLearningInterface = () => {
           });
         }
 
+        // Update total watched percentage
+        updatedEnrollment.totalWatchedPercentage = totalWatchedPercentage;
+
         setEnrollment(updatedEnrollment);
         calculateCourseProgress(currentCourse, updatedEnrollment.topicProgress);
         
@@ -252,6 +258,16 @@ const StreamLearningInterface = () => {
     } finally {
       setUpdatingProgress(false);
     }
+  };
+
+  // Calculate total watched percentage across all topics
+  const calculateTotalWatchedPercentage = (): number => {
+    if (!enrollment || !enrollment.topicProgress.length) return 0;
+
+    const totalTopics = enrollment.topicProgress.length;
+    const watchedTopics = enrollment.topicProgress.filter(topic => topic.watched).length;
+    
+    return Math.round((watchedTopics / totalTopics) * 100);
   };
 
   // Handle video progress tracking
@@ -369,8 +385,6 @@ const StreamLearningInterface = () => {
 
   // Check if current course exam is completed
   const isCourseExamCompleted = (): boolean => {
-    // This would need to be implemented based on your exam data structure
-    // For now, we'll assume it's stored in enrollment
     return enrollment?.isExamCompleted || false;
   };
 
