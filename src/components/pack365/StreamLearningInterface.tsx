@@ -95,6 +95,12 @@ const StreamLearningInterface = () => {
   }, [stream]);
 
   useEffect(() => {
+    if (selectedCourse) {
+      loadTopicExams();
+    }
+  }, [selectedCourse]);
+
+  useEffect(() => {
     return () => {
       if (progressIntervalId) {
         clearInterval(progressIntervalId);
@@ -168,8 +174,6 @@ const StreamLearningInterface = () => {
         setSelectedCourse(streamCourses[0]);
       }
 
-      await loadTopicExams();
-
     } catch (error: any) {
       console.error('Error loading stream data:', error);
       setError('Failed to load stream data');
@@ -192,9 +196,32 @@ const StreamLearningInterface = () => {
       const topicExamsResponse = await pack365Api.getTopicExams(selectedCourse._id);
       if (topicExamsResponse.success && topicExamsResponse.exams) {
         setTopicExams(topicExamsResponse.exams);
+      } else {
+        // If no exams from API, create mock exams for demonstration
+        const mockExams: TopicExam[] = selectedCourse.topics.map(topic => ({
+          topicName: topic.name,
+          examId: `EXAM_${topic.name.replace(/\s+/g, '_').toUpperCase()}`,
+          courseId: selectedCourse._id,
+          isAvailable: getTopicProgress(selectedCourse._id, topic.name)?.watched || false,
+          isCompleted: getTopicProgress(selectedCourse._id, topic.name)?.examCompleted || false,
+          score: getTopicProgress(selectedCourse._id, topic.name)?.examScore || undefined
+        }));
+        setTopicExams(mockExams);
       }
     } catch (error) {
       console.error('Error loading topic exams:', error);
+      // Create mock exams as fallback
+      if (selectedCourse) {
+        const mockExams: TopicExam[] = selectedCourse.topics.map(topic => ({
+          topicName: topic.name,
+          examId: `EXAM_${topic.name.replace(/\s+/g, '_').toUpperCase()}`,
+          courseId: selectedCourse._id,
+          isAvailable: getTopicProgress(selectedCourse._id, topic.name)?.watched || false,
+          isCompleted: getTopicProgress(selectedCourse._id, topic.name)?.examCompleted || false,
+          score: getTopicProgress(selectedCourse._id, topic.name)?.examScore || undefined
+        }));
+        setTopicExams(mockExams);
+      }
     }
   };
 
@@ -300,6 +327,15 @@ const StreamLearningInterface = () => {
           }
         });
 
+        // Update topic exams availability
+        setTopicExams(prev => 
+          prev.map(exam => 
+            exam.topicName === topic.name 
+              ? { ...exam, isAvailable: true }
+              : exam
+          )
+        );
+
         // Update enrollment progress
         if (enrollment) {
           setEnrollment({
@@ -310,11 +346,9 @@ const StreamLearningInterface = () => {
 
         setIsTrackingProgress(false);
         
-        await loadTopicExams(); // Reload exams to check if new ones became available
-        
         toast({
           title: 'Progress Updated',
-          description: `"${topic.name}" marked as completed!`,
+          description: `"${topic.name}" marked as completed! Exam is now available.`,
           variant: 'default'
         });
       }
@@ -405,7 +439,17 @@ const StreamLearningInterface = () => {
     const topicExam = topicExams.find(exam => exam.topicName === topic.name);
     if (topicExam) {
       navigate(`/topic-exam/${stream}/${selectedCourse?.courseId}/${topicExam.examId}`, {
-        state: { topicName: topic.name }
+        state: { 
+          topicName: topic.name,
+          course: selectedCourse,
+          topic: topic
+        }
+      });
+    } else {
+      toast({
+        title: 'Exam Not Available',
+        description: 'No exam found for this topic.',
+        variant: 'destructive'
       });
     }
   };
@@ -424,6 +468,19 @@ const StreamLearningInterface = () => {
     const isPreviousExamCompleted = isTopicExamCompleted(previousTopic.name);
     
     return isPreviousTopicCompleted && isPreviousExamCompleted;
+  };
+
+  // Debug function to check why exam button might not be showing
+  const debugTopicExamStatus = (topicName: string) => {
+    const progress = getTopicProgress(selectedCourse!._id, topicName);
+    const exam = topicExams.find(e => e.topicName === topicName);
+    
+    console.log(`Topic: ${topicName}`, {
+      progress: progress?.watched ? 'Completed' : 'Not Completed',
+      examAvailable: exam?.isAvailable ? 'Yes' : 'No',
+      examCompleted: exam?.isCompleted ? 'Yes' : 'No',
+      examScore: exam?.score
+    });
   };
 
   if (error) {
@@ -695,6 +752,15 @@ const StreamLearningInterface = () => {
                         const examScore = getTopicExamScore(topic.name);
                         const canStart = canStartNextTopic(index);
 
+                        // Debug: Log topic status
+                        if (isWatched && !isExamAvailable) {
+                          console.log(`Exam not available for completed topic: ${topic.name}`, {
+                            isWatched,
+                            isExamAvailable,
+                            topicExams: topicExams.find(e => e.topicName === topic.name)
+                          });
+                        }
+
                         return (
                           <div
                             key={index}
@@ -734,11 +800,16 @@ const StreamLearningInterface = () => {
                                         Exam: {examScore}%
                                       </Badge>
                                     )}
+                                    {isWatched && isExamAvailable && !isExamCompleted && (
+                                      <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                                        Exam Available
+                                      </Badge>
+                                    )}
                                   </div>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                {isExamAvailable && !isExamCompleted && (
+                                {isWatched && isExamAvailable && !isExamCompleted && (
                                   <Button 
                                     variant="default" 
                                     size="sm"
@@ -782,6 +853,14 @@ const StreamLearningInterface = () => {
                             {!canStart && (
                               <div className="mt-2 text-sm text-gray-500">
                                 Complete previous topic and exam to unlock this topic
+                              </div>
+                            )}
+                            {/* Debug info - remove in production */}
+                            {process.env.NODE_ENV === 'development' && (
+                              <div className="mt-2 text-xs text-gray-400">
+                                Debug: Watched: {isWatched ? 'Yes' : 'No'}, 
+                                Exam Available: {isExamAvailable ? 'Yes' : 'No'}, 
+                                Exam Completed: {isExamCompleted ? 'Yes' : 'No'}
                               </div>
                             )}
                           </div>
