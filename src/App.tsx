@@ -63,6 +63,7 @@ import APInternshipLearningPage from '@/components/student/APInternshipLearningP
 import APTopicExamPage from './components/student/APTopicExamPage';
 import APFinalExamPage from './components/student/APFinalExamPage';
 import APCertificatePage from './components/student/APCertificatePage';
+import StreamLearningInterface from '@/components/pack365/StreamLearningInterface';
 
 const queryClient = new QueryClient();
 
@@ -301,7 +302,15 @@ const App = () => {
                 <Pack365StreamLearning />
               </ProtectedRoute>
             }
-          />          
+          />
+          <Route
+            path="/pack365-learning/:stream/course/:courseId?"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <StreamLearningInterface />
+              </ProtectedRoute>
+            }
+          />  
           {/* Exam Routes */}
           <Route
             path="/exam/:stream"
