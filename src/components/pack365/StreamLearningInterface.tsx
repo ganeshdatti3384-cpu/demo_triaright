@@ -16,7 +16,8 @@ import {
   Video,
   FileText,
   X,
-  ExternalLink
+  ExternalLink,
+  GraduationCap
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -25,6 +26,8 @@ interface Topic {
   name: string;
   link: string;
   duration: number;
+  hasExam?: boolean;
+  examId?: string;
 }
 
 interface Course {
@@ -36,6 +39,8 @@ interface Course {
   documentLink: string;
   totalDuration: number;
   topics: Topic[];
+  hasExam?: boolean;
+  examId?: string;
 }
 
 interface TopicProgress {
@@ -44,6 +49,8 @@ interface TopicProgress {
   watched: boolean;
   watchedDuration: number;
   lastWatchedAt?: string;
+  examCompleted?: boolean;
+  examScore?: number;
 }
 
 interface Enrollment {
@@ -53,6 +60,15 @@ interface Enrollment {
   topicProgress: TopicProgress[];
   isExamCompleted: boolean;
   examScore: number | null;
+}
+
+interface TopicExam {
+  topicName: string;
+  examId: string;
+  courseId: string;
+  isAvailable: boolean;
+  isCompleted: boolean;
+  score?: number;
 }
 
 const StreamLearningInterface = () => {
@@ -72,7 +88,7 @@ const StreamLearningInterface = () => {
   const [videoProgress, setVideoProgress] = useState<number>(0);
   const [isTrackingProgress, setIsTrackingProgress] = useState(false);
   const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
-  const [examEligible, setExamEligible] = useState(false);
+  const [topicExams, setTopicExams] = useState<TopicExam[]>([]);
 
   useEffect(() => {
     loadStreamData();
@@ -152,7 +168,7 @@ const StreamLearningInterface = () => {
         setSelectedCourse(streamCourses[0]);
       }
 
-      await checkExamEligibility();
+      await loadTopicExams();
 
     } catch (error: any) {
       console.error('Error loading stream data:', error);
@@ -167,37 +183,18 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const checkExamEligibility = async () => {
+  const loadTopicExams = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token || !selectedCourse) return;
 
-      // Check if user has completed enough progress
-      if (enrollment && enrollment.totalWatchedPercentage >= 80) {
-        const availableExamsResponse = await pack365Api.getAvailableExams(token);
-        
-        if (availableExamsResponse.success && availableExamsResponse.exams) {
-          // Check if there are any available exams for current courses
-          const eligibleExams = availableExamsResponse.exams.filter((exam: any) => {
-            return courses.some(course => course._id === exam.courseId);
-          });
-          
-          setExamEligible(eligibleExams.length > 0);
-          
-          if (eligibleExams.length > 0) {
-            toast({
-              title: 'Exam Available!',
-              description: `You can now take the ${stream} stream exam.`,
-              variant: 'default'
-            });
-          }
-        }
-      } else {
-        setExamEligible(false);
+      // Load available topic exams
+      const topicExamsResponse = await pack365Api.getTopicExams(selectedCourse._id);
+      if (topicExamsResponse.success && topicExamsResponse.exams) {
+        setTopicExams(topicExamsResponse.exams);
       }
     } catch (error) {
-      console.error('Error checking exam eligibility:', error);
-      setExamEligible(false);
+      console.error('Error loading topic exams:', error);
     }
   };
 
@@ -313,7 +310,7 @@ const StreamLearningInterface = () => {
 
         setIsTrackingProgress(false);
         
-        await checkExamEligibility();
+        await loadTopicExams(); // Reload exams to check if new ones became available
         
         toast({
           title: 'Progress Updated',
@@ -372,7 +369,6 @@ const StreamLearningInterface = () => {
   const getCourseProgress = (courseId: string) => {
     if (!enrollment) return 0;
     
-    // Get the current progress from enrollment data
     const courseTopics = courses.find(c => c._id === courseId)?.topics || [];
     const watchedTopics = topicProgress.filter(tp => 
       tp.courseId === courseId && tp.watched
@@ -390,16 +386,44 @@ const StreamLearningInterface = () => {
     window.open(topic.link, '_blank');
   };
 
-  const handleTakeExam = () => {
-    if (examEligible) {
-      navigate(`/exam/${stream}`);
-    } else {
-      toast({
-        title: 'Not Eligible',
-        description: 'You need to complete at least 80% of the stream and have available exams.',
-        variant: 'destructive'
+  const isTopicExamAvailable = (topicName: string): boolean => {
+    const topicExam = topicExams.find(exam => exam.topicName === topicName);
+    return topicExam?.isAvailable || false;
+  };
+
+  const isTopicExamCompleted = (topicName: string): boolean => {
+    const topicExam = topicExams.find(exam => exam.topicName === topicName);
+    return topicExam?.isCompleted || false;
+  };
+
+  const getTopicExamScore = (topicName: string): number | null => {
+    const topicExam = topicExams.find(exam => exam.topicName === topicName);
+    return topicExam?.score || null;
+  };
+
+  const handleTakeTopicExam = (topic: Topic) => {
+    const topicExam = topicExams.find(exam => exam.topicName === topic.name);
+    if (topicExam) {
+      navigate(`/topic-exam/${stream}/${selectedCourse?.courseId}/${topicExam.examId}`, {
+        state: { topicName: topic.name }
       });
     }
+  };
+
+  const canStartNextTopic = (currentTopicIndex: number): boolean => {
+    if (currentTopicIndex === 0) return true; // First topic is always available
+    
+    const currentTopic = selectedCourse?.topics[currentTopicIndex];
+    const previousTopic = selectedCourse?.topics[currentTopicIndex - 1];
+    
+    if (!currentTopic || !previousTopic) return true;
+    
+    // Check if previous topic is completed and its exam is completed
+    const previousTopicProgress = getTopicProgress(selectedCourse!._id, previousTopic.name);
+    const isPreviousTopicCompleted = previousTopicProgress?.watched || false;
+    const isPreviousExamCompleted = isTopicExamCompleted(previousTopic.name);
+    
+    return isPreviousTopicCompleted && isPreviousExamCompleted;
   };
 
   if (error) {
@@ -560,7 +584,7 @@ const StreamLearningInterface = () => {
                   {stream} Stream - Learning Portal
                 </h1>
                 <p className="text-gray-600 mt-2">
-                  Complete all courses and topics to unlock the final exam
+                  Complete topics and pass exams to unlock next topics
                 </p>
               </div>
               {enrollment && (
@@ -614,27 +638,6 @@ const StreamLearningInterface = () => {
                   })}
                 </CardContent>
               </Card>
-
-              {/* Exam Eligibility */}
-              {examEligible && (
-                <Card className="bg-green-50 border-green-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Award className="h-5 w-5 text-green-600" />
-                      <span className="font-medium text-green-800">Exam Ready!</span>
-                    </div>
-                    <p className="text-sm text-green-700 mb-3">
-                      You've completed enough content to take the stream exam.
-                    </p>
-                    <Button 
-                      onClick={handleTakeExam}
-                      className="w-full bg-green-600 hover:bg-green-700"
-                    >
-                      Take Stream Exam
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
             </div>
 
             {/* Course Content */}
@@ -687,19 +690,29 @@ const StreamLearningInterface = () => {
                       {selectedCourse.topics.map((topic, index) => {
                         const progress = getTopicProgress(selectedCourse._id, topic.name);
                         const isWatched = progress?.watched;
+                        const isExamAvailable = isTopicExamAvailable(topic.name);
+                        const isExamCompleted = isTopicExamCompleted(topic.name);
+                        const examScore = getTopicExamScore(topic.name);
+                        const canStart = canStartNextTopic(index);
 
                         return (
                           <div
                             key={index}
                             className={`p-4 border rounded-lg transition-colors ${
-                              isWatched
+                              !canStart
+                                ? 'bg-gray-100 border-gray-300 opacity-60'
+                                : isWatched
                                 ? 'bg-green-50 border-green-200'
                                 : 'bg-white border-gray-200 hover:bg-gray-50'
                             }`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
-                                {isWatched ? (
+                                {!canStart ? (
+                                  <div className="h-5 w-5 rounded-full bg-gray-400 flex items-center justify-center">
+                                    <span className="text-white text-xs">🔒</span>
+                                  </div>
+                                ) : isWatched ? (
                                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                                 ) : (
                                   <Play className="h-5 w-5 text-blue-600" />
@@ -716,14 +729,41 @@ const StreamLearningInterface = () => {
                                         Completed
                                       </Badge>
                                     )}
+                                    {isExamCompleted && examScore && (
+                                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                                        Exam: {examScore}%
+                                      </Badge>
+                                    )}
                                   </div>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
+                                {isExamAvailable && !isExamCompleted && (
+                                  <Button 
+                                    variant="default" 
+                                    size="sm"
+                                    onClick={() => handleTakeTopicExam(topic)}
+                                    className="bg-purple-600 hover:bg-purple-700"
+                                  >
+                                    <GraduationCap className="h-4 w-4 mr-1" />
+                                    Take Exam
+                                  </Button>
+                                )}
+                                {isExamCompleted && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleTakeTopicExam(topic)}
+                                  >
+                                    <GraduationCap className="h-4 w-4 mr-1" />
+                                    Retake Exam
+                                  </Button>
+                                )}
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
                                   onClick={() => handleOpenInNewTab(topic)}
+                                  disabled={!canStart}
                                 >
                                   <ExternalLink className="h-4 w-4 mr-1" />
                                   New Tab
@@ -732,12 +772,18 @@ const StreamLearningInterface = () => {
                                   variant={isWatched ? "outline" : "default"} 
                                   size="sm"
                                   onClick={() => handleTopicClick(topic)}
+                                  disabled={!canStart}
                                 >
                                   <Video className="h-4 w-4 mr-1" />
                                   {isWatched ? 'Watch Again' : 'Watch'}
                                 </Button>
                               </div>
                             </div>
+                            {!canStart && (
+                              <div className="mt-2 text-sm text-gray-500">
+                                Complete previous topic and exam to unlock this topic
+                              </div>
+                            )}
                           </div>
                         );
                       })}
