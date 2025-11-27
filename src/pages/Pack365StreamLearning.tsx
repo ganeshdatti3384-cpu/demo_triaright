@@ -153,6 +153,9 @@ const Pack365StreamLearning = () => {
   }, [stream]);
 
   const handleCourseStart = (course: Course) => {
+    console.log('Starting course:', course.courseName);
+    console.log('Navigation path:', `/pack365-learning/${stream}/course`);
+    
     navigate(`/pack365-learning/${stream}/course`, { 
       state: { 
         selectedCourse: course,
