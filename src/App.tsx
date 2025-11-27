@@ -287,30 +287,9 @@ const App = () => {
           />
           
           {/* Pack365 Learning Routes */}
-          <Route
-            path="/pack365-dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <Pack365Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pack365-learning/:stream"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <Pack365StreamLearning />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pack365-learning/:stream/course/:courseId?"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <StreamLearningInterface />
-              </ProtectedRoute>
-            }
-          />  
+         <Route path="/pack365-learning/:stream" element={<Pack365StreamLearning />} />
+  <Route path="/pack365-learning/:stream/course" element={<StreamLearningInterface />} />
+  <Route path="/pack365-dashboard" element={<Pack365Dashboard />} />
           {/* Exam Routes */}
           <Route
             path="/exam/:stream"
