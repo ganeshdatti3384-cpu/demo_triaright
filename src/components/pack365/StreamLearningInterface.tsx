@@ -17,6 +17,7 @@ import {
   FileText,
   X,
   ExternalLink,
+  Circle,
   ChevronRight,
   ChevronLeft
 } from 'lucide-react';
@@ -175,10 +176,12 @@ const StreamLearningInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      // Check if user has completed enough progress
       if (enrollment && enrollment.totalWatchedPercentage >= 80) {
         const availableExamsResponse = await pack365Api.getAvailableExams(token);
         
         if (availableExamsResponse.success && availableExamsResponse.exams) {
+          // Check if there are any available exams for current courses
           const eligibleExams = availableExamsResponse.exams.filter((exam: any) => {
             return courses.some(course => course._id === exam.courseId);
           });
@@ -262,14 +265,15 @@ const StreamLearningInterface = () => {
         return;
       }
 
+      // Calculate total course duration for progress calculation
       const totalCourseDuration = selectedCourse.topics.reduce((sum, t) => sum + t.duration, 0);
       const newWatchedPercentage = calculateNewProgress();
 
       const response = await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse.courseId,
         topicName: topic.name,
-        watchedDuration: topic.duration * 60,
-        totalCourseDuration: totalCourseDuration * 60,
+        watchedDuration: topic.duration * 60, // Convert to seconds
+        totalCourseDuration: totalCourseDuration * 60, // Convert to seconds
         totalWatchedPercentage: newWatchedPercentage
       });
 
@@ -304,6 +308,7 @@ const StreamLearningInterface = () => {
           }
         });
 
+        // Update enrollment progress
         if (enrollment) {
           setEnrollment({
             ...enrollment,
@@ -394,17 +399,40 @@ const StreamLearningInterface = () => {
 
   const goToNextTopic = () => {
     if (!selectedCourse?.topics) return;
+
     if (currentTopicIndex < selectedCourse.topics.length - 1) {
-      const nextTopic = selectedCourse.topics[currentTopicIndex + 1];
-      handleTopicClick(nextTopic, currentTopicIndex + 1);
+      const nextIndex = currentTopicIndex + 1;
+      const nextTopic = selectedCourse.topics[nextIndex];
+      setCurrentTopicIndex(nextIndex);
+      setSelectedTopic(nextTopic);
+      setVideoProgress(0);
+      setIsTrackingProgress(false);
+
+      if (progressIntervalId) {
+        clearInterval(progressIntervalId);
+      }
+
+      const intervalId = startProgressTracking(nextTopic);
+      setProgressIntervalId(intervalId);
     }
   };
 
   const goToPreviousTopic = () => {
     if (currentTopicIndex > 0) {
-      const prevTopic = selectedCourse?.topics[currentTopicIndex - 1];
+      const prevIndex = currentTopicIndex - 1;
+      const prevTopic = selectedCourse?.topics[prevIndex];
+      setCurrentTopicIndex(prevIndex);
+      setSelectedTopic(prevTopic || null);
+      setVideoProgress(0);
+      setIsTrackingProgress(false);
+
+      if (progressIntervalId) {
+        clearInterval(progressIntervalId);
+      }
+
       if (prevTopic) {
-        handleTopicClick(prevTopic, currentTopicIndex - 1);
+        const intervalId = startProgressTracking(prevTopic);
+        setProgressIntervalId(intervalId);
       }
     }
   };
@@ -456,7 +484,8 @@ const StreamLearningInterface = () => {
     );
   }
 
-  const courseProgress = selectedCourse ? getCourseProgress(selectedCourse._id) : 0;
+  const currentTopic = selectedCourse?.topics?.[currentTopicIndex];
+  const courseProgressValue = selectedCourse ? getCourseProgress(selectedCourse._id) : 0;
 
   return (
     <>
@@ -527,50 +556,48 @@ const StreamLearningInterface = () => {
                   <Progress value={videoProgress} className="h-2 mb-4" />
                   
                   <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-600">
-                      {isTrackingProgress ? (
-                        <span className="flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          Tracking your progress...
-                        </span>
-                      ) : (
-                        <span className="flex items-center text-green-600">
-                          <CheckCircle2 className="h-4 w-4 mr-1" />
-                          Completed
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                       <Button
                         variant="outline"
                         onClick={goToPreviousTopic}
                         disabled={currentTopicIndex === 0}
-                        size="sm"
                       >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        <ChevronLeft className="h-4 w-4 mr-2" />
                         Previous
                       </Button>
                       
-                      <Button
-                        onClick={() => selectedTopic && handleManualComplete(selectedTopic)}
-                        variant="default"
-                        size="sm"
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Mark as Completed
-                      </Button>
+                      <div className="text-sm text-gray-600">
+                        {isTrackingProgress ? (
+                          <span className="flex items-center">
+                            <Clock className="h-4 w-4 mr-1" />
+                            Tracking your progress...
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-green-600">
+                            <CheckCircle2 className="h-4 w-4 mr-1" />
+                            Completed
+                          </span>
+                        )}
+                      </div>
 
                       <Button
                         variant="outline"
                         onClick={goToNextTopic}
-                        disabled={!selectedCourse || currentTopicIndex === selectedCourse.topics.length - 1}
-                        size="sm"
+                        disabled={currentTopicIndex === (selectedCourse?.topics?.length || 0) - 1}
                       >
                         Next
-                        <ChevronRight className="h-4 w-4 ml-1" />
+                        <ChevronRight className="h-4 w-4 ml-2" />
                       </Button>
                     </div>
+                    
+                    <Button
+                      onClick={() => selectedTopic && handleManualComplete(selectedTopic)}
+                      variant="default"
+                      size="sm"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Mark as Completed
+                    </Button>
                   </div>
                 </div>
               </>
@@ -599,8 +626,8 @@ const StreamLearningInterface = () => {
               </div>
               
               <div className="mt-4 sm:mt-0">
-                <Badge variant={courseProgress >= 80 ? "default" : "secondary"} className="text-sm">
-                  {Math.round(courseProgress)}% Complete
+                <Badge variant={courseProgressValue >= 80 ? "default" : "secondary"} className="text-sm">
+                  {Math.round(courseProgressValue)}% Complete
                 </Badge>
               </div>
             </div>
@@ -609,35 +636,35 @@ const StreamLearningInterface = () => {
             <div className="mt-4">
               <div className="flex justify-between text-sm text-gray-600 mb-2">
                 <span>Course Progress</span>
-                <span>{Math.round(courseProgress)}%</span>
+                <span>{Math.round(courseProgressValue)}%</span>
               </div>
-              <Progress value={courseProgress} className="h-2" />
+              <Progress value={courseProgressValue} className="h-2" />
             </div>
           </div>
 
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Course Content */}
+            {/* Video Player Section */}
             <div className="lg:col-span-3">
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <span>{selectedTopic?.name || 'Select a topic to start learning'}</span>
-                    {selectedTopic && (
+                    <span>{currentTopic?.name || 'Select a topic to start learning'}</span>
+                    {currentTopic && (
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {selectedTopic.duration} min
+                        {currentTopic.duration} min
                       </Badge>
                     )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {selectedTopic ? (
+                  {currentTopic ? (
                     <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden">
-                      {extractYouTubeVideoId(selectedTopic.link) ? (
+                      {extractYouTubeVideoId(currentTopic.link) ? (
                         <iframe
-                          src={`https://www.youtube.com/embed/${extractYouTubeVideoId(selectedTopic.link)}`}
-                          title={selectedTopic.name}
+                          src={`https://www.youtube.com/embed/${extractYouTubeVideoId(currentTopic.link)}?rel=0&modestbranding=1`}
+                          title={currentTopic.name}
                           className="w-full h-96 lg:h-[500px]"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
@@ -648,10 +675,11 @@ const StreamLearningInterface = () => {
                             <Video className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                             <p className="text-gray-500">Video not available</p>
                             <Button 
-                              onClick={() => handleOpenInNewTab(selectedTopic)}
+                              onClick={() => handleOpenInNewTab(currentTopic)}
                               variant="default"
                               className="mt-2"
                             >
+                              <ExternalLink className="h-4 w-4 mr-2" />
                               Open Video Link
                             </Button>
                           </div>
@@ -662,7 +690,7 @@ const StreamLearningInterface = () => {
                     <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-lg flex items-center justify-center">
                       <div className="text-center">
                         <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500">Select a topic from the sidebar to start learning</p>
+                        <p className="text-gray-500">Select a topic to start watching</p>
                       </div>
                     </div>
                   )}
@@ -689,22 +717,27 @@ const StreamLearningInterface = () => {
                   )}
 
                   {/* Course Actions */}
-                  <div className="mt-6 flex flex-col sm:flex-row gap-4">
-                    {examEligible && (
-                      <Button onClick={handleTakeExam} className="flex-1">
-                        <Award className="h-4 w-4 mr-2" />
-                        Take Stream Exam
-                      </Button>
-                    )}
-
-                    {!examEligible && courseProgress < 80 && (
-                      <div className="flex-1 text-center py-2 px-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-yellow-800 text-sm">
-                          Complete {80 - Math.round(courseProgress)}% more to unlock exam
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  {examEligible && (
+                    <div className="mt-6">
+                      <Card className="bg-green-50 border-green-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Award className="h-5 w-5 text-green-600" />
+                            <span className="font-medium text-green-800">Exam Ready!</span>
+                          </div>
+                          <p className="text-sm text-green-700 mb-3">
+                            You've completed enough content to take the stream exam.
+                          </p>
+                          <Button 
+                            onClick={handleTakeExam}
+                            className="w-full bg-green-600 hover:bg-green-700"
+                          >
+                            Take Stream Exam
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -715,7 +748,7 @@ const StreamLearningInterface = () => {
                 <CardHeader>
                   <CardTitle className="text-lg">Course Topics</CardTitle>
                   <CardDescription>
-                    {selectedCourse?.topics.length || 0} topics • {selectedCourse?.totalDuration || 0} min
+                    {selectedCourse?.topics.length || 0} topics • {selectedCourse?.totalDuration} min
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -741,7 +774,7 @@ const StreamLearningInterface = () => {
                               {isWatched ? (
                                 <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
                               ) : (
-                                <Play className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />
                               )}
                               <span className="text-sm font-medium truncate">{topic.name}</span>
                             </div>
@@ -760,7 +793,7 @@ const StreamLearningInterface = () => {
                     )}
                   </div>
 
-                  {/* Progress Summary */}
+                  {/* Course Progress Summary */}
                   <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                     <h4 className="font-semibold text-sm mb-2">Progress Summary</h4>
                     <div className="space-y-2 text-sm">
@@ -773,7 +806,7 @@ const StreamLearningInterface = () => {
                       </div>
                       <div className="flex justify-between">
                         <span>Overall Progress:</span>
-                        <span>{Math.round(courseProgress)}%</span>
+                        <span>{Math.round(courseProgressValue)}%</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Exam Available:</span>
