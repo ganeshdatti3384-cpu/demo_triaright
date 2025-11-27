@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -57,7 +57,6 @@ interface Enrollment {
 
 const StreamLearningInterface = () => {
   const { stream } = useParams<{ stream: string }>();
-  const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -68,6 +67,8 @@ const StreamLearningInterface = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [isTracking, setIsTracking] = useState(false);
 
   useEffect(() => {
     loadStreamData();
@@ -78,8 +79,6 @@ const StreamLearningInterface = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Loading stream data for:', stream);
-      
       const token = localStorage.getItem('token');
       if (!token) {
         setError('Authentication required');
@@ -89,18 +88,10 @@ const StreamLearningInterface = () => {
       }
 
       // Load enrollment data
-      let enrollmentResponse;
-      try {
-        enrollmentResponse = await pack365Api.getMyEnrollments(token);
-        console.log('Enrollment response:', enrollmentResponse);
-      } catch (err) {
-        console.error('Error fetching enrollments:', err);
-        setError('Failed to load enrollment data');
-        return;
-      }
+      const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       
       if (!enrollmentResponse?.success || !enrollmentResponse.enrollments) {
-        setError('No enrollment data found');
+        setError('Failed to load enrollment data');
         return;
       }
 
@@ -116,18 +107,10 @@ const StreamLearningInterface = () => {
       setEnrollment(streamEnrollment);
 
       // Load courses data
-      let coursesResponse;
-      try {
-        coursesResponse = await pack365Api.getAllCourses();
-        console.log('Courses response:', coursesResponse);
-      } catch (err) {
-        console.error('Error fetching courses:', err);
-        setError('Failed to load courses');
-        return;
-      }
-
+      const coursesResponse = await pack365Api.getAllCourses();
+      
       if (!coursesResponse?.success || !coursesResponse.data) {
-        setError('No courses data found');
+        setError('Failed to load courses');
         return;
       }
 
@@ -141,19 +124,7 @@ const StreamLearningInterface = () => {
       }
 
       setCourses(streamCourses);
-
-      // Set selected course
-      const selectedCourseFromState = location.state?.selectedCourse;
-      const selectedCourseId = location.state?.selectedCourseId;
-      
-      if (selectedCourseFromState) {
-        setSelectedCourse(selectedCourseFromState);
-      } else if (selectedCourseId) {
-        const course = streamCourses.find((c: Course) => c.courseId === selectedCourseId);
-        setSelectedCourse(course || streamCourses[0]);
-      } else {
-        setSelectedCourse(streamCourses[0]);
-      }
+      setSelectedCourse(streamCourses[0]);
 
     } catch (error: any) {
       console.error('Error loading stream data:', error);
@@ -168,21 +139,39 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const extractYouTubeVideoId = (url: string): string | null => {
-    if (!url) return null;
-    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
+  // YouTube progress tracking simulation
+  const startProgressTracking = () => {
+    setIsTracking(true);
+    setVideoProgress(0);
+    
+    const interval = setInterval(() => {
+      setVideoProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsTracking(false);
+          // Auto-mark as completed when progress reaches 100%
+          if (selectedTopic) {
+            handleMarkAsCompleted(selectedTopic);
+          }
+          return 100;
+        }
+        return prev + 10; // Increase by 10% every 2 seconds for demo
+      });
+    }, 2000);
+
+    return interval;
   };
 
   const handleTopicClick = (topic: Topic) => {
     setSelectedTopic(topic);
     setIsVideoModalOpen(true);
+    setVideoProgress(0);
+    setIsTracking(false);
   };
 
-  const markTopicAsCompleted = async (topic: Topic) => {
+  const handleMarkAsCompleted = async (topic: Topic) => {
     if (!selectedCourse || !enrollment) {
-      toast({ title: 'Error', description: 'Course or enrollment data missing', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Course data not loaded', variant: 'destructive' });
       return;
     }
 
@@ -193,38 +182,38 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // Check if topic is already completed
+      // Check if already completed
       const existingProgress = getTopicProgress(selectedCourse._id, topic.name);
       if (existingProgress?.watched) {
         toast({
           title: 'Already Completed',
-          description: `"${topic.name}" is already completed.`,
+          description: `"${topic.name}" is already marked as completed.`,
           variant: 'default'
         });
         return;
       }
 
-      // Calculate total stream duration for progress calculation
-      const totalStreamDuration = courses.reduce((total, course) => {
-        return total + course.topics.reduce((courseTotal, t) => courseTotal + t.duration, 0);
-      }, 0) * 60; // Convert to seconds
-
-      // Calculate new overall progress
-      const currentWatchedDuration = enrollment.topicProgress
-        .filter(tp => tp.watched)
-        .reduce((total, tp) => total + tp.watchedDuration, 0);
-      
-      const newWatchedDuration = currentWatchedDuration + (topic.duration * 60);
-      const newProgress = Math.round((newWatchedDuration / totalStreamDuration) * 100);
-
-      console.log('Updating topic progress:', {
+      console.log('Marking topic as completed:', {
         courseId: selectedCourse._id,
         topicName: topic.name,
-        watchedDuration: topic.duration * 60,
-        totalCourseDuration: totalStreamDuration,
-        totalWatchedPercentage: newProgress
+        topicDuration: topic.duration
       });
 
+      // Calculate total stream duration for progress calculation
+      const totalStreamDuration = courses.reduce((total, course) => {
+        return total + (course.totalDuration * 60); // Convert minutes to seconds
+      }, 0);
+
+      // Calculate current watched duration
+      const currentWatchedDuration = enrollment.topicProgress
+        ?.filter(tp => tp.watched)
+        ?.reduce((total, tp) => total + tp.watchedDuration, 0) || 0;
+
+      const newWatchedDuration = currentWatchedDuration + (topic.duration * 60);
+      const newProgress = totalStreamDuration > 0 ? 
+        Math.round((newWatchedDuration / totalStreamDuration) * 100) : 0;
+
+      // Update progress via API
       const response = await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse._id,
         topicName: topic.name,
@@ -234,7 +223,7 @@ const StreamLearningInterface = () => {
       });
 
       if (response.success) {
-        // Reload enrollment to get updated progress
+        // Reload enrollment to get updated data
         const updatedEnrollmentResponse = await pack365Api.getMyEnrollments(token);
         const updatedStreamEnrollment = updatedEnrollmentResponse.enrollments.find(
           (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
@@ -249,6 +238,11 @@ const StreamLearningInterface = () => {
           description: `"${topic.name}" marked as completed.`,
           variant: 'default'
         });
+
+        // Close modal after successful update
+        setIsVideoModalOpen(false);
+        setSelectedTopic(null);
+        setIsTracking(false);
       } else {
         throw new Error(response.message || 'Failed to update progress');
       }
@@ -262,9 +256,18 @@ const StreamLearningInterface = () => {
     }
   };
 
+  const extractYouTubeVideoId = (url: string): string | null => {
+    if (!url) return null;
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
   const handleCloseModal = () => {
     setIsVideoModalOpen(false);
     setSelectedTopic(null);
+    setVideoProgress(0);
+    setIsTracking(false);
   };
 
   const getTopicProgress = (courseId: string, topicName: string) => {
@@ -306,7 +309,13 @@ const StreamLearningInterface = () => {
     }
   };
 
-  // Loading state
+  // Debug: Log current state
+  useEffect(() => {
+    console.log('Current enrollment:', enrollment);
+    console.log('Current courses:', courses);
+    console.log('Selected course:', selectedCourse);
+  }, [enrollment, courses, selectedCourse]);
+
   if (loading) {
     return (
       <>
@@ -321,7 +330,6 @@ const StreamLearningInterface = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <>
@@ -344,25 +352,6 @@ const StreamLearningInterface = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </>
-    );
-  }
-
-  // No courses state
-  if (courses.length === 0) {
-    return (
-      <>
-        <Navbar />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No Courses Available</h2>
-            <p className="text-gray-600 mb-4">No courses found for this stream.</p>
-            <Button onClick={() => navigate('/pack365-dashboard')}>
-              Back to Dashboard
-            </Button>
-          </div>
         </div>
       </>
     );
@@ -401,22 +390,23 @@ const StreamLearningInterface = () => {
           <div className="flex-1 flex flex-col min-h-0">
             {selectedTopic && (
               <>
-                {/* Video Embed */}
+                {/* Video Player */}
                 <div className="flex-1 bg-black rounded-lg mb-4 min-h-0">
                   {extractYouTubeVideoId(selectedTopic.link) ? (
-                    <iframe
-                      src={`https://www.youtube.com/embed/${extractYouTubeVideoId(selectedTopic.link)}?autoplay=1`}
-                      title={selectedTopic.name}
-                      className="w-full h-full rounded-lg"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+                    <div className="w-full h-full flex flex-col">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${extractYouTubeVideoId(selectedTopic.link)}?autoplay=1&enablejsapi=1`}
+                        title={selectedTopic.name}
+                        className="w-full h-full rounded-lg"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-white">
                       <div className="text-center">
                         <Video className="h-16 w-16 mx-auto mb-4 text-gray-400" />
                         <p className="text-lg mb-2">Video not available</p>
-                        <p className="text-sm text-gray-400 mb-4">The video link may be invalid or unavailable</p>
                         <Button 
                           onClick={() => handleOpenInNewTab(selectedTopic.link)}
                           variant="default"
@@ -429,8 +419,21 @@ const StreamLearningInterface = () => {
                   )}
                 </div>
 
-                {/* Progress Actions */}
-                <div className="bg-gray-50 p-4 rounded-lg">
+                {/* Progress Tracking */}
+                <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                  {/* Simulated Progress Bar */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>Video Progress</span>
+                      <span>{videoProgress}%</span>
+                    </div>
+                    <Progress value={videoProgress} className="h-2" />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {isTracking ? 'Tracking your progress...' : 'Progress tracking ready'}
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
                   <div className="flex justify-between items-center">
                     <div className="text-sm text-gray-600">
                       {getTopicProgress(selectedCourse?._id || '', selectedTopic.name)?.watched ? (
@@ -441,20 +444,31 @@ const StreamLearningInterface = () => {
                       ) : (
                         <span className="flex items-center">
                           <Clock className="h-4 w-4 mr-1" />
-                          Mark when finished watching
+                          Mark when finished
                         </span>
                       )}
                     </div>
                     
-                    <Button
-                      onClick={() => markTopicAsCompleted(selectedTopic)}
-                      variant="default"
-                      size="sm"
-                      disabled={getTopicProgress(selectedCourse?._id || '', selectedTopic.name)?.watched}
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {getTopicProgress(selectedCourse?._id || '', selectedTopic.name)?.watched ? 'Completed' : 'Mark as Completed'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => startProgressTracking()}
+                        variant="outline"
+                        size="sm"
+                        disabled={isTracking || getTopicProgress(selectedCourse?._id || '', selectedTopic.name)?.watched}
+                      >
+                        {isTracking ? 'Tracking...' : 'Start Tracking'}
+                      </Button>
+                      
+                      <Button
+                        onClick={() => handleMarkAsCompleted(selectedTopic)}
+                        variant="default"
+                        size="sm"
+                        disabled={getTopicProgress(selectedCourse?._id || '', selectedTopic.name)?.watched}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        {getTopicProgress(selectedCourse?._id || '', selectedTopic.name)?.watched ? 'Completed' : 'Mark as Completed'}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </>
@@ -653,9 +667,10 @@ const StreamLearningInterface = () => {
                                     variant={isWatched ? "outline" : "default"} 
                                     size="sm"
                                     onClick={() => handleTopicClick(topic)}
+                                    disabled={isWatched}
                                   >
                                     <Video className="h-4 w-4 mr-1" />
-                                    {isWatched ? 'Review' : 'Watch'}
+                                    {isWatched ? 'Completed' : 'Watch'}
                                   </Button>
                                 </div>
                               </div>
