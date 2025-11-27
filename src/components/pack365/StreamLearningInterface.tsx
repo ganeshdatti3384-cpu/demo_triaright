@@ -112,14 +112,18 @@ const StreamLearningInterface = () => {
       try {
         setLoading(true);
         
-        // Get state from navigation or fetch fresh data
+        // Get state from navigation
         const stateCourse = location.state?.selectedCourse as Course;
         const stateEnrollment = location.state?.enrollment as StreamEnrollment;
+
+        console.log('Location state:', location.state);
+        console.log('State course:', stateCourse);
+        console.log('State enrollment:', stateEnrollment);
 
         if (stateCourse && stateEnrollment) {
           setCurrentCourse(stateCourse);
           setEnrollment(stateEnrollment);
-          calculateCourseProgress(stateCourse, stateEnrollment.topicProgress);
+          calculateCourseProgress(stateCourse, stateEnrollment.topicProgress || []);
         } else {
           // Fetch fresh data if not passed via state
           await fetchEnrollmentData(token);
@@ -147,10 +151,13 @@ const StreamLearningInterface = () => {
 
         if (currentEnrollment && currentEnrollment.courses?.length > 0) {
           setEnrollment(currentEnrollment);
-          // Set first available course or find the current one
+          // Set first available course
           const firstCourse = currentEnrollment.courses[0];
           setCurrentCourse(firstCourse);
-          calculateCourseProgress(firstCourse, currentEnrollment.topicProgress);
+          calculateCourseProgress(firstCourse, currentEnrollment.topicProgress || []);
+        } else {
+          toast({ title: 'Error', description: 'No courses found in this stream.', variant: 'destructive' });
+          navigate('/pack365-dashboard');
         }
       }
     } catch (error) {
@@ -189,7 +196,7 @@ const StreamLearningInterface = () => {
       setUpdatingProgress(true);
       
       const progressData = {
-        courseId: currentCourse.courseId,
+        courseId: currentCourse.courseId || currentCourse._id,
         topicName: currentTopic.name,
         watchedDuration: watchedDuration,
         ...(markAsWatched && { watched: true })
@@ -198,6 +205,7 @@ const StreamLearningInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      // Assuming you have this API method in your pack365Api
       const response = await pack365Api.updateTopicProgress(progressData, token);
       
       if (response.success) {
@@ -217,7 +225,7 @@ const StreamLearningInterface = () => {
           };
         } else {
           updatedEnrollment.topicProgress.push({
-            courseId: currentCourse.courseId,
+            courseId: currentCourse.courseId || currentCourse._id,
             topicName: currentTopic.name,
             watchedDuration: watchedDuration,
             watched: markAsWatched
@@ -476,6 +484,7 @@ const StreamLearningInterface = () => {
                   {videoId ? (
                     <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden">
                       <iframe
+                        ref={playerRef}
                         src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
                         title={currentTopic.name}
                         className="w-full h-96 lg:h-[500px]"
@@ -519,6 +528,11 @@ const StreamLearningInterface = () => {
                             <Badge variant="default" className="flex items-center gap-1">
                               <CheckCircle className="h-3 w-3" />
                               Completed
+                            </Badge>
+                          )}
+                          {updatingProgress && (
+                            <Badge variant="secondary" className="text-xs">
+                              Saving...
                             </Badge>
                           )}
                         </div>
