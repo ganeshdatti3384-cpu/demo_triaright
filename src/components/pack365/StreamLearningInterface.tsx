@@ -370,10 +370,20 @@ const StreamLearningInterface = () => {
   };
 
   const getCourseProgress = (courseId: string) => {
-    const courseTopics = topicProgress.filter(tp => tp.courseId === courseId);
-    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
-    const totalTopics = courses.find(c => c._id === courseId)?.topics.length || 1;
-    return totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
+    if (!enrollment) return 0;
+    
+    // Get the current progress from enrollment data
+    const courseTopics = courses.find(c => c._id === courseId)?.topics || [];
+    const watchedTopics = topicProgress.filter(tp => 
+      tp.courseId === courseId && tp.watched
+    ).length;
+    
+    return courseTopics.length > 0 ? (watchedTopics / courseTopics.length) * 100 : 0;
+  };
+
+  const getOverallStreamProgress = () => {
+    if (!enrollment) return 0;
+    return enrollment.totalWatchedPercentage;
   };
 
   const handleOpenInNewTab = (topic: Topic) => {
@@ -544,12 +554,25 @@ const StreamLearningInterface = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Stream
             </Button>
-            <h1 className="text-3xl font-bold text-gray-900 capitalize">
-              {stream} Stream - Learning Portal
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Complete all courses and topics to unlock the final exam
-            </p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 capitalize">
+                  {stream} Stream - Learning Portal
+                </h1>
+                <p className="text-gray-600 mt-2">
+                  Complete all courses and topics to unlock the final exam
+                </p>
+              </div>
+              {enrollment && (
+                <div className="text-right">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-medium text-gray-700">Overall Progress:</span>
+                    <span className="text-sm font-bold text-blue-600">{Math.round(getOverallStreamProgress())}%</span>
+                  </div>
+                  <Progress value={getOverallStreamProgress()} className="w-32 h-2" />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -560,32 +583,35 @@ const StreamLearningInterface = () => {
                   <CardTitle className="text-lg">Courses in Stream</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {courses.map((course) => (
-                    <div
-                      key={course._id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedCourse?._id === course._id
-                          ? 'bg-blue-50 border-blue-200'
-                          : 'bg-white border-gray-200 hover:bg-gray-50'
-                      }`}
-                      onClick={() => setSelectedCourse(course)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-medium text-sm">{course.courseName}</h3>
-                        <Badge variant="secondary">
-                          {course.topics.length} topics
-                        </Badge>
+                  {courses.map((course) => {
+                    const progress = getCourseProgress(course._id);
+                    return (
+                      <div
+                        key={course._id}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedCourse?._id === course._id
+                            ? 'bg-blue-50 border-blue-200'
+                            : 'bg-white border-gray-200 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setSelectedCourse(course)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-sm line-clamp-2">{course.courseName}</h3>
+                          <Badge variant="secondary">
+                            {course.topics.length} topics
+                          </Badge>
+                        </div>
+                        <Progress 
+                          value={progress} 
+                          className="h-2" 
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>Progress</span>
+                          <span>{Math.round(progress)}%</span>
+                        </div>
                       </div>
-                      <Progress 
-                        value={getCourseProgress(course._id)} 
-                        className="h-2" 
-                      />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>Progress</span>
-                        <span>{Math.round(getCourseProgress(course._id))}%</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </CardContent>
               </Card>
 
@@ -621,10 +647,16 @@ const StreamLearningInterface = () => {
                         <CardTitle className="text-2xl">{selectedCourse.courseName}</CardTitle>
                         <p className="text-gray-600 mt-1">{selectedCourse.description}</p>
                       </div>
-                      <Badge variant="outline">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {selectedCourse.totalDuration} min
-                      </Badge>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="text-sm text-gray-500">Course Progress</div>
+                          <div className="font-semibold">{Math.round(getCourseProgress(selectedCourse._id))}%</div>
+                        </div>
+                        <Badge variant="outline">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {selectedCourse.totalDuration} min
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
