@@ -74,6 +74,49 @@ const StreamLearningInterface = () => {
   const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [examEligible, setExamEligible] = useState(false);
 
+  // Calculate individual course progress
+  const getCourseProgress = (courseId: string) => {
+    if (!topicProgress || topicProgress.length === 0) return 0;
+    
+    // Get all topic progress entries for this specific course
+    const courseTopics = topicProgress.filter(tp => 
+      tp.courseId.toString() === courseId.toString()
+    );
+    
+    if (courseTopics.length === 0) return 0;
+    
+    // Count how many topics are watched
+    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
+    
+    // Get total topics for this course
+    const course = courses.find(c => c._id.toString() === courseId.toString());
+    const totalTopics = course?.topics?.length || 0;
+    
+    return totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
+  };
+
+  // Calculate overall stream progress
+  const calculateOverallProgress = () => {
+    if (!courses || courses.length === 0) return 0;
+    
+    let totalWatchedTopics = 0;
+    let totalTopicsInStream = 0;
+    
+    courses.forEach(course => {
+      const courseTopics = course.topics?.length || 0;
+      totalTopicsInStream += courseTopics;
+      
+      // Count watched topics for this course
+      const watchedInCourse = topicProgress.filter(tp => 
+        tp.courseId.toString() === course._id.toString() && tp.watched
+      ).length || 0;
+      
+      totalWatchedTopics += watchedInCourse;
+    });
+    
+    return totalTopicsInStream > 0 ? (totalWatchedTopics / totalTopicsInStream) * 100 : 0;
+  };
+
   useEffect(() => {
     loadStreamData();
   }, [stream]);
@@ -172,8 +215,10 @@ const StreamLearningInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      const overallProgress = calculateOverallProgress();
+      
       // Check if user has completed enough progress
-      if (enrollment && enrollment.totalWatchedPercentage >= 80) {
+      if (overallProgress >= 80) {
         const availableExamsResponse = await pack365Api.getAvailableExams(token);
         
         if (availableExamsResponse.success && availableExamsResponse.exams) {
@@ -369,19 +414,13 @@ const StreamLearningInterface = () => {
     );
   };
 
-  const getCourseProgress = (courseId: string) => {
-    const courseTopics = topicProgress.filter(tp => tp.courseId === courseId);
-    const watchedTopics = courseTopics.filter(tp => tp.watched).length;
-    const totalTopics = courses.find(c => c._id === courseId)?.topics.length || 1;
-    return totalTopics > 0 ? (watchedTopics / totalTopics) * 100 : 0;
-  };
-
   const handleOpenInNewTab = (topic: Topic) => {
     window.open(topic.link, '_blank');
   };
 
   const handleTakeExam = () => {
-    if (examEligible) {
+    const overallProgress = calculateOverallProgress();
+    if (examEligible && overallProgress >= 80) {
       navigate(`/exam/${stream}`);
     } else {
       toast({
