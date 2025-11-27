@@ -18,7 +18,7 @@ import {
   X,
   ExternalLink,
   GraduationCap,
-  Certificate
+  Trophy // Replaced Certificate with Trophy
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -657,7 +657,7 @@ const StreamLearningInterface = () => {
                     onClick={handleGetCertificate}
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    <Certificate className="h-4 w-4 mr-2" />
+                    <Trophy className="h-4 w-4 mr-2" /> {/* Changed from Certificate to Trophy */}
                     Get Certificate
                   </Button>
                 )}
@@ -759,7 +759,7 @@ const StreamLearningInterface = () => {
                     </div>
                     {isStreamCompleted() && (
                       <div className="mt-3 p-2 bg-green-50 rounded-lg text-center">
-                        <Certificate className="h-8 w-8 text-green-600 mx-auto mb-1" />
+                        <Trophy className="h-8 w-8 text-green-600 mx-auto mb-1" /> {/* Changed from Certificate to Trophy */}
                         <p className="text-sm font-medium text-green-800">Stream Completed!</p>
                         <p className="text-xs text-green-600">You can now get your certificate</p>
                       </div>
