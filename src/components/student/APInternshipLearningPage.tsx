@@ -767,8 +767,12 @@ const APInternshipLearningPage = () => {
     ? ((enrollment.totalWatchedDuration || 0) / enrollment.totalVideoDuration) * 100 
     : 0;
 
-  // Check if certificate is available
-  const isCertificateAvailable = examStatus?.courseProgress.courseCompleted || false;
+  // FIXED: Check if certificate is available - use multiple conditions
+  const isCertificateAvailable = 
+    enrollment?.courseCompleted || 
+    examStatus?.courseProgress.courseCompleted || 
+    examStatus?.finalExam.passed || 
+    false;
 
   if (loading) {
     return (
@@ -1016,17 +1020,21 @@ const APInternshipLearningPage = () => {
                   )}
                 </div>
 
-                {examStatus?.courseProgress.courseCompleted && (
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
-                    <div className="flex items-center">
-                      <Award className="h-6 w-6 text-green-600 mr-3" />
-                      <div>
-                        <p className="font-medium text-green-800">Course Completed!</p>
-                        <p className="text-sm text-green-600">You can now download your certificate</p>
-                      </div>
+                {/* FIXED: Certificate Status Display */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <Award className="h-6 w-6 text-green-600 mr-3" />
+                    <div>
+                      <p className="font-medium text-green-800">Certificate Status</p>
+                      <p className="text-sm text-green-600">
+                        {isCertificateAvailable 
+                          ? 'Certificate ready for download!' 
+                          : 'Complete course and final exam to unlock certificate'
+                        }
+                      </p>
                     </div>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -1160,7 +1168,7 @@ const APInternshipLearningPage = () => {
               </CardContent>
             </Card>
 
-            {/* Next Steps Card */}
+            {/* Next Steps Card - UPDATED */}
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Next Steps</CardTitle>
@@ -1200,12 +1208,19 @@ const APInternshipLearningPage = () => {
                       Pass the final exam to receive your certificate
                     </p>
                     <div className="text-sm">
-                      Status: {examStatus?.finalExam.passed ? 'Passed' : 
-                              examStatus?.courseProgress.finalExamEligible ? 'Ready' : 'Locked'}
+                      Status: {examStatus?.finalExam.passed ? (
+                        <span className="text-green-600 font-semibold">Passed</span>
+                      ) : (
+                        examStatus?.courseProgress.finalExamEligible ? (
+                          <span className="text-blue-600 font-semibold">Ready</span>
+                        ) : (
+                          <span className="text-gray-600">Locked</span>
+                        )
+                      )}
                     </div>
                   </div>
 
-                  {/* Updated Certificate Section */}
+                  {/* UPDATED: Certificate Section - Now properly checks all conditions */}
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center mb-2">
                       <Download className="h-5 w-5 text-green-600 mr-2" />
@@ -1217,6 +1232,7 @@ const APInternshipLearningPage = () => {
                         : 'Complete the course and final exam to unlock your certificate'
                       }
                     </p>
+                    
                     <Button 
                       size="sm" 
                       variant={isCertificateAvailable ? "default" : "outline"}
@@ -1225,7 +1241,7 @@ const APInternshipLearningPage = () => {
                       className={`w-full ${
                         isCertificateAvailable 
                           ? 'bg-green-600 hover:bg-green-700' 
-                          : 'cursor-not-allowed'
+                          : 'cursor-not-allowed opacity-50'
                       }`}
                     >
                       <Download className="h-4 w-4 mr-2" />
@@ -1248,6 +1264,31 @@ const APInternshipLearningPage = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Course Completion Celebration Banner */}
+                {isCertificateAvailable && (
+                  <div className="mt-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Award className="h-8 w-8 mr-3" />
+                        <div>
+                          <h3 className="font-bold text-lg">Congratulations!</h3>
+                          <p className="text-green-100">
+                            You have successfully completed the course and passed the final exam. 
+                            Your certificate is now available for download.
+                          </p>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={handleDownloadCertificate}
+                        className="bg-white text-green-700 hover:bg-green-50 font-semibold"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Get Certificate
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
