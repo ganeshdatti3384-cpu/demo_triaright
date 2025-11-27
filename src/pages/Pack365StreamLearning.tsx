@@ -11,14 +11,11 @@ import {
   BookOpen,
   Play,
   Clock,
-  ArrowLeft,
   Calendar,
   GraduationCap,
-  Award,
   BookCopy,
   Users,
-  FileText,
-  Target
+  FileText
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -166,14 +163,6 @@ const Pack365StreamLearning = () => {
     });
   };
 
-  const handleTakeExam = () => {
-    navigate(`/exam/${stream}`);
-  };
-
-  const handleTakeFinalExam = () => {
-    navigate(`/exam/${stream}/final`);
-  };
-
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
     year: 'numeric', month: 'long', day: 'numeric'
   });
@@ -202,14 +191,6 @@ const Pack365StreamLearning = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <Button 
-              onClick={() => navigate('/pack365-dashboard')}
-              variant="outline"
-              className="mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
             <h1 className="text-3xl font-bold text-gray-900 capitalize">{stream} Stream</h1>
             <p className="text-gray-600 mt-2">Continue your learning journey</p>
           </div>
@@ -240,49 +221,6 @@ const Pack365StreamLearning = () => {
                       <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4"/>Access Until</span>
                       <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
                    </div>
-                </CardContent>
-              </Card>
-              
-              {/* Exam Cards */}
-              <Card className="shadow-md bg-gradient-to-r from-green-500 to-teal-500 text-white">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="h-6 w-6"/>
-                    Stream Exam
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-4 text-green-100">
-                    Take the stream exam to test your knowledge.
-                  </p>
-                  <Button 
-                    variant="secondary" 
-                    className="w-full bg-white text-green-600 hover:bg-green-50"
-                    onClick={handleTakeExam}
-                  >
-                    Take Stream Exam
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-md bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="h-6 w-6"/>
-                    Final Exam
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-4 text-purple-100">
-                    Take the final comprehensive exam.
-                  </p>
-                  <Button 
-                    variant="secondary" 
-                    className="w-full bg-white text-purple-600 hover:bg-purple-50"
-                    onClick={handleTakeFinalExam}
-                  >
-                    Take Final Exam
-                  </Button>
                 </CardContent>
               </Card>
             </aside>
