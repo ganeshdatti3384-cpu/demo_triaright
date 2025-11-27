@@ -46,6 +46,7 @@ interface TopicProgress {
   topicName: string;
   watched: boolean;
   watchedDuration: number;
+  lastWatchedAt?: string;
 }
 
 interface StreamEnrollment {
@@ -96,7 +97,18 @@ const StreamLearningInterface = () => {
   const [videoProgress, setVideoProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [courseProgress, setCourseProgress] = useState(0);
+
+  // --- STATES ADDED FROM OLD FILE FOR PROGRESS LOGIC (required by copied functions) ---
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [topicProgress, setTopicProgress] = useState<TopicProgress[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isTrackingProgress, setIsTrackingProgress] = useState(false);
+  const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [examEligible, setExamEligible] = useState(false);
+  // -----------------------------------------------------------------------------------
 
   // Get current topic
   const currentTopic = currentCourse?.topics?.[currentTopicIndex];
@@ -123,7 +135,9 @@ const StreamLearningInterface = () => {
 
         if (stateCourse && stateEnrollment) {
           setCurrentCourse(stateCourse);
+          setSelectedCourse(stateCourse); // keep selectedCourse in sync for old logic
           setEnrollment(stateEnrollment);
+          setTopicProgress(stateEnrollment.topicProgress || []);
           calculateCourseProgress(stateCourse, stateEnrollment.topicProgress || []);
         } else {
           // Fetch fresh data if not passed via state
@@ -139,12 +153,17 @@ const StreamLearningInterface = () => {
     };
 
     initializeLearning();
-
+    // clear any old interval on unmount
     return () => {
+      if (progressIntervalId) {
+        clearInterval(progressIntervalId);
+      }
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream, location.state]);
 
   const fetchEnrollmentData = async (token: string) => {
@@ -161,6 +180,8 @@ const StreamLearningInterface = () => {
           // Set first available course
           const firstCourse = currentEnrollment.courses[0];
           setCurrentCourse(firstCourse);
+          setSelectedCourse(firstCourse); // keep selectedCourse in sync for old logic
+          setTopicProgress(currentEnrollment.topicProgress || []);
           calculateCourseProgress(firstCourse, currentEnrollment.topicProgress || []);
         } else {
           toast({ title: 'Error', description: 'No courses found in this stream.', variant: 'destructive' });
@@ -173,13 +194,13 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const calculateCourseProgress = (course: Course, topicProgress: TopicProgress[]) => {
+  const calculateCourseProgress = (course: Course, topicProgressState: TopicProgress[]) => {
     if (!course.topics || course.topics.length === 0) {
       setCourseProgress(0);
       return;
     }
 
-    const courseTopicsProgress = topicProgress.filter(
+    const courseTopicsProgress = topicProgressState.filter(
       progress => progress.courseId === course.courseId || progress.courseId === course._id
     );
 
@@ -195,7 +216,38 @@ const StreamLearningInterface = () => {
     return match ? match[1] : null;
   };
 
-  // OLD FILE PROGRESS TRACKING LOGIC - START
+  // --- REMOVED/DISABLED NEW FILE'S PROGRESS-TRACKING LOGIC ---
+  // The following functions and logic from the new file were intentionally removed or disabled:
+  // - updateTopicProgress (new version)
+  // - startProgressTracking (new version)
+  // - calculateTotalWatchedPercentage
+  // - New interval-based progress logic that relied on isPlaying
+  // We will instead use the old file's working progress-tracking functions copied below.
+  // -------------------------------------------------------------------------------------
+
+  // --- COPIED EXACTLY FROM OLD FILE: progress tracking and marking completion ---
+  const extractYouTubeVideoId = (url: string): string | null => {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  const handleTopicClick = async (topic: Topic) => {
+    if (!selectedCourse) return;
+
+    setSelectedTopic(topic);
+    setIsVideoModalOpen(true);
+    setVideoProgress(0);
+    setIsTrackingProgress(false);
+
+    if (progressIntervalId) {
+      clearInterval(progressIntervalId);
+    }
+
+    const intervalId = startProgressTracking(topic);
+    setProgressIntervalId(intervalId);
+  };
+
   const startProgressTracking = (topic: Topic): NodeJS.Timeout => {
     let progress = 0;
     const interval = setInterval(() => {
@@ -221,24 +273,24 @@ const StreamLearningInterface = () => {
   };
 
   const markTopicAsCompleted = async (topic: Topic) => {
-    if (!currentCourse) return;
+    if (!selectedCourse) return;
 
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const currentTopicProgress = getTopicProgress(currentCourse._id, topic.name);
+      const currentTopicProgress = getTopicProgress(selectedCourse._id, topic.name);
       if (currentTopicProgress?.watched) {
         setIsTrackingProgress(false);
         return;
       }
 
       // Calculate total course duration for progress calculation
-      const totalCourseDuration = currentCourse.topics.reduce((sum, t) => sum + t.duration, 0);
+      const totalCourseDuration = selectedCourse.topics.reduce((sum, t) => sum + t.duration, 0);
       const newWatchedPercentage = calculateNewProgress();
 
       const response = await pack365Api.updateTopicProgress(token, {
-        courseId: currentCourse.courseId,
+        courseId: selectedCourse.courseId,
         topicName: topic.name,
         watchedDuration: topic.duration * 60, // Convert to seconds
         totalCourseDuration: totalCourseDuration * 60, // Convert to seconds
@@ -246,38 +298,48 @@ const StreamLearningInterface = () => {
       });
 
       if (response.success) {
-        if (enrollment) {
-          const updatedTopicProgress = [...enrollment.topicProgress];
-          const existingIndex = updatedTopicProgress.findIndex(
-            tp => tp.topicName === topic.name && (tp.courseId === currentCourse._id || tp.courseId === currentCourse.courseId)
+        setTopicProgress(prev => {
+          const existingIndex = prev.findIndex(
+            tp => tp.topicName === topic.name && tp.courseId === selectedCourse._id
           );
           
           if (existingIndex >= 0) {
-            updatedTopicProgress[existingIndex] = { 
-              ...updatedTopicProgress[existingIndex],
-              watched: true, 
-              watchedDuration: topic.duration * 60
-            };
+            return prev.map((tp, index) => 
+              index === existingIndex 
+                ? { 
+                    ...tp, 
+                    watched: true, 
+                    watchedDuration: topic.duration * 60,
+                    lastWatchedAt: new Date().toISOString()
+                  }
+                : tp
+            );
           } else {
-            updatedTopicProgress.push({
-              courseId: currentCourse._id,
-              topicName: topic.name,
-              watched: true,
-              watchedDuration: topic.duration * 60
-            });
+            return [
+              ...prev,
+              {
+                courseId: selectedCourse._id,
+                topicName: topic.name,
+                watched: true,
+                watchedDuration: topic.duration * 60,
+                lastWatchedAt: new Date().toISOString()
+              }
+            ];
           }
+        });
 
-          const updatedEnrollment = {
+        // Update enrollment progress
+        if (enrollment) {
+          setEnrollment({
             ...enrollment,
-            topicProgress: updatedTopicProgress,
             totalWatchedPercentage: newWatchedPercentage
-          };
-
-          setEnrollment(updatedEnrollment);
-          calculateCourseProgress(currentCourse, updatedTopicProgress);
+          });
         }
 
         setIsTrackingProgress(false);
+        
+        // Note: old file called checkExamEligibility() here. We don't copy that because
+        // new file computes exam availability based on courseProgress. However we keep examEligible state in case other logic uses it.
         
         toast({
           title: 'Progress Updated',
@@ -296,12 +358,12 @@ const StreamLearningInterface = () => {
   };
 
   const calculateNewProgress = (): number => {
-    if (!currentCourse) return 0;
+    if (!selectedCourse) return 0;
     
-    const courseTopics = currentCourse.topics || [];
-    const currentWatched = enrollment?.topicProgress.filter(tp => 
-      (tp.courseId === currentCourse._id || tp.courseId === currentCourse.courseId) && tp.watched
-    ).length || 0;
+    const courseTopics = selectedCourse.topics || [];
+    const currentWatched = topicProgress.filter(tp => 
+      tp.courseId === selectedCourse._id && tp.watched
+    ).length;
     
     const newWatchedCount = currentWatched + 1;
     return Math.round((newWatchedCount / courseTopics.length) * 100);
@@ -309,81 +371,93 @@ const StreamLearningInterface = () => {
 
   const handleManualComplete = async (topic: Topic) => {
     await markTopicAsCompleted(topic);
-    setVideoProgress(100);
-    setIsPlaying(false);
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
+    setIsVideoModalOpen(false);
+    setSelectedTopic(null);
+    if (progressIntervalId) {
+      clearInterval(progressIntervalId);
+      setProgressIntervalId(null);
     }
   };
 
-  const getTopicProgress = (courseId: string, topicName: string) => {
-    return enrollment?.topicProgress.find(
-      tp => (tp.courseId === courseId || tp.courseId === currentCourse?.courseId) && tp.topicName === topicName
-    );
-  };
-  // OLD FILE PROGRESS TRACKING LOGIC - END
-
-  // Handle video progress tracking
-  const handleStartProgressTracking = () => {
-    if (currentTopic) {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-      }
-      const intervalId = startProgressTracking(currentTopic);
-      progressIntervalRef.current = intervalId;
-    }
-  };
-
-  const handleStopProgressTracking = () => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
+  const handleCloseModal = () => {
+    setIsVideoModalOpen(false);
+    setSelectedTopic(null);
+    if (progressIntervalId) {
+      clearInterval(progressIntervalId);
+      setProgressIntervalId(null);
     }
     setIsTrackingProgress(false);
   };
 
+  const getTopicProgress = (courseId: string, topicName: string) => {
+    return topicProgress.find(
+      tp => tp.courseId === courseId && tp.topicName === topicName
+    );
+  };
+  // --- END COPIED OLD FUNCTIONS ---
+
+  // Update: keep selectedCourse in sync with currentCourse for old logic to operate
   useEffect(() => {
-    if (isPlaying && currentTopic) {
-      handleStartProgressTracking();
-    } else {
-      handleStopProgressTracking();
+    if (currentCourse) {
+      setSelectedCourse(currentCourse);
     }
+  }, [currentCourse]);
 
-    return () => {
-      handleStopProgressTracking();
-    };
-  }, [isPlaying, currentTopic]);
+  // Keep topicProgress state in sync when enrollment loads/changes
+  useEffect(() => {
+    if (enrollment && enrollment.topicProgress) {
+      setTopicProgress(enrollment.topicProgress);
+    }
+  }, [enrollment]);
 
-  // Handle topic completion
+  // Handle topic completion: use old markTopicAsCompleted behavior
   const handleTopicComplete = () => {
     if (!currentTopic) return;
-    handleManualComplete(currentTopic);
+
+    // Use the old markTopicAsCompleted function path:
+    // Ensure selectedCourse is set
+    if (!selectedCourse && currentCourse) {
+      setSelectedCourse(currentCourse);
+    }
+
+    // mark using the currentTopic (passed to old function)
+    markTopicAsCompleted(currentTopic);
+    setVideoProgress(100);
+    setIsPlaying(false);
   };
 
-  // Navigate to next topic
+  // Navigate to next topic - ensure we start tracking using old handleTopicClick
   const goToNextTopic = () => {
     if (!currentCourse?.topics) return;
 
     if (currentTopicIndex < currentCourse.topics.length - 1) {
-      setCurrentTopicIndex(currentTopicIndex + 1);
+      const nextIndex = currentTopicIndex + 1;
+      setCurrentTopicIndex(nextIndex);
       setVideoProgress(0);
       setIsPlaying(false);
-      handleStopProgressTracking();
+
+      // Start old tracking for next topic
+      const nextTopic = currentCourse.topics[nextIndex];
+      // Ensure selectedCourse set
+      if (!selectedCourse) setSelectedCourse(currentCourse);
+      handleTopicClick(nextTopic);
     }
   };
 
-  // Navigate to previous topic
   const goToPreviousTopic = () => {
     if (currentTopicIndex > 0) {
-      setCurrentTopicIndex(currentTopicIndex - 1);
+      const prevIndex = currentTopicIndex - 1;
+      setCurrentTopicIndex(prevIndex);
       setVideoProgress(0);
       setIsPlaying(false);
-      handleStopProgressTracking();
+
+      const prevTopic = currentCourse!.topics[prevIndex];
+      if (!selectedCourse) setSelectedCourse(currentCourse);
+      handleTopicClick(prevTopic);
     }
   };
 
-  // Check if topic is watched
+  // Check if topic is watched using enrollment/topicProgress (old behavior)
   const isTopicWatched = (topicName: string): boolean => {
     if (!enrollment?.topicProgress || !currentCourse) return false;
 
@@ -437,10 +511,10 @@ const StreamLearningInterface = () => {
     const nextCourse = getNextCourse();
     if (nextCourse) {
       setCurrentCourse(nextCourse);
+      setSelectedCourse(nextCourse); // keep in sync for old logic
       setCurrentTopicIndex(0);
       setVideoProgress(0);
       setIsPlaying(false);
-      handleStopProgressTracking();
       calculateCourseProgress(nextCourse, enrollment?.topicProgress || []);
     }
   };
@@ -549,8 +623,7 @@ const StreamLearningInterface = () => {
                         className="w-full h-96 lg:h-[500px]"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
+                        onLoad={() => { /* iframe doesn't reliably emit play/pause events; tracking is managed by old logic started on topic click */ }}
                         onEnded={handleTopicComplete}
                       />
                     </div>
@@ -594,31 +667,16 @@ const StreamLearningInterface = () => {
                               Saving...
                             </Badge>
                           )}
-                          {isTrackingProgress && (
-                            <Badge variant="secondary" className="text-xs">
-                              Tracking...
-                            </Badge>
-                          )}
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <Button
-                            onClick={() => handleManualComplete(currentTopic)}
-                            variant="default"
-                            size="sm"
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Mark as Completed
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={goToNextTopic}
-                            disabled={currentTopicIndex === (currentCourse.topics?.length || 0) - 1}
-                          >
-                            Next
-                            <ChevronRight className="h-4 w-4 ml-2" />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={goToNextTopic}
+                          disabled={currentTopicIndex === (currentCourse.topics?.length || 0) - 1}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-2" />
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -680,10 +738,13 @@ const StreamLearningInterface = () => {
                           isTopicWatched(topic.name) ? 'bg-green-50 border-green-200' : ''
                         }`}
                         onClick={() => {
+                          // Use old logic to start tracking when user clicks a topic
                           setCurrentTopicIndex(index);
                           setVideoProgress(0);
                           setIsPlaying(false);
-                          handleStopProgressTracking();
+                          // Ensure selectedCourse in sync
+                          if (!selectedCourse && currentCourse) setSelectedCourse(currentCourse);
+                          handleTopicClick(topic);
                         }}
                       >
                         <div className="flex items-center justify-between">
