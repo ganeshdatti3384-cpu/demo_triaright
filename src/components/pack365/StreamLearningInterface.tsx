@@ -100,8 +100,6 @@ const StreamLearningInterface = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [courseProgress, setCourseProgress] = useState(0);
   const [isTrackingProgress, setIsTrackingProgress] = useState(false);
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // Get current topic
   const currentTopic = currentCourse?.topics?.[currentTopicIndex];
@@ -204,28 +202,35 @@ const StreamLearningInterface = () => {
   };
 
   // Start progress tracking (from old file)
-  const startProgressTracking = (topic: Topic): NodeJS.Timeout => {
+  const startProgressTracking = () => {
+    if (!currentTopic) return;
+
     let progress = 0;
+    
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
     const interval = setInterval(() => {
       if (progress >= 100) {
         clearInterval(interval);
-        markTopicAsCompleted(topic);
+        markTopicAsCompleted(currentTopic);
         return;
       }
       
-      progress += (100 / (topic.duration * 60)) * 5;
+      progress += (100 / (currentTopic.duration * 60)) * 5;
       if (progress > 100) progress = 100;
       
       setVideoProgress(progress);
       
       if (progress >= 80 && isTrackingProgress) {
-        markTopicAsCompleted(topic);
+        markTopicAsCompleted(currentTopic);
         clearInterval(interval);
       }
     }, 5000);
 
     setIsTrackingProgress(true);
-    return interval;
+    progressIntervalRef.current = interval;
   };
 
   // Mark topic as completed (from old file)
@@ -233,12 +238,14 @@ const StreamLearningInterface = () => {
     if (!currentCourse || !enrollment) return;
 
     try {
+      setUpdatingProgress(true);
       const token = localStorage.getItem('token');
       if (!token) return;
 
       const currentTopicProgress = getTopicProgress(currentCourse._id, topic.name);
       if (currentTopicProgress?.watched) {
         setIsTrackingProgress(false);
+        setUpdatingProgress(false);
         return;
       }
 
@@ -270,7 +277,7 @@ const StreamLearningInterface = () => {
           };
         } else {
           updatedEnrollment.topicProgress.push({
-            courseId: currentCourse._id,
+            courseId: currentCourse.courseId || currentCourse._id,
             topicName: topic.name,
             watched: true,
             watchedDuration: topic.duration * 60
@@ -284,6 +291,7 @@ const StreamLearningInterface = () => {
         calculateCourseProgress(currentCourse, updatedEnrollment.topicProgress);
         
         setIsTrackingProgress(false);
+        setVideoProgress(100);
         
         toast({
           title: 'Progress Updated',
@@ -298,6 +306,8 @@ const StreamLearningInterface = () => {
         description: 'Failed to update progress', 
         variant: 'destructive' 
       });
+    } finally {
+      setUpdatingProgress(false);
     }
   };
 
@@ -323,49 +333,50 @@ const StreamLearningInterface = () => {
     );
   };
 
-  // Handle topic click with modal (from old file)
-  const handleTopicClick = async (topic: Topic) => {
-    if (!currentCourse) return;
-
-    setSelectedTopic(topic);
-    setIsVideoModalOpen(true);
-    setVideoProgress(0);
-    setIsTrackingProgress(false);
-
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-    }
-
-    const intervalId = startProgressTracking(topic);
-    progressIntervalRef.current = intervalId;
-  };
-
   // Handle manual complete (from old file)
-  const handleManualComplete = async (topic: Topic) => {
-    await markTopicAsCompleted(topic);
-    setIsVideoModalOpen(false);
-    setSelectedTopic(null);
+  const handleManualComplete = async () => {
+    if (!currentTopic) return;
+    await markTopicAsCompleted(currentTopic);
+  };
+
+  // Handle video progress tracking
+  const startProgressTrackingNew = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
+    progressIntervalRef.current = setInterval(() => {
+      if (isPlaying && currentTopic) {
+        const newProgress = Math.min(videoProgress + 5, 100);
+        setVideoProgress(newProgress);
+        
+        // Update progress in backend every 30 seconds or when significant progress is made
+        if (newProgress % 30 === 0) {
+          const watchedDuration = Math.floor((newProgress / 100) * currentTopic.duration);
+          updateTopicProgress(watchedDuration, newProgress >= 90);
+        }
+      }
+    }, 5000);
+  };
+
+  const stopProgressTracking = () => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
   };
 
-  // Handle close modal (from old file)
-  const handleCloseModal = () => {
-    setIsVideoModalOpen(false);
-    setSelectedTopic(null);
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
+  useEffect(() => {
+    if (isPlaying && currentTopic) {
+      startProgressTracking();
+    } else {
+      stopProgressTracking();
     }
-    setIsTrackingProgress(false);
-  };
 
-  // Handle open in new tab (from old file)
-  const handleOpenInNewTab = (topic: Topic) => {
-    window.open(topic.link, '_blank');
-  };
+    return () => {
+      stopProgressTracking();
+    };
+  }, [isPlaying, currentTopic]);
 
   // Update topic progress using backend API
   const updateTopicProgress = async (watchedDuration: number, markAsWatched: boolean = false) => {
@@ -449,53 +460,10 @@ const StreamLearningInterface = () => {
     return Math.round((watchedTopics / totalTopics) * 100);
   };
 
-  // Handle video progress tracking
-  const startProgressTrackingNew = () => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-    }
-
-    progressIntervalRef.current = setInterval(() => {
-      if (isPlaying && currentTopic) {
-        const newProgress = Math.min(videoProgress + 5, 100);
-        setVideoProgress(newProgress);
-        
-        // Update progress in backend every 30 seconds or when significant progress is made
-        if (newProgress % 30 === 0) {
-          const watchedDuration = Math.floor((newProgress / 100) * currentTopic.duration);
-          updateTopicProgress(watchedDuration, newProgress >= 90);
-        }
-      }
-    }, 5000);
-  };
-
-  const stopProgressTracking = () => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    if (isPlaying) {
-      startProgressTrackingNew();
-    } else {
-      stopProgressTracking();
-    }
-
-    return () => {
-      stopProgressTracking();
-    };
-  }, [isPlaying]);
-
   // Handle topic completion
   const handleTopicComplete = () => {
     if (!currentTopic) return;
-
-    const watchedDuration = currentTopic.duration;
-    updateTopicProgress(watchedDuration, true);
-    setVideoProgress(100);
-    setIsPlaying(false);
+    markTopicAsCompleted(currentTopic);
   };
 
   // Navigate to next topic
@@ -622,99 +590,6 @@ const StreamLearningInterface = () => {
     <>
       <Navbar />
       
-      {/* Video Modal from old file */}
-      <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 ${isVideoModalOpen ? 'block' : 'hidden'}`}>
-        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="text-lg font-semibold">{selectedTopic?.name}</h3>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => selectedTopic && handleOpenInNewTab(selectedTopic)}
-              >
-                <ExternalLink className="h-4 w-4 mr-1" />
-                Open in New Tab
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCloseModal}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          
-          <div className="flex-1 flex flex-col p-4">
-            {selectedTopic && (
-              <>
-                {/* YouTube Video Embed */}
-                <div className="flex-1 bg-black rounded-lg mb-4">
-                  {getYouTubeVideoId(selectedTopic.link) ? (
-                    <iframe
-                      src={`https://www.youtube.com/embed/${getYouTubeVideoId(selectedTopic.link)}?autoplay=1`}
-                      title={selectedTopic.name}
-                      className="w-full h-96 rounded-lg"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <div className="w-full h-96 flex items-center justify-center text-white">
-                      <div className="text-center">
-                        <BookOpen className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                        <p className="text-lg mb-2">Video not available</p>
-                        <Button 
-                          onClick={() => handleOpenInNewTab(selectedTopic)}
-                          variant="default"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open Video Link
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Progress Tracking */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Watching Progress</span>
-                    <span className="text-sm text-gray-600">{Math.round(videoProgress)}%</span>
-                  </div>
-                  <Progress value={videoProgress} className="h-2 mb-4" />
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-600">
-                      {isTrackingProgress ? (
-                        <span className="flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          Tracking your progress...
-                        </span>
-                      ) : (
-                        <span className="flex items-center text-green-600">
-                          <CheckCircle2 className="h-4 w-4 mr-1" />
-                          Completed
-                        </span>
-                      )}
-                    </div>
-                    
-                    <Button
-                      onClick={() => selectedTopic && handleManualComplete(selectedTopic)}
-                      variant="default"
-                      size="sm"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Mark as Completed
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -787,15 +662,6 @@ const StreamLearningInterface = () => {
                       <div className="text-center">
                         <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500">No video available for this topic</p>
-                        {currentTopic && (
-                          <Button 
-                            onClick={() => handleTopicClick(currentTopic)}
-                            className="mt-4"
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            Open in Player
-                          </Button>
-                        )}
                       </div>
                     </div>
                   )}
@@ -843,23 +709,16 @@ const StreamLearningInterface = () => {
                         </Button>
                       </div>
 
-                      {/* Additional action buttons */}
-                      <div className="flex gap-2">
+                      {/* Mark as Completed Button */}
+                      <div className="flex justify-center pt-4">
                         <Button
-                          onClick={() => handleTopicClick(currentTopic)}
-                          variant="outline"
-                          className="flex-1"
+                          onClick={handleManualComplete}
+                          variant="default"
+                          disabled={isTopicWatched(currentTopic.name) || updatingProgress}
+                          className="flex items-center gap-2"
                         >
-                          <Play className="h-4 w-4 mr-2" />
-                          Open in Enhanced Player
-                        </Button>
-                        <Button
-                          onClick={() => handleOpenInNewTab(currentTopic)}
-                          variant="outline"
-                          className="flex-1"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open in New Tab
+                          <CheckCircle2 className="h-4 w-4" />
+                          {updatingProgress ? 'Marking...' : 'Mark as Completed'}
                         </Button>
                       </div>
                     </div>
