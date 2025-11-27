@@ -645,6 +645,7 @@ export const pack365Api = {
     return res.data;
   },
 
+  // ✅ ADDED: Update topic progress for Pack365 courses
   updateTopicProgress: async (
     token: string,
     data: {
@@ -667,10 +668,10 @@ export const pack365Api = {
       {
         headers: {
           Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
       }
     );
-
     return res.data;
   },
 
