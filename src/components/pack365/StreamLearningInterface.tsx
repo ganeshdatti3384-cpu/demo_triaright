@@ -644,12 +644,12 @@ const StreamLearningInterface = () => {
 
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Video Player Section */}
+            {/* Content Section - Now just a clean white screen */}
             <div className="lg:col-span-3">
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <span>{currentTopic?.name || 'Select a topic to start learning'}</span>
+                    <span>Welcome to {selectedCourse?.courseName}</span>
                     {currentTopic && (
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -659,56 +659,35 @@ const StreamLearningInterface = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Clean White Screen when no topic is selected */}
-                  {!currentTopic ? (
-                    <div className="aspect-w-16 aspect-h-9 bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center min-h-[400px]">
-                      <div className="text-center">
-                        <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500 text-lg mb-2">Welcome to {selectedCourse?.courseName}</p>
-                        <p className="text-gray-400 mb-4">Select a topic from the sidebar to start learning</p>
-                        <Button 
-                          onClick={() => {
-                            const firstTopic = selectedCourse?.topics?.[0];
-                            if (firstTopic) {
-                              handleTopicClick(firstTopic, 0);
-                            }
-                          }}
-                          variant="default"
-                          className="mt-2"
-                        >
-                          <Play className="h-4 w-4 mr-2" />
-                          Start Learning
-                        </Button>
-                      </div>
+                  {/* Clean White Screen - No Video Player */}
+                  <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center min-h-[500px]">
+                    <div className="text-center max-w-md mx-auto p-8">
+                      <BookOpen className="h-20 w-20 text-gray-400 mx-auto mb-6" />
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                        Welcome to {selectedCourse?.courseName}
+                      </h3>
+                      <p className="text-gray-600 mb-2">
+                        Ready to start your learning journey?
+                      </p>
+                      <p className="text-gray-500 text-sm mb-6">
+                        Select a topic from the sidebar to begin watching the course content
+                      </p>
+                      <Button 
+                        onClick={() => {
+                          const firstTopic = selectedCourse?.topics?.[0];
+                          if (firstTopic) {
+                            handleTopicClick(firstTopic, 0);
+                          }
+                        }}
+                        variant="default"
+                        size="lg"
+                        className="mt-4"
+                      >
+                        <Play className="h-5 w-5 mr-2" />
+                        Start Learning
+                      </Button>
                     </div>
-                  ) : (
-                    <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden">
-                      {extractYouTubeVideoId(currentTopic.link) ? (
-                        <iframe
-                          src={`https://www.youtube.com/embed/${extractYouTubeVideoId(currentTopic.link)}?rel=0&modestbranding=1`}
-                          title={currentTopic.name}
-                          className="w-full h-96 lg:h-[500px]"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      ) : (
-                        <div className="w-full h-96 lg:h-[500px] bg-gray-200 rounded-lg flex items-center justify-center">
-                          <div className="text-center">
-                            <Video className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-500">Video not available</p>
-                            <Button 
-                              onClick={() => handleOpenInNewTab(currentTopic)}
-                              variant="default"
-                              className="mt-2"
-                            >
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              Open Video Link
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  </div>
 
                   {/* Course Document */}
                   {selectedCourse?.documentLink && (
