@@ -59,21 +59,6 @@ interface CourseProgress {
   overallProgress: number;
 }
 
-interface BackendTopicProgress {
-  courseId: string;
-  topicName: string;
-  watched: boolean;
-  watchedDuration: number;
-}
-
-interface BackendEnrollment {
-  stream: string;
-  topicProgress: BackendTopicProgress[];
-  totalWatchedPercentage: number;
-  watchedTopics?: number;
-  totalTopics?: number;
-}
-
 const StreamLearningInterface = () => {
   const { stream } = useParams<{ stream: string }>();
   const location = useLocation();
@@ -116,7 +101,7 @@ const StreamLearningInterface = () => {
     if (selectedCourse) {
       updateCourseProgress();
     }
-  }, [localProgress, selectedCourse, enrollment]);
+  }, [localProgress, selectedCourse]);
 
   useEffect(() => {
     return () => {
@@ -170,71 +155,6 @@ const StreamLearningInterface = () => {
     return localProgress[key] || { watched: false, watchedDuration: 0, lastUpdated: new Date().toISOString() };
   };
 
-  // Calculate topic counts from backend data
-  const calculateTopicCountsFromBackend = (): { completed: number; total: number } => {
-    if (!selectedCourse || !enrollment?.topicProgress) {
-      return { completed: 0, total: 0 };
-    }
-
-    const courseTopics = enrollment.topicProgress.filter((tp: BackendTopicProgress) => 
-      tp.courseId === selectedCourse._id
-    );
-
-    const completed = courseTopics.filter((tp: BackendTopicProgress) => tp.watched).length;
-    const total = courseTopics.length;
-
-    return { completed, total };
-  };
-
-  // Sync local storage with backend data
-  const syncLocalWithBackend = async (backendEnrollment: any, streamCourses: Course[]) => {
-    try {
-      const localProgressKey = `pack365-progress-${stream}`;
-      let localProgress = JSON.parse(localStorage.getItem(localProgressKey) || '{}');
-      let hasChanges = false;
-
-      // For each course in the stream
-      streamCourses.forEach(course => {
-        // For each topic in the course
-        course.topics.forEach(topic => {
-          const localKey = `${course._id}-${topic.name}`;
-          const backendTopic = backendEnrollment.topicProgress?.find((tp: BackendTopicProgress) => 
-            tp.courseId === course._id && tp.topicName === topic.name
-          );
-
-          if (backendTopic) {
-            // If backend has more progress, update local storage
-            if (backendTopic.watched && (!localProgress[localKey] || !localProgress[localKey].watched)) {
-              localProgress[localKey] = {
-                watched: true,
-                watchedDuration: Math.max(localProgress[localKey]?.watchedDuration || 0, backendTopic.watchedDuration),
-                lastUpdated: new Date().toISOString()
-              };
-              hasChanges = true;
-            } else if (backendTopic.watchedDuration > (localProgress[localKey]?.watchedDuration || 0)) {
-              // If backend has more watched duration, update local
-              localProgress[localKey] = {
-                ...localProgress[localKey],
-                watchedDuration: backendTopic.watchedDuration,
-                lastUpdated: new Date().toISOString()
-              };
-              hasChanges = true;
-            }
-          }
-        });
-      });
-
-      if (hasChanges) {
-        localStorage.setItem(localProgressKey, JSON.stringify(localProgress));
-        setLocalProgress(localProgress);
-        console.log('Synced local storage with backend data');
-      }
-
-    } catch (error) {
-      console.warn('Failed to sync local storage with backend:', error);
-    }
-  };
-
   // Update course progress statistics
   const updateCourseProgress = () => {
     if (!selectedCourse) return;
@@ -243,7 +163,6 @@ const StreamLearningInterface = () => {
     let totalWatchedDuration = 0;
     let totalDuration = 0;
 
-    // Calculate from local storage (primary source)
     selectedCourse.topics.forEach(topic => {
       const progress = getLocalProgress(selectedCourse._id, topic.name);
       if (progress.watched) {
@@ -252,16 +171,6 @@ const StreamLearningInterface = () => {
       totalWatchedDuration += progress.watchedDuration;
       totalDuration += topic.duration * 60; // Convert minutes to seconds
     });
-
-    // If we have backend data, merge it (as backup/verification)
-    if (enrollment?.topicProgress) {
-      const backendCompleted = enrollment.topicProgress.filter((tp: BackendTopicProgress) => 
-        tp.courseId === selectedCourse._id && tp.watched
-      ).length;
-      
-      // Use the higher count between local and backend
-      completedTopics = Math.max(completedTopics, backendCompleted);
-    }
 
     const overallProgress = totalDuration > 0 ? Math.min(100, (totalWatchedDuration / totalDuration) * 100) : 0;
 
@@ -337,9 +246,6 @@ const StreamLearningInterface = () => {
       } else {
         setSelectedCourse(streamCourses[0]);
       }
-
-      // Sync local storage with backend data on initial load
-      await syncLocalWithBackend(streamEnrollment, streamCourses);
 
       await checkExamEligibility(streamEnrollment);
 
@@ -472,7 +378,7 @@ const StreamLearningInterface = () => {
       completedAt: new Date().toISOString()
     });
 
-    // Update backend - but don't rely on its response for UI updates
+    // Update backend only when topic is completed
     try {
       const token = localStorage.getItem('token');
       if (token) {
@@ -488,9 +394,6 @@ const StreamLearningInterface = () => {
       // Don't show error to user - progress is saved locally
     }
 
-    // Update UI immediately from local storage
-    updateCourseProgress();
-    
     setIsTrackingProgress(false);
     
     toast({
@@ -499,6 +402,7 @@ const StreamLearningInterface = () => {
       variant: 'default'
     });
 
+    // Update exam eligibility after topic completion
     await checkExamEligibility();
   };
 
@@ -670,7 +574,7 @@ const StreamLearningInterface = () => {
     );
   }
 
-  const backendCounts = calculateTopicCountsFromBackend();
+  const currentTopic = selectedCourse?.topics?.[currentTopicIndex];
 
   return (
     <>
@@ -844,10 +748,7 @@ const StreamLearningInterface = () => {
               </div>
               <Progress value={courseProgress.overallProgress} className="h-2" />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>
-                  {courseProgress.completedTopics} topics completed • 
-                  {backendCounts.completed} backend sync
-                </span>
+                <span>{courseProgress.completedTopics} topics completed</span>
                 <span>{courseProgress.totalTopics} total topics</span>
               </div>
             </div>
@@ -861,10 +762,10 @@ const StreamLearningInterface = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Welcome to {selectedCourse?.courseName}</span>
-                    {selectedTopic && (
+                    {currentTopic && (
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {selectedTopic.duration} min
+                        {currentTopic.duration} min
                       </Badge>
                     )}
                   </CardTitle>
@@ -988,18 +889,6 @@ const StreamLearningInterface = () => {
                         <span>Topics Completed:</span>
                         <span>
                           {courseProgress.completedTopics}/{courseProgress.totalTopics}
-                          <span className="text-xs text-gray-500 ml-1">
-                            (local)
-                          </span>
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Backend Sync:</span>
-                        <span>
-                          {backendCounts.completed}/{backendCounts.total}
-                          <span className="text-xs text-gray-500 ml-1">
-                            (server)
-                          </span>
                         </span>
                       </div>
                       <div className="flex justify-between">
