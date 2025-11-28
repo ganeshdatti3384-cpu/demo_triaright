@@ -634,8 +634,6 @@ const StreamLearningInterface = () => {
     );
   }
 
-  const backendCounts = calculateTopicCountsFromBackend();
-
   return (
     <>
       <Navbar />
@@ -809,8 +807,7 @@ const StreamLearningInterface = () => {
               <Progress value={courseProgress.overallProgress} className="h-2" />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>
-                  {courseProgress.completedTopics} topics completed • 
-                  {backendCounts.completed} backend sync
+                  {courseProgress.completedTopics} topics completed
                 </span>
                 <span>{courseProgress.totalTopics} total topics</span>
               </div>
@@ -949,26 +946,10 @@ const StreamLearningInterface = () => {
                     <h4 className="font-semibold text-sm mb-2">Progress Summary</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span>Topics Completed:</span>
+                        <span>Completed Topics:</span>
                         <span>
                           {courseProgress.completedTopics}/{courseProgress.totalTopics}
-                          <span className="text-xs text-gray-500 ml-1">
-                            (local)
-                          </span>
                         </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Backend Sync:</span>
-                        <span>
-                          {backendCounts.completed}/{backendCounts.total}
-                          <span className="text-xs text-gray-500 ml-1">
-                            (server)
-                          </span>
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Overall Progress:</span>
-                        <span>{courseProgress.completedTopics}/{courseProgress.totalTopics}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Exam Available:</span>
