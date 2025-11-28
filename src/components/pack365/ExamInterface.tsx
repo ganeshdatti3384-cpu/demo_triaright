@@ -141,6 +141,7 @@ const ExamInterface = () => {
           throw new Error('Complete 80% of the course to take the exam');
         }
 
+        // FIX 1: Use correct API endpoint path
         // Fetch available exams
         const examsResponse = await axios.get(
           `${API_BASE_URL}/pack365/exams/available`,
@@ -161,14 +162,34 @@ const ExamInterface = () => {
           examsData = [];
         }
 
-        const courseExam = examsData.find(
-          (e: any) => e.courseId === courseId
-        );
+        console.log('Processed exams data:', examsData);
+        console.log('Looking for course:', courseId, courseName);
+
+        // FIX 2: Better exam finding with multiple fallbacks
+        const courseExam = examsData.find((e: any) => {
+          // Handle different courseId formats
+          const examCourseId = e.courseId?._id || e.courseId;
+          
+          // Try multiple comparison methods
+          return (
+            examCourseId === courseId ||
+            examCourseId?.toString() === courseId?.toString() ||
+            e.courseId?.courseName === courseName
+          );
+        });
 
         if (!courseExam) {
+          console.log('No exam found. Available exams:', examsData.map((e: any) => ({
+            examId: e.examId,
+            courseId: e.courseId?._id || e.courseId,
+            courseName: e.courseId?.courseName || 'Unknown'
+          })));
           throw new Error('No exam available for this course');
         }
 
+        console.log('Found exam:', courseExam);
+
+        // FIX 3: Use correct exam details endpoint
         // Get exam details
         const examDetailsResponse = await axios.get(
           `${API_BASE_URL}/pack365/exams/details/${courseExam.examId}`,
@@ -178,6 +199,10 @@ const ExamInterface = () => {
         console.log('Exam details response:', examDetailsResponse.data);
 
         if (examDetailsResponse.data.success && examDetailsResponse.data.exam) {
+          setExam(examDetailsResponse.data.exam);
+          setTimeLeft(examDetailsResponse.data.exam.timeLimit * 60);
+        } else if (examDetailsResponse.data.exam) {
+          // Alternative response structure
           setExam(examDetailsResponse.data.exam);
           setTimeLeft(examDetailsResponse.data.exam.timeLimit * 60);
         } else {
@@ -195,6 +220,8 @@ const ExamInterface = () => {
 
           if (historyResponse.data.success) {
             setHistory(historyResponse.data.examHistory);
+          } else if (historyResponse.data.examHistory) {
+            setHistory(historyResponse.data.examHistory);
           }
         } catch (historyError) {
           console.warn('Failed to load exam history:', historyError);
@@ -211,7 +238,7 @@ const ExamInterface = () => {
     };
 
     initializeExam();
-  }, [courseId, stream, navigate]);
+  }, [courseId, stream, navigate, courseName]);
 
   // Timer countdown
   useEffect(() => {
@@ -288,6 +315,14 @@ const ExamInterface = () => {
       );
 
       if (response.data.success) {
+        setExamResult(response.data);
+        setShowResults(true);
+        setExamStarted(false);
+        
+        showToast(response.data.isPassed ? 'Exam Passed!' : 'Exam Failed', 
+                 response.data.isPassed ? 'success' : 'error');
+      } else if (response.data.message) {
+        // Alternative success response
         setExamResult(response.data);
         setShowResults(true);
         setExamStarted(false);
