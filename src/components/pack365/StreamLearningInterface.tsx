@@ -77,6 +77,8 @@ const StreamLearningInterface = () => {
   const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [examEligible, setExamEligible] = useState(false);
   const [currentTopicIndex, setCurrentTopicIndex] = useState(0);
+  const [realWatchedSeconds, setRealWatchedSeconds] = useState<number>(0);
+  const [videoStartTime, setVideoStartTime] = useState<number | null>(null);
 
   useEffect(() => {
     loadStreamData();
@@ -156,7 +158,7 @@ const StreamLearningInterface = () => {
         setSelectedCourse(streamCourses[0]);
       }
 
-      await checkExamEligibility();
+      await checkExamEligibility(streamEnrollment);
 
     } catch (error: any) {
       console.error('Error loading stream data:', error);
@@ -171,14 +173,16 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const checkExamEligibility = async () => {
+  const checkExamEligibility = async (currentEnrollment?: Enrollment) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      const enrollmentToCheck = currentEnrollment || enrollment;
+      
       // Check if user has completed enough progress
-      if (enrollment && enrollment.totalWatchedPercentage >= 80) {
-        const availableExamsResponse = await pack365Api.getAvailableExams(token);
+      if (enrollmentToCheck && enrollmentToCheck.totalWatchedPercentage >= 80) {
+        const availableExamsResponse = await pack365Api.getAvailableExamsForUser(token);
         
         if (availableExamsResponse.success && availableExamsResponse.exams) {
           // Check if there are any available exams for current courses
@@ -205,6 +209,28 @@ const StreamLearningInterface = () => {
     }
   };
 
+  // Calculate total stream duration in seconds across ALL courses
+  const calculateTotalStreamDuration = (): number => {
+    return courses.reduce((total, course) => {
+      const courseDuration = course.topics?.reduce((sum, topic) => sum + (topic.duration * 60), 0) || 0;
+      return total + courseDuration;
+    }, 0);
+  };
+
+  // Calculate total watched duration across ALL courses
+  const calculateTotalWatchedDuration = (): number => {
+    return topicProgress.reduce((total, progress) => total + (progress.watchedDuration || 0), 0);
+  };
+
+  // Calculate full stream progress percentage
+  const calculateFullStreamProgress = (): number => {
+    const totalStreamDuration = calculateTotalStreamDuration();
+    if (totalStreamDuration === 0) return 0;
+    
+    const totalWatchedDuration = calculateTotalWatchedDuration();
+    return Math.min(100, (totalWatchedDuration / totalStreamDuration) * 100);
+  };
+
   const extractYouTubeVideoId = (url: string): string | null => {
     const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(regex);
@@ -218,41 +244,43 @@ const StreamLearningInterface = () => {
     setCurrentTopicIndex(index);
     setIsVideoModalOpen(true);
     setVideoProgress(0);
+    setRealWatchedSeconds(0);
+    setVideoStartTime(Date.now());
     setIsTrackingProgress(false);
 
     if (progressIntervalId) {
       clearInterval(progressIntervalId);
+      setProgressIntervalId(null);
     }
 
-    const intervalId = startProgressTracking(topic);
+    const intervalId = startRealProgressTracking(topic);
     setProgressIntervalId(intervalId);
   };
 
-  const startProgressTracking = (topic: Topic): NodeJS.Timeout => {
-    let progress = 0;
+  const startRealProgressTracking = (topic: Topic): NodeJS.Timeout => {
     const interval = setInterval(() => {
-      if (progress >= 100) {
-        clearInterval(interval);
-        markTopicAsCompleted(topic);
-        return;
+      if (videoStartTime) {
+        const secondsWatched = Math.floor((Date.now() - videoStartTime) / 1000);
+        setRealWatchedSeconds(secondsWatched);
+        
+        const topicDurationSeconds = topic.duration * 60;
+        const progress = Math.min(100, (secondsWatched / topicDurationSeconds) * 100);
+        setVideoProgress(progress);
+        
+        // Auto-mark as completed if watched 80% or more
+        if (progress >= 80) {
+          markTopicAsCompleted(topic, secondsWatched);
+          clearInterval(interval);
+          setProgressIntervalId(null);
+        }
       }
-      
-      progress += (100 / (topic.duration * 60)) * 5;
-      if (progress > 100) progress = 100;
-      
-      setVideoProgress(progress);
-      
-      if (progress >= 80 && isTrackingProgress) {
-        markTopicAsCompleted(topic);
-        clearInterval(interval);
-      }
-    }, 5000);
+    }, 1000); // Update every second
 
     setIsTrackingProgress(true);
     return interval;
   };
 
-  const markTopicAsCompleted = async (topic: Topic) => {
+  const markTopicAsCompleted = async (topic: Topic, watchedSeconds?: number) => {
     if (!selectedCourse) return;
 
     try {
@@ -260,72 +288,48 @@ const StreamLearningInterface = () => {
       if (!token) return;
 
       const currentTopicProgress = getTopicProgress(selectedCourse._id, topic.name);
-      if (currentTopicProgress?.watched) {
-        setIsTrackingProgress(false);
-        return;
-      }
+      
+      // Use real watched seconds if available, otherwise use full duration
+      const finalWatchedSeconds = watchedSeconds || (topic.duration * 60);
+      
+      // Calculate full stream progress for backend
+      const totalStreamDuration = calculateTotalStreamDuration();
+      const currentWatchedDuration = calculateTotalWatchedDuration();
+      
+      // Remove current topic's progress if it exists to avoid double counting
+      const existingTopicProgress = topicProgress.find(
+        tp => tp.courseId === selectedCourse._id && tp.topicName === topic.name
+      );
+      const adjustedWatchedDuration = currentWatchedDuration - (existingTopicProgress?.watchedDuration || 0);
+      
+      // Add the new watched duration
+      const newTotalWatchedDuration = adjustedWatchedDuration + finalWatchedSeconds;
+      const newWatchedPercentage = Math.min(100, (newTotalWatchedDuration / totalStreamDuration) * 100);
 
-      // ✅ FIXED: Calculate total duration of ALL courses in the stream (not just selected course)
-      const totalCourseDurationSec =
-        courses.reduce((courseSum, c) => {
-          const topicDurationSec =
-            c.topics?.reduce((topicSum, t) => topicSum + t.duration * 60, 0) || 0;
-          return courseSum + topicDurationSec;
-        }, 0);
-
-      const newWatchedPercentage = calculateNewProgress();
-
-      // FIX 1: Use selectedCourse._id instead of selectedCourse.courseId
       const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse._id, // Use MongoDB _id instead of courseId string
+        courseId: selectedCourse._id,
         topicName: topic.name,
-        watchedDuration: topic.duration * 60, // Convert to seconds
-        totalCourseDuration: totalCourseDurationSec,
+        watchedDuration: finalWatchedSeconds,
+        totalCourseDuration: totalStreamDuration,
         totalWatchedPercentage: newWatchedPercentage
       });
 
       if (response.success) {
-        setTopicProgress(prev => {
-          const existingIndex = prev.findIndex(
-            tp => tp.topicName === topic.name && tp.courseId === selectedCourse._id
-          );
-          
-          if (existingIndex >= 0) {
-            return prev.map((tp, index) => 
-              index === existingIndex 
-                ? { 
-                    ...tp, 
-                    watched: true, 
-                    watchedDuration: topic.duration * 60,
-                    lastWatchedAt: new Date().toISOString()
-                  }
-                : tp
-            );
-          } else {
-            return [
-              ...prev,
-              {
-                courseId: selectedCourse._id,
-                topicName: topic.name,
-                watched: true,
-                watchedDuration: topic.duration * 60,
-                lastWatchedAt: new Date().toISOString()
-              }
-            ];
-          }
-        });
-
-        // Update enrollment progress
-        if (enrollment) {
-          setEnrollment({
-            ...enrollment,
-            totalWatchedPercentage: newWatchedPercentage
-          });
+        // Update local state with backend response
+        setTopicProgress(response.topicProgress || []);
+        
+        // Reload enrollment data to get updated progress
+        const enrollmentResponse = await pack365Api.getMyEnrollments(token);
+        const updatedEnrollment = enrollmentResponse.enrollments.find(
+          (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
+        );
+        
+        if (updatedEnrollment) {
+          setEnrollment(updatedEnrollment);
+          await checkExamEligibility(updatedEnrollment);
         }
 
         setIsTrackingProgress(false);
-        
-        await checkExamEligibility();
         
         toast({
           title: 'Progress Updated',
@@ -343,20 +347,9 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const calculateNewProgress = (): number => {
-    if (!selectedCourse) return 0;
-    
-    const courseTopics = selectedCourse.topics || [];
-    const currentWatched = topicProgress.filter(tp => 
-      tp.courseId === selectedCourse._id && tp.watched
-    ).length;
-    
-    const newWatchedCount = currentWatched + 1;
-    return Math.round((newWatchedCount / courseTopics.length) * 100);
-  };
-
   const handleManualComplete = async (topic: Topic) => {
-    await markTopicAsCompleted(topic);
+    const finalWatchedSeconds = realWatchedSeconds > 0 ? realWatchedSeconds : (topic.duration * 60);
+    await markTopicAsCompleted(topic, finalWatchedSeconds);
     setIsVideoModalOpen(false);
     setSelectedTopic(null);
     if (progressIntervalId) {
@@ -373,6 +366,8 @@ const StreamLearningInterface = () => {
       setProgressIntervalId(null);
     }
     setIsTrackingProgress(false);
+    setRealWatchedSeconds(0);
+    setVideoStartTime(null);
   };
 
   const getTopicProgress = (courseId: string, topicName: string) => {
@@ -381,14 +376,19 @@ const StreamLearningInterface = () => {
     );
   };
 
-  // FIX 3: Optional - Use duration-based progress calculation for better accuracy
+  // Check if current topic is watched
+  const isCurrentTopicWatched = (): boolean => {
+    if (!selectedCourse || !selectedTopic) return false;
+    const progress = getTopicProgress(selectedCourse._id, selectedTopic.name);
+    return progress?.watched || false;
+  };
+
+  // Use duration-based progress calculation for accuracy
   const getCourseProgress = (courseId: string) => {
     const course = courses.find((c) => c._id === courseId);
     if (!course) return 0;
 
-    const totalDurationSec =
-      course.topics?.reduce((sum, t) => sum + t.duration * 60, 0) || 0;
-
+    const totalDurationSec = course.topics?.reduce((sum, t) => sum + t.duration * 60, 0) || 0;
     if (totalDurationSec === 0) return 0;
 
     const watchedSeconds = topicProgress
@@ -423,13 +423,16 @@ const StreamLearningInterface = () => {
       setCurrentTopicIndex(nextIndex);
       setSelectedTopic(nextTopic);
       setVideoProgress(0);
+      setRealWatchedSeconds(0);
+      setVideoStartTime(Date.now());
       setIsTrackingProgress(false);
 
       if (progressIntervalId) {
         clearInterval(progressIntervalId);
+        setProgressIntervalId(null);
       }
 
-      const intervalId = startProgressTracking(nextTopic);
+      const intervalId = startRealProgressTracking(nextTopic);
       setProgressIntervalId(intervalId);
     }
   };
@@ -441,14 +444,17 @@ const StreamLearningInterface = () => {
       setCurrentTopicIndex(prevIndex);
       setSelectedTopic(prevTopic || null);
       setVideoProgress(0);
+      setRealWatchedSeconds(0);
+      setVideoStartTime(Date.now());
       setIsTrackingProgress(false);
 
       if (progressIntervalId) {
         clearInterval(progressIntervalId);
+        setProgressIntervalId(null);
       }
 
       if (prevTopic) {
-        const intervalId = startProgressTracking(prevTopic);
+        const intervalId = startRealProgressTracking(prevTopic);
         setProgressIntervalId(intervalId);
       }
     }
@@ -503,7 +509,8 @@ const StreamLearningInterface = () => {
 
   const currentTopic = selectedCourse?.topics?.[currentTopicIndex];
   const courseProgressValue = selectedCourse ? getCourseProgress(selectedCourse._id) : 0;
-  const overallStreamProgress = enrollment?.totalWatchedPercentage || 0;
+  const overallStreamProgress = enrollment?.totalWatchedPercentage || calculateFullStreamProgress();
+  const isTopicCompleted = isCurrentTopicWatched();
 
   return (
     <>
@@ -585,15 +592,20 @@ const StreamLearningInterface = () => {
                       </Button>
                       
                       <div className="text-sm text-gray-600">
-                        {isTrackingProgress ? (
-                          <span className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1" />
-                            Tracking your progress...
-                          </span>
-                        ) : (
+                        {isTopicCompleted ? (
                           <span className="flex items-center text-green-600">
                             <CheckCircle2 className="h-4 w-4 mr-1" />
                             Completed
+                          </span>
+                        ) : isTrackingProgress ? (
+                          <span className="flex items-center">
+                            <Clock className="h-4 w-4 mr-1" />
+                            Tracking your progress... ({realWatchedSeconds}s)
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-gray-500">
+                            <Clock className="h-4 w-4 mr-1" />
+                            Not completed yet
                           </span>
                         )}
                       </div>
