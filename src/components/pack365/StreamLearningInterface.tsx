@@ -91,6 +91,30 @@ const StreamLearningInterface = () => {
     }, 0);
   };
 
+  // 🔥 NEW: Load topic progress from backend
+  const loadTopicProgress = async (courseId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      console.log('Loading topic progress for course:', courseId);
+      
+      const response = await pack365Api.getCourseTopicProgress(token, courseId);
+      
+      if (response.success) {
+        setTopicProgress(response.topicProgress);
+        console.log('Loaded topic progress from backend:', response.topicProgress);
+      } else {
+        console.log('No topic progress found, starting with empty array');
+        setTopicProgress([]);
+      }
+    } catch (error: any) {
+      console.error('Error loading topic progress:', error);
+      // If the endpoint doesn't exist yet, start with empty progress
+      setTopicProgress([]);
+    }
+  };
+
   useEffect(() => {
     loadStreamData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,6 +127,14 @@ const StreamLearningInterface = () => {
       }
     };
   }, [progressIntervalId]);
+
+  // 🔥 NEW: Load topic progress when course changes
+  useEffect(() => {
+    if (selectedCourse?.courseId) {
+      console.log('Course changed, loading topic progress for:', selectedCourse.courseId);
+      loadTopicProgress(selectedCourse.courseId);
+    }
+  }, [selectedCourse?.courseId]);
 
   const loadStreamData = async () => {
     try {
@@ -143,9 +175,6 @@ const StreamLearningInterface = () => {
         isExamCompleted: streamEnrollment.isExamCompleted ?? false,
         examScore: streamEnrollment.examScore ?? null,
       });
-
-      // Backend /pack365/enrollments does not send topicProgress -> start empty (frontend-only tracking)
-      setTopicProgress([]);
 
       const coursesResponse = await pack365Api.getAllCourses();
       
@@ -338,35 +367,9 @@ const StreamLearningInterface = () => {
       });
 
       if (response.success) {
-        // Update local topicProgress state (frontend-only representation)
-        setTopicProgress(prev => {
-          const existingIndex = prev.findIndex(
-            tp => tp.courseId === courseId && tp.topicName === topic.name
-          );
-
-          if (existingIndex !== -1) {
-            const updated = [...prev];
-            updated[existingIndex] = {
-              ...updated[existingIndex],
-              watched: true,
-              watchedDuration: newTopicWatchedSeconds,
-              lastWatchedAt: new Date().toISOString(),
-            };
-            return updated;
-          }
-
-          return [
-            ...prev,
-            {
-              courseId,
-              topicName: topic.name,
-              watched: true,
-              watchedDuration: newTopicWatchedSeconds,
-              lastWatchedAt: new Date().toISOString(),
-            },
-          ];
-        });
-
+        // 🔥 RELOAD progress from backend to ensure consistency
+        await loadTopicProgress(courseId);
+        
         // Update enrollment totalWatchedPercentage locally
         setEnrollment(prev =>
           prev
@@ -581,7 +584,7 @@ const StreamLearningInterface = () => {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Loading course content.</p>
+            <p>Loading course content...</p>
           </div>
         </div>
       </>
