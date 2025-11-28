@@ -153,7 +153,7 @@ const ExamInterface = () => {
         return;
       }
 
-      // 1) Get available exams
+      // 1) Get available exams using CORRECTED API endpoint
       const availableExams = await pack365Api.getAvailableExamsForUser(token);
       if (!availableExams.success || !availableExams.exams.length) {
         setError('No exams available.');
@@ -188,7 +188,7 @@ const ExamInterface = () => {
 
       setCourseDetails(selectedCourse);
 
-      // 3) Load exam details
+      // 3) Load exam details using CORRECTED API endpoint
       const examId = selectedExam.examId;
       const examDetailResp = await pack365Api.getExamDetails(examId, token);
 
@@ -200,7 +200,7 @@ const ExamInterface = () => {
       setExamDetails(examDetailResp.exam);
       setTimeLeft((examDetailResp.exam.timeLimit || 60) * 60);
 
-      // 4) Load questions
+      // 4) Load questions using CORRECTED API endpoint
       const questionResp = await pack365Api.getExamQuestions(examId, false, token);
       if (!questionResp.success) {
         setError('Failed to load exam questions.');
@@ -209,7 +209,7 @@ const ExamInterface = () => {
 
       setQuestions(questionResp.questions);
 
-      // 5) Load history
+      // 5) Load history using CORRECTED API endpoint
       try {
         const historyResp = await pack365Api.getExamHistory(token, selectedCourse._id);
         if (historyResp.success) {
@@ -257,6 +257,7 @@ const ExamInterface = () => {
         if (selectedAnswers[i] === q.correctAnswer) score++;
       });
 
+      // Submit using CORRECTED API endpoint
       const submitResp = await pack365Api.submitExam(token, {
         courseId,
         examId,
