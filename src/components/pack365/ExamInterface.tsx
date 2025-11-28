@@ -50,11 +50,12 @@ interface Course {
 interface AvailableExam {
   _id: string;
   examId: string;
-  courseId: Course;
+  courseId: any; // More flexible to handle different structures
   maxAttempts: number;
   passingScore: number;
   timeLimit: number;
   isActive: boolean;
+  stream?: string; // Some exams might have stream directly
 }
 
 interface ExamHistory {
@@ -133,45 +134,54 @@ const ExamInterface = () => {
         return;
       }
 
-      // Get available exams for the user
-      console.log('Fetching available exams...');
+      // Get ALL exams first using the working endpoint
+      console.log('Fetching all exams...');
       const availableExamsResponse = await pack365Api.getAvailableExamsForUser(token);
-      console.log('Available exams response:', availableExamsResponse);
+      console.log('All exams response:', availableExamsResponse);
       
       if (!availableExamsResponse.success) {
-        console.error('Available exams API failed:', availableExamsResponse);
-        setError(`Failed to load available exams: ${availableExamsResponse.message}`);
+        console.error('Exams API failed:', availableExamsResponse);
+        setError(`Failed to load exams: ${availableExamsResponse.message || 'Unknown error'}`);
         return;
       }
 
       if (!availableExamsResponse.exams || availableExamsResponse.exams.length === 0) {
-        console.log('No exams available at all');
+        console.log('No exams found');
         setError('No exams are currently available. Please contact administrator.');
         return;
       }
 
-      // Find exam for the current stream - FIXED: Check courseId.stream instead of courseId
-      console.log('All available exams:', availableExamsResponse.exams);
-      const streamExam = availableExamsResponse.exams.find((exam: AvailableExam) => {
-        console.log('Exam course stream:', exam.courseId?.stream, 'Looking for:', stream?.toLowerCase());
-        return exam.courseId?.stream?.toLowerCase() === stream?.toLowerCase();
+      // Filter exams for the current stream
+      console.log('All exams:', availableExamsResponse.exams);
+      const streamExam = availableExamsResponse.exams.find((exam: any) => {
+        // Check different possible structures for course data
+        const courseStream = exam.courseId?.stream || 
+                            exam.courseId?.courseId?.stream || 
+                            exam.stream;
+        console.log('Exam course stream:', courseStream, 'Looking for:', stream?.toLowerCase());
+        return courseStream?.toLowerCase() === stream?.toLowerCase();
       });
 
       console.log('Found stream exam:', streamExam);
 
       if (!streamExam) {
-        const availableStreams = availableExamsResponse.exams
-          .map((e: AvailableExam) => e.courseId?.stream)
-          .filter(Boolean)
-          .join(', ');
+        // Get available streams from all exams
+        const availableStreams = [...new Set(availableExamsResponse.exams
+          .map((exam: any) => {
+            return exam.courseId?.stream || 
+                   exam.courseId?.courseId?.stream || 
+                   exam.stream;
+          })
+          .filter(Boolean))].join(', ');
         
-        setError(`No exam available for ${stream} stream. ${availableStreams ? `Available streams: ${availableStreams}` : 'No streams available.'}`);
+        setError(`No exam available for "${stream}" stream. ${availableStreams ? `Available streams: ${availableStreams}` : 'No streams available.'}`);
         return;
       }
 
-      // Get exam details
-      console.log('Fetching exam details for:', streamExam.examId);
-      const examDetailsResponse = await pack365Api.getExamDetails(streamExam.examId, token);
+      // Get exam details using examId or _id
+      const examIdToUse = streamExam.examId || streamExam._id;
+      console.log('Fetching exam details for:', examIdToUse);
+      const examDetailsResponse = await pack365Api.getExamDetails(examIdToUse, token);
       console.log('Exam details response:', examDetailsResponse);
       
       if (!examDetailsResponse.success || !examDetailsResponse.exam) {
@@ -195,9 +205,11 @@ const ExamInterface = () => {
 
       setQuestions(questionsResponse.questions);
 
-      // Load exam history - FIXED: Use courseId from the exam
+      // Load exam history
       try {
-        const courseIdForHistory = streamExam.courseId?._id || examDetails.courseId;
+        const courseIdForHistory = streamExam.courseId?._id || 
+                                  streamExam.courseId?.courseId?._id || 
+                                  examDetails.courseId;
         if (courseIdForHistory) {
           const historyResponse = await pack365Api.getExamHistory(token, courseIdForHistory);
           console.log('Exam history:', historyResponse);
