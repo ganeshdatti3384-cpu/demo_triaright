@@ -702,37 +702,42 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: All exam endpoints updated to use /pack365/exams/ prefix
-  getExamQuestions: async (
-    examId: string,
-    showAnswers: boolean = false,
-    token: string
-  ): Promise<{ success: boolean; questions: any[]; message?: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/${examId}/questions?showAnswers=${showAnswers}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
-
-  getExamDetails: async (
-    examId: string,
-    token: string
-  ): Promise<{ success: boolean; exam: any; message?: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/details/${examId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
-  },
-
-  getAllExams: async (
+  // NEW: Get available exams for authenticated user
+  getAvailableExamsForUser: async (
     token: string
   ): Promise<{ success: boolean; exams: any[]; message?: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/all`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await axios.get(`${API_BASE_URL}/pack365/exams/available`, {
+      headers: { Authorization: `Bearer ${token}` }
     });
     return res.data;
   },
 
+  // FIXED: Questions endpoint path must match backend: /pack365/exams/questions/:examId
+  // sendAnswers (boolean) is optional and sent as query param 'sendAnswers'
+  getExamQuestions: async (
+    examId: string,
+    sendAnswers: boolean = false,
+    token?: string
+  ): Promise<{ success: boolean; questions: any[]; message?: string }> => {
+    const url = `${API_BASE_URL}/pack365/exams/questions/${examId}?sendAnswers=${sendAnswers}`;
+    const res = await axios.get(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    return res.data;
+  },
+
+  // Get exam details by examId (backend route matches)
+  getExamDetails: async (
+    examId: string,
+    token?: string
+  ): Promise<{ success: boolean; exam: any; message?: string }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/exams/details/${examId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    return res.data;
+  },
+
+  // FIXED: Submit exam - use backend route /pack365/exams/submit
   submitExam: async (
     token: string,
     data: {
@@ -756,37 +761,6 @@ export const pack365Api = {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
-  },
-
-  getAvailableExamsForUser: async (
-    token: string
-  ): Promise<{ success: boolean; exams: any[]; message?: string }> => {
-    try {
-      // Use the existing endpoint that works
-      const res = await axios.get(`${API_BASE_URL}/pack365/exams/all`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (res.data && Array.isArray(res.data)) {
-        return {
-          success: true,
-          exams: res.data
-        };
-      }
-      
-      return {
-        success: false,
-        exams: [],
-        message: 'Invalid response format'
-      };
-    } catch (error: any) {
-      console.error('Error fetching available exams:', error);
-      return {
-        success: false,
-        exams: [],
-        message: error.response?.data?.message || 'Failed to fetch available exams'
-      };
-    }
   },
 
   // FIXED: Corrected parameter order - token first, then courseId
