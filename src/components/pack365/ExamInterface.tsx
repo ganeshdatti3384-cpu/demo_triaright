@@ -103,6 +103,8 @@ const ExamInterface = () => {
       setError(null);
       
       const token = localStorage.getItem('token');
+      console.log('Token available:', !!token);
+      
       if (!token) {
         setError('Authentication required');
         toast({
@@ -115,65 +117,79 @@ const ExamInterface = () => {
       }
 
       // Get available exams for the user
-      const availableExamsResponse = await pack365Api.getAvailableExams(token);
+      console.log('Fetching available exams...');
+      const availableExamsResponse = await pack365Api.getAvailableExamsForUser(token);
+      console.log('Available exams response:', availableExamsResponse);
       
       if (!availableExamsResponse.success) {
-        setError('Failed to load available exams');
+        console.error('Available exams API failed:', availableExamsResponse);
+        setError(`Failed to load available exams: ${availableExamsResponse.message}`);
+        return;
+      }
+
+      if (!availableExamsResponse.exams || availableExamsResponse.exams.length === 0) {
+        console.log('No exams available at all');
+        setError('No exams are currently available. Please contact administrator.');
         return;
       }
 
       // Find exam for the current stream
-      const streamExam = availableExamsResponse.exams?.find((exam: any) => 
-        exam.courseId?.stream?.toLowerCase() === stream?.toLowerCase()
-      );
+      console.log('All available exams:', availableExamsResponse.exams);
+      const streamExam = availableExamsResponse.exams.find((exam: any) => {
+        console.log('Exam stream:', exam.courseId?.stream, 'Looking for:', stream?.toLowerCase());
+        return exam.courseId?.stream?.toLowerCase() === stream?.toLowerCase();
+      });
+
+      console.log('Found stream exam:', streamExam);
 
       if (!streamExam) {
-        setError(`No exam available for ${stream} stream`);
-        toast({
-          title: 'No Exam Available',
-          description: `There is no exam available for the ${stream} stream at this time.`,
-          variant: 'destructive'
-        });
+        setError(`No exam available for ${stream} stream. Available streams: ${
+          availableExamsResponse.exams.map((e: any) => e.courseId?.stream).filter(Boolean).join(', ')
+        }`);
         return;
       }
 
-      // Get exam details and questions
+      // Get exam details
+      console.log('Fetching exam details for:', streamExam.examId);
       const examDetailsResponse = await pack365Api.getExamDetails(streamExam.examId, token);
+      console.log('Exam details response:', examDetailsResponse);
       
       if (!examDetailsResponse.success || !examDetailsResponse.exam) {
-        setError('Failed to load exam details');
+        setError('Failed to load exam details: ' + (examDetailsResponse.message || 'Unknown error'));
         return;
       }
 
       const examDetails = examDetailsResponse.exam;
       setExamDetails(examDetails);
-      setTimeLeft(examDetails.timeLimit * 60); // Convert minutes to seconds
+      setTimeLeft(examDetails.timeLimit * 60);
       
-      // Get questions without answers for the exam
+      // Get questions without answers
+      console.log('Fetching questions for exam:', examDetails.examId);
       const questionsResponse = await pack365Api.getExamQuestions(examDetails.examId, false, token);
+      console.log('Questions response:', questionsResponse);
       
       if (!questionsResponse.success || !questionsResponse.questions) {
-        setError('Failed to load exam questions');
+        setError('Failed to load exam questions: ' + (questionsResponse.message || 'Unknown error'));
         return;
       }
 
       setQuestions(questionsResponse.questions);
 
       // Load exam history
-      const historyResponse = await pack365Api.getExamHistory(examDetails.courseId, token);
-      
-      if (historyResponse.success) {
-        setExamHistory(historyResponse.examHistory);
+      try {
+        const historyResponse = await pack365Api.getExamHistory(examDetails.courseId, token);
+        console.log('Exam history:', historyResponse);
+        if (historyResponse.success) {
+          setExamHistory(historyResponse.examHistory);
+        }
+      } catch (historyError) {
+        console.warn('Failed to load exam history:', historyError);
+        // Continue without history - it's not critical
       }
 
     } catch (error: any) {
       console.error('Error loading exam data:', error);
-      setError('Failed to load exam data. Please try again.');
-      toast({
-        title: 'Error',
-        description: 'Failed to load exam data. Please try again.',
-        variant: 'destructive'
-      });
+      setError(`Failed to load exam data: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
