@@ -57,7 +57,8 @@ const StreamLearningInterface = () => {
   const [videoProgress, setVideoProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const youtubePlayerRef = useRef<any>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout>();
   const saveIntervalRef = useRef<NodeJS.Timeout>();
 
   // Get selected course from navigation state
@@ -66,6 +67,13 @@ const StreamLearningInterface = () => {
   // Simple toast replacement
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     console.log(`${type.toUpperCase()}: ${message}`);
+  };
+
+  // Extract YouTube video ID from URL
+  const getYouTubeVideoId = (url: string): string | null => {
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : null;
   };
 
   // Simple progress bar component
@@ -77,6 +85,121 @@ const StreamLearningInterface = () => {
       ></div>
     </div>
   );
+
+  // Initialize YouTube Player
+  const initializeYouTubePlayer = (videoId: string) => {
+    if (!window.YT) {
+      // Load YouTube IFrame API if not already loaded
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      window.onYouTubeIframeAPIReady = () => {
+        createYouTubePlayer(videoId);
+      };
+    } else {
+      createYouTubePlayer(videoId);
+    }
+  };
+
+  const createYouTubePlayer = (videoId: string) => {
+    youtubePlayerRef.current = new window.YT.Player('youtube-player', {
+      height: '100%',
+      width: '100%',
+      videoId: videoId,
+      playerVars: {
+        playsinline: 1,
+        modestbranding: 1,
+        rel: 0
+      },
+      events: {
+        'onReady': onPlayerReady,
+        'onStateChange': onPlayerStateChange,
+        'onError': onPlayerError
+      }
+    });
+  };
+
+  const onPlayerReady = (event: any) => {
+    console.log('YouTube player ready');
+    // Set initial progress if any
+    if (watchedDuration > 0) {
+      event.target.seekTo(watchedDuration);
+    }
+  };
+
+  const onPlayerStateChange = (event: any) => {
+    const playerState = event.data;
+    
+    switch (playerState) {
+      case window.YT.PlayerState.PLAYING:
+        setIsPlaying(true);
+        startProgressTracking();
+        break;
+      case window.YT.PlayerState.PAUSED:
+        setIsPlaying(false);
+        stopProgressTracking();
+        break;
+      case window.YT.PlayerState.ENDED:
+        setIsPlaying(false);
+        stopProgressTracking();
+        // Auto-mark as complete when video ends
+        markTopicComplete();
+        break;
+      case window.YT.PlayerState.BUFFERING:
+      case window.YT.PlayerState.CUED:
+        break;
+    }
+  };
+
+  const onPlayerError = (event: any) => {
+    console.error('YouTube player error:', event.data);
+    setError('Failed to load video. Please check the video URL.');
+  };
+
+  const startProgressTracking = () => {
+    stopProgressTracking(); // Clear any existing interval
+    
+    progressIntervalRef.current = setInterval(() => {
+      if (youtubePlayerRef.current && youtubePlayerRef.current.getCurrentTime) {
+        const currentTime = youtubePlayerRef.current.getCurrentTime();
+        const duration = youtubePlayerRef.current.getDuration();
+        
+        setWatchedDuration(currentTime);
+        setVideoProgress(duration > 0 ? (currentTime / duration) * 100 : 0);
+
+        // Auto-mark as complete if within 95% of duration
+        if (duration > 0 && currentTime >= duration * 0.95) {
+          const currentTopic = course?.topics[currentTopicIndex];
+          const topicProgress = enrollment?.topicProgress?.find(
+            (tp: TopicProgress) => 
+              tp.courseId === course?.courseId && tp.topicName === currentTopic?.name
+          );
+          
+          if (!topicProgress?.watched) {
+            markTopicComplete();
+          }
+        }
+      }
+    }, 1000);
+  };
+
+  const stopProgressTracking = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+  };
+
+  const handlePlayPause = () => {
+    if (!youtubePlayerRef.current) return;
+
+    if (isPlaying) {
+      youtubePlayerRef.current.pauseVideo();
+    } else {
+      youtubePlayerRef.current.playVideo();
+    }
+  };
 
   useEffect(() => {
     const initializeLearning = async () => {
@@ -192,6 +315,32 @@ const StreamLearningInterface = () => {
     initializeLearning();
   }, [selectedCourse, stream, navigate]);
 
+  // Initialize YouTube player when topic changes
+  useEffect(() => {
+    if (course && course.topics[currentTopicIndex]) {
+      const currentTopic = course.topics[currentTopicIndex];
+      const videoId = getYouTubeVideoId(currentTopic.link);
+      
+      if (videoId) {
+        // Destroy existing player
+        if (youtubePlayerRef.current) {
+          youtubePlayerRef.current.destroy();
+          youtubePlayerRef.current = null;
+        }
+        
+        // Initialize new player
+        initializeYouTubePlayer(videoId);
+      }
+    }
+
+    return () => {
+      stopProgressTracking();
+      if (youtubePlayerRef.current) {
+        youtubePlayerRef.current.destroy();
+      }
+    };
+  }, [currentTopicIndex, course]);
+
   // Auto-save progress every 10 seconds
   useEffect(() => {
     if (course && enrollment) {
@@ -206,6 +355,7 @@ const StreamLearningInterface = () => {
       if (saveIntervalRef.current) {
         clearInterval(saveIntervalRef.current);
       }
+      stopProgressTracking();
     };
   }, [course, enrollment, watchedDuration]);
 
@@ -306,35 +456,12 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const handleVideoProgress = () => {
-    if (!videoRef.current) return;
-
-    const video = videoRef.current;
-    const currentTime = video.currentTime;
-    const duration = video.duration;
-    
-    setWatchedDuration(currentTime);
-    setVideoProgress(duration > 0 ? (currentTime / duration) * 100 : 0);
-
-    // Auto-mark as complete if within 95% of duration
-    if (duration > 0 && currentTime >= duration * 0.95) {
-      const currentTopic = course?.topics[currentTopicIndex];
-      const topicProgress = enrollment?.topicProgress?.find(
-        (tp: TopicProgress) => 
-          tp.courseId === course?.courseId && tp.topicName === currentTopic?.name
-      );
-      
-      if (!topicProgress?.watched) {
-        markTopicComplete();
-      }
-    }
-  };
-
   const handleTopicSelect = (index: number) => {
     setCurrentTopicIndex(index);
     setWatchedDuration(0);
     setVideoProgress(0);
     setIsPlaying(false);
+    stopProgressTracking();
   };
 
   const handleTakeExam = () => {
@@ -438,6 +565,7 @@ const StreamLearningInterface = () => {
   const currentTopic = course.topics[currentTopicIndex];
   const totalProgress = enrollment?.totalWatchedPercentage || 0;
   const isExamEligible = totalProgress >= 80;
+  const youtubeVideoId = currentTopic ? getYouTubeVideoId(currentTopic.link) : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -564,26 +692,16 @@ const StreamLearningInterface = () => {
                 </span>
               </div>
               
-              {/* Video Player */}
+              {/* YouTube Player */}
               <div className="bg-black rounded-lg aspect-video mb-4">
-                {currentTopic.link ? (
-                  <video
-                    ref={videoRef}
-                    key={currentTopicIndex}
-                    className="w-full h-full rounded-lg"
-                    controls
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onTimeUpdate={handleVideoProgress}
-                  >
-                    <source src={currentTopic.link} type="video/mp4" />
-                    Your browser does not support the video tag.
-                  </video>
+                {youtubeVideoId ? (
+                  <div id="youtube-player" className="w-full h-full rounded-lg"></div>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white">
                     <div className="text-center">
                       <PlayIcon />
-                      <p>Video content not available</p>
+                      <p>YouTube video not available</p>
+                      <p className="text-sm text-gray-400 mt-2">Video ID: {currentTopic.link}</p>
                     </div>
                   </div>
                 )}
@@ -593,8 +711,13 @@ const StreamLearningInterface = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <button
-                    onClick={() => videoRef.current?.paused ? videoRef.current.play() : videoRef.current?.pause()}
-                    className="border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 flex items-center space-x-2"
+                    onClick={handlePlayPause}
+                    disabled={!youtubeVideoId}
+                    className={`border border-gray-300 rounded-lg px-4 py-2 flex items-center space-x-2 ${
+                      youtubeVideoId 
+                        ? 'hover:bg-gray-50' 
+                        : 'opacity-50 cursor-not-allowed'
+                    }`}
                   >
                     {isPlaying ? <PauseIcon /> : <PlayIcon />}
                     <span>{isPlaying ? 'Pause' : 'Play'}</span>
@@ -667,5 +790,13 @@ const StreamLearningInterface = () => {
     </div>
   );
 };
+
+// Add YouTube API types to Window interface
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
 
 export default StreamLearningInterface;
