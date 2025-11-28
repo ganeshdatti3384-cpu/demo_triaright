@@ -659,7 +659,29 @@ const StreamLearningInterface = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {currentTopic ? (
+                  {/* Clean White Screen when no topic is selected */}
+                  {!currentTopic ? (
+                    <div className="aspect-w-16 aspect-h-9 bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500 text-lg mb-2">Welcome to {selectedCourse?.courseName}</p>
+                        <p className="text-gray-400 mb-4">Select a topic from the sidebar to start learning</p>
+                        <Button 
+                          onClick={() => {
+                            const firstTopic = selectedCourse?.topics?.[0];
+                            if (firstTopic) {
+                              handleTopicClick(firstTopic, 0);
+                            }
+                          }}
+                          variant="default"
+                          className="mt-2"
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Start Learning
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
                     <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden">
                       {extractYouTubeVideoId(currentTopic.link) ? (
                         <iframe
@@ -685,13 +707,6 @@ const StreamLearningInterface = () => {
                           </div>
                         </div>
                       )}
-                    </div>
-                  ) : (
-                    <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500">Select a topic to start watching</p>
-                      </div>
                     </div>
                   )}
 
