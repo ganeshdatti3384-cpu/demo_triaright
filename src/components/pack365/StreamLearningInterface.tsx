@@ -787,17 +787,6 @@ const StreamLearningInterface = () => {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Stream
               </Button>
-              
-              {/* Overall Course Progress Mini Bar */}
-              <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-lg border shadow-sm min-w-[200px] self-start">
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between text-xs text-gray-600 mb-1">
-                    <span>Course Progress</span>
-                    <span>{courseProgress.completedTopics}/{courseProgress.totalTopics}</span>
-                  </div>
-                  <Progress value={courseProgress.overallProgress} className="h-2" />
-                </div>
-              </div>
             </div>
             
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -810,21 +799,6 @@ const StreamLearningInterface = () => {
                 <Badge variant={courseProgress.overallProgress >= 100 ? "default" : "secondary"} className="text-sm">
                   {courseProgress.completedTopics}/{courseProgress.totalTopics} Topics
                 </Badge>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="mt-4">
-              <div className="flex justify-between text-sm text-gray-600 mb-2">
-                <span>Overall Progress</span>
-                <span>{courseProgress.completedTopics}/{courseProgress.totalTopics}</span>
-              </div>
-              <Progress value={courseProgress.overallProgress} className="h-2" />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>
-                  {courseProgress.completedTopics} topics completed
-                </span>
-                <span>{courseProgress.totalTopics} total topics</span>
               </div>
             </div>
           </div>
