@@ -58,7 +58,6 @@ const StreamLearningInterface = () => {
   const [error, setError] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout>();
   const saveIntervalRef = useRef<NodeJS.Timeout>();
 
   // Get selected course from navigation state
@@ -67,8 +66,6 @@ const StreamLearningInterface = () => {
   // Simple toast replacement
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     console.log(`${type.toUpperCase()}: ${message}`);
-    // You can replace this with your toast implementation
-    alert(`${type === 'error' ? 'Error' : 'Success'}: ${message}`);
   };
 
   // Simple progress bar component
@@ -85,13 +82,13 @@ const StreamLearningInterface = () => {
     const initializeLearning = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
-        showToast('Authentication Required', 'error');
+        setError('Authentication Required');
         navigate('/login');
         return;
       }
 
       if (!selectedCourse) {
-        showToast('No Course Selected', 'error');
+        setError('No Course Selected');
         navigate(`/pack365-learning/${stream}`);
         return;
       }
@@ -100,68 +97,93 @@ const StreamLearningInterface = () => {
         setLoading(true);
         setError(null);
         
+        console.log('Fetching course details for:', selectedCourse.courseId);
+        
         // Fetch course details
         const courseResponse = await axios.get(
           `${API_BASE_URL}/pack365/courses/${selectedCourse.courseId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        if (courseResponse.data.success) {
+        console.log('Course response:', courseResponse.data);
+
+        if (courseResponse.data.success && courseResponse.data.data) {
           setCourse(courseResponse.data.data);
         } else {
-          throw new Error('Failed to load course');
+          throw new Error('Failed to load course data');
         }
 
         // Fetch user enrollments to get progress
+        console.log('Fetching enrollments...');
         const enrollmentResponse = await axios.get(
           `${API_BASE_URL}/pack365/enrollments`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        if (enrollmentResponse.data.success) {
-          const streamEnrollment = enrollmentResponse.data.enrollments.find(
-            (e: StreamEnrollment) => e.stream.toLowerCase() === stream?.toLowerCase()
-          );
+        console.log('Enrollment response:', enrollmentResponse.data);
+
+        // Handle different response structures
+        let enrollmentsData = [];
+        
+        if (enrollmentResponse.data.enrollments) {
+          // Structure: { success: true, enrollments: [...] }
+          enrollmentsData = enrollmentResponse.data.enrollments;
+        } else if (Array.isArray(enrollmentResponse.data)) {
+          // Structure: [...]
+          enrollmentsData = enrollmentResponse.data;
+        } else if (enrollmentResponse.data.success && enrollmentResponse.data.data) {
+          // Structure: { success: true, data: [...] }
+          enrollmentsData = enrollmentResponse.data.data;
+        } else {
+          console.warn('Unexpected enrollment response structure:', enrollmentResponse.data);
+          enrollmentsData = [];
+        }
+
+        const streamEnrollment = enrollmentsData.find(
+          (e: StreamEnrollment) => e.stream.toLowerCase() === stream?.toLowerCase()
+        );
+        
+        if (streamEnrollment) {
+          console.log('Found enrollment:', streamEnrollment);
+          setEnrollment(streamEnrollment);
           
-          if (streamEnrollment) {
-            setEnrollment(streamEnrollment);
-            
-            // Find last watched topic for this course
-            const courseProgress = streamEnrollment.topicProgress.filter(
-              (tp: TopicProgress) => tp.courseId === selectedCourse.courseId
+          // Find last watched topic for this course
+          const courseProgress = streamEnrollment.topicProgress?.filter(
+            (tp: TopicProgress) => tp.courseId === selectedCourse.courseId
+          ) || [];
+
+          console.log('Course progress:', courseProgress);
+          
+          if (courseProgress.length > 0 && courseResponse.data.data.topics) {
+            // Find first unwatched topic or last topic with progress
+            const unwatchedTopicIndex = courseResponse.data.data.topics.findIndex(
+              (topic: Topic) => !courseProgress.some((tp: TopicProgress) => 
+                tp.topicName === topic.name && tp.watched
+              )
             );
             
-            if (courseProgress.length > 0) {
-              // Find first unwatched topic or last topic with progress
-              const unwatchedTopicIndex = courseResponse.data.data.topics.findIndex(
-                (topic: Topic) => !courseProgress.some((tp: TopicProgress) => 
-                  tp.topicName === topic.name && tp.watched
-                )
+            if (unwatchedTopicIndex !== -1) {
+              setCurrentTopicIndex(unwatchedTopicIndex);
+              const currentTopicProgress = courseProgress.find(
+                (tp: TopicProgress) => tp.topicName === courseResponse.data.data.topics[unwatchedTopicIndex].name
               );
-              
-              if (unwatchedTopicIndex !== -1) {
-                setCurrentTopicIndex(unwatchedTopicIndex);
-                const currentTopicProgress = courseProgress.find(
-                  (tp: TopicProgress) => tp.topicName === courseResponse.data.data.topics[unwatchedTopicIndex].name
+              if (currentTopicProgress) {
+                setWatchedDuration(currentTopicProgress.watchedDuration);
+                const topicDuration = courseResponse.data.data.topics[unwatchedTopicIndex].duration * 60;
+                setVideoProgress(
+                  topicDuration > 0 ? (currentTopicProgress.watchedDuration / topicDuration) * 100 : 0
                 );
-                if (currentTopicProgress) {
-                  setWatchedDuration(currentTopicProgress.watchedDuration);
-                  setVideoProgress(
-                    (currentTopicProgress.watchedDuration / (courseResponse.data.data.topics[unwatchedTopicIndex].duration * 60)) * 100
-                  );
-                }
               }
             }
-          } else {
-            throw new Error('Enrollment not found');
           }
         } else {
-          throw new Error('Failed to load enrollment');
+          console.warn('No enrollment found for stream:', stream);
+          setEnrollment(null);
         }
       } catch (error: any) {
         console.error('Error initializing learning:', error);
-        setError(error.response?.data?.message || error.message || 'Failed to load course content');
-        showToast('Failed to load course content', 'error');
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to load course content';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -200,7 +222,7 @@ const StreamLearningInterface = () => {
           courseId: course.courseId,
           topicName: currentTopic.name,
           watchedDuration: watchedDuration,
-          totalCourseDuration: course.totalDuration * 60, // Convert to seconds
+          totalCourseDuration: course.totalDuration * 60,
           totalWatchedPercentage: calculateTotalWatchedPercentage()
         },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -213,9 +235,9 @@ const StreamLearningInterface = () => {
   const calculateTotalWatchedPercentage = (): number => {
     if (!course || !enrollment) return 0;
 
-    const courseProgress = enrollment.topicProgress.filter(
+    const courseProgress = enrollment.topicProgress?.filter(
       (tp: TopicProgress) => tp.courseId === course.courseId
-    );
+    ) || [];
 
     let totalWatchedSeconds = 0;
     let totalDurationSeconds = 0;
@@ -244,7 +266,7 @@ const StreamLearningInterface = () => {
         {
           courseId: course.courseId,
           topicName: currentTopic.name,
-          watchedDuration: topicDurationSeconds, // Mark as fully watched
+          watchedDuration: topicDurationSeconds,
           totalCourseDuration: course.totalDuration * 60,
           totalWatchedPercentage: calculateTotalWatchedPercentage()
         },
@@ -256,7 +278,7 @@ const StreamLearningInterface = () => {
         setEnrollment((prev: any) => ({
           ...prev,
           topicProgress: [
-            ...prev.topicProgress.filter((tp: TopicProgress) => 
+            ...(prev.topicProgress || []).filter((tp: TopicProgress) => 
               !(tp.courseId === course.courseId && tp.topicName === currentTopic.name)
             ),
             {
@@ -266,7 +288,7 @@ const StreamLearningInterface = () => {
               watchedDuration: topicDurationSeconds
             }
           ],
-          totalWatchedPercentage: response.data.totalWatchedPercentage
+          totalWatchedPercentage: response.data.totalWatchedPercentage || calculateTotalWatchedPercentage()
         }));
 
         showToast('Topic marked as complete!');
@@ -297,7 +319,7 @@ const StreamLearningInterface = () => {
     // Auto-mark as complete if within 95% of duration
     if (duration > 0 && currentTime >= duration * 0.95) {
       const currentTopic = course?.topics[currentTopicIndex];
-      const topicProgress = enrollment?.topicProgress.find(
+      const topicProgress = enrollment?.topicProgress?.find(
         (tp: TopicProgress) => 
           tp.courseId === course?.courseId && tp.topicName === currentTopic?.name
       );
@@ -328,7 +350,7 @@ const StreamLearningInterface = () => {
   };
 
   const isTopicCompleted = (topicName: string): boolean => {
-    if (!enrollment) return false;
+    if (!enrollment || !enrollment.topicProgress) return false;
     
     const topicProgress = enrollment.topicProgress.find(
       (tp: TopicProgress) => 
@@ -339,7 +361,7 @@ const StreamLearningInterface = () => {
   };
 
   const getTopicProgress = (topicName: string): number => {
-    if (!enrollment) return 0;
+    if (!enrollment || !enrollment.topicProgress) return 0;
     
     const topicProgress = enrollment.topicProgress.find(
       (tp: TopicProgress) => 
