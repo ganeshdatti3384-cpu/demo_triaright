@@ -162,7 +162,7 @@ const App = () => {
             }
           />
           
-          {/* Pack365 Learning Routes - MOVE THESE BEFORE OTHER PROTECTED ROUTES */}
+          {/* Pack365 Learning Routes */}
           <Route 
             path="/pack365-learning/:stream" 
             element={
@@ -186,6 +186,24 @@ const App = () => {
                 <Pack365Dashboard />
               </ProtectedRoute>
             } 
+          />
+          
+          {/* Exam Routes - ADD THESE ROUTES */}
+          <Route
+            path="/exam/:stream"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <ExamInterface />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/exam-result/:stream"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <ExamResult />
+              </ProtectedRoute>
+            }
           />
           
           {/* Protected Routes with Profile Completion */}
@@ -308,24 +326,6 @@ const App = () => {
             element={
               <ProtectedRoute allowedRoles={['employee']}>
                 <EnhancedProfile />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Exam Routes */}
-          <Route
-            path="/exam/:stream"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <ExamInterface />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/exam-result/:stream"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <ExamResult />
               </ProtectedRoute>
             }
           />
