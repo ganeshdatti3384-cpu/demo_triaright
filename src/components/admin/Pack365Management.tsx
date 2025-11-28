@@ -31,7 +31,7 @@ const Pack365Management = () => {
   const [fileValidation, setFileValidation] = useState({ isValid: true, message: '' });
   const [viewType, setViewType] = useState<'streams' | 'courses'>('streams');
   
-  // ✅ NEW: View Exam states
+  // View Exam states
   const [showViewExamDialog, setShowViewExamDialog] = useState(false);
   const [viewingExamCourse, setViewingExamCourse] = useState<Pack365Course | null>(null);
   const [examQuestions, setExamQuestions] = useState<any[]>([]);
@@ -65,7 +65,7 @@ const Pack365Management = () => {
     }
   }, [viewType, selectedStream]);
 
-  // ✅ NEW: Fetch exam questions for a course
+  // ✅ UPDATED: Fix exam retrieval based on backend routes
   const fetchExamQuestions = async (course: Pack365Course) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -78,23 +78,76 @@ const Pack365Management = () => {
 
     try {
       setLoadingExam(true);
-      const courseId = course.courseId || course._id;
-      const response = await fetch(`https://triaright.com/api/pack365/exams/${courseId}`, {
+      
+      // First, we need to get the exam ID for this course
+      // Let's try to get all exams and find the one for this course
+      const allExamsResponse = await fetch('https://triaright.com/api/pack365/exams/all', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      const result = await response.json();
+      if (!allExamsResponse.ok) {
+        throw new Error('Failed to fetch exams list');
+      }
 
-      if (response.ok && result.success) {
-        setExamQuestions(result.questions || []);
+      const allExamsResult = await allExamsResponse.json();
+      
+      // Find the exam for this course
+      const courseExam = allExamsResult.find((exam: any) => {
+        // Check if courseId matches either by object ID or courseId field
+        return exam.courseId?._id === course._id || 
+               exam.courseId?._id === course.courseId ||
+               exam.courseId === course._id ||
+               exam.courseId === course.courseId;
+      });
+
+      if (!courseExam) {
+        setExamQuestions([]);
+        setViewingExamCourse(course);
+        setShowViewExamDialog(true);
+        toast({
+          title: 'No exam found',
+          description: 'This course does not have an exam uploaded yet.',
+          variant: 'default',
+        });
+        return;
+      }
+
+      // Now get the questions for this exam
+      const examId = courseExam.examId;
+      const questionsResponse = await fetch(`https://triaright.com/api/pack365/exams/${examId}/questions?showAnswers=true`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (questionsResponse.ok) {
+        const questionsResult = await questionsResponse.json();
+        setExamQuestions(questionsResult.questions || []);
         setViewingExamCourse(course);
         setShowViewExamDialog(true);
       } else {
-        throw new Error(result.message || 'Failed to fetch exam questions');
+        // If that fails, try the exam details endpoint
+        const detailsResponse = await fetch(`https://triaright.com/api/pack365/exams/details/${examId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (detailsResponse.ok) {
+          const detailsResult = await detailsResponse.json();
+          setExamQuestions(detailsResult.questions || []);
+          setViewingExamCourse(course);
+          setShowViewExamDialog(true);
+        } else {
+          throw new Error('Failed to fetch exam questions');
+        }
       }
+      
     } catch (error: any) {
       console.error('Error fetching exam questions:', error);
       toast({
@@ -109,9 +162,10 @@ const Pack365Management = () => {
 
   // ✅ NEW: Filter exam questions based on search and type
   const filteredExamQuestions = examQuestions.filter(question => {
-    const matchesSearch = question.Question?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         question.Description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || question.Type === filterType;
+    const matchesSearch = question.questionText?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         question.Question?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         question.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || question.type === filterType;
     return matchesSearch && matchesType;
   });
 
@@ -125,7 +179,6 @@ const Pack365Management = () => {
     }
   };
 
-  // Rest of your existing functions remain the same...
   const validateExcelFile = async (file: File): Promise<{ isValid: boolean; message: string; rowCount?: number }> => {
     return new Promise((resolve) => {
       if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
@@ -363,7 +416,6 @@ EXAM UPLOAD TEMPLATE INSTRUCTIONS:
     });
   };
 
-  // Rest of your existing functions (handleAddStream, handleUpdateStream, handleDeleteStream, etc.) remain exactly the same...
   const handleAddStream = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -1138,7 +1190,7 @@ EXAM UPLOAD TEMPLATE INSTRUCTIONS:
         </DialogContent>
       </Dialog>
 
-      {/* ✅ NEW: View Exam Dialog */}
+      {/* ✅ UPDATED: View Exam Dialog with correct field mapping */}
       <Dialog open={showViewExamDialog} onOpenChange={setShowViewExamDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -1185,9 +1237,9 @@ EXAM UPLOAD TEMPLATE INSTRUCTIONS:
                     <p className="text-sm text-blue-600">
                       Total Questions: {examQuestions.length} | 
                       Showing: {filteredExamQuestions.length} |
-                      Easy: {examQuestions.filter(q => q.Type === 'easy').length} |
-                      Medium: {examQuestions.filter(q => q.Type === 'medium').length} |
-                      Hard: {examQuestions.filter(q => q.Type === 'hard').length}
+                      Easy: {examQuestions.filter(q => q.type === 'easy').length} |
+                      Medium: {examQuestions.filter(q => q.type === 'medium').length} |
+                      Hard: {examQuestions.filter(q => q.type === 'hard').length}
                     </p>
                   </div>
                   <Badge variant="outline" className="text-blue-600">
@@ -1209,39 +1261,56 @@ EXAM UPLOAD TEMPLATE INSTRUCTIONS:
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center space-x-2">
-                            <Badge variant={getDifficultyVariant(question.Type)} className="capitalize">
-                              {question.Type || 'unknown'}
+                            <Badge variant={getDifficultyVariant(question.type)} className="capitalize">
+                              {question.type || 'unknown'}
                             </Badge>
                             <span className="text-sm font-medium text-gray-500">Question {index + 1}</span>
                           </div>
-                          {question.CorrectAnswer && (
+                          {question.correctAnswer && (
                             <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
-                              Correct: {question.CorrectAnswer}
+                              Correct: {question.correctAnswer}
                             </Badge>
                           )}
                         </div>
                         
-                        <h4 className="font-semibold mb-3 text-lg">{question.Question}</h4>
+                        {/* ✅ UPDATED: Use correct field names from backend schema */}
+                        <h4 className="font-semibold mb-3 text-lg">{question.questionText || question.Question}</h4>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-                          <div className={`p-2 rounded border ${question.CorrectAnswer === question.Option1 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
-                            <span className="font-medium">A: </span>{question.Option1}
-                          </div>
-                          <div className={`p-2 rounded border ${question.CorrectAnswer === question.Option2 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
-                            <span className="font-medium">B: </span>{question.Option2}
-                          </div>
-                          <div className={`p-2 rounded border ${question.CorrectAnswer === question.Option3 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
-                            <span className="font-medium">C: </span>{question.Option3}
-                          </div>
-                          <div className={`p-2 rounded border ${question.CorrectAnswer === question.Option4 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
-                            <span className="font-medium">D: </span>{question.Option4}
-                          </div>
+                          {(question.options || []).map((option: string, optIndex: number) => (
+                            <div 
+                              key={optIndex}
+                              className={`p-2 rounded border ${
+                                question.correctAnswer === option ? 'bg-green-50 border-green-200' : 'bg-gray-50'
+                              }`}
+                            >
+                              <span className="font-medium">{String.fromCharCode(65 + optIndex)}: </span>
+                              {option}
+                            </div>
+                          ))}
+                          {/* Fallback for old field names */}
+                          {(!question.options || question.options.length === 0) && (
+                            <>
+                              <div className={`p-2 rounded border ${question.correctAnswer === question.Option1 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                                <span className="font-medium">A: </span>{question.Option1}
+                              </div>
+                              <div className={`p-2 rounded border ${question.correctAnswer === question.Option2 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                                <span className="font-medium">B: </span>{question.Option2}
+                              </div>
+                              <div className={`p-2 rounded border ${question.correctAnswer === question.Option3 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                                <span className="font-medium">C: </span>{question.Option3}
+                              </div>
+                              <div className={`p-2 rounded border ${question.correctAnswer === question.Option4 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                                <span className="font-medium">D: </span>{question.Option4}
+                              </div>
+                            </>
+                          )}
                         </div>
 
-                        {question.Description && (
+                        {question.description && (
                           <div className="bg-gray-50 p-3 rounded border">
                             <span className="font-medium text-sm">Explanation: </span>
-                            <span className="text-sm">{question.Description}</span>
+                            <span className="text-sm">{question.description}</span>
                           </div>
                         )}
                       </CardContent>
