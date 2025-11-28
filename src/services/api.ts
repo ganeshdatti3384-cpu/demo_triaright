@@ -427,8 +427,8 @@ export const pack365Api = {
     token: string,
     codeId: string
   ): Promise<{ success: boolean; message: string; code: EnrollmentCode }> => {
-    const res = await axios.put(`${API_BASE_URL}/pack365/enrollment-codes/${codeId}`, 
-      { isActive: false }, 
+    const res = await axios.put(`${API_BASE_URL}/pack365/enrollment-codes/deactivate/${codeId}`, 
+      {}, 
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -534,7 +534,7 @@ export const pack365Api = {
       razorpay_order_id: string;
     }
   ): Promise<{ success: boolean; message: string }> => {
-    const res = await axios.post(`${API_BASE_URL}/pack365/packenroll365/payment-failure`, data, {
+    const res = await axios.post(`${API_BASE_URL}/pack365/payment/failure`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -612,7 +612,7 @@ export const pack365Api = {
     token: string,
     courseId: string
   ): Promise<{ success: boolean; isEnrolled: boolean; enrollment: EnhancedPack365Enrollment | null; message?: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/packenroll365/check-enrollment/${courseId}`, {
+    const res = await axios.get(`${API_BASE_URL}/pack365/enrollment/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -767,6 +767,7 @@ export const pack365Api = {
     return res.data;
   },
 
+  // FIXED: Corrected parameter order - token first, then courseId
   getExamHistory: async (
     token: string,
     courseId: string
@@ -802,6 +803,38 @@ export const pack365Api = {
     data: { examId: string; maxAttempts: number }
   ): Promise<{ success: boolean; message: string; examId: string; maxAttempts: number }> => {
     const res = await axios.put(`${API_BASE_URL}/pack365/exams/update-max-attempts`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // FIXED: Added missing checkStreamCodeEnrollment method
+  checkStreamCodeEnrollment: async (
+    token: string,
+    stream: string
+  ): Promise<{ success: boolean; isStreamEnrolled: boolean; stream: string; coursesCount: number }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/stream/check/${stream}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // FIXED: Added missing checkOrderStatus method
+  checkOrderStatus: async (
+    token: string,
+    orderId: string
+  ): Promise<{ 
+    success: boolean; 
+    orderId: string;
+    status: string;
+    stream: string;
+    amountPaid: number;
+    coursesCount: number;
+    createdAt: string;
+    expiresAt: string;
+    isExpired: boolean;
+  }> => {
+    const res = await axios.get(`${API_BASE_URL}/pack365/order/status/${orderId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
