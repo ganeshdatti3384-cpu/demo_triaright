@@ -12,22 +12,22 @@ interface Topic {
 }
 
 interface Course {
-  courseId: string;
+  courseId: string;       // Business ID, like COURSE_123456
   courseName: string;
   description: string;
-  totalDuration: number;
+  totalDuration: number;  // In minutes (as per backend course schema)
   topicsCount: number;
   topics: Topic[];
   documentLink?: string;
-  _id: string;
+  _id: string;            // Mongo ObjectId used in topicProgress.courseId
   stream: string;
 }
 
 interface TopicProgress {
-  courseId: string;
+  courseId: string;       // Mongo ObjectId as string
   topicName: string;
   watched: boolean;
-  watchedDuration: number;
+  watchedDuration: number; // seconds
 }
 
 interface StreamEnrollment {
@@ -47,7 +47,7 @@ const StreamLearningInterface = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { stream } = useParams<{ stream: string }>();
-  
+
   const [course, setCourse] = useState<Course | null>(null);
   const [enrollment, setEnrollment] = useState<StreamEnrollment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,13 +56,13 @@ const StreamLearningInterface = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  
+
   const youtubePlayerRef = useRef<any>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout>();
   const saveIntervalRef = useRef<NodeJS.Timeout>();
 
-  // Get selected course from navigation state
-  const selectedCourse = location.state?.selectedCourse as Course;
+  // Selected course passed from previous page
+  const selectedCourse = location.state?.selectedCourse as Course | undefined;
 
   // Simple toast replacement
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -73,23 +73,41 @@ const StreamLearningInterface = () => {
   const getYouTubeVideoId = (url: string): string | null => {
     const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
     const match = url.match(regExp);
-    return (match && match[7].length === 11) ? match[7] : null;
+    return match && match[7].length === 11 ? match[7] : null;
   };
 
-  // Simple progress bar component
+  // Simple progress bar
   const ProgressBar = ({ value, className = '' }: { value: number; className?: string }) => (
     <div className={`w-full bg-gray-200 rounded-full h-2 ${className}`}>
-      <div 
-        className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+      <div
+        className="h-2 rounded-full transition-all duration-300 bg-blue-600"
         style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-      ></div>
+      />
     </div>
   );
 
-  // Initialize YouTube Player
+  // ---------- YouTube Player Setup ----------
+
+  const createYouTubePlayer = (videoId: string) => {
+    youtubePlayerRef.current = new window.YT.Player('youtube-player', {
+      height: '100%',
+      width: '100%',
+      videoId,
+      playerVars: {
+        playsinline: 1,
+        modestbranding: 1,
+        rel: 0,
+      },
+      events: {
+        onReady: onPlayerReady,
+        onStateChange: onPlayerStateChange,
+        onError: onPlayerError,
+      },
+    });
+  };
+
   const initializeYouTubePlayer = (videoId: string) => {
     if (!window.YT) {
-      // Load YouTube IFrame API if not already loaded
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
       const firstScriptTag = document.getElementsByTagName('script')[0];
@@ -103,27 +121,7 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const createYouTubePlayer = (videoId: string) => {
-    youtubePlayerRef.current = new window.YT.Player('youtube-player', {
-      height: '100%',
-      width: '100%',
-      videoId: videoId,
-      playerVars: {
-        playsinline: 1,
-        modestbranding: 1,
-        rel: 0
-      },
-      events: {
-        'onReady': onPlayerReady,
-        'onStateChange': onPlayerStateChange,
-        'onError': onPlayerError
-      }
-    });
-  };
-
   const onPlayerReady = (event: any) => {
-    console.log('YouTube player ready');
-    // Set initial progress if any
     if (watchedDuration > 0) {
       event.target.seekTo(watchedDuration);
     }
@@ -131,7 +129,7 @@ const StreamLearningInterface = () => {
 
   const onPlayerStateChange = (event: any) => {
     const playerState = event.data;
-    
+
     switch (playerState) {
       case window.YT.PlayerState.PLAYING:
         setIsPlaying(true);
@@ -144,11 +142,12 @@ const StreamLearningInterface = () => {
       case window.YT.PlayerState.ENDED:
         setIsPlaying(false);
         stopProgressTracking();
-        // Auto-mark as complete when video ends
+        // Auto-mark complete on end
         markTopicComplete();
         break;
       case window.YT.PlayerState.BUFFERING:
       case window.YT.PlayerState.CUED:
+      default:
         break;
     }
   };
@@ -158,27 +157,40 @@ const StreamLearningInterface = () => {
     setError('Failed to load video. Please check the video URL.');
   };
 
+  // ---------- Progress Tracking Logic ----------
+
+  const getBackendCourseId = (c: Course | null): string | null => {
+    if (!c) return null;
+    // Backend topicProgress.courseId is ObjectId (string)
+    // _id is the ObjectId, courseId is the business id
+    return c._id || c.courseId;
+  };
+
   const startProgressTracking = () => {
-    stopProgressTracking(); // Clear any existing interval
-    
+    stopProgressTracking();
+
     progressIntervalRef.current = setInterval(() => {
       if (youtubePlayerRef.current && youtubePlayerRef.current.getCurrentTime) {
         const currentTime = youtubePlayerRef.current.getCurrentTime();
         const duration = youtubePlayerRef.current.getDuration();
-        
+
         setWatchedDuration(currentTime);
         setVideoProgress(duration > 0 ? (currentTime / duration) * 100 : 0);
 
-        // Auto-mark as complete if within 95% of duration
+        // If user has watched >= 95%, auto mark complete
         if (duration > 0 && currentTime >= duration * 0.95) {
           const currentTopic = course?.topics[currentTopicIndex];
-          const topicProgress = enrollment?.topicProgress?.find(
-            (tp: TopicProgress) => 
-              tp.courseId === course?.courseId && tp.topicName === currentTopic?.name
-          );
-          
-          if (!topicProgress?.watched) {
-            markTopicComplete();
+          const backendCourseId = getBackendCourseId(course);
+
+          if (currentTopic && enrollment && backendCourseId) {
+            const topicProgress = enrollment.topicProgress?.find(
+              (tp: TopicProgress) =>
+                tp.courseId === backendCourseId && tp.topicName === currentTopic.name,
+            );
+
+            if (!topicProgress?.watched) {
+              markTopicComplete();
+            }
           }
         }
       }
@@ -193,13 +205,14 @@ const StreamLearningInterface = () => {
 
   const handlePlayPause = () => {
     if (!youtubePlayerRef.current) return;
-
     if (isPlaying) {
       youtubePlayerRef.current.pauseVideo();
     } else {
       youtubePlayerRef.current.playVideo();
     }
   };
+
+  // ---------- Initial Load (Course + Enrollment) ----------
 
   useEffect(() => {
     const initializeLearning = async () => {
@@ -219,43 +232,34 @@ const StreamLearningInterface = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         console.log('Fetching course details for:', selectedCourse.courseId);
-        
-        // Fetch course details
+
+        // Fetch course details by courseId (business ID)
         const courseResponse = await axios.get(
           `${API_BASE_URL}/pack365/courses/${selectedCourse.courseId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         );
 
-        console.log('Course response:', courseResponse.data);
-
-        if (courseResponse.data.success && courseResponse.data.data) {
-          setCourse(courseResponse.data.data);
-        } else {
+        if (!(courseResponse.data?.success && courseResponse.data?.data)) {
           throw new Error('Failed to load course data');
         }
 
+        const fetchedCourse: Course = courseResponse.data.data;
+        setCourse(fetchedCourse);
+
         // Fetch user enrollments to get progress
         console.log('Fetching enrollments...');
-        const enrollmentResponse = await axios.get(
-          `${API_BASE_URL}/pack365/enrollments`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const enrollmentResponse = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-        console.log('Enrollment response:', enrollmentResponse.data);
-
-        // Handle different response structures
-        let enrollmentsData = [];
-        
+        let enrollmentsData: any[] = [];
         if (enrollmentResponse.data.enrollments) {
-          // Structure: { success: true, enrollments: [...] }
           enrollmentsData = enrollmentResponse.data.enrollments;
         } else if (Array.isArray(enrollmentResponse.data)) {
-          // Structure: [...]
           enrollmentsData = enrollmentResponse.data;
         } else if (enrollmentResponse.data.success && enrollmentResponse.data.data) {
-          // Structure: { success: true, data: [...] }
           enrollmentsData = enrollmentResponse.data.data;
         } else {
           console.warn('Unexpected enrollment response structure:', enrollmentResponse.data);
@@ -263,49 +267,61 @@ const StreamLearningInterface = () => {
         }
 
         const streamEnrollment = enrollmentsData.find(
-          (e: StreamEnrollment) => e.stream.toLowerCase() === stream?.toLowerCase()
-        );
-        
+          (e: StreamEnrollment) =>
+            e.stream?.toLowerCase() === (stream || '').toLowerCase(),
+        ) as StreamEnrollment | undefined;
+
         if (streamEnrollment) {
           console.log('Found enrollment:', streamEnrollment);
           setEnrollment(streamEnrollment);
-          
-          // Find last watched topic for this course
-          const courseProgress = streamEnrollment.topicProgress?.filter(
-            (tp: TopicProgress) => tp.courseId === selectedCourse.courseId
-          ) || [];
+
+          // Filter topic progress for THIS course only using Mongo _id
+          const backendCourseId = getBackendCourseId(fetchedCourse);
+          const courseProgress =
+            streamEnrollment.topicProgress?.filter(
+              (tp: TopicProgress) => tp.courseId === backendCourseId,
+            ) || [];
 
           console.log('Course progress:', courseProgress);
-          
-          if (courseProgress.length > 0 && courseResponse.data.data.topics) {
-            // Find first unwatched topic or last topic with progress
-            const unwatchedTopicIndex = courseResponse.data.data.topics.findIndex(
-              (topic: Topic) => !courseProgress.some((tp: TopicProgress) => 
-                tp.topicName === topic.name && tp.watched
-              )
+
+          if (courseProgress.length > 0 && fetchedCourse.topics) {
+            // Find first unwatched topic, else start from first topic
+            const unwatchedTopicIndex = fetchedCourse.topics.findIndex(
+              (topic: Topic) =>
+                !courseProgress.some(
+                  (tp: TopicProgress) => tp.topicName === topic.name && tp.watched,
+                ),
             );
-            
-            if (unwatchedTopicIndex !== -1) {
-              setCurrentTopicIndex(unwatchedTopicIndex);
-              const currentTopicProgress = courseProgress.find(
-                (tp: TopicProgress) => tp.topicName === courseResponse.data.data.topics[unwatchedTopicIndex].name
+
+            const startingIndex =
+              unwatchedTopicIndex !== -1 ? unwatchedTopicIndex : 0;
+
+            setCurrentTopicIndex(startingIndex);
+
+            const currentTopicProgress = courseProgress.find(
+              (tp: TopicProgress) =>
+                tp.topicName === fetchedCourse.topics[startingIndex].name,
+            );
+
+            if (currentTopicProgress) {
+              const topicDurationSeconds =
+                fetchedCourse.topics[startingIndex].duration * 60;
+              setWatchedDuration(currentTopicProgress.watchedDuration);
+              setVideoProgress(
+                topicDurationSeconds > 0
+                  ? (currentTopicProgress.watchedDuration / topicDurationSeconds) * 100
+                  : 0,
               );
-              if (currentTopicProgress) {
-                setWatchedDuration(currentTopicProgress.watchedDuration);
-                const topicDuration = courseResponse.data.data.topics[unwatchedTopicIndex].duration * 60;
-                setVideoProgress(
-                  topicDuration > 0 ? (currentTopicProgress.watchedDuration / topicDuration) * 100 : 0
-                );
-              }
             }
           }
         } else {
           console.warn('No enrollment found for stream:', stream);
           setEnrollment(null);
         }
-      } catch (error: any) {
-        console.error('Error initializing learning:', error);
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to load course content';
+      } catch (err: any) {
+        console.error('Error initializing learning:', err);
+        const errorMessage =
+          err.response?.data?.message || err.message || 'Failed to load course content';
         setError(errorMessage);
       } finally {
         setLoading(false);
@@ -313,35 +329,40 @@ const StreamLearningInterface = () => {
     };
 
     initializeLearning();
-  }, [selectedCourse, stream, navigate]);
 
-  // Initialize YouTube player when topic changes
-  useEffect(() => {
-    if (course && course.topics[currentTopicIndex]) {
-      const currentTopic = course.topics[currentTopicIndex];
-      const videoId = getYouTubeVideoId(currentTopic.link);
-      
-      if (videoId) {
-        // Destroy existing player
-        if (youtubePlayerRef.current) {
-          youtubePlayerRef.current.destroy();
-          youtubePlayerRef.current = null;
-        }
-        
-        // Initialize new player
-        initializeYouTubePlayer(videoId);
-      }
-    }
-
+    // Cleanup on unmount
     return () => {
       stopProgressTracking();
       if (youtubePlayerRef.current) {
         youtubePlayerRef.current.destroy();
       }
+      if (saveIntervalRef.current) {
+        clearInterval(saveIntervalRef.current);
+      }
     };
+  }, [selectedCourse, stream, navigate]);
+
+  // ---------- React to Topic Changes (load new video) ----------
+
+  useEffect(() => {
+    if (course && course.topics[currentTopicIndex]) {
+      const currentTopic = course.topics[currentTopicIndex];
+      const videoId = getYouTubeVideoId(currentTopic.link);
+
+      if (videoId) {
+        if (youtubePlayerRef.current) {
+          youtubePlayerRef.current.destroy();
+          youtubePlayerRef.current = null;
+        }
+        setWatchedDuration(0);
+        setVideoProgress(0);
+        initializeYouTubePlayer(videoId);
+      }
+    }
   }, [currentTopicIndex, course]);
 
-  // Auto-save progress every 10 seconds
+  // ---------- Auto-save progress every 10s ----------
+
   useEffect(() => {
     if (course && enrollment) {
       saveIntervalRef.current = setInterval(() => {
@@ -355,155 +376,214 @@ const StreamLearningInterface = () => {
       if (saveIntervalRef.current) {
         clearInterval(saveIntervalRef.current);
       }
-      stopProgressTracking();
     };
+    // We intentionally depend on course, enrollment, watchedDuration
   }, [course, enrollment, watchedDuration]);
+
+  // ---------- Save Progress (partial) ----------
 
   const saveProgress = async () => {
     if (!course || !enrollment) return;
 
     const token = localStorage.getItem('token');
     const currentTopic = course.topics[currentTopicIndex];
-    
+    const backendCourseId = getBackendCourseId(course);
+
+    if (!backendCourseId) return;
+
     try {
-      await axios.put(
+      const response = await axios.put(
         `${API_BASE_URL}/pack365/topic/progress`,
         {
-          courseId: course.courseId,
+          courseId: backendCourseId, // use Mongo _id for backend consistency
           topicName: currentTopic.name,
-          watchedDuration: watchedDuration,
-          totalCourseDuration: course.totalDuration * 60,
-          totalWatchedPercentage: calculateTotalWatchedPercentage()
+          watchedDuration: Math.floor(watchedDuration), // seconds
+          totalCourseDuration: course.totalDuration * 60, // minutes -> seconds
+          // totalWatchedPercentage will be recomputed by backend; we can omit or send 0
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-    } catch (error: any) {
-      console.error('Error saving progress:', error);
+
+      // If backend returns updated totalWatchedPercentage, sync into enrollment
+      if (
+        response.data &&
+        typeof response.data.totalWatchedPercentage === 'number'
+      ) {
+        setEnrollment(prev =>
+          prev
+            ? {
+                ...prev,
+                totalWatchedPercentage: response.data.totalWatchedPercentage,
+              }
+            : prev,
+        );
+      }
+    } catch (err: any) {
+      console.error('Error saving progress:', err);
     }
   };
 
-  const calculateTotalWatchedPercentage = (): number => {
-    if (!course || !enrollment) return 0;
-
-    const courseProgress = enrollment.topicProgress?.filter(
-      (tp: TopicProgress) => tp.courseId === course.courseId
-    ) || [];
-
-    let totalWatchedSeconds = 0;
-    let totalDurationSeconds = 0;
-
-    course.topics.forEach((topic: Topic) => {
-      const topicProgress = courseProgress.find((tp: TopicProgress) => tp.topicName === topic.name);
-      const topicDurationSeconds = topic.duration * 60;
-      
-      totalDurationSeconds += topicDurationSeconds;
-      totalWatchedSeconds += topicProgress ? Math.min(topicProgress.watchedDuration, topicDurationSeconds) : 0;
-    });
-
-    return totalDurationSeconds > 0 ? (totalWatchedSeconds / totalDurationSeconds) * 100 : 0;
-  };
+  // ---------- Mark Topic Complete (100%) ----------
 
   const markTopicComplete = async () => {
     if (!course || !enrollment) return;
 
     const token = localStorage.getItem('token');
     const currentTopic = course.topics[currentTopicIndex];
+    const backendCourseId = getBackendCourseId(course);
+
+    if (!backendCourseId) return;
+
     const topicDurationSeconds = currentTopic.duration * 60;
 
     try {
       const response = await axios.put(
         `${API_BASE_URL}/pack365/topic/progress`,
         {
-          courseId: course.courseId,
+          courseId: backendCourseId,
           topicName: currentTopic.name,
           watchedDuration: topicDurationSeconds,
           totalCourseDuration: course.totalDuration * 60,
-          totalWatchedPercentage: calculateTotalWatchedPercentage()
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
-      if (response.data.success) {
-        // Update local state
-        setEnrollment((prev: any) => ({
-          ...prev,
-          topicProgress: [
-            ...(prev.topicProgress || []).filter((tp: TopicProgress) => 
-              !(tp.courseId === course.courseId && tp.topicName === currentTopic.name)
-            ),
+      if (response.data?.success) {
+        // Update local enrollment.topicProgress & totalWatchedPercentage
+        setEnrollment(prev => {
+          if (!prev) return prev;
+
+          const filtered = (prev.topicProgress || []).filter(
+            (tp: TopicProgress) =>
+              !(
+                tp.courseId === backendCourseId &&
+                tp.topicName === currentTopic.name
+              ),
+          );
+
+          const updatedTopicProgress: TopicProgress[] = [
+            ...filtered,
             {
-              courseId: course.courseId,
+              courseId: backendCourseId,
               topicName: currentTopic.name,
               watched: true,
-              watchedDuration: topicDurationSeconds
-            }
-          ],
-          totalWatchedPercentage: response.data.totalWatchedPercentage || calculateTotalWatchedPercentage()
-        }));
+              watchedDuration: topicDurationSeconds,
+            },
+          ];
+
+          return {
+            ...prev,
+            topicProgress: updatedTopicProgress,
+            totalWatchedPercentage:
+              typeof response.data.totalWatchedPercentage === 'number'
+                ? response.data.totalWatchedPercentage
+                : prev.totalWatchedPercentage,
+          };
+        });
 
         showToast('Topic marked as complete!');
-        
-        // Auto-advance to next topic if available
+
+        // Move to next topic automatically if exists
         if (currentTopicIndex < course.topics.length - 1) {
           setCurrentTopicIndex(currentTopicIndex + 1);
           setWatchedDuration(0);
           setVideoProgress(0);
         }
       }
-    } catch (error: any) {
-      console.error('Error marking topic complete:', error);
+    } catch (err: any) {
+      console.error('Error marking topic complete:', err);
       showToast('Failed to mark topic as complete', 'error');
     }
   };
 
+  // ---------- Helpers for per-topic progress & exam eligibility ----------
+
+  const calculateTopicProgressFromState = (
+    topicName: string,
+  ): { completed: boolean; percentage: number } => {
+    if (!course || !enrollment) {
+      return { completed: false, percentage: 0 };
+    }
+
+    const backendCourseId = getBackendCourseId(course);
+    if (!backendCourseId) {
+      return { completed: false, percentage: 0 };
+    }
+
+    const topicProgress = enrollment.topicProgress?.find(
+      (tp: TopicProgress) =>
+        tp.courseId === backendCourseId && tp.topicName === topicName,
+    );
+
+    if (!topicProgress) {
+      return { completed: false, percentage: 0 };
+    }
+
+    const topic = course.topics.find(t => t.name === topicName);
+    if (!topic) {
+      return { completed: false, percentage: 0 };
+    }
+
+    const topicDurationSeconds = topic.duration * 60;
+    const pct =
+      topicDurationSeconds > 0
+        ? Math.min(
+            (topicProgress.watchedDuration / topicDurationSeconds) * 100,
+            100,
+          )
+        : 0;
+
+    return { completed: !!topicProgress.watched, percentage: pct };
+  };
+
   const handleTopicSelect = (index: number) => {
     setCurrentTopicIndex(index);
-    setWatchedDuration(0);
-    setVideoProgress(0);
     setIsPlaying(false);
     stopProgressTracking();
+
+    // When switching topic, try to restore last watchedDuration from enrollment if available
+    if (course && enrollment) {
+      const backendCourseId = getBackendCourseId(course);
+      if (backendCourseId) {
+        const topic = course.topics[index];
+        const topicProgress = enrollment.topicProgress?.find(
+          (tp: TopicProgress) =>
+            tp.courseId === backendCourseId && tp.topicName === topic.name,
+        );
+
+        if (topicProgress) {
+          const topicDurationSeconds = topic.duration * 60;
+          setWatchedDuration(topicProgress.watchedDuration);
+          setVideoProgress(
+            topicDurationSeconds > 0
+              ? (topicProgress.watchedDuration / topicDurationSeconds) * 100
+              : 0,
+          );
+        } else {
+          setWatchedDuration(0);
+          setVideoProgress(0);
+        }
+      }
+    } else {
+      setWatchedDuration(0);
+      setVideoProgress(0);
+    }
   };
 
   const handleTakeExam = () => {
     if (!course) return;
-    
-    navigate(`/exam/${stream}`, { 
-      state: { 
+
+    navigate(`/exam/${stream}`, {
+      state: {
         courseId: course.courseId,
         courseName: course.courseName,
-        stream: stream
-      } 
+        stream,
+      },
     });
   };
 
-  const isTopicCompleted = (topicName: string): boolean => {
-    if (!enrollment || !enrollment.topicProgress) return false;
-    
-    const topicProgress = enrollment.topicProgress.find(
-      (tp: TopicProgress) => 
-        tp.courseId === course?.courseId && tp.topicName === topicName
-    );
-    
-    return topicProgress?.watched || false;
-  };
+  // ---------- Icons (simple text icons) ----------
 
-  const getTopicProgress = (topicName: string): number => {
-    if (!enrollment || !enrollment.topicProgress) return 0;
-    
-    const topicProgress = enrollment.topicProgress.find(
-      (tp: TopicProgress) => 
-        tp.courseId === course?.courseId && tp.topicName === topicName
-    );
-    
-    const currentTopic = course?.topics.find(t => t.name === topicName);
-    if (!currentTopic || !topicProgress) return 0;
-    
-    const topicDurationSeconds = currentTopic.duration * 60;
-    return topicDurationSeconds > 0 ? 
-      Math.min((topicProgress.watchedDuration / topicDurationSeconds) * 100, 100) : 0;
-  };
-
-  // Icons as simple components
   const PlayIcon = () => <span>▶</span>;
   const PauseIcon = () => <span>⏸</span>;
   const CheckIcon = () => <span>✓</span>;
@@ -513,11 +593,13 @@ const StreamLearningInterface = () => {
   const BackIcon = () => <span>←</span>;
   const FileIcon = () => <span>📄</span>;
 
+  // ---------- UI States ----------
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading course content...</p>
         </div>
       </div>
@@ -529,14 +611,15 @@ const StreamLearningInterface = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <BookIcon />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Error Loading Course</h2>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">
+            Error Loading Course
+          </h2>
           <p className="text-gray-500 mb-6">{error}</p>
-          <button 
+          <button
             onClick={() => navigate(`/pack365-learning/${stream}`)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
           >
-            <BackIcon />
-            Back to Courses
+            <BackIcon /> Back to Courses
           </button>
         </div>
       </div>
@@ -548,14 +631,15 @@ const StreamLearningInterface = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <BookIcon />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Course Not Found</h2>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">
+            Course Not Found
+          </h2>
           <p className="text-gray-500 mb-6">Unable to load course content.</p>
-          <button 
+          <button
             onClick={() => navigate(`/pack365-learning/${stream}`)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
           >
-            <BackIcon />
-            Back to Courses
+            <BackIcon /> Back to Courses
           </button>
         </div>
       </div>
@@ -567,6 +651,8 @@ const StreamLearningInterface = () => {
   const isExamEligible = totalProgress >= 80;
   const youtubeVideoId = currentTopic ? getYouTubeVideoId(currentTopic.link) : null;
 
+  // ---------- Main UI ----------
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -576,32 +662,36 @@ const StreamLearningInterface = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigate(`/pack365-learning/${stream}`)}
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 flex items-center space-x-2"
               >
                 <BackIcon />
-                Back to Courses
+                <span>Back to Courses</span>
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{course.courseName}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {course.courseName}
+                </h1>
                 <p className="text-gray-600 text-sm">{course.description}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Progress:</span>
-                  <span className="text-sm font-semibold">{totalProgress.toFixed(1)}%</span>
+                  <span className="text-sm font-semibold">
+                    {totalProgress.toFixed(1)}%
+                  </span>
                 </div>
                 <ProgressBar value={totalProgress} className="w-32 h-2" />
               </div>
-              
+
               <button
                 onClick={handleTakeExam}
                 disabled={!isExamEligible}
                 className={`px-4 py-2 rounded-lg ${
-                  isExamEligible 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  isExamEligible
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
               >
@@ -615,20 +705,20 @@ const StreamLearningInterface = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          
           {/* Topics Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm border p-4 sticky top-24">
               <h3 className="text-lg font-semibold mb-4">Course Topics</h3>
               <div className="space-y-1 max-h-96 overflow-y-auto">
                 {course.topics.map((topic, index) => {
-                  const isCompleted = isTopicCompleted(topic.name);
-                  const progress = getTopicProgress(topic.name);
+                  const { completed, percentage } = calculateTopicProgressFromState(
+                    topic.name,
+                  );
                   const isCurrent = index === currentTopicIndex;
-                  
+
                   return (
                     <button
-                      key={index}
+                      key={topic.name}
                       onClick={() => handleTopicSelect(index)}
                       className={`w-full text-left p-3 border-l-4 transition-colors rounded-r-lg ${
                         isCurrent
@@ -638,11 +728,7 @@ const StreamLearningInterface = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2 flex-1 min-w-0">
-                          {isCompleted ? (
-                            <CheckIcon />
-                          ) : (
-                            <CircleIcon />
-                          )}
+                          {completed ? <CheckIcon /> : <CircleIcon />}
                           <span className="text-sm font-medium truncate">
                             {topic.name}
                           </span>
@@ -652,12 +738,12 @@ const StreamLearningInterface = () => {
                           <span>{topic.duration}m</span>
                         </span>
                       </div>
-                      
-                      {!isCompleted && progress > 0 && (
+
+                      {!completed && percentage > 0 && (
                         <div className="mt-2">
-                          <ProgressBar value={progress} className="h-1" />
+                          <ProgressBar value={percentage} className="h-1" />
                           <span className="text-xs text-gray-500">
-                            {progress.toFixed(0)}% watched
+                            {percentage.toFixed(0)}% watched
                           </span>
                         </div>
                       )}
@@ -671,118 +757,73 @@ const StreamLearningInterface = () => {
             {course.documentLink && (
               <div className="bg-white rounded-lg shadow-sm border p-4 mt-6">
                 <h3 className="text-lg font-semibold mb-4">Resources</h3>
-                <button
-                  onClick={() => window.open(course.documentLink, '_blank')}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 flex items-center justify-center space-x-2"
+                <a
+                  href={course.documentLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm"
                 >
                   <FileIcon />
-                  <span>Download Course Materials</span>
-                </button>
+                  <span className="ml-2">Download Course Document</span>
+                </a>
               </div>
             )}
           </div>
 
-          {/* Video Player & Content */}
-          <div className="lg:col-span-3 space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">{currentTopic.name}</h2>
-                <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                  {currentTopic.duration} minutes
-                </span>
-              </div>
-              
-              {/* YouTube Player */}
-              <div className="bg-black rounded-lg aspect-video mb-4">
-                {youtubeVideoId ? (
-                  <div id="youtube-player" className="w-full h-full rounded-lg"></div>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white">
-                    <div className="text-center">
-                      <PlayIcon />
-                      <p>YouTube video not available</p>
-                      <p className="text-sm text-gray-400 mt-2">Video ID: {currentTopic.link}</p>
-                    </div>
+          {/* Video + Details */}
+          <div className="lg:col-span-3 space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+              <div className="aspect-video bg-black">
+                <div id="youtube-player" className="w-full h-full" />
+                {!youtubeVideoId && (
+                  <div className="w-full h-full flex items-center justify-center text-white text-sm">
+                    Invalid or missing video URL
                   </div>
                 )}
               </div>
 
-              {/* Video Controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {currentTopic.name}
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Duration: {currentTopic.duration} minutes
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-3">
                   <button
                     onClick={handlePlayPause}
-                    disabled={!youtubeVideoId}
-                    className={`border border-gray-300 rounded-lg px-4 py-2 flex items-center space-x-2 ${
-                      youtubeVideoId 
-                        ? 'hover:bg-gray-50' 
-                        : 'opacity-50 cursor-not-allowed'
-                    }`}
+                    className="px-4 py-2 rounded-lg border border-gray-300 flex items-center space-x-2 text-sm"
                   >
                     {isPlaying ? <PauseIcon /> : <PlayIcon />}
                     <span>{isPlaying ? 'Pause' : 'Play'}</span>
                   </button>
-                  
-                  <div className="flex-1 max-w-md">
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                      <span>Progress: {videoProgress.toFixed(1)}%</span>
-                      <span>
-                        {Math.floor(watchedDuration / 60)}:
-                        {Math.floor(watchedDuration % 60).toString().padStart(2, '0')}
-                      </span>
-                    </div>
-                    <ProgressBar value={videoProgress} className="h-2" />
-                  </div>
+                  <button
+                    onClick={markTopicComplete}
+                    className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 text-sm"
+                  >
+                    <CheckIcon /> Mark as Complete
+                  </button>
                 </div>
+              </div>
 
-                <button
-                  onClick={markTopicComplete}
-                  disabled={isTopicCompleted(currentTopic.name)}
-                  className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                    isTopicCompleted(currentTopic.name)
-                      ? 'bg-gray-100 text-gray-500'
-                      : 'bg-green-600 text-white hover:bg-green-700'
-                  }`}
-                >
-                  <CheckIcon />
-                  <span>{isTopicCompleted(currentTopic.name) ? 'Completed' : 'Mark Complete'}</span>
-                </button>
+              <div className="px-4 pb-4">
+                <ProgressBar value={videoProgress} />
+                <p className="text-xs text-gray-500 mt-1">
+                  Current video progress: {videoProgress.toFixed(0)}%
+                </p>
               </div>
             </div>
 
-            {/* Course Progress Summary */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-xl font-semibold mb-4">Learning Progress</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {totalProgress.toFixed(1)}%
-                  </div>
-                  <div className="text-sm text-blue-600">Overall Progress</div>
-                </div>
-                
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">
-                    {course.topics.filter(topic => isTopicCompleted(topic.name)).length}
-                  </div>
-                  <div className="text-sm text-green-600">Topics Completed</div>
-                </div>
-                
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {isExamEligible ? 'Ready' : 'Not Ready'}
-                  </div>
-                  <div className="text-sm text-purple-600">Exam Eligibility</div>
-                </div>
-              </div>
-              
-              {!isExamEligible && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    Complete {80 - Math.ceil(totalProgress)}% more of the course to unlock the exam.
-                  </p>
-                </div>
-              )}
+            <div className="bg-white rounded-lg shadow-sm border p-4">
+              <h3 className="text-md font-semibold mb-2">About this course</h3>
+              <p className="text-sm text-gray-600 mb-2">{course.description}</p>
+              <p className="text-xs text-gray-500">
+                Total topics: {course.topicsCount} • Approx. duration:{' '}
+                {course.totalDuration} minutes
+              </p>
             </div>
           </div>
         </div>
@@ -790,13 +831,5 @@ const StreamLearningInterface = () => {
     </div>
   );
 };
-
-// Add YouTube API types to Window interface
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
 
 export default StreamLearningInterface;
