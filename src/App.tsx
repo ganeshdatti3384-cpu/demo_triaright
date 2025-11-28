@@ -188,7 +188,7 @@ const App = () => {
             } 
           />
           
-          {/* Exam Routes - ADD THESE ROUTES */}
+          {/* Exam Routes - CORRECTLY PLACED */}
           <Route
             path="/exam/:stream"
             element={
