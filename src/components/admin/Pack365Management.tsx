@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Eye, Edit, Trash, Upload, FileText, Download, ArrowLeft, BookOpen, AlertCircle } from 'lucide-react';
+import { Plus, Eye, Edit, Trash, Upload, FileText, Download, ArrowLeft, BookOpen, AlertCircle, Search } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
 import { StreamData } from '@/types/api';
 
@@ -30,6 +30,14 @@ const Pack365Management = () => {
   const [examFile, setExamFile] = useState<File | null>(null);
   const [fileValidation, setFileValidation] = useState({ isValid: true, message: '' });
   const [viewType, setViewType] = useState<'streams' | 'courses'>('streams');
+  
+  // ✅ NEW: View Exam states
+  const [showViewExamDialog, setShowViewExamDialog] = useState(false);
+  const [viewingExamCourse, setViewingExamCourse] = useState<Pack365Course | null>(null);
+  const [examQuestions, setExamQuestions] = useState<any[]>([]);
+  const [loadingExam, setLoadingExam] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
   
   // Stream management states
   const [showStreamDialog, setShowStreamDialog] = useState(false);
@@ -57,10 +65,69 @@ const Pack365Management = () => {
     }
   }, [viewType, selectedStream]);
 
-  // ✅ NEW: Validate Excel file before upload
+  // ✅ NEW: Fetch exam questions for a course
+  const fetchExamQuestions = async (course: Pack365Course) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: 'Authentication required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setLoadingExam(true);
+      const courseId = course.courseId || course._id;
+      const response = await fetch(`https://triaright.com/api/pack365/exams/${courseId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setExamQuestions(result.questions || []);
+        setViewingExamCourse(course);
+        setShowViewExamDialog(true);
+      } else {
+        throw new Error(result.message || 'Failed to fetch exam questions');
+      }
+    } catch (error: any) {
+      console.error('Error fetching exam questions:', error);
+      toast({
+        title: 'Error fetching exam',
+        description: error.message || 'No exam data found for this course',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingExam(false);
+    }
+  };
+
+  // ✅ NEW: Filter exam questions based on search and type
+  const filteredExamQuestions = examQuestions.filter(question => {
+    const matchesSearch = question.Question?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         question.Description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || question.Type === filterType;
+    return matchesSearch && matchesType;
+  });
+
+  // ✅ NEW: Get difficulty badge variant
+  const getDifficultyVariant = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'easy': return 'default';
+      case 'medium': return 'secondary';
+      case 'hard': return 'destructive';
+      default: return 'outline';
+    }
+  };
+
+  // Rest of your existing functions remain the same...
   const validateExcelFile = async (file: File): Promise<{ isValid: boolean; message: string; rowCount?: number }> => {
     return new Promise((resolve) => {
-      // Basic validation
       if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
         resolve({ isValid: false, message: 'Please upload an Excel file (.xlsx or .xls)' });
         return;
@@ -74,9 +141,6 @@ const Pack365Management = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          // For frontend validation, we'll just check basic structure
-          // Since we can't parse Excel without a library, we'll trust the backend for detailed validation
-          // But we can at least check file type and size
           resolve({ 
             isValid: true, 
             message: 'File appears valid. Click Upload to proceed.' 
@@ -100,7 +164,6 @@ const Pack365Management = () => {
     });
   };
 
-  // ✅ NEW: Handle file selection with validation
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setExamFile(file);
@@ -164,7 +227,6 @@ const Pack365Management = () => {
     }
   };
 
-  // ✅ UPDATED: Improved exam upload with better error handling
   const handleExamUpload = async () => {
     if (!examFile || !examCourse) {
       toast({
@@ -222,7 +284,6 @@ const Pack365Management = () => {
         setExamCourse(null);
         setFileValidation({ isValid: true, message: '' });
       } else {
-        // ✅ Better error messages for common backend errors
         let errorMessage = result.message || 'Failed to upload exam';
         
         if (errorMessage.includes('30 questions')) {
@@ -249,9 +310,7 @@ const Pack365Management = () => {
     }
   };
 
-  // ✅ NEW: Download template function
   const downloadExamTemplate = () => {
-    // Create a simple text guide since we can't create Excel without a library
     const templateGuide = `
 EXAM UPLOAD TEMPLATE INSTRUCTIONS:
 
@@ -288,7 +347,6 @@ EXAM UPLOAD TEMPLATE INSTRUCTIONS:
 6. Save as Excel file (.xlsx or .xls) and upload.
     `;
 
-    // Create downloadable text file
     const blob = new Blob([templateGuide], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -305,7 +363,7 @@ EXAM UPLOAD TEMPLATE INSTRUCTIONS:
     });
   };
 
-  // Rest of your existing functions remain the same...
+  // Rest of your existing functions (handleAddStream, handleUpdateStream, handleDeleteStream, etc.) remain exactly the same...
   const handleAddStream = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -854,6 +912,10 @@ EXAM UPLOAD TEMPLATE INSTRUCTIONS:
                           <Button variant="outline" size="sm" onClick={() => openExamDialog(course)}>
                             <Upload className="h-4 w-4" />
                           </Button>
+                          {/* ✅ NEW: View Exam Button */}
+                          <Button variant="outline" size="sm" onClick={() => fetchExamQuestions(course)}>
+                            <FileText className="h-4 w-4" />
+                          </Button>
                           <Button variant="destructive" size="sm" onClick={() => handleDeleteCourse(course.courseId)}>
                             <Trash className="h-4 w-4" />
                           </Button>
@@ -1008,7 +1070,7 @@ EXAM UPLOAD TEMPLATE INSTRUCTIONS:
         </DialogContent>
       </Dialog>
 
-      {/* ✅ IMPROVED: Exam Upload Dialog with validation and instructions */}
+      {/* Exam Upload Dialog */}
       <Dialog open={showExamDialog} onOpenChange={setShowExamDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -1073,6 +1135,122 @@ EXAM UPLOAD TEMPLATE INSTRUCTIONS:
               </div>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ NEW: View Exam Dialog */}
+      <Dialog open={showViewExamDialog} onOpenChange={setShowViewExamDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Exam Review: {viewingExamCourse?.courseName}</DialogTitle>
+          </DialogHeader>
+          
+          {loadingExam ? (
+            <div className="flex items-center justify-center h-32">
+              <p>Loading exam questions...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Search and Filter Controls */}
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      placeholder="Search questions..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+                <Select value={filterType} onValueChange={(value: 'all' | 'easy' | 'medium' | 'hard') => setFilterType(value)}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Exam Summary */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="font-semibold text-blue-800">Exam Summary</h4>
+                    <p className="text-sm text-blue-600">
+                      Total Questions: {examQuestions.length} | 
+                      Showing: {filteredExamQuestions.length} |
+                      Easy: {examQuestions.filter(q => q.Type === 'easy').length} |
+                      Medium: {examQuestions.filter(q => q.Type === 'medium').length} |
+                      Hard: {examQuestions.filter(q => q.Type === 'hard').length}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-blue-600">
+                    {viewingExamCourse?.courseName}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Questions List */}
+              {filteredExamQuestions.length === 0 ? (
+                <div className="text-center p-8 text-gray-500">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p>No questions found matching your criteria.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredExamQuestions.map((question, index) => (
+                    <Card key={index} className="border-l-4 border-l-blue-500">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center space-x-2">
+                            <Badge variant={getDifficultyVariant(question.Type)} className="capitalize">
+                              {question.Type || 'unknown'}
+                            </Badge>
+                            <span className="text-sm font-medium text-gray-500">Question {index + 1}</span>
+                          </div>
+                          {question.CorrectAnswer && (
+                            <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                              Correct: {question.CorrectAnswer}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <h4 className="font-semibold mb-3 text-lg">{question.Question}</h4>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                          <div className={`p-2 rounded border ${question.CorrectAnswer === question.Option1 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                            <span className="font-medium">A: </span>{question.Option1}
+                          </div>
+                          <div className={`p-2 rounded border ${question.CorrectAnswer === question.Option2 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                            <span className="font-medium">B: </span>{question.Option2}
+                          </div>
+                          <div className={`p-2 rounded border ${question.CorrectAnswer === question.Option3 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                            <span className="font-medium">C: </span>{question.Option3}
+                          </div>
+                          <div className={`p-2 rounded border ${question.CorrectAnswer === question.Option4 ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                            <span className="font-medium">D: </span>{question.Option4}
+                          </div>
+                        </div>
+
+                        {question.Description && (
+                          <div className="bg-gray-50 p-3 rounded border">
+                            <span className="font-medium text-sm">Explanation: </span>
+                            <span className="text-sm">{question.Description}</span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
