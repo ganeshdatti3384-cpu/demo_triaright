@@ -82,6 +82,7 @@ const StreamLearningInterface = () => {
 
   useEffect(() => {
     loadStreamData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
   useEffect(() => {
@@ -146,8 +147,8 @@ const StreamLearningInterface = () => {
 
       setCourses(streamCourses);
 
-      const selectedCourseFromState = location.state?.selectedCourse;
-      const selectedCourseId = location.state?.selectedCourseId;
+      const selectedCourseFromState = (location.state as any)?.selectedCourse;
+      const selectedCourseId = (location.state as any)?.selectedCourseId;
       
       if (selectedCourseFromState) {
         setSelectedCourse(selectedCourseFromState);
@@ -180,13 +181,12 @@ const StreamLearningInterface = () => {
 
       const enrollmentToCheck = currentEnrollment || enrollment;
       
-      // Check if user has completed enough progress
       if (enrollmentToCheck && enrollmentToCheck.totalWatchedPercentage >= 80) {
         const availableExamsResponse = await pack365Api.getAvailableExamsForUser(token);
         
-        if (availableExamsResponse.success && availableExamsResponse.exams) {
-          // Check if there are any available exams for current courses
-          const eligibleExams = availableExamsResponse.exams.filter((exam: any) => {
+        if ((availableExamsResponse as any).success && (availableExamsResponse as any).exams) {
+          const availableExams = (availableExamsResponse as any).exams;
+          const eligibleExams = availableExams.filter((exam: any) => {
             return courses.some(course => course._id === exam.courseId);
           });
           
@@ -207,28 +207,6 @@ const StreamLearningInterface = () => {
       console.error('Error checking exam eligibility:', error);
       setExamEligible(false);
     }
-  };
-
-  // Calculate total stream duration in seconds across ALL courses
-  const calculateTotalStreamDuration = (): number => {
-    return courses.reduce((total, course) => {
-      const courseDuration = course.topics?.reduce((sum, topic) => sum + (topic.duration * 60), 0) || 0;
-      return total + courseDuration;
-    }, 0);
-  };
-
-  // Calculate total watched duration across ALL courses
-  const calculateTotalWatchedDuration = (): number => {
-    return topicProgress.reduce((total, progress) => total + (progress.watchedDuration || 0), 0);
-  };
-
-  // Calculate full stream progress percentage
-  const calculateFullStreamProgress = (): number => {
-    const totalStreamDuration = calculateTotalStreamDuration();
-    if (totalStreamDuration === 0) return 0;
-    
-    const totalWatchedDuration = calculateTotalWatchedDuration();
-    return Math.min(100, (totalWatchedDuration / totalStreamDuration) * 100);
   };
 
   const extractYouTubeVideoId = (url: string): string | null => {
@@ -267,17 +245,22 @@ const StreamLearningInterface = () => {
         const progress = Math.min(100, (secondsWatched / topicDurationSeconds) * 100);
         setVideoProgress(progress);
         
-        // Auto-mark as completed if watched 80% or more
         if (progress >= 80) {
           markTopicAsCompleted(topic, secondsWatched);
           clearInterval(interval);
           setProgressIntervalId(null);
         }
       }
-    }, 1000); // Update every second
+    }, 1000);
 
     setIsTrackingProgress(true);
     return interval;
+  };
+
+  const getTopicProgress = (courseId: string, topicName: string) => {
+    return topicProgress.find(
+      tp => tp.courseId === courseId && tp.topicName === topicName
+    );
   };
 
   const markTopicAsCompleted = async (topic: Topic, watchedSeconds?: number) => {
@@ -288,37 +271,21 @@ const StreamLearningInterface = () => {
       if (!token) return;
 
       const currentTopicProgress = getTopicProgress(selectedCourse._id, topic.name);
-      
-      // Use real watched seconds if available, otherwise use full duration
-      const finalWatchedSeconds = watchedSeconds || (topic.duration * 60);
-      
-      // Calculate full stream progress for backend
-      const totalStreamDuration = calculateTotalStreamDuration();
-      const currentWatchedDuration = calculateTotalWatchedDuration();
-      
-      // Remove current topic's progress if it exists to avoid double counting
-      const existingTopicProgress = topicProgress.find(
-        tp => tp.courseId === selectedCourse._id && tp.topicName === topic.name
-      );
-      const adjustedWatchedDuration = currentWatchedDuration - (existingTopicProgress?.watchedDuration || 0);
-      
-      // Add the new watched duration
-      const newTotalWatchedDuration = adjustedWatchedDuration + finalWatchedSeconds;
-      const newWatchedPercentage = Math.min(100, (newTotalWatchedDuration / totalStreamDuration) * 100);
+      const finalWatchedSeconds = watchedSeconds && watchedSeconds > 0
+        ? watchedSeconds
+        : (currentTopicProgress?.watchedDuration && currentTopicProgress.watchedDuration > 0
+            ? currentTopicProgress.watchedDuration
+            : topic.duration * 60);
 
       const response = await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse._id,
         topicName: topic.name,
-        watchedDuration: finalWatchedSeconds,
-        totalCourseDuration: totalStreamDuration,
-        totalWatchedPercentage: newWatchedPercentage
+        watchedDuration: finalWatchedSeconds
       });
 
       if (response.success) {
-        // Update local state with backend response
         setTopicProgress(response.topicProgress || []);
-        
-        // Reload enrollment data to get updated progress
+
         const enrollmentResponse = await pack365Api.getMyEnrollments(token);
         const updatedEnrollment = enrollmentResponse.enrollments.find(
           (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
@@ -370,20 +337,12 @@ const StreamLearningInterface = () => {
     setVideoStartTime(null);
   };
 
-  const getTopicProgress = (courseId: string, topicName: string) => {
-    return topicProgress.find(
-      tp => tp.courseId === courseId && tp.topicName === topicName
-    );
-  };
-
-  // Check if current topic is watched
   const isCurrentTopicWatched = (): boolean => {
     if (!selectedCourse || !selectedTopic) return false;
     const progress = getTopicProgress(selectedCourse._id, selectedTopic.name);
     return progress?.watched || false;
   };
 
-  // Use duration-based progress calculation for accuracy
   const getCourseProgress = (courseId: string) => {
     const course = courses.find((c) => c._id === courseId);
     if (!course) return 0;
@@ -500,7 +459,7 @@ const StreamLearningInterface = () => {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Loading course content...</p>
+            <p>Loading course content.</p>
           </div>
         </div>
       </>
@@ -509,7 +468,7 @@ const StreamLearningInterface = () => {
 
   const currentTopic = selectedCourse?.topics?.[currentTopicIndex];
   const courseProgressValue = selectedCourse ? getCourseProgress(selectedCourse._id) : 0;
-  const overallStreamProgress = enrollment?.totalWatchedPercentage || calculateFullStreamProgress();
+  const overallStreamProgress = enrollment?.totalWatchedPercentage ?? 0;
   const isTopicCompleted = isCurrentTopicWatched();
 
   return (
@@ -600,7 +559,7 @@ const StreamLearningInterface = () => {
                         ) : isTrackingProgress ? (
                           <span className="flex items-center">
                             <Clock className="h-4 w-4 mr-1" />
-                            Tracking your progress... ({realWatchedSeconds}s)
+                            Tracking your progress. ({realWatchedSeconds}s)
                           </span>
                         ) : (
                           <span className="flex items-center text-gray-500">
@@ -689,7 +648,7 @@ const StreamLearningInterface = () => {
 
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Content Section - Now just a clean white screen */}
+            {/* Content Section - Clean white area */}
             <div className="lg:col-span-3">
               <Card className="shadow-lg">
                 <CardHeader>
@@ -704,7 +663,6 @@ const StreamLearningInterface = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Clean White Screen - No Video Player */}
                   <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center min-h-[500px]">
                     <div className="text-center max-w-md mx-auto p-8">
                       <BookOpen className="h-20 w-20 text-gray-400 mx-auto mb-6" />
@@ -722,70 +680,38 @@ const StreamLearningInterface = () => {
                           const firstTopic = selectedCourse?.topics?.[0];
                           if (firstTopic) {
                             handleTopicClick(firstTopic, 0);
+                          } else {
+                            toast({
+                              title: 'No Topics',
+                              description: 'No topics available for this course.',
+                              variant: 'destructive'
+                            });
                           }
                         }}
                         variant="default"
                         size="lg"
-                        className="mt-4"
+                        className="flex items-center gap-2 mx-auto"
                       >
-                        <Play className="h-5 w-5 mr-2" />
+                        <Play className="h-4 w-4" />
                         Start Learning
                       </Button>
                     </div>
                   </div>
-
-                  {/* Course Document */}
-                  {selectedCourse?.documentLink && (
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <FileText className="h-6 w-6 text-blue-600" />
-                          <div>
-                            <h4 className="font-medium">Course Materials</h4>
-                            <p className="text-sm text-gray-600">Download study materials</p>
-                          </div>
-                        </div>
-                        <Button 
-                          onClick={() => window.open(selectedCourse.documentLink, '_blank')}
-                          variant="outline"
-                        >
-                          Download
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Course Actions */}
-                  {examEligible && (
-                    <div className="mt-6">
-                      <Card className="bg-green-50 border-green-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Award className="h-5 w-5 text-green-600" />
-                            <span className="font-medium text-green-800">Exam Ready!</span>
-                          </div>
-                          <p className="text-sm text-green-700 mb-3">
-                            You've completed enough content to take the stream exam.
-                          </p>
-                          <Button 
-                            onClick={handleTakeExam}
-                            className="w-full bg-green-600 hover:bg-green-700"
-                          >
-                            Take Stream Exam
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>
 
-            {/* Topics Sidebar */}
+            {/* Sidebar - Topics & Progress */}
             <div className="lg:col-span-1">
-              <Card className="shadow-lg sticky top-24">
+              <Card className="shadow-md">
                 <CardHeader>
-                  <CardTitle className="text-lg">Course Topics</CardTitle>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Course Topics</span>
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      Syllabus
+                    </Badge>
+                  </CardTitle>
                   <CardDescription>
                     {selectedCourse?.topics.length || 0} topics • {selectedCourse?.totalDuration} min
                   </CardDescription>
@@ -862,6 +788,16 @@ const StreamLearningInterface = () => {
                         </span>
                       </div>
                     </div>
+
+                    <Button
+                      onClick={handleTakeExam}
+                      className="w-full mt-4 flex items-center justify-center gap-2"
+                      variant={examEligible ? 'default' : 'outline'}
+                      disabled={!examEligible}
+                    >
+                      <Award className="h-4 w-4" />
+                      {examEligible ? 'Take Stream Exam' : 'Complete 80% to Unlock Exam'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
