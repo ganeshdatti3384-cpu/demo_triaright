@@ -58,6 +58,14 @@ interface Enrollment {
   examScore: number | null;
 }
 
+// Local storage keys
+const STORAGE_KEYS = {
+  TOPIC_PROGRESS: 'pack365_topic_progress',
+  ENROLLMENT: 'pack365_enrollment',
+  COURSES: 'pack365_courses',
+  SELECTED_COURSE: 'pack365_selected_course'
+};
+
 const StreamLearningInterface = () => {
   const { stream } = useParams<{ stream: string }>();
   const location = useLocation();
@@ -78,6 +86,11 @@ const StreamLearningInterface = () => {
   const [examEligible, setExamEligible] = useState(false);
   const [currentTopicIndex, setCurrentTopicIndex] = useState(0);
 
+  // Load from localStorage on component mount
+  useEffect(() => {
+    loadFromLocalStorage();
+  }, []);
+
   useEffect(() => {
     loadStreamData();
   }, [stream]);
@@ -89,6 +102,62 @@ const StreamLearningInterface = () => {
       }
     };
   }, [progressIntervalId]);
+
+  // Save to localStorage whenever relevant state changes
+  useEffect(() => {
+    saveToLocalStorage();
+  }, [topicProgress, enrollment, courses, selectedCourse]);
+
+  const loadFromLocalStorage = () => {
+    try {
+      const savedTopicProgress = localStorage.getItem(STORAGE_KEYS.TOPIC_PROGRESS);
+      const savedEnrollment = localStorage.getItem(STORAGE_KEYS.ENROLLMENT);
+      const savedCourses = localStorage.getItem(STORAGE_KEYS.COURSES);
+      const savedSelectedCourse = localStorage.getItem(STORAGE_KEYS.SELECTED_COURSE);
+
+      if (savedTopicProgress) {
+        setTopicProgress(JSON.parse(savedTopicProgress));
+      }
+      if (savedEnrollment) {
+        setEnrollment(JSON.parse(savedEnrollment));
+      }
+      if (savedCourses) {
+        setCourses(JSON.parse(savedCourses));
+      }
+      if (savedSelectedCourse) {
+        setSelectedCourse(JSON.parse(savedSelectedCourse));
+      }
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+      // Clear corrupted data
+      clearLocalStorage();
+    }
+  };
+
+  const saveToLocalStorage = () => {
+    try {
+      if (topicProgress.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.TOPIC_PROGRESS, JSON.stringify(topicProgress));
+      }
+      if (enrollment) {
+        localStorage.setItem(STORAGE_KEYS.ENROLLMENT, JSON.stringify(enrollment));
+      }
+      if (courses.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.COURSES, JSON.stringify(courses));
+      }
+      if (selectedCourse) {
+        localStorage.setItem(STORAGE_KEYS.SELECTED_COURSE, JSON.stringify(selectedCourse));
+      }
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  };
+
+  const clearLocalStorage = () => {
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key);
+    });
+  };
 
   const loadStreamData = async () => {
     try {
@@ -121,8 +190,10 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      setEnrollment(streamEnrollment);
-      setTopicProgress(streamEnrollment.topicProgress || []);
+      // Merge server data with local progress data
+      const mergedEnrollment = mergeEnrollmentWithLocalProgress(streamEnrollment);
+      setEnrollment(mergedEnrollment);
+      setTopicProgress(mergedEnrollment.topicProgress || []);
 
       const coursesResponse = await pack365Api.getAllCourses();
       
@@ -171,17 +242,67 @@ const StreamLearningInterface = () => {
     }
   };
 
+  const mergeEnrollmentWithLocalProgress = (serverEnrollment: Enrollment): Enrollment => {
+    const localTopicProgress = topicProgress;
+    
+    if (localTopicProgress.length === 0) {
+      return serverEnrollment;
+    }
+
+    // Create a map of local progress for easy lookup
+    const localProgressMap = new Map(
+      localTopicProgress.map(tp => [`${tp.courseId}-${tp.topicName}`, tp])
+    );
+
+    // Merge server progress with local progress
+    const mergedTopicProgress = serverEnrollment.topicProgress.map(serverTp => {
+      const key = `${serverTp.courseId}-${serverTp.topicName}`;
+      const localTp = localProgressMap.get(key);
+      
+      if (localTp && localTp.watched) {
+        // Prefer local progress if topic is marked as watched
+        return localTp;
+      }
+      return serverTp;
+    });
+
+    // Add any local progress that doesn't exist in server progress
+    localTopicProgress.forEach(localTp => {
+      const exists = mergedTopicProgress.some(
+        tp => tp.courseId === localTp.courseId && tp.topicName === localTp.topicName
+      );
+      if (!exists) {
+        mergedTopicProgress.push(localTp);
+      }
+    });
+
+    // Recalculate total watched percentage based on merged progress
+    const totalWatchedPercentage = calculateTotalWatchedPercentage(mergedTopicProgress);
+
+    return {
+      ...serverEnrollment,
+      topicProgress: mergedTopicProgress,
+      totalWatchedPercentage
+    };
+  };
+
+  const calculateTotalWatchedPercentage = (progress: TopicProgress[]): number => {
+    if (progress.length === 0) return 0;
+    
+    const watchedCount = progress.filter(tp => tp.watched).length;
+    return Math.round((watchedCount / progress.length) * 100);
+  };
+
   const checkExamEligibility = async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Check if user has completed enough progress
+      // Use the current enrollment state which includes local progress
       if (enrollment && enrollment.totalWatchedPercentage >= 80) {
         const availableExamsResponse = await pack365Api.getAvailableExams(token);
         
         if (availableExamsResponse.success && availableExamsResponse.exams) {
-          // Check if there are any available exams for current courses
           const eligibleExams = availableExamsResponse.exams.filter((exam: any) => {
             return courses.some(course => course._id === exam.courseId);
           });
@@ -265,67 +386,35 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // Calculate total course duration for progress calculation
-      const totalCourseDuration = selectedCourse.topics.reduce((sum, t) => sum + t.duration, 0);
-      const newWatchedPercentage = calculateNewProgress();
+      // Update local state immediately
+      const updatedTopicProgress = updateLocalTopicProgress(selectedCourse._id, topic.name, topic.duration);
+      setTopicProgress(updatedTopicProgress);
 
-      const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId,
-        topicName: topic.name,
-        watchedDuration: topic.duration * 60, // Convert to seconds
-        totalCourseDuration: totalCourseDuration * 60, // Convert to seconds
-        totalWatchedPercentage: newWatchedPercentage
+      // Update enrollment progress
+      const newWatchedPercentage = calculateNewProgress(updatedTopicProgress);
+      if (enrollment) {
+        const updatedEnrollment = {
+          ...enrollment,
+          totalWatchedPercentage: newWatchedPercentage
+        };
+        setEnrollment(updatedEnrollment);
+      }
+
+      setIsTrackingProgress(false);
+      
+      await checkExamEligibility();
+      
+      toast({
+        title: 'Progress Updated',
+        description: `"${topic.name}" marked as completed!`,
+        variant: 'default'
       });
 
-      if (response.success) {
-        setTopicProgress(prev => {
-          const existingIndex = prev.findIndex(
-            tp => tp.topicName === topic.name && tp.courseId === selectedCourse._id
-          );
-          
-          if (existingIndex >= 0) {
-            return prev.map((tp, index) => 
-              index === existingIndex 
-                ? { 
-                    ...tp, 
-                    watched: true, 
-                    watchedDuration: topic.duration * 60,
-                    lastWatchedAt: new Date().toISOString()
-                  }
-                : tp
-            );
-          } else {
-            return [
-              ...prev,
-              {
-                courseId: selectedCourse._id,
-                topicName: topic.name,
-                watched: true,
-                watchedDuration: topic.duration * 60,
-                lastWatchedAt: new Date().toISOString()
-              }
-            ];
-          }
-        });
-
-        // Update enrollment progress
-        if (enrollment) {
-          setEnrollment({
-            ...enrollment,
-            totalWatchedPercentage: newWatchedPercentage
-          });
-        }
-
-        setIsTrackingProgress(false);
-        
-        await checkExamEligibility();
-        
-        toast({
-          title: 'Progress Updated',
-          description: `"${topic.name}" marked as completed!`,
-          variant: 'default'
-        });
+      // Sync with server in background
+      if (token) {
+        syncProgressWithServer(token, selectedCourse, topic, newWatchedPercentage);
       }
+
     } catch (error: any) {
       console.error('Error updating progress:', error);
       toast({ 
@@ -336,15 +425,54 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const calculateNewProgress = (): number => {
+  const updateLocalTopicProgress = (courseId: string, topicName: string, duration: number): TopicProgress[] => {
+    const existingIndex = topicProgress.findIndex(
+      tp => tp.topicName === topicName && tp.courseId === courseId
+    );
+    
+    const newTopicProgress: TopicProgress = {
+      courseId,
+      topicName,
+      watched: true,
+      watchedDuration: duration * 60,
+      lastWatchedAt: new Date().toISOString()
+    };
+
+    if (existingIndex >= 0) {
+      return topicProgress.map((tp, index) => 
+        index === existingIndex ? newTopicProgress : tp
+      );
+    } else {
+      return [...topicProgress, newTopicProgress];
+    }
+  };
+
+  const syncProgressWithServer = async (token: string, course: Course, topic: Topic, newWatchedPercentage: number) => {
+    try {
+      const totalCourseDuration = course.topics.reduce((sum, t) => sum + t.duration, 0);
+      
+      await pack365Api.updateTopicProgress(token, {
+        courseId: course.courseId,
+        topicName: topic.name,
+        watchedDuration: topic.duration * 60,
+        totalCourseDuration: totalCourseDuration * 60,
+        totalWatchedPercentage: newWatchedPercentage
+      });
+    } catch (error) {
+      console.error('Error syncing progress with server:', error);
+      // Don't show error to user as local progress is already saved
+    }
+  };
+
+  const calculateNewProgress = (currentProgress: TopicProgress[]): number => {
     if (!selectedCourse) return 0;
     
     const courseTopics = selectedCourse.topics || [];
-    const currentWatched = topicProgress.filter(tp => 
+    const currentWatched = currentProgress.filter(tp => 
       tp.courseId === selectedCourse._id && tp.watched
     ).length;
     
-    const newWatchedCount = currentWatched + 1;
+    const newWatchedCount = currentWatched;
     return Math.round((newWatchedCount / courseTopics.length) * 100);
   };
 
