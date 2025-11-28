@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 
-// ⭐ FINAL FIX: Correct backend URL 
+// ⭐ FINAL FIX: Correct backend URL (NO /api)
 const API_BASE_URL =
-  import.meta.env.VITE_BACKEND_URL || 'https://triaright.com';
+  import.meta.env.VITE_BACKEND_URL || "https://triaright.com";
 
 interface Topic {
   name: string;
@@ -18,15 +18,15 @@ interface Course {
   courseName: string;
   description: string;
   totalDuration: number;
-  topicsCount: number;
   topics: Topic[];
+  topicsCount: number;
   documentLink?: string;
-  _id: string; // Mongo ID used for topicProgress
+  _id: string; // MongoDB ObjectId used by backend
   stream: string;
 }
 
 interface TopicProgress {
-  courseId: string; // backend MongoId
+  courseId: string; // MUST be Mongo _id
   topicName: string;
   watched: boolean;
   watchedDuration: number;
@@ -49,110 +49,48 @@ const StreamLearningInterface = () => {
   const [loading, setLoading] = useState(true);
   const [currentTopicIndex, setCurrentTopicIndex] = useState(0);
   const [watchedDuration, setWatchedDuration] = useState(0);
-  const [error, setError] = useState<string | null>(null);
   const [videoProgress, setVideoProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  const selectedCourse = location.state?.selectedCourse as Course;
   const youtubePlayerRef = useRef<any>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout>();
-  const saveIntervalRef = useRef<NodeJS.Timeout>();
-
-  const selectedCourse = location.state?.selectedCourse as Course | undefined;
-
-  const getYouTubeVideoId = (url: string): string | null => {
-    const pattern =
-      /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-    const match = url.match(pattern);
-    return match && match[7]?.length === 11 ? match[7] : null;
-  };
-
-  const getBackendCourseId = (c: Course | null): string | null =>
-    c ? c._id : null;
+  const progressTimer = useRef<any>();
+  const autoSaveTimer = useRef<any>();
 
   const ProgressBar = ({ value }: { value: number }) => (
     <div className="w-full bg-gray-200 h-2 rounded-full">
       <div
-        className="bg-blue-600 h-2 rounded-full transition-all"
+        className="h-2 rounded-full bg-blue-600 transition-all"
         style={{ width: `${value}%` }}
       />
     </div>
   );
 
-  // -----------------------
-  // YOUTUBE PLAYER
-  // -----------------------
-
-  const createYouTubePlayer = (videoId: string) => {
-    youtubePlayerRef.current = new window.YT.Player('youtube-player', {
-      videoId,
-      events: {
-        onReady: onPlayerReady,
-        onStateChange: onPlayerStateChange,
-        onError: () => setError('Failed to load video'),
-      },
-    });
+  const getYouTubeId = (url: string) => {
+    const reg =
+      /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const m = url.match(reg);
+    return m?.[7]?.length === 11 ? m[7] : null;
   };
 
-  const initializeYouTubePlayer = (videoId: string) => {
-    if (!window.YT) {
-      const script = document.createElement('script');
-      script.src = 'https://www.youtube.com/iframe_api';
-      document.body.appendChild(script);
+  const getBackendCourseId = () => course?._id || null;
 
-      window.onYouTubeIframeAPIReady = () => createYouTubePlayer(videoId);
-    } else createYouTubePlayer(videoId);
-  };
-
-  const onPlayerReady = (event: any) => {
-    if (watchedDuration > 0) event.target.seekTo(watchedDuration);
-  };
-
-  const onPlayerStateChange = (event: any) => {
-    const state = event.data;
-
-    if (state === window.YT.PlayerState.PLAYING) {
-      setIsPlaying(true);
-      startProgressTracking();
-    } else if (state === window.YT.PlayerState.PAUSED) {
-      setIsPlaying(false);
-      stopProgressTracking();
-    } else if (state === window.YT.PlayerState.ENDED) {
-      setIsPlaying(false);
-      stopProgressTracking();
-      markTopicComplete();
-    }
-  };
-
-  const startProgressTracking = () => {
-    stopProgressTracking();
-
-    progressIntervalRef.current = setInterval(() => {
-      if (!youtubePlayerRef.current) return;
-
-      const current = youtubePlayerRef.current.getCurrentTime();
-      const duration = youtubePlayerRef.current.getDuration();
-
-      setWatchedDuration(current);
-      setVideoProgress(duration > 0 ? (current / duration) * 100 : 0);
-    }, 1000);
-  };
-
-  const stopProgressTracking = () => {
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-  };
-
-  // -----------------------
-  // LOAD COURSE + ENROLLMENT
-  // -----------------------
-
+  // ---------------------------------------------------------
+  // Load course + enrollment
+  // ---------------------------------------------------------
   useEffect(() => {
-    const loadContent = async () => {
+    const loadData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) return navigate('/login');
+        const token = localStorage.getItem("token");
+        if (!token) return navigate("/login");
 
-        if (!selectedCourse) return navigate(`/pack365-learning/${stream}`);
+        if (!selectedCourse) {
+          setError("Course not selected");
+          return navigate(`/pack365-learning/${stream}`);
+        }
 
+        // 1. Get course
         const courseRes = await axios.get(
           `${API_BASE_URL}/pack365/courses/${selectedCourse.courseId}`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -160,182 +98,235 @@ const StreamLearningInterface = () => {
 
         setCourse(courseRes.data.data);
 
+        // 2. Get enrollment
         const enrollRes = await axios.get(
           `${API_BASE_URL}/pack365/enrollments`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        const userEnroll = enrollRes.data.enrollments.find(
-          (e: StreamEnrollment) =>
-            e.stream.toLowerCase() === stream?.toLowerCase()
+        const record = enrollRes.data.enrollments.find(
+          (e: any) => e.stream.toLowerCase() === stream?.toLowerCase()
         );
 
-        setEnrollment(userEnroll || null);
+        setEnrollment(record);
       } catch (err: any) {
         console.error(err);
-        setError('Failed to load content');
+        setError("Failed to load data");
       } finally {
         setLoading(false);
       }
     };
 
-    loadContent();
+    loadData();
   }, []);
 
-  // -----------------------
-  // LOAD VIDEO ON TOPIC CHANGE
-  // -----------------------
-
+  // ---------------------------------------------------------
+  // Load YouTube player on topic change
+  // ---------------------------------------------------------
   useEffect(() => {
     if (!course) return;
 
     const topic = course.topics[currentTopicIndex];
-    const videoId = getYouTubeVideoId(topic.link);
+    const id = getYouTubeId(topic.link);
 
     if (youtubePlayerRef.current) {
       youtubePlayerRef.current.destroy();
       youtubePlayerRef.current = null;
     }
 
-    if (videoId) initializeYouTubePlayer(videoId);
+    if (id) {
+      if (!window.YT) {
+        const script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(script);
+
+        window.onYouTubeIframeAPIReady = () => {
+          youtubePlayerRef.current = new window.YT.Player("youtube-player", {
+            videoId: id,
+            events: {
+              onReady: () => {
+                youtubePlayerRef.current.seekTo(watchedDuration);
+              },
+              onStateChange: handlePlayerState,
+            },
+          });
+        };
+      } else {
+        youtubePlayerRef.current = new window.YT.Player("youtube-player", {
+          videoId: id,
+          events: {
+            onReady: () => {
+              youtubePlayerRef.current.seekTo(watchedDuration);
+            },
+            onStateChange: handlePlayerState,
+          },
+        });
+      }
+    }
   }, [currentTopicIndex, course]);
 
-  // -----------------------
-  // AUTO SAVE PROGRESS
-  // -----------------------
+  const handlePlayerState = (event: any) => {
+    const state = event.data;
+
+    if (state === window.YT.PlayerState.PLAYING) {
+      setIsPlaying(true);
+      startTracking();
+    } else {
+      setIsPlaying(false);
+      stopTracking();
+    }
+
+    if (state === window.YT.PlayerState.ENDED) {
+      markTopicComplete();
+    }
+  };
+
+  // ---------------------------------------------------------
+  // Tracking & Auto-save
+  // ---------------------------------------------------------
+  const startTracking = () => {
+    stopTracking();
+
+    progressTimer.current = setInterval(() => {
+      if (!youtubePlayerRef.current) return;
+
+      const current = youtubePlayerRef.current.getCurrentTime();
+      const duration = youtubePlayerRef.current.getDuration();
+
+      setWatchedDuration(current);
+      setVideoProgress(duration ? (current / duration) * 100 : 0);
+    }, 1000);
+  };
+
+  const stopTracking = () => {
+    if (progressTimer.current) clearInterval(progressTimer.current);
+  };
 
   useEffect(() => {
     if (!course || !enrollment) return;
 
-    saveIntervalRef.current = setInterval(() => {
+    autoSaveTimer.current = setInterval(() => {
       if (watchedDuration > 0) saveProgress();
     }, 8000);
 
-    return () => saveIntervalRef.current && clearInterval(saveIntervalRef.current);
-  }, [course, enrollment, watchedDuration]);
+    return () => clearInterval(autoSaveTimer.current);
+  }, [watchedDuration, course, enrollment]);
 
+  // ---------------------------------------------------------
+  // Save progress
+  // ---------------------------------------------------------
   const saveProgress = async () => {
     if (!course || !enrollment) return;
 
-    const backendCourseId = getBackendCourseId(course);
-    const currentTopic = course.topics[currentTopicIndex];
-
-    const token = localStorage.getItem('token');
+    const backendCourseId = getBackendCourseId();
+    const topic = course.topics[currentTopicIndex];
 
     try {
+      const token = localStorage.getItem("token");
+
       await axios.put(
         `${API_BASE_URL}/pack365/topic/progress`,
         {
           courseId: backendCourseId,
-          topicName: currentTopic.name,
+          topicName: topic.name,
           watchedDuration: Math.floor(watchedDuration),
           totalCourseDuration: course.totalDuration * 60,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
     } catch (err) {
-      console.error('Progress save failed:', err);
+      console.error("Progress save failed:", err);
     }
   };
 
-  // -----------------------
-  // MARK TOPIC COMPLETE
-  // -----------------------
-
+  // ---------------------------------------------------------
+  // Mark topic complete
+  // ---------------------------------------------------------
   const markTopicComplete = async () => {
     if (!course || !enrollment) return;
 
-    const backendCourseId = getBackendCourseId(course);
-    const currentTopic = course.topics[currentTopicIndex];
-
-    const token = localStorage.getItem('token');
+    const backendCourseId = getBackendCourseId();
+    const topic = course.topics[currentTopicIndex];
 
     try {
+      const token = localStorage.getItem("token");
+
       await axios.put(
         `${API_BASE_URL}/pack365/topic/progress`,
         {
           courseId: backendCourseId,
-          topicName: currentTopic.name,
-          watchedDuration: currentTopic.duration * 60,
+          topicName: topic.name,
+          watchedDuration: topic.duration * 60,
           totalCourseDuration: course.totalDuration * 60,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Move to next topic automatically
       if (currentTopicIndex < course.topics.length - 1) {
         setCurrentTopicIndex(currentTopicIndex + 1);
         setWatchedDuration(0);
         setVideoProgress(0);
       }
     } catch (err) {
-      console.error('Error marking topic complete:', err);
+      console.error(err);
     }
   };
 
-  // -----------------------
+  // ---------------------------------------------------------
   // UI
-  // -----------------------
-
+  // ---------------------------------------------------------
   if (loading)
-    return (
-      <div className="p-10 text-center text-gray-600">Loading content…</div>
-    );
+    return <div className="p-10 text-gray-500 text-center">Loading…</div>;
 
-  if (!course)
-    return (
-      <div className="p-10 text-center text-red-600">
-        Failed to load course.
-      </div>
-    );
-
-  const currentTopic = course.topics[currentTopicIndex];
+  if (error)
+    return <div className="p-10 text-red-500 text-center">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="p-4 bg-white border-b flex justify-between">
+    <div className="min-h-screen bg-gray-100 p-4">
+      {/* HEADER */}
+      <div className="bg-white p-4 border rounded mb-4 flex justify-between">
         <div>
-          <h2 className="text-xl font-bold">{course.courseName}</h2>
-          <p className="text-gray-500">{course.description}</p>
+          <h1 className="text-xl font-bold">{course?.courseName}</h1>
+          <p className="text-gray-500">{course?.description}</p>
         </div>
 
-        <div className="text-right">
-          <p className="font-semibold">
-            Progress: {enrollment?.totalWatchedPercentage ?? 0}%
-          </p>
+        <div className="w-40">
+          <div className="text-sm font-bold">
+            {enrollment?.totalWatchedPercentage ?? 0}%
+          </div>
           <ProgressBar value={enrollment?.totalWatchedPercentage ?? 0} />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="grid grid-cols-4 gap-4 p-4">
-        {/* Sidebar */}
-        <div className="col-span-1 bg-white border rounded p-3 h-[80vh] overflow-y-auto">
-          <h3 className="font-bold mb-3">Course Topics</h3>
+      <div className="grid grid-cols-4 gap-4">
+        {/* LEFT: TOPICS */}
+        <div className="col-span-1 bg-white p-4 border rounded h-[80vh] overflow-y-auto">
+          <h2 className="font-bold mb-3">Course Topics</h2>
 
-          {course.topics.map((t, i) => (
+          {course?.topics.map((t, i) => (
             <div
               key={i}
-              className={`p-2 mb-1 rounded cursor-pointer ${
-                i === currentTopicIndex
-                  ? 'bg-blue-100'
-                  : 'hover:bg-gray-100'
-              }`}
               onClick={() => {
                 setCurrentTopicIndex(i);
                 setWatchedDuration(0);
                 setVideoProgress(0);
               }}
+              className={`p-2 rounded cursor-pointer mb-1 ${
+                currentTopicIndex === i
+                  ? "bg-blue-100 font-semibold"
+                  : "hover:bg-gray-100"
+              }`}
             >
               {t.name}
             </div>
           ))}
         </div>
 
-        {/* Video + Controls */}
-        <div className="col-span-3 bg-white border rounded p-4">
-          <h3 className="text-lg font-bold mb-2">{currentTopic.name}</h3>
+        {/* RIGHT: VIDEO */}
+        <div className="col-span-3 bg-white p-4 border rounded">
+          <h2 className="text-lg font-bold mb-2">
+            {course?.topics[currentTopicIndex]?.name}
+          </h2>
 
           <div className="aspect-video bg-black mb-4">
             <div id="youtube-player" className="w-full h-full"></div>
@@ -349,7 +340,7 @@ const StreamLearningInterface = () => {
             }
             className="px-4 py-2 bg-blue-600 text-white rounded"
           >
-            {isPlaying ? 'Pause' : 'Play'}
+            {isPlaying ? "Pause" : "Play"}
           </button>
 
           <button
