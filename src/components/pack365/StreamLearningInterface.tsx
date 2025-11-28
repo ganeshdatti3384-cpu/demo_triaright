@@ -77,7 +77,6 @@ const StreamLearningInterface = () => {
   const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [examEligible, setExamEligible] = useState(false);
   const [currentTopicIndex, setCurrentTopicIndex] = useState(0);
-  const [backendProgress, setBackendProgress] = useState<number>(0); // New state for backend progress
 
   useEffect(() => {
     loadStreamData();
@@ -220,7 +219,6 @@ const StreamLearningInterface = () => {
     setIsVideoModalOpen(true);
     setVideoProgress(0);
     setIsTrackingProgress(false);
-    setBackendProgress(0); // Reset backend progress
 
     if (progressIntervalId) {
       clearInterval(progressIntervalId);
@@ -267,14 +265,9 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // Show backend progress tracking
-      setBackendProgress(10); // Start progress
-
       // Calculate total course duration for progress calculation
       const totalCourseDuration = selectedCourse.topics.reduce((sum, t) => sum + t.duration, 0);
       const newWatchedPercentage = calculateNewProgress();
-
-      setBackendProgress(50); // Mid progress
 
       const response = await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse.courseId,
@@ -283,8 +276,6 @@ const StreamLearningInterface = () => {
         totalCourseDuration: totalCourseDuration * 60, // Convert to seconds
         totalWatchedPercentage: newWatchedPercentage
       });
-
-      setBackendProgress(80); // Almost done
 
       if (response.success) {
         setTopicProgress(prev => {
@@ -325,7 +316,6 @@ const StreamLearningInterface = () => {
           });
         }
 
-        setBackendProgress(100); // Complete
         setIsTrackingProgress(false);
         
         await checkExamEligibility();
@@ -335,13 +325,9 @@ const StreamLearningInterface = () => {
           description: `"${topic.name}" marked as completed!`,
           variant: 'default'
         });
-
-        // Reset backend progress after a delay
-        setTimeout(() => setBackendProgress(0), 2000);
       }
     } catch (error: any) {
       console.error('Error updating progress:', error);
-      setBackendProgress(0); // Reset on error
       toast({ 
         title: 'Error', 
         description: 'Failed to update progress', 
@@ -380,7 +366,6 @@ const StreamLearningInterface = () => {
       setProgressIntervalId(null);
     }
     setIsTrackingProgress(false);
-    setBackendProgress(0); // Reset backend progress
   };
 
   const getTopicProgress = (courseId: string, topicName: string) => {
@@ -422,7 +407,6 @@ const StreamLearningInterface = () => {
       setSelectedTopic(nextTopic);
       setVideoProgress(0);
       setIsTrackingProgress(false);
-      setBackendProgress(0); // Reset backend progress
 
       if (progressIntervalId) {
         clearInterval(progressIntervalId);
@@ -441,7 +425,6 @@ const StreamLearningInterface = () => {
       setSelectedTopic(prevTopic || null);
       setVideoProgress(0);
       setIsTrackingProgress(false);
-      setBackendProgress(0); // Reset backend progress
 
       if (progressIntervalId) {
         clearInterval(progressIntervalId);
@@ -503,6 +486,7 @@ const StreamLearningInterface = () => {
 
   const currentTopic = selectedCourse?.topics?.[currentTopicIndex];
   const courseProgressValue = selectedCourse ? getCourseProgress(selectedCourse._id) : 0;
+  const overallStreamProgress = enrollment?.totalWatchedPercentage || 0;
 
   return (
     <>
@@ -572,20 +556,6 @@ const StreamLearningInterface = () => {
                   </div>
                   <Progress value={videoProgress} className="h-2 mb-4" />
                   
-                  {/* Backend Progress Mini Bar */}
-                  {backendProgress > 0 && (
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-blue-600">Saving Progress</span>
-                        <span className="text-xs text-blue-600">{Math.round(backendProgress)}%</span>
-                      </div>
-                      <Progress value={backendProgress} className="h-1 bg-blue-100" />
-                      <div className="text-xs text-blue-500 mt-1">
-                        {backendProgress < 100 ? 'Updating backend...' : 'Progress saved!'}
-                      </div>
-                    </div>
-                  )}
-                  
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
                       <Button
@@ -625,10 +595,9 @@ const StreamLearningInterface = () => {
                       onClick={() => selectedTopic && handleManualComplete(selectedTopic)}
                       variant="default"
                       size="sm"
-                      disabled={backendProgress > 0 && backendProgress < 100} // Disable while saving
                     >
                       <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {backendProgress > 0 && backendProgress < 100 ? 'Saving...' : 'Mark as Completed'}
+                      Mark as Completed
                     </Button>
                   </div>
                 </div>
@@ -642,14 +611,29 @@ const StreamLearningInterface = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <Button 
-              onClick={() => navigate(`/pack365-learning/${stream}`)}
-              variant="outline"
-              className="mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Stream
-            </Button>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <Button 
+                onClick={() => navigate(`/pack365-learning/${stream}`)}
+                variant="outline"
+                className="self-start"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Stream
+              </Button>
+              
+              {/* Overall Stream Progress Mini Bar */}
+              {enrollment && (
+                <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-lg border shadow-sm min-w-[200px] self-start">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                      <span>Stream Progress</span>
+                      <span>{Math.round(overallStreamProgress)}%</span>
+                    </div>
+                    <Progress value={overallStreamProgress} className="h-2" />
+                  </div>
+                </div>
+              )}
+            </div>
             
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
