@@ -274,6 +274,13 @@ const StreamLearningInterface = () => {
     // Check exam eligibility based on completed topics
     const isAllTopicsCompleted = completedTopics === selectedCourse.topics.length;
     setExamEligible(isAllTopicsCompleted);
+    
+    console.log('Exam Eligibility Check:', {
+      completedTopics,
+      totalTopics: selectedCourse.topics.length,
+      isAllTopicsCompleted,
+      examEligible: isAllTopicsCompleted
+    });
   };
 
   const loadStreamData = async () => {
@@ -522,12 +529,20 @@ const StreamLearningInterface = () => {
   };
 
   const handleTakeExam = () => {
+    console.log('Take exam clicked:', {
+      stream,
+      examEligible,
+      completedTopics: courseProgress.completedTopics,
+      totalTopics: courseProgress.totalTopics
+    });
+
     if (examEligible) {
+      console.log('Navigating to exam page for stream:', stream);
       navigate(`/exam/${stream}`);
     } else {
       toast({
         title: 'Not Eligible',
-        description: 'You need to complete all topics to unlock the exam.',
+        description: `You need to complete all topics to unlock the exam. Completed: ${courseProgress.completedTopics}/${courseProgress.totalTopics}`,
         variant: 'destructive'
       });
     }
