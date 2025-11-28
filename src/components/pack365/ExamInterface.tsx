@@ -19,7 +19,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-  import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import {
   Clock,
@@ -63,7 +63,10 @@ interface Course {
 interface AvailableExam {
   _id: string;
   examId: string;
-  courseId: string; // backend returns ObjectId
+  courseId: {
+    _id: string;
+    courseName: string;
+  };
   maxAttempts: number;
   passingScore: number;
   timeLimit: number;
@@ -93,6 +96,17 @@ interface ExamHistory {
   attempts: ExamHistoryRecord[];
 }
 
+interface ExamResult {
+  message: string;
+  currentScore: number;
+  bestScore: number;
+  attemptNumber: number;
+  maxAttempts: number;
+  remainingAttempts: number;
+  isPassed: boolean;
+  canRetake: boolean;
+}
+
 const ExamInterface = () => {
   const { stream } = useParams<{ stream: string }>();
   const navigate = useNavigate();
@@ -109,7 +123,7 @@ const ExamInterface = () => {
   const [examHistory, setExamHistory] = useState<ExamHistory | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [examResult, setExamResult] = useState<any>(null);
+  const [examResult, setExamResult] = useState<ExamResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -135,7 +149,7 @@ const ExamInterface = () => {
   }, [timeLeft, showResults, showConfirmation]);
 
   // -------------------------------------------------
-  // LOAD EXAM BASED ON STREAM
+  // LOAD EXAM BASED ON STREAM - UPDATED TO USE /exams/all
   // -------------------------------------------------
   const loadExamData = async () => {
     try {
@@ -153,42 +167,54 @@ const ExamInterface = () => {
         return;
       }
 
-      // 1) Get available exams using CORRECTED API endpoint
-      const availableExams = await pack365Api.getAvailableExamsForUser(token);
-      if (!availableExams.success || !availableExams.exams.length) {
+      // 1) Get all exams using /exams/all endpoint
+      const allExamsResponse = await pack365Api.getAllExams(token);
+      if (!allExamsResponse.success || !allExamsResponse.exams?.length) {
         setError('No exams available.');
         return;
       }
 
-      // 2) Match exam by resolving each courseId
+      // 2) Filter active exams and match by stream
+      const activeExams = allExamsResponse.exams.filter((exam: AvailableExam) => exam.isActive);
+      
       let selectedExam: AvailableExam | null = null;
       let selectedCourse: Course | null = null;
 
-      for (const exam of availableExams.exams) {
+      for (const exam of activeExams) {
         try {
-          const courseResponse = await pack365Api.getCourseById(String(exam.courseId));
-          const course = courseResponse.data || courseResponse.course || null;
+          // Get course details from the exam data or fetch separately if needed
+          const course = exam.courseId;
           if (!course) continue;
 
-          const courseStream = course.stream?.toLowerCase() || '';
-          if (courseStream === (stream || '').toLowerCase()) {
+          const courseStream = course.courseName?.toLowerCase() || '';
+          const targetStream = (stream || '').toLowerCase();
+          
+          // Match by stream name in course name or separate stream field
+          if (courseStream.includes(targetStream) || courseStream === targetStream) {
             selectedExam = exam;
-            selectedCourse = course;
+            
+            // Create course details from exam data
+            selectedCourse = {
+              _id: course._id,
+              courseId: course._id, // Using _id as courseId since it's not directly available
+              courseName: course.courseName,
+              stream: targetStream
+            };
             break;
           }
         } catch (err) {
-          console.warn('Failed to fetch course for exam:', exam, err);
+          console.warn('Failed to process exam:', exam, err);
         }
       }
 
       if (!selectedExam || !selectedCourse) {
-        setError(`No exam found for stream "${stream}".`);
+        setError(`No active exam found for stream "${stream}".`);
         return;
       }
 
       setCourseDetails(selectedCourse);
 
-      // 3) Load exam details using CORRECTED API endpoint
+      // 3) Load exam details
       const examId = selectedExam.examId;
       const examDetailResp = await pack365Api.getExamDetails(examId, token);
 
@@ -200,19 +226,19 @@ const ExamInterface = () => {
       setExamDetails(examDetailResp.exam);
       setTimeLeft((examDetailResp.exam.timeLimit || 60) * 60);
 
-      // 4) Load questions using CORRECTED API endpoint
+      // 4) Load questions (without answers for student)
       const questionResp = await pack365Api.getExamQuestions(examId, false, token);
-      if (!questionResp.success) {
+      if (!questionResp.success || !questionResp.questions) {
         setError('Failed to load exam questions.');
         return;
       }
 
       setQuestions(questionResp.questions);
 
-      // 5) Load history using CORRECTED API endpoint
+      // 5) Load history using course ID from the selected exam
       try {
         const historyResp = await pack365Api.getExamHistory(token, selectedCourse._id);
-        if (historyResp.success) {
+        if (historyResp.success && historyResp.examHistory) {
           setExamHistory(historyResp.examHistory);
         }
       } catch (historyErr) {
@@ -221,7 +247,7 @@ const ExamInterface = () => {
 
     } catch (err: any) {
       console.error('Load exam error:', err);
-      setError('Failed to load exam.');
+      setError(err.response?.data?.message || 'Failed to load exam.');
     } finally {
       setIsLoading(false);
     }
@@ -251,36 +277,70 @@ const ExamInterface = () => {
         return;
       }
 
-      // Calculate score
+      // Calculate score based on correct answers
       let score = 0;
       questions.forEach((q, i) => {
         if (selectedAnswers[i] === q.correctAnswer) score++;
       });
 
-      // Submit using CORRECTED API endpoint
+      // Convert score to percentage
+      const scorePercentage = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
+
+      // Submit exam
       const submitResp = await pack365Api.submitExam(token, {
         courseId,
         examId,
-        marks: score,
+        marks: scorePercentage, // Send percentage score
         timeTaken: (examDetails?.timeLimit || 0) * 60 - timeLeft
       });
 
       if (!submitResp.success) {
-        toast({ title: 'Error', description: submitResp.message, variant: 'destructive' });
+        toast({ 
+          title: 'Error', 
+          description: submitResp.message || 'Failed to submit exam', 
+          variant: 'destructive' 
+        });
         return;
       }
 
       setExamResult(submitResp);
       setShowResults(true);
-    } catch (err) {
-      toast({ title: 'Error', description: 'Failed to submit exam.', variant: 'destructive' });
+      setShowConfirmation(false);
+      
+      toast({
+        title: 'Exam Submitted',
+        description: `Your exam has been submitted successfully. Score: ${scorePercentage.toFixed(1)}%`,
+        variant: 'default'
+      });
+
+    } catch (err: any) {
+      console.error('Submit exam error:', err);
+      toast({ 
+        title: 'Error', 
+        description: err.response?.data?.message || 'Failed to submit exam.', 
+        variant: 'destructive' 
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleAutoSubmit = () => {
-    if (!showResults) handleSubmit();
+    if (!showResults && !showConfirmation) {
+      toast({
+        title: 'Time Up!',
+        description: 'Time has expired. Submitting your exam automatically.',
+        variant: 'default'
+      });
+      handleSubmit();
+    }
+  };
+
+  // Format time display
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   // -------------------------------------------------
@@ -304,14 +364,23 @@ const ExamInterface = () => {
         <div className="flex flex-col items-center justify-center h-screen gap-3">
           <XCircle className="h-12 w-12 text-red-500" />
           <p className="text-red-600 text-lg">{error}</p>
-          <Button onClick={() => navigate(-1)}>Back</Button>
+          <Button onClick={() => navigate('/pack365')}>Back to Learning</Button>
         </div>
       </>
     );
   }
 
-  if (!examDetails || !courseDetails) {
-    return null;
+  if (!examDetails || !courseDetails || !questions.length) {
+    return (
+      <>
+        <Navbar />
+        <div className="flex flex-col items-center justify-center h-screen gap-3">
+          <AlertCircle className="h-12 w-12 text-yellow-500" />
+          <p className="text-lg">No exam content available.</p>
+          <Button onClick={() => navigate('/pack365')}>Back to Learning</Button>
+        </div>
+      </>
+    );
   }
 
   // -------------------------------------------------
@@ -321,54 +390,75 @@ const ExamInterface = () => {
     <>
       <Navbar />
       <div className="p-6 max-w-4xl mx-auto">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4 flex items-center">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
+        <Button variant="ghost" onClick={() => navigate('/pack365')} className="mb-4 flex items-center">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Learning
         </Button>
 
         <Card>
           <CardHeader>
-            <CardTitle>{courseDetails.courseName} - Exam</CardTitle>
-            <CardDescription>
-              Answer all questions. Passing Score: {examDetails.passingScore}%
-            </CardDescription>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>{courseDetails.courseName} - Exam</CardTitle>
+                <CardDescription>
+                  Answer all questions. Passing Score: {examDetails.passingScore}%
+                  {examHistory && (
+                    <span className="ml-2">
+                      (Attempts: {examHistory.totalAttempts || 0}/{examDetails.maxAttempts})
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+              <Badge variant={timeLeft < 300 ? "destructive" : "secondary"}>
+                <Clock className="h-4 w-4 mr-1" />
+                {formatTime(timeLeft)}
+              </Badge>
+            </div>
           </CardHeader>
 
           <CardContent>
+            {/* Progress Bar */}
             <div className="flex items-center justify-between mb-4">
-              <span className="flex items-center gap-2">
-                <Clock className="h-5 w-5" /> {Math.floor(timeLeft / 60)}:
-                {(timeLeft % 60).toString().padStart(2, '0')}
+              <span className="text-sm text-muted-foreground">
+                Progress: {answeredQuestions} / {totalQuestions} questions
               </span>
               <Badge variant="secondary">
-                {answeredQuestions} / {totalQuestions}
+                Question {currentQuestionIndex + 1} of {totalQuestions}
               </Badge>
             </div>
 
             <Progress value={progressPercentage} className="mb-6" />
 
-            <div className="mb-4">
-              <h2 className="font-semibold mb-2">
-                Question {currentQuestionIndex + 1} of {totalQuestions}
-              </h2>
-              <p className="mb-3">{currentQuestion.questionText}</p>
+            {/* Question */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Badge variant="outline" className="capitalize">
+                  {currentQuestion.type}
+                </Badge>
+              </div>
+              
+              <h3 className="font-semibold text-lg mb-4">{currentQuestion.questionText}</h3>
 
               <RadioGroup
-                value={selectedAnswers[currentQuestionIndex]}
+                value={selectedAnswers[currentQuestionIndex] || ''}
                 onValueChange={(value) =>
                   handleAnswerSelect(currentQuestionIndex, value)
                 }
               >
                 {currentQuestion.options.map((option, idx) => (
-                  <div key={idx} className="flex items-center space-x-2 mb-2">
+                  <div key={idx} className="flex items-center space-x-3 mb-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors">
                     <RadioGroupItem value={option} id={`option-${idx}`} />
-                    <Label htmlFor={`option-${idx}`}>{option}</Label>
+                    <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer">
+                      {option}
+                    </Label>
                   </div>
                 ))}
               </RadioGroup>
             </div>
 
-            <div className="flex justify-between mt-6">
+            {/* Navigation Buttons */}
+            <div className="flex justify-between mt-8">
               <Button
+                variant="outline"
                 disabled={currentQuestionIndex === 0}
                 onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
               >
@@ -394,22 +484,49 @@ const ExamInterface = () => {
           </CardContent>
         </Card>
 
+        {/* Question Navigation Dots */}
+        <div className="mt-6 flex flex-wrap gap-2 justify-center">
+          {questions.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentQuestionIndex(index)}
+              className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                index === currentQuestionIndex
+                  ? 'bg-primary text-primary-foreground'
+                  : selectedAnswers[index]
+                  ? 'bg-green-500 text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {index + 1}
+            </button>
+          ))}
+        </div>
+
         {/* CONFIRMATION DIALOG */}
         <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Submit Exam?</DialogTitle>
               <DialogDescription>
+                You have answered {answeredQuestions} out of {totalQuestions} questions.
                 Once submitted, you cannot change your answers.
               </DialogDescription>
             </DialogHeader>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowConfirmation(false)}>
-                Cancel
+                Continue Exam
               </Button>
               <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? 'Submitting…' : 'Submit'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Exam'
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -417,36 +534,76 @@ const ExamInterface = () => {
 
         {/* RESULT DIALOG */}
         <Dialog open={showResults} onOpenChange={setShowResults}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Exam Results</DialogTitle>
+              <DialogTitle className="text-center">Exam Results</DialogTitle>
             </DialogHeader>
 
             {examResult ? (
-              <div className="text-center">
-                <h2 className="text-xl font-semibold mb-2">
-                  Score: {examResult.currentScore}
-                </h2>
-                <p>
-                  Best Score: {examResult.bestScore} / Attempts: {examResult.attemptNumber}/{examResult.maxAttempts}
-                </p>
+              <div className="text-center space-y-4">
+                <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
+                  examResult.isPassed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                }`}>
+                  {examResult.isPassed ? (
+                    <CheckCircle2 className="h-8 w-8" />
+                  ) : (
+                    <XCircle className="h-8 w-8" />
+                  )}
+                </div>
+                
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">
+                    {examResult.currentScore.toFixed(1)}%
+                  </h3>
+                  <p className={`text-lg font-semibold ${
+                    examResult.isPassed ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {examResult.isPassed ? 'Passed' : 'Failed'}
+                  </p>
+                </div>
 
-                {examResult.isPassed ? (
-                  <div className="text-green-600 mt-4 flex items-center justify-center gap-2">
-                    <CheckCircle2 className="h-6 w-6" /> Passed
+                <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                  <div>
+                    <p>Best Score</p>
+                    <p className="font-semibold text-foreground">
+                      {examResult.bestScore.toFixed(1)}%
+                    </p>
                   </div>
-                ) : (
-                  <div className="text-red-600 mt-4 flex items-center justify-center gap-2">
-                    <XCircle className="h-6 w-6" /> Failed
+                  <div>
+                    <p>Attempt</p>
+                    <p className="font-semibold text-foreground">
+                      {examResult.attemptNumber}/{examResult.maxAttempts}
+                    </p>
                   </div>
+                </div>
+
+                {examResult.canRetake && !examResult.isPassed && (
+                  <p className="text-sm text-yellow-600">
+                    You can retake the exam. {examResult.remainingAttempts} attempts remaining.
+                  </p>
                 )}
 
-                <Button className="mt-6" onClick={() => navigate('/pack365')}>
-                  Back to Learning
-                </Button>
+                <div className="flex gap-3 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowResults(false)}
+                    className="flex-1"
+                  >
+                    Review
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/pack365')}
+                    className="flex-1"
+                  >
+                    Back to Learning
+                  </Button>
+                </div>
               </div>
             ) : (
-              <p>No result found.</p>
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                <p>Processing results...</p>
+              </div>
             )}
           </DialogContent>
         </Dialog>
