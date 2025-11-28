@@ -50,12 +50,12 @@ interface Course {
 interface AvailableExam {
   _id: string;
   examId: string;
-  courseId: any; // More flexible to handle different structures
+  courseId: any; // Pack365Course._id
   maxAttempts: number;
   passingScore: number;
   timeLimit: number;
   isActive: boolean;
-  stream?: string; // Some exams might have stream directly
+  stream?: string;
 }
 
 interface ExamHistory {
@@ -85,6 +85,7 @@ const ExamInterface = () => {
   const { toast } = useToast();
   
   const [examDetails, setExamDetails] = useState<ExamDetails | null>(null);
+  const [courseDetails, setCourseDetails] = useState<Course | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: string }>({});
@@ -104,6 +105,7 @@ const ExamInterface = () => {
 
   useEffect(() => {
     loadExamData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
   useEffect(() => {
@@ -134,10 +136,10 @@ const ExamInterface = () => {
         return;
       }
 
-      // Get ALL exams first using the working endpoint
-      console.log('Fetching all exams...');
+      // 1) Fetch available exams for user
+      console.log('Fetching available exams...');
       const availableExamsResponse = await pack365Api.getAvailableExamsForUser(token);
-      console.log('All exams response:', availableExamsResponse);
+      console.log('Available exams response:', availableExamsResponse);
       
       if (!availableExamsResponse.success) {
         console.error('Exams API failed:', availableExamsResponse);
@@ -151,39 +153,49 @@ const ExamInterface = () => {
         return;
       }
 
-      // Filter exams for the current stream
-      console.log('All exams:', availableExamsResponse.exams);
-      const streamExam = availableExamsResponse.exams.find((exam: any) => {
-        // Check different possible structures for course data
-        const courseStream = exam.courseId?.stream || 
-                            exam.courseId?.courseId?.stream || 
-                            exam.stream;
-        console.log('Exam course stream:', courseStream, 'Looking for:', stream?.toLowerCase());
-        return courseStream?.toLowerCase() === stream?.toLowerCase();
-      });
+      // 2) For each exam, fetch its course and filter by stream
+      console.log('Resolving courses for exams and filtering by stream:', stream);
+      let matchedExam: AvailableExam | null = null;
+      let matchedCourse: Course | null = null;
 
-      console.log('Found stream exam:', streamExam);
+      for (const exam of availableExamsResponse.exams) {
+        // exam.courseId is expected to be a Pack365Course._id string
+        if (!exam || !exam.courseId) continue;
+        try {
+          const courseResp = await pack365Api.getCourseById(String(exam.courseId));
+          if (courseResp && (courseResp.success || courseResp.data)) {
+            const course = courseResp.data || courseResp.course || courseResp;
+            const courseStream = (course?.stream || '').toString().toLowerCase();
+            if (courseStream === String(stream || '').toLowerCase()) {
+              matchedExam = exam;
+              matchedCourse = course;
+              break;
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch course for exam', exam, err);
+        }
+      }
 
-      if (!streamExam) {
-        // Get available streams from all exams
-        const availableStreams = [...new Set(availableExamsResponse.exams
-          .map((exam: any) => {
-            return exam.courseId?.stream || 
-                   exam.courseId?.courseId?.stream || 
-                   exam.stream;
-          })
-          .filter(Boolean))].join(', ');
-        
-        setError(`No exam available for "${stream}" stream. ${availableStreams ? `Available streams: ${availableStreams}` : 'No streams available.'}`);
+      console.log('Matched exam:', matchedExam, 'Matched course:', matchedCourse);
+
+      if (!matchedExam || !matchedCourse) {
+        const availableStreams = [...new Set(availableExamsResponse.exams.map((ex: any) => ex.courseId).filter(Boolean))];
+        setError(`No exam available for "${stream}" stream.`);
         return;
       }
 
-      // Get exam details using examId or _id
-      const examIdToUse = streamExam.examId || streamExam._id;
-      console.log('Fetching exam details for:', examIdToUse);
+      // 3) Get exam details using examId (string)
+      const examIdToUse = matchedExam.examId;
+      if (!examIdToUse) {
+        setError('Invalid exam identifier');
+        return;
+      }
+
+      console.log('Fetching exam details for examId:', examIdToUse);
       const examDetailsResponse = await pack365Api.getExamDetails(examIdToUse, token);
       console.log('Exam details response:', examDetailsResponse);
-      
+
       if (!examDetailsResponse.success || !examDetailsResponse.exam) {
         setError('Failed to load exam details: ' + (examDetailsResponse.message || 'Unknown error'));
         return;
@@ -191,11 +203,12 @@ const ExamInterface = () => {
 
       const examDetails = examDetailsResponse.exam;
       setExamDetails(examDetails);
-      setTimeLeft(examDetails.timeLimit * 60);
-      
-      // Get questions without answers
-      console.log('Fetching questions for exam:', examDetails.examId);
-      const questionsResponse = await pack365Api.getExamQuestions(examDetails.examId, false, token);
+      setCourseDetails(matchedCourse);
+      setTimeLeft((examDetails.timeLimit || 60) * 60);
+
+      // 4) Get questions without answers
+      console.log('Fetching questions for exam:', examIdToUse);
+      const questionsResponse = await pack365Api.getExamQuestions(examIdToUse, false, token);
       console.log('Questions response:', questionsResponse);
       
       if (!questionsResponse.success || !questionsResponse.questions) {
@@ -205,11 +218,9 @@ const ExamInterface = () => {
 
       setQuestions(questionsResponse.questions);
 
-      // Load exam history
+      // 5) Load exam history for the course (use course _id)
       try {
-        const courseIdForHistory = streamExam.courseId?._id || 
-                                  streamExam.courseId?.courseId?._id || 
-                                  examDetails.courseId;
+        const courseIdForHistory = matchedCourse._id;
         if (courseIdForHistory) {
           const historyResponse = await pack365Api.getExamHistory(token, courseIdForHistory);
           console.log('Exam history:', historyResponse);
@@ -219,7 +230,6 @@ const ExamInterface = () => {
         }
       } catch (historyError) {
         console.warn('Failed to load exam history:', historyError);
-        // Continue without history - it's not critical
       }
 
     } catch (error: any) {
@@ -287,18 +297,21 @@ const ExamInterface = () => {
   };
 
   const submitExam = async (score: number, timeTaken: number) => {
-    if (!examDetails) return;
+    if (!examDetails || !courseDetails) return;
 
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token');
 
-      const submitResponse = await pack365Api.submitExam(token, {
-        courseId: examDetails.courseId,
+      // Must send payload with courseId (Pack365Course._id) and examId (exam.examId string)
+      const payload = {
+        courseId: courseDetails._id,
         examId: examDetails.examId,
         marks: score,
-        timeTaken: timeTaken
-      });
+        timeTaken
+      };
+
+      const submitResponse = await pack365Api.submitExam(token, payload);
 
       if (!submitResponse.success) {
         throw new Error(submitResponse.message || 'Failed to submit exam');
