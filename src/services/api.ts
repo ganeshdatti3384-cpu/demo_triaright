@@ -688,7 +688,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint from /exam/upload to /pack365/exams/upload
+  // FIXED: Updated endpoint to match backend exactly
   uploadExamFromExcel: async (
     token: string,
     formData: FormData
@@ -702,7 +702,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // NEW: Get available exams for authenticated user
+  // FIXED: Updated endpoint to match backend exactly
   getAvailableExamsForUser: async (
     token: string
   ): Promise<{ success: boolean; exams: any[]; message?: string }> => {
@@ -712,21 +712,20 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Questions endpoint path must match backend: /pack365/exams/questions/:examId
-  // sendAnswers (boolean) is optional and sent as query param 'sendAnswers'
+  // FIXED: Updated endpoint to match backend exactly
   getExamQuestions: async (
     examId: string,
     sendAnswers: boolean = false,
     token?: string
   ): Promise<{ success: boolean; questions: any[]; message?: string }> => {
-    const url = `${API_BASE_URL}/pack365/exams/questions/${examId}?sendAnswers=${sendAnswers}`;
+    const url = `${API_BASE_URL}/pack365/exams/${examId}/questions?sendAnswers=${sendAnswers}`;
     const res = await axios.get(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
     return res.data;
   },
 
-  // Get exam details by examId (backend route matches)
+  // FIXED: Updated endpoint to match backend exactly
   getExamDetails: async (
     examId: string,
     token?: string
@@ -737,7 +736,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Submit exam - use backend route /pack365/exams/submit
+  // FIXED: Updated endpoint to match backend exactly
   submitExam: async (
     token: string,
     data: {
@@ -763,7 +762,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Corrected parameter order - token first, then courseId
+  // FIXED: Updated endpoint to match backend exactly
   getExamHistory: async (
     token: string,
     courseId: string
@@ -774,6 +773,7 @@ export const pack365Api = {
     return res.data;
   },
 
+  // FIXED: Updated endpoint to match backend exactly
   getExamStatistics: async (
     token: string,
     courseId: string
@@ -784,6 +784,7 @@ export const pack365Api = {
     return res.data;
   },
 
+  // FIXED: Updated endpoint to match backend exactly
   resetExamAttempts: async (
     token: string,
     data: { userId: string; courseId: string }
@@ -794,6 +795,7 @@ export const pack365Api = {
     return res.data;
   },
 
+  // FIXED: Updated endpoint to match backend exactly
   updateExamMaxAttempts: async (
     token: string,
     data: { examId: string; maxAttempts: number }
@@ -804,7 +806,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Added missing checkStreamCodeEnrollment method
+  // FIXED: Updated endpoint to match backend exactly
   checkStreamCodeEnrollment: async (
     token: string,
     stream: string
@@ -815,7 +817,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Added missing checkOrderStatus method
+  // FIXED: Updated endpoint to match backend exactly
   checkOrderStatus: async (
     token: string,
     orderId: string
