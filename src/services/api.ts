@@ -761,10 +761,32 @@ export const pack365Api = {
   getAvailableExamsForUser: async (
     token: string
   ): Promise<{ success: boolean; exams: any[]; message?: string }> => {
-    const res = await axios.get(`${API_BASE_URL}/pack365/exams/available`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
+    try {
+      // Use the existing endpoint that works
+      const res = await axios.get(`${API_BASE_URL}/pack365/exams/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (res.data && Array.isArray(res.data)) {
+        return {
+          success: true,
+          exams: res.data
+        };
+      }
+      
+      return {
+        success: false,
+        exams: [],
+        message: 'Invalid response format'
+      };
+    } catch (error: any) {
+      console.error('Error fetching available exams:', error);
+      return {
+        success: false,
+        exams: [],
+        message: error.response?.data?.message || 'Failed to fetch available exams'
+      };
+    }
   },
 
   // FIXED: Corrected parameter order - token first, then courseId
