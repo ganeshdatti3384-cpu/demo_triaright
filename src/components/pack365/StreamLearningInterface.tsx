@@ -271,15 +271,18 @@ const StreamLearningInterface = () => {
       overallProgress
     });
 
-    // Check exam eligibility based on completed topics
-    const isAllTopicsCompleted = completedTopics === selectedCourse.topics.length;
-    setExamEligible(isAllTopicsCompleted);
+    // FIXED: Use backend definition for eligibility (>= 80% watched)
+    const backendPercentage = enrollment?.totalWatchedPercentage ?? 0;
+    const effectiveProgress = Math.max(overallProgress, backendPercentage || 0);
+    setExamEligible(effectiveProgress >= 80);
     
     console.log('Exam Eligibility Check:', {
       completedTopics,
       totalTopics: selectedCourse.topics.length,
-      isAllTopicsCompleted,
-      examEligible: isAllTopicsCompleted
+      overallProgress,
+      backendPercentage,
+      effectiveProgress,
+      examEligible: effectiveProgress >= 80
     });
   };
 
@@ -542,7 +545,7 @@ const StreamLearningInterface = () => {
     } else {
       toast({
         title: 'Not Eligible',
-        description: `You need to complete all topics to unlock the exam. Completed: ${courseProgress.completedTopics}/${courseProgress.totalTopics}`,
+        description: `You need to reach 80% watched to unlock the exam. Current: ${Math.round(courseProgress.overallProgress)}%`,
         variant: 'destructive'
       });
     }
