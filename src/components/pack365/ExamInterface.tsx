@@ -40,6 +40,23 @@ interface ExamDetails {
   isActive: boolean;
 }
 
+interface Course {
+  _id: string;
+  courseId: string;
+  courseName: string;
+  stream: string;
+}
+
+interface AvailableExam {
+  _id: string;
+  examId: string;
+  courseId: Course;
+  maxAttempts: number;
+  passingScore: number;
+  timeLimit: number;
+  isActive: boolean;
+}
+
 interface ExamHistory {
   courseName: string;
   totalAttempts: number;
@@ -133,19 +150,22 @@ const ExamInterface = () => {
         return;
       }
 
-      // Find exam for the current stream
+      // Find exam for the current stream - FIXED: Check courseId.stream instead of courseId
       console.log('All available exams:', availableExamsResponse.exams);
-      const streamExam = availableExamsResponse.exams.find((exam: any) => {
-        console.log('Exam stream:', exam.courseId?.stream, 'Looking for:', stream?.toLowerCase());
+      const streamExam = availableExamsResponse.exams.find((exam: AvailableExam) => {
+        console.log('Exam course stream:', exam.courseId?.stream, 'Looking for:', stream?.toLowerCase());
         return exam.courseId?.stream?.toLowerCase() === stream?.toLowerCase();
       });
 
       console.log('Found stream exam:', streamExam);
 
       if (!streamExam) {
-        setError(`No exam available for ${stream} stream. Available streams: ${
-          availableExamsResponse.exams.map((e: any) => e.courseId?.stream).filter(Boolean).join(', ')
-        }`);
+        const availableStreams = availableExamsResponse.exams
+          .map((e: AvailableExam) => e.courseId?.stream)
+          .filter(Boolean)
+          .join(', ');
+        
+        setError(`No exam available for ${stream} stream. ${availableStreams ? `Available streams: ${availableStreams}` : 'No streams available.'}`);
         return;
       }
 
@@ -175,12 +195,15 @@ const ExamInterface = () => {
 
       setQuestions(questionsResponse.questions);
 
-      // Load exam history
+      // Load exam history - FIXED: Use courseId from the exam
       try {
-        const historyResponse = await pack365Api.getExamHistory(examDetails.courseId, token);
-        console.log('Exam history:', historyResponse);
-        if (historyResponse.success) {
-          setExamHistory(historyResponse.examHistory);
+        const courseIdForHistory = streamExam.courseId?._id || examDetails.courseId;
+        if (courseIdForHistory) {
+          const historyResponse = await pack365Api.getExamHistory(token, courseIdForHistory);
+          console.log('Exam history:', historyResponse);
+          if (historyResponse.success) {
+            setExamHistory(historyResponse.examHistory);
+          }
         }
       } catch (historyError) {
         console.warn('Failed to load exam history:', historyError);
@@ -189,7 +212,7 @@ const ExamInterface = () => {
 
     } catch (error: any) {
       console.error('Error loading exam data:', error);
-      setError(`Failed to load exam data: ${error.message}`);
+      setError(`Failed to load exam data: ${error.response?.data?.message || error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -258,12 +281,12 @@ const ExamInterface = () => {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token');
 
-      const submitResponse = await pack365Api.submitExam({
+      const submitResponse = await pack365Api.submitExam(token, {
         courseId: examDetails.courseId,
         examId: examDetails.examId,
         marks: score,
         timeTaken: timeTaken
-      }, token);
+      });
 
       if (!submitResponse.success) {
         throw new Error(submitResponse.message || 'Failed to submit exam');
@@ -283,7 +306,7 @@ const ExamInterface = () => {
       console.error('Error submitting exam:', error);
       toast({
         title: 'Submission Failed',
-        description: error.message || 'Failed to submit exam. Please try again.',
+        description: error.response?.data?.message || error.message || 'Failed to submit exam. Please try again.',
         variant: 'destructive'
       });
     }
