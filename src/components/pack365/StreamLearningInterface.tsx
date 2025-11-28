@@ -77,6 +77,7 @@ const StreamLearningInterface = () => {
   const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [examEligible, setExamEligible] = useState(false);
   const [currentTopicIndex, setCurrentTopicIndex] = useState(0);
+  const [backendProgress, setBackendProgress] = useState<number>(0); // New state for backend progress
 
   useEffect(() => {
     loadStreamData();
@@ -219,6 +220,7 @@ const StreamLearningInterface = () => {
     setIsVideoModalOpen(true);
     setVideoProgress(0);
     setIsTrackingProgress(false);
+    setBackendProgress(0); // Reset backend progress
 
     if (progressIntervalId) {
       clearInterval(progressIntervalId);
@@ -265,9 +267,14 @@ const StreamLearningInterface = () => {
         return;
       }
 
+      // Show backend progress tracking
+      setBackendProgress(10); // Start progress
+
       // Calculate total course duration for progress calculation
       const totalCourseDuration = selectedCourse.topics.reduce((sum, t) => sum + t.duration, 0);
       const newWatchedPercentage = calculateNewProgress();
+
+      setBackendProgress(50); // Mid progress
 
       const response = await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse.courseId,
@@ -276,6 +283,8 @@ const StreamLearningInterface = () => {
         totalCourseDuration: totalCourseDuration * 60, // Convert to seconds
         totalWatchedPercentage: newWatchedPercentage
       });
+
+      setBackendProgress(80); // Almost done
 
       if (response.success) {
         setTopicProgress(prev => {
@@ -316,6 +325,7 @@ const StreamLearningInterface = () => {
           });
         }
 
+        setBackendProgress(100); // Complete
         setIsTrackingProgress(false);
         
         await checkExamEligibility();
@@ -325,9 +335,13 @@ const StreamLearningInterface = () => {
           description: `"${topic.name}" marked as completed!`,
           variant: 'default'
         });
+
+        // Reset backend progress after a delay
+        setTimeout(() => setBackendProgress(0), 2000);
       }
     } catch (error: any) {
       console.error('Error updating progress:', error);
+      setBackendProgress(0); // Reset on error
       toast({ 
         title: 'Error', 
         description: 'Failed to update progress', 
@@ -366,6 +380,7 @@ const StreamLearningInterface = () => {
       setProgressIntervalId(null);
     }
     setIsTrackingProgress(false);
+    setBackendProgress(0); // Reset backend progress
   };
 
   const getTopicProgress = (courseId: string, topicName: string) => {
@@ -407,6 +422,7 @@ const StreamLearningInterface = () => {
       setSelectedTopic(nextTopic);
       setVideoProgress(0);
       setIsTrackingProgress(false);
+      setBackendProgress(0); // Reset backend progress
 
       if (progressIntervalId) {
         clearInterval(progressIntervalId);
@@ -425,6 +441,7 @@ const StreamLearningInterface = () => {
       setSelectedTopic(prevTopic || null);
       setVideoProgress(0);
       setIsTrackingProgress(false);
+      setBackendProgress(0); // Reset backend progress
 
       if (progressIntervalId) {
         clearInterval(progressIntervalId);
@@ -555,6 +572,20 @@ const StreamLearningInterface = () => {
                   </div>
                   <Progress value={videoProgress} className="h-2 mb-4" />
                   
+                  {/* Backend Progress Mini Bar */}
+                  {backendProgress > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-blue-600">Saving Progress</span>
+                        <span className="text-xs text-blue-600">{Math.round(backendProgress)}%</span>
+                      </div>
+                      <Progress value={backendProgress} className="h-1 bg-blue-100" />
+                      <div className="text-xs text-blue-500 mt-1">
+                        {backendProgress < 100 ? 'Updating backend...' : 'Progress saved!'}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
                       <Button
@@ -594,9 +625,10 @@ const StreamLearningInterface = () => {
                       onClick={() => selectedTopic && handleManualComplete(selectedTopic)}
                       variant="default"
                       size="sm"
+                      disabled={backendProgress > 0 && backendProgress < 100} // Disable while saving
                     >
                       <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Mark as Completed
+                      {backendProgress > 0 && backendProgress < 100 ? 'Saving...' : 'Mark as Completed'}
                     </Button>
                   </div>
                 </div>
