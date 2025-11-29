@@ -80,41 +80,17 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
           </div>
         </div>
 
-        {/* Signatures Section */}
-        <div className="grid grid-cols-2 gap-16 mt-8">
-          <div className="text-center">
-            <div className="border-t-2 border-gray-400 pt-2 w-32 mx-auto mb-2"></div>
-            <p className="font-semibold text-gray-700">Instructor</p>
-            <p className="text-gray-600">{certificateData.instructorName}</p>
-          </div>
-          <div className="text-center">
-            <div className="border-t-2 border-gray-400 pt-2 w-32 mx-auto mb-2"></div>
-            <p className="font-semibold text-gray-700">Director</p>
-            <p className="text-gray-600">Kisshore Kumaar</p>
-            <p className="text-xs text-gray-500">Founder & Director - Triaright</p>
-          </div>
-        </div>
-
-        {/* Footer Information - Updated to match reference image */}
-        <div className="mt-auto w-full text-xs text-gray-500">
-          {/* Date of Issue and Certificate No - positioned according to background image */}
-          <div className="flex justify-between mb-16 px-8">
-            <div className="text-left">
+        {/* Date of Issue and Certificate No - Positioned according to background image */}
+        <div className="mt-auto w-full">
+          <div className="flex justify-between items-start px-20 mb-4">
+            <div className="text-left text-sm text-gray-600">
               <p className="font-semibold">Date of issue:</p>
               <p>{currentDate}</p>
             </div>
-            <div className="text-right">
+            <div className="text-right text-sm text-gray-600">
               <p className="font-semibold">Certificate no:</p>
               <p className="font-mono">{certificateData.certificateId}</p>
             </div>
-          </div>
-
-          {/* Contact Information - positioned at bottom */}
-          <div className="text-center border-t border-gray-300 pt-2">
-            <p className="mb-1">Mail id: info@triaright.com | Contact: 9059373300</p>
-            <p className="text-xs">
-              7-1-58, 404B, 4th Floor, Surekha Chambers, Ameerpet, Hyderabad, Telangana - 500016
-            </p>
           </div>
         </div>
       </div>
