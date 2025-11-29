@@ -31,20 +31,17 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
   });
 
   return (
-    <div className="certificate-container bg-white relative" style={{ width: '794px', height: '1123px' }}> {/* A4 size */}
-      {/* Certificate Background Design */}
-      <div className="absolute inset-0 border-8 border-yellow-400 m-4 rounded-lg"></div>
-      <div className="absolute inset-0 border-4 border-green-600 m-8 rounded"></div>
-      
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="grid grid-cols-4 gap-8 h-full">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="border-l border-gray-300"></div>
-          ))}
-        </div>
-      </div>
-
+    <div 
+      className="certificate-container bg-white relative" 
+      style={{ 
+        width: '794px', 
+        height: '1123px',
+        backgroundImage: 'url(/images/certificate-bg.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
       {/* Certificate Content */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center p-16 text-center">
         
@@ -86,7 +83,7 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
         </div>
 
         {/* Internship Details */}
-        <div className="mb-8 bg-gray-50 p-6 rounded-lg border border-gray-200">
+        <div className="mb-8 bg-gray-50 p-6 rounded-lg border border-gray-200 bg-opacity-80">
           <p className="text-lg text-gray-700 mb-2">
             <span className="font-semibold">Internship:</span> {certificateData.internshipTitle}
           </p>
@@ -162,12 +159,6 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
             </p>
           </div>
         </div>
-
-        {/* Decorative Elements */}
-        <div className="absolute top-4 right-4 w-16 h-16 border-4 border-yellow-400 rounded-full opacity-20"></div>
-        <div className="absolute bottom-4 left-4 w-12 h-12 border-4 border-green-400 rounded-full opacity-20"></div>
-        <div className="absolute top-4 left-4 w-8 h-8 border-4 border-blue-400 rounded-full opacity-20"></div>
-        <div className="absolute bottom-4 right-4 w-10 h-10 border-4 border-purple-400 rounded-full opacity-20"></div>
       </div>
 
       {/* Print Styles */}
@@ -179,6 +170,12 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
+            background-image: url(/images/certificate-bg.jpg) !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>
