@@ -1,4 +1,4 @@
-// Index.tsx (updated - with animated TrustBadges section)
+// Index.tsx (updated - with animated Pack365 banner)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,12 +10,11 @@ import PartnersSection from '../components/PartnersSection';
 import Footer from '../components/Footer';
 import CourseCards from '../components/CourseCards';
 import SuccessStories from '../components/SuccessStories';
-import Pack365Courses from '../components/Pack365Courses';
 import RecordedCoursesList, { Course } from '../components/RecordedCoursesList';
 import ServicesOverview from '../components/ServicesOverview';
 import { courseApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Shield, Award, CheckCircle, Users } from 'lucide-react';
+import { ArrowRight, Shield, Award, CheckCircle, Users, Star, Calendar, Clock, Users as UsersIcon, Zap } from 'lucide-react';
 
 // Import CubeAnimation component
 import CubeAnimation from '../components/CubeAnimation';
@@ -104,6 +103,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isPackBannerVisible, setIsPackBannerVisible] = useState(false);
 
   // Intersection Observer for animation trigger
   useEffect(() => {
@@ -117,6 +117,29 @@ const Index = () => {
     );
 
     const section = document.getElementById('trust-badges');
+    if (section) {
+      observer.observe(section);
+    }
+
+    return () => {
+      if (section) {
+        observer.unobserve(section);
+      }
+    };
+  }, []);
+
+  // Intersection Observer for Pack365 banner
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsPackBannerVisible(true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const section = document.getElementById('pack365-banner');
     if (section) {
       observer.observe(section);
     }
@@ -326,14 +349,107 @@ const Index = () => {
         </div>
       </section>
 
-      {/* --- Pack365 Courses Section --- */}
-      <section className="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Pack365 - Premium Learning Program</h2>
-            <p className="text-lg text-gray-600">Annual learning packages with complete course access, mentorship, and career support</p>
+      {/* --- Animated Pack365 Banner Section --- */}
+      <section id="pack365-banner" className="py-16 bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-20 -left-20 w-40 h-40 bg-white/10 rounded-full animate-pulse"></div>
+          <div className="absolute top-1/2 -right-20 w-32 h-32 bg-purple-400/20 rounded-full animate-bounce delay-500"></div>
+          <div className="absolute bottom-20 left-1/3 w-24 h-24 bg-blue-400/30 rounded-full animate-ping delay-1000"></div>
+          <div className="absolute top-20 right-1/4 w-28 h-28 bg-indigo-400/20 rounded-full animate-pulse delay-1500"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className={`text-center transition-all duration-1000 ${isPackBannerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            {/* Premium Badge */}
+            <div className="inline-flex items-center justify-center mb-6 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2 rounded-full font-bold text-sm uppercase tracking-wide shadow-lg animate-pulse">
+              <Star className="h-4 w-4 mr-2 fill-current" />
+              Premium Annual Program
+            </div>
+
+            {/* Main Heading */}
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Pack<span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">365</span>
+            </h2>
+            
+            {/* Subtitle */}
+            <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
+              Complete Annual Learning Package with <span className="font-semibold text-yellow-300">Unlimited Access</span> to All Courses
+            </p>
+
+            {/* Features Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 max-w-4xl mx-auto">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-center mb-4">
+                  <Calendar className="h-8 w-8 text-yellow-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">365 Days Access</h3>
+                <p className="text-white/80 text-sm">Learn at your own pace for an entire year</p>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-center mb-4">
+                  <UsersIcon className="h-8 w-8 text-green-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Mentorship</h3>
+                <p className="text-white/80 text-sm">1:1 guidance from industry experts</p>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-center mb-4">
+                  <Zap className="h-8 w-8 text-blue-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">All Courses Included</h3>
+                <p className="text-white/80 text-sm">Access to 50+ premium courses</p>
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button 
+                className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white px-12 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-105"
+                onClick={() => navigate('/pack365')}
+              >
+                <Zap className="mr-3 h-6 w-6" />
+                Explore Pack365
+                <ArrowRight className="ml-3 h-6 w-6" />
+              </Button>
+              
+              <Button 
+                variant="outline"
+                className="border-2 border-white text-white hover:bg-white hover:text-purple-700 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300"
+                onClick={() => navigate('/pack365#pricing')}
+              >
+                View Pricing
+              </Button>
+            </div>
+
+            {/* Additional Info */}
+            <div className="mt-8 text-white/70 text-sm">
+              <div className="flex items-center justify-center space-x-6">
+                <div className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-300 mr-2" />
+                  <span>Certificate Included</span>
+                </div>
+                <div className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-300 mr-2" />
+                  <span>Career Support</span>
+                </div>
+                <div className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-300 mr-2" />
+                  <span>Job Assistance</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <Pack365Courses showLoginRequired={true} onLoginRequired={() => navigate('/login')} />
+        </div>
+
+        {/* Floating elements */}
+        <div className="absolute bottom-10 left-10 animate-float">
+          <div className="w-6 h-6 bg-yellow-300 rounded-full opacity-60"></div>
+        </div>
+        <div className="absolute top-10 right-20 animate-float delay-1000">
+          <div className="w-4 h-4 bg-blue-300 rounded-full opacity-50"></div>
         </div>
       </section>
 
