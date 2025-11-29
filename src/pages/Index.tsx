@@ -1,4 +1,4 @@
-// Index.tsx (updated - with minimal cube sections)
+// Index.tsx (updated - with Pack365 cube animation section)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -73,6 +73,11 @@ const trustBadges = [
     name: "AICTE",
     image: "/lovable-uploads/aicte-badge.png",
     alt: "AICTE Approved"
+  },
+  {
+    name: "APSSDC",
+    image: "/lovable-uploads/apssdc-badge.png",
+    alt: "APSSDC Partner"
   },
   {
     name: "ISO 9001:2015",
@@ -328,22 +333,23 @@ const Index = () => {
         `}</style>
       </section>
 
-      {/* --- Courses Cube Section --- */}
-      <section className="py-20 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* --- Cube Animation Sections --- */}
+      
+      {/* Courses Cube Section */}
+      <section className="py-16 bg-gradient-to-br from-slate-900 to-blue-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="text-center lg:text-left">
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Explore Our Courses</h2>
-              <p className="text-xl text-gray-600 mb-8">
+              <h2 className="text-4xl font-bold mb-6">Explore Our Courses</h2>
+              <p className="text-xl text-gray-300 mb-8">
                 Discover a wide range of courses designed to boost your career. 
                 From web development to data science, we have everything you need to succeed.
               </p>
               <Button 
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-lg font-semibold"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-full font-semibold"
                 onClick={() => navigate('/courses')}
               >
-                Browse All Courses
-                <ArrowRight className="ml-2 h-5 w-5" />
+                Browse All Courses <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
             <div className="flex justify-center">
@@ -353,117 +359,69 @@ const Index = () => {
         </div>
       </section>
 
-      {/* --- Minimal Pack365 Section --- */}
-      <section id="pack365-banner" className="py-20 bg-gradient-to-br from-emerald-50 to-teal-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className={`text-center transition-all duration-1000 ${isPackBannerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            
-            {/* Main Heading */}
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              Pack<span className="text-emerald-600">365</span>
-            </h2>
-            
-            {/* Subtitle */}
-            <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
-              Complete annual learning package with unlimited access to all courses, mentorship, and career support
-            </p>
-
-            {/* Features Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <BookOpen className="h-8 w-8 text-emerald-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">50+ Courses</h3>
-                <p className="text-gray-600 text-sm">Unlimited access for 365 days</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <UsersIcon className="h-8 w-8 text-teal-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">1:1 Mentorship</h3>
-                <p className="text-gray-600 text-sm">Expert guidance & support</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 bg-cyan-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Briefcase className="h-8 w-8 text-cyan-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Career Support</h3>
-                <p className="text-gray-600 text-sm">Job assistance & placement</p>
-              </div>
+      {/* --- Pack365 Cube Animation Section --- */}
+      <section id="pack365-banner" className="py-16 bg-gradient-to-br from-emerald-900 to-teal-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="text-center lg:text-left">
+              <h2 className="text-4xl font-bold mb-6">
+                Pack<span className="text-emerald-400">365</span>
+              </h2>
+              <p className="text-xl text-gray-300 mb-8">
+                Complete annual learning package with unlimited access to all courses, 
+                mentorship, and career support. Everything you need to transform your career in one package.
+              </p>
+              <Button 
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-8 py-3 rounded-full font-semibold"
+                onClick={() => navigate('/pack365')}
+              >
+                Explore Pack365 <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
             </div>
-
-            {/* CTA Button */}
-            <Button 
-              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-12 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-              onClick={() => navigate('/pack365')}
-            >
-              Explore Pack365
-              <ArrowRight className="ml-3 h-5 w-5" />
-            </Button>
-
-            {/* Divider */}
-            <div className="mt-12 pt-8 border-t border-gray-200">
-              <div className="flex justify-center items-center space-x-8 text-sm text-gray-500">
-                <div className="flex items-center">
-                  <CheckCircle className="h-4 w-4 text-emerald-500 mr-2" />
-                  <span>Industry Certifications</span>
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle className="h-4 w-4 text-emerald-500 mr-2" />
-                  <span>Live Sessions</span>
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle className="h-4 w-4 text-emerald-500 mr-2" />
-                  <span>Premium Content</span>
-                </div>
-              </div>
+            <div className="flex justify-center">
+              <CubeAnimation items={pack365CubeData} theme="primary" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* --- Jobs Cube Section --- */}
-      <section className="py-20 bg-gradient-to-br from-blue-50 to-indigo-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Jobs Cube Section */}
+      <section className="py-16 bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="text-center lg:text-left">
+            <div className="flex justify-center order-2 lg:order-1">
+              <CubeAnimation items={jobsCubeData} theme="secondary" />
+            </div>
+            <div className="text-center lg:text-left order-1 lg:order-2">
               <h2 className="text-4xl font-bold text-gray-900 mb-6">Find Your Dream Job</h2>
               <p className="text-xl text-gray-600 mb-8">
                 Connect with top employers and discover opportunities that match your skills and aspirations.
               </p>
               <Button 
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-3 rounded-lg font-semibold"
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-8 py-3 rounded-full font-semibold"
                 onClick={() => navigate('/jobs')}
               >
-                Explore Jobs
-                <ArrowRight className="ml-2 h-5 w-5" />
+                Explore Jobs <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-            </div>
-            <div className="flex justify-center">
-              <CubeAnimation items={jobsCubeData} theme="secondary" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* --- Internships Cube Section --- */}
-      <section className="py-20 bg-gradient-to-br from-green-50 to-emerald-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Internships Cube Section */}
+      <section className="py-16 bg-gradient-to-br from-purple-900 to-indigo-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="text-center lg:text-left">
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Start Your Career with Internships</h2>
-              <p className="text-xl text-gray-600 mb-8">
+              <h2 className="text-4xl font-bold mb-6">Start Your Career with Internships</h2>
+              <p className="text-xl text-gray-300 mb-8">
                 Gain real-world experience, learn from industry experts, and kickstart your professional journey.
               </p>
               <Button 
-                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-3 rounded-lg font-semibold"
+                className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white px-8 py-3 rounded-full font-semibold"
                 onClick={() => navigate('/internships')}
               >
-                View Internships
-                <ArrowRight className="ml-2 h-5 w-5" />
+                View Internships <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
             <div className="flex justify-center">
