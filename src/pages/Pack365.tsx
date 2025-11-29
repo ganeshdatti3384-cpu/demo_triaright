@@ -111,15 +111,6 @@ const Pack365 = () => {
                 <Zap className="h-5 w-5" />
                 <span>Explore Bundles</span>
               </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="border-2 border-white/30 hover:border-white/50 text-white font-bold text-lg px-8 py-4 rounded-2xl backdrop-blur-lg bg-white/10 hover:bg-white/15 transition-all duration-300 flex items-center space-x-2"
-              >
-                <Brain className="h-5 w-5" />
-                <span>View Curriculum</span>
-              </motion.button>
             </div>
           </motion.div>
 
@@ -208,56 +199,6 @@ const Pack365 = () => {
             transition={{ duration: 1, delay: 0.2 }}
           >
             <Pack365Courses />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 relative">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8 }}
-            className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-2xl rounded-3xl p-12 border border-white/20 shadow-2xl"
-          >
-            <div className="inline-flex p-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl mb-6">
-              <Rocket className="h-8 w-8 text-white" />
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Ready to Launch Your Career?
-            </h2>
-            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-              Join thousands of successful students who transformed their careers with Pack365. 
-              Your journey to mastery starts here.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-2xl flex items-center justify-center space-x-2 transition-all duration-300"
-              >
-                <Zap className="h-5 w-5" />
-                <span>Start Learning Today</span>
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="border-2 border-white/30 hover:border-white/50 text-white font-bold text-lg px-8 py-4 rounded-2xl backdrop-blur-lg bg-white/10 hover:bg-white/15 transition-all duration-300"
-              >
-                Schedule Demo
-              </motion.button>
-            </div>
-            <div className="mt-8 flex items-center justify-center space-x-6 text-blue-100 text-sm">
-              <div className="flex items-center space-x-2">
-                <Shield className="h-4 w-4 text-green-400" />
-                <span>30-Day Money Back Guarantee</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Crown className="h-4 w-4 text-yellow-400" />
-                <span>Lifetime Access</span>
-              </div>
-            </div>
           </motion.div>
         </div>
       </section>
