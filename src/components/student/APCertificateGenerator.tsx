@@ -68,15 +68,15 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
           </p>
         </div>
 
-        {/* Performance Metrics */}
+        {/* Performance Metrics - Updated to show Instructor name instead of Duration */}
         <div className="grid grid-cols-2 gap-8 mb-8 text-sm text-gray-600">
           <div className="text-center">
             <p className="font-semibold">Completion Percentage</p>
             <p className="text-2xl font-bold text-green-600">{certificateData.completionPercentage}%</p>
           </div>
           <div className="text-center">
-            <p className="font-semibold">Duration</p>
-            <p className="text-lg font-bold text-blue-600">{certificateData.internshipDuration}</p>
+            <p className="font-semibold">Instructor</p>
+            <p className="text-lg font-bold text-blue-600">{certificateData.instructorName}</p>
           </div>
         </div>
 
@@ -95,24 +95,22 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
           </div>
         </div>
 
-        {/* Footer Information - Updated to match reference */}
-        <div className="mt-auto mb-8 text-xs text-gray-500 w-full">
-          <div className="grid grid-cols-3 gap-8 mb-4">
-            <div className="text-center">
+        {/* Footer Information - Updated to match reference image */}
+        <div className="mt-auto w-full text-xs text-gray-500">
+          {/* Date of Issue and Certificate No - positioned according to background image */}
+          <div className="flex justify-between mb-16 px-8">
+            <div className="text-left">
               <p className="font-semibold">Date of issue:</p>
               <p>{currentDate}</p>
             </div>
-            <div className="text-center">
+            <div className="text-right">
               <p className="font-semibold">Certificate no:</p>
               <p className="font-mono">{certificateData.certificateId}</p>
             </div>
-            <div className="text-center">
-              <p className="font-semibold">Verification</p>
-              <p>Valid and Verified</p>
-            </div>
           </div>
-          
-          <div className="border-t border-gray-300 pt-4 text-center">
+
+          {/* Contact Information - positioned at bottom */}
+          <div className="text-center border-t border-gray-300 pt-2">
             <p className="mb-1">Mail id: info@triaright.com | Contact: 9059373300</p>
             <p className="text-xs">
               7-1-58, 404B, 4th Floor, Surekha Chambers, Ameerpet, Hyderabad, Telangana - 500016
