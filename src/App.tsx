@@ -40,6 +40,7 @@ import EnhancedProfile from '@/components/EnhancedProfile';
 import CourseLearning from '@/pages/CourseLearning';
 import ExamList from '@/pages/ExamList';
 import ExamInterface from '@/components/pack365/ExamInterface';
+import TakeExamInterface from '@/components/pack365/TakeExamInterface';
 import ExamResult from '@/components/pack365/ExamResult';
 import NotFound from '@/pages/NotFound';
 import CouponCode from '@/pages/CouponCode';
@@ -188,9 +189,9 @@ const App = () => {
             } 
           />
           
-          {/* Exam Routes - CORRECTLY PLACED */}
+          {/* Exam Routes - UPDATED WITH PROPER STRUCTURE */}
           <Route
-            path="/exam/:stream"
+            path="/exams/:stream?"
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <ExamInterface />
@@ -198,7 +199,15 @@ const App = () => {
             }
           />
           <Route
-            path="/exam-result/:stream"
+            path="/exam/take/:examId"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <TakeExamInterface />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/exam-result/:examId"
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <ExamResult />
