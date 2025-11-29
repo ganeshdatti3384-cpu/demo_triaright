@@ -113,7 +113,7 @@ const APCertificatePage = () => {
       // Preload background image
       const preloadImage = new Image();
       preloadImage.crossOrigin = 'anonymous';
-      preloadImage.src = '/images/certificate-bg.jpg';
+      preloadImage.src = '/lovable-uploads/certificate-bg.jpg';
       
       await new Promise((resolve, reject) => {
         preloadImage.onload = resolve;
@@ -131,7 +131,7 @@ const APCertificatePage = () => {
         onclone: (clonedDoc) => {
           const clonedElement = clonedDoc.querySelector('.certificate-container') as HTMLElement;
           if (clonedElement) {
-            clonedElement.style.backgroundImage = 'url(/images/certificate-bg.jpg)';
+            clonedElement.style.backgroundImage = 'url(/lovable-uploads/certificate-bg.jpg)';
             clonedElement.style.backgroundSize = 'cover';
             clonedElement.style.backgroundPosition = 'center';
             clonedElement.style.backgroundRepeat = 'no-repeat';
@@ -189,7 +189,7 @@ const APCertificatePage = () => {
               transform: scale(0.8); 
               transform-origin: top center;
               margin: 0 auto;
-              background-image: url('/images/certificate-bg.jpg') !important;
+              background-image: url('/lovable-uploads/certificate-bg.jpg') !important;
               background-size: cover !important;
               background-position: center !important;
               background-repeat: no-repeat !important;
@@ -205,7 +205,7 @@ const APCertificatePage = () => {
                 transform: none;
                 width: 210mm !important;
                 height: 297mm !important;
-                background-image: url('/images/certificate-bg.jpg') !important;
+                background-image: url('/lovable-uploads/certificate-bg.jpg') !important;
                 background-size: cover !important;
                 background-position: center !important;
                 background-repeat: no-repeat !important;
