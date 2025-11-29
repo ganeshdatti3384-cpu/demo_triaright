@@ -88,7 +88,9 @@ const APCertificatePage = () => {
       
       if (data.success) {
         setCertificateData(data.certificateData);
+        console.log('✅ Certificate data loaded:', data.certificateData);
       } else {
+        console.log('❌ Certificate not available:', data.message);
         throw new Error(data.message || 'Failed to fetch certificate data');
       }
     } catch (error: any) {
