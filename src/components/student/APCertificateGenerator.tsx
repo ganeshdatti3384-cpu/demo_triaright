@@ -1,5 +1,5 @@
 // components/student/APCertificateGenerator.tsx
-import React from 'react';
+import React, { useRef, useState } from 'react';
 
 interface CertificateData {
   studentName: string;
@@ -19,169 +19,225 @@ interface CertificateData {
   certificateId: string;
 }
 
-interface APCertificateGeneratorProps {
-  certificateData: CertificateData;
+interface Props {
+  enrollmentId: string;
 }
 
-const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certificateData }) => {
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+const APCertificateGenerator: React.FC<Props> = ({ enrollmentId }) => {
+  const [certificateData, setCertificateData] = useState<CertificateData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const generateCertificate = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/internships/apinternshipcertificate/${enrollmentId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to generate certificate');
+      
+      const data = await response.json();
+      setCertificateData(data.certificateData);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to generate certificate');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const drawCertificate = (ctx: CanvasRenderingContext2D, data: CertificateData) => {
+    // Clear canvas
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    // Gold border
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(20, 20, ctx.canvas.width - 40, ctx.canvas.height - 40);
+
+    // Blue inner border
+    ctx.strokeStyle = '#1a237e';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 40, ctx.canvas.width - 80, ctx.canvas.height - 80);
+
+    // Header
+    ctx.fillStyle = '#1a237e';
+    ctx.font = 'bold 48px "Times New Roman", serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TRIARIGHT', ctx.canvas.width / 2, 100);
+
+    // Subheader
+    ctx.fillStyle = '#d4af37';
+    ctx.font = 'italic 24px "Times New Roman", serif';
+    ctx.fillText('THE NEW ERA OF LEARNING', ctx.canvas.width / 2, 140);
+
+    // Certificate Title
+    ctx.fillStyle = '#1a237e';
+    ctx.font = 'bold 36px "Times New Roman", serif';
+    ctx.fillText('CERTIFICATE OF COMPLETION', ctx.canvas.width / 2, 220);
+
+    // Presented to
+    ctx.fillStyle = '#333333';
+    ctx.font = '24px "Times New Roman", serif';
+    ctx.fillText('This certificate is proudly presented to', ctx.canvas.width / 2, 280);
+
+    // Student Name
+    ctx.fillStyle = '#1a237e';
+    ctx.font = 'bold 42px "Times New Roman", serif';
+    ctx.fillText(data.studentName.toUpperCase(), ctx.canvas.width / 2, 340);
+
+    // Completion details
+    ctx.fillStyle = '#333333';
+    ctx.font = '20px "Times New Roman", serif';
+    ctx.fillText('has successfully completed the', ctx.canvas.width / 2, 390);
+
+    // Course Title
+    ctx.fillStyle = '#d4af37';
+    ctx.font = 'bold 28px "Times New Roman", serif';
+    ctx.fillText(data.courseTitle, ctx.canvas.width / 2, 430);
+
+    // Internship details
+    ctx.fillStyle = '#333333';
+    ctx.font = '20px "Times New Roman", serif';
+    ctx.fillText(`Internship: ${data.internshipTitle}`, ctx.canvas.width / 2, 470);
+    ctx.fillText(`at ${data.companyName}`, ctx.canvas.width / 2, 500);
+
+    // Duration and completion
+    ctx.fillStyle = '#666666';
+    ctx.font = '18px "Times New Roman", serif';
+    ctx.fillText(`Duration: ${data.internshipDuration} | Completion: ${data.completionPercentage}%`, ctx.canvas.width / 2, 540);
+
+    // Footer section
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(ctx.canvas.width / 4, 620);
+    ctx.lineTo((3 * ctx.canvas.width) / 4, 620);
+    ctx.stroke();
+
+    // Date and Certificate No
+    ctx.fillStyle = '#333333';
+    ctx.font = '16px "Times New Roman", serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Date of issue: ${new Date(data.completionDate).toLocaleDateString()}`, 100, 660);
+    ctx.fillText(`Certificate no: ${data.certificateId}`, 100, 685);
+
+    // Contact info
+    ctx.textAlign = 'right';
+    ctx.fillText('Mail id: info@triaright.com', ctx.canvas.width - 100, 660);
+    ctx.fillText('contact: 9059373300', ctx.canvas.width - 100, 685);
+
+    // Founder signature
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#333333';
+    ctx.font = 'bold 20px "Times New Roman", serif';
+    ctx.fillText('KISSHORE KUMAAR', ctx.canvas.width / 2, 750);
+    ctx.font = '18px "Times New Roman", serif';
+    ctx.fillText('Founder & Director - Triaright', ctx.canvas.width / 2, 780);
+
+    // Address
+    ctx.font = '14px "Times New Roman", serif';
+    ctx.fillText('7-1-58, 404B, 4th Floor, Surekha Chambers, Ameerpet, Hyderabad, Telangana - 500016', ctx.canvas.width / 2, 810);
+  };
+
+  const downloadCertificate = () => {
+    if (!canvasRef.current || !certificateData) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size and draw
+    canvas.width = 1200;
+    canvas.height = 848;
+    drawCertificate(ctx, certificateData);
+
+    // Download
+    const link = document.createElement('a');
+    link.download = `certificate-${certificateData.certificateId}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Generating Certificate...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <h3 className="text-red-800 font-semibold mb-2">Certificate Not Available</h3>
+        <p className="text-red-600 mb-4">{error}</p>
+        <button 
+          onClick={generateCertificate}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="certificate-container bg-white relative" style={{ width: '794px', height: '1123px' }}> {/* A4 size */}
-      {/* Certificate Background Design */}
-      <div className="absolute inset-0 border-8 border-yellow-400 m-4 rounded-lg"></div>
-      <div className="absolute inset-0 border-4 border-green-600 m-8 rounded"></div>
-      
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="grid grid-cols-4 gap-8 h-full">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="border-l border-gray-300"></div>
-          ))}
+    <div className="max-w-4xl mx-auto p-4">
+      {!certificateData ? (
+        <div className="text-center bg-gray-50 rounded-lg p-8 border-2 border-dashed border-gray-300">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Generate Certificate</h2>
+          <p className="text-gray-600 mb-6">Click below to generate your internship certificate</p>
+          <button 
+            onClick={generateCertificate}
+            className="bg-gradient-to-r from-blue-700 to-blue-800 text-white px-8 py-3 rounded-full font-semibold hover:shadow-lg transition-all duration-300"
+          >
+            Generate Certificate
+          </button>
         </div>
-      </div>
-
-      {/* Certificate Content */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center p-16 text-center">
-        
-        {/* Header Section */}
-        <div className="mb-12">
-          <div className="flex items-center justify-center mb-6">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">TRIARIGHT</h1>
-              <div className="w-32 h-1 bg-green-600 mx-auto mb-2"></div>
-              <p className="text-lg text-gray-600 italic">THE NEW ERA OF LEARNING</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Certificate Title */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4 uppercase tracking-wider">
-            Certificate of Completion
-          </h2>
-          <div className="w-48 h-1 bg-blue-600 mx-auto"></div>
-        </div>
-
-        {/* Present To Section */}
-        <div className="mb-8">
-          <p className="text-lg text-gray-600 mb-4">This certificate is proudly presented to</p>
-          <h3 className="text-4xl font-bold text-gray-900 mb-4 border-b-4 border-green-600 pb-4 px-12">
-            {certificateData.studentName}
-          </h3>
-        </div>
-
-        {/* Completion Details */}
-        <div className="mb-8 max-w-2xl">
-          <p className="text-xl text-gray-700 leading-relaxed">
-            for successfully completing the{" "}
-            <span className="font-semibold text-blue-700">{certificateData.courseTitle}</span>{" "}
-            in <span className="font-semibold text-green-700">{certificateData.stream}</span>{" "}
-            offered by <span className="font-semibold text-purple-700">{certificateData.providerName}</span>
-          </p>
-        </div>
-
-        {/* Internship Details */}
-        <div className="mb-8 bg-gray-50 p-6 rounded-lg border border-gray-200">
-          <p className="text-lg text-gray-700 mb-2">
-            <span className="font-semibold">Internship:</span> {certificateData.internshipTitle}
-          </p>
-          <p className="text-lg text-gray-700">
-            <span className="font-semibold">Company:</span> {certificateData.companyName}
-          </p>
-        </div>
-
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-2 gap-8 mb-8 text-sm text-gray-600">
-          <div className="text-center">
-            <p className="font-semibold">Completion Percentage</p>
-            <p className="text-2xl font-bold text-green-600">{certificateData.completionPercentage}%</p>
-          </div>
-          <div className="text-center">
-            <p className="font-semibold">Duration</p>
-            <p className="text-lg font-bold text-blue-600">{certificateData.internshipDuration}</p>
-          </div>
-        </div>
-
-        {/* Dates Section */}
-        <div className="grid grid-cols-2 gap-12 mb-12 text-sm text-gray-600">
-          <div className="text-center">
-            <p className="font-semibold">Enrollment Date</p>
-            <p className="text-lg">
-              {new Date(certificateData.enrollmentDate).toLocaleDateString()}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="font-semibold">Completion Date</p>
-            <p className="text-lg">
-              {new Date(certificateData.completionDate).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-
-        {/* Signatures Section */}
-        <div className="grid grid-cols-2 gap-16 mt-8">
-          <div className="text-center">
-            <div className="border-t-2 border-gray-400 pt-2 w-32 mx-auto mb-2"></div>
-            <p className="font-semibold text-gray-700">Instructor</p>
-            <p className="text-gray-600">{certificateData.instructorName}</p>
-          </div>
-          <div className="text-center">
-            <div className="border-t-2 border-gray-400 pt-2 w-32 mx-auto mb-2"></div>
-            <p className="font-semibold text-gray-700">Director</p>
-            <p className="text-gray-600">Kisshore Kumaar</p>
-            <p className="text-xs text-gray-500">Founder & Director - Triaright</p>
-          </div>
-        </div>
-
-        {/* Footer Information */}
-        <div className="mt-16 text-xs text-gray-500">
-          <div className="grid grid-cols-3 gap-8 mb-4">
-            <div className="text-center">
-              <p className="font-semibold">Date of issue:</p>
-              <p>{currentDate}</p>
-            </div>
-            <div className="text-center">
-              <p className="font-semibold">Certificate no:</p>
-              <p className="font-mono">{certificateData.certificateId}</p>
-            </div>
-            <div className="text-center">
-              <p className="font-semibold">Verification</p>
-              <p>Valid and Verified</p>
-            </div>
+      ) : (
+        <div>
+          <div className="flex gap-4 justify-center mb-6 flex-wrap">
+            <button 
+              onClick={downloadCertificate}
+              className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+            >
+              Download Certificate
+            </button>
+            <button 
+              onClick={() => window.print()}
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+            >
+              Print Certificate
+            </button>
+            <button 
+              onClick={() => setCertificateData(null)}
+              className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700"
+            >
+              Generate New
+            </button>
           </div>
           
-          <div className="border-t border-gray-300 pt-4">
-            <p className="mb-1">Mail id: info@triaright.com | Contact: 9059373300</p>
-            <p className="text-xs">
-              7-1-58, 404B, 4th Floor, Surekha Chambers, Ameerpet, Hyderabad, Telangana - 500016
-            </p>
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <canvas 
+              ref={canvasRef}
+              className="w-full h-auto border border-gray-300 rounded"
+              style={{ width: '100%', height: 'auto', maxWidth: '1200px' }}
+            />
           </div>
         </div>
-
-        {/* Decorative Elements */}
-        <div className="absolute top-4 right-4 w-16 h-16 border-4 border-yellow-400 rounded-full opacity-20"></div>
-        <div className="absolute bottom-4 left-4 w-12 h-12 border-4 border-green-400 rounded-full opacity-20"></div>
-        <div className="absolute top-4 left-4 w-8 h-8 border-4 border-blue-400 rounded-full opacity-20"></div>
-        <div className="absolute bottom-4 right-4 w-10 h-10 border-4 border-purple-400 rounded-full opacity-20"></div>
-      </div>
-
-      {/* Print Styles */}
-      <style jsx>{`
-        @media print {
-          .certificate-container {
-            width: 100% !important;
-            height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            border: none !important;
-          }
-        }
-      `}</style>
+      )}
     </div>
   );
 };
