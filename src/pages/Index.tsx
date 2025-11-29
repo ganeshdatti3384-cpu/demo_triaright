@@ -1,4 +1,4 @@
-// Index.tsx (updated - with minimal Pack365 section)
+// Index.tsx (updated - with minimal cube sections)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -333,23 +333,22 @@ const Index = () => {
         `}</style>
       </section>
 
-      {/* --- Cube Animation Sections --- */}
-      
-      {/* Courses Cube Section */}
-      <section className="py-16 bg-gradient-to-br from-slate-900 to-blue-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* --- Courses Cube Section --- */}
+      <section className="py-20 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="text-center lg:text-left">
-              <h2 className="text-4xl font-bold mb-6">Explore Our Courses</h2>
-              <p className="text-xl text-gray-300 mb-8">
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">Explore Our Courses</h2>
+              <p className="text-xl text-gray-600 mb-8">
                 Discover a wide range of courses designed to boost your career. 
                 From web development to data science, we have everything you need to succeed.
               </p>
               <Button 
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-full font-semibold"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-lg font-semibold"
                 onClick={() => navigate('/courses')}
               >
-                Browse All Courses <ArrowRight className="ml-2 h-5 w-5" />
+                Browse All Courses
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
             <div className="flex justify-center">
@@ -431,43 +430,45 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Jobs Cube Section */}
-      <section className="py-16 bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* --- Jobs Cube Section --- */}
+      <section className="py-20 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="flex justify-center order-2 lg:order-1">
-              <CubeAnimation items={jobsCubeData} theme="secondary" />
-            </div>
-            <div className="text-center lg:text-left order-1 lg:order-2">
+            <div className="text-center lg:text-left">
               <h2 className="text-4xl font-bold text-gray-900 mb-6">Find Your Dream Job</h2>
               <p className="text-xl text-gray-600 mb-8">
                 Connect with top employers and discover opportunities that match your skills and aspirations.
               </p>
               <Button 
-                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-8 py-3 rounded-full font-semibold"
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-3 rounded-lg font-semibold"
                 onClick={() => navigate('/jobs')}
               >
-                Explore Jobs <ArrowRight className="ml-2 h-5 w-5" />
+                Explore Jobs
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
+            </div>
+            <div className="flex justify-center">
+              <CubeAnimation items={jobsCubeData} theme="secondary" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Internships Cube Section */}
-      <section className="py-16 bg-gradient-to-br from-purple-900 to-indigo-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* --- Internships Cube Section --- */}
+      <section className="py-20 bg-gradient-to-br from-green-50 to-emerald-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="text-center lg:text-left">
-              <h2 className="text-4xl font-bold mb-6">Start Your Career with Internships</h2>
-              <p className="text-xl text-gray-300 mb-8">
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">Start Your Career with Internships</h2>
+              <p className="text-xl text-gray-600 mb-8">
                 Gain real-world experience, learn from industry experts, and kickstart your professional journey.
               </p>
               <Button 
-                className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white px-8 py-3 rounded-full font-semibold"
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-3 rounded-lg font-semibold"
                 onClick={() => navigate('/internships')}
               >
-                View Internships <ArrowRight className="ml-2 h-5 w-5" />
+                View Internships
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
             <div className="flex justify-center">
