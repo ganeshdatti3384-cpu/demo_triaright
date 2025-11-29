@@ -130,7 +130,7 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
-            background-image: url(/images/certificate-bg.jpg) !important;
+            background-image: url(/lovable-uploads/certificate-bg.jpg) !important;
             background-size: cover !important;
             background-position: center !important;
             background-repeat: no-repeat !important;
