@@ -75,11 +75,6 @@ const trustBadges = [
     alt: "AICTE Approved"
   },
   {
-    name: "APSSDC",
-    image: "/lovable-uploads/apssdc-badge.png",
-    alt: "APSSDC Partner"
-  },
-  {
     name: "ISO 9001:2015",
     image: "/lovable-uploads/iso-badge.png",
     alt: "ISO 9001:2015 Certified"
