@@ -4,7 +4,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -111,14 +110,33 @@ const APCertificatePage = () => {
 
     setGenerating(true);
     try {
+      // Preload background image
+      const preloadImage = new Image();
+      preloadImage.crossOrigin = 'anonymous';
+      preloadImage.src = '/images/certificate-bg.jpg';
+      
+      await new Promise((resolve, reject) => {
+        preloadImage.onload = resolve;
+        preloadImage.onerror = reject;
+      });
+
       const canvas = await html2canvas(certificateRef.current, {
         scale: 2,
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         backgroundColor: '#ffffff',
         logging: false,
         width: certificateRef.current.scrollWidth,
-        height: certificateRef.current.scrollHeight
+        height: certificateRef.current.scrollHeight,
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.querySelector('.certificate-container') as HTMLElement;
+          if (clonedElement) {
+            clonedElement.style.backgroundImage = 'url(/images/certificate-bg.jpg)';
+            clonedElement.style.backgroundSize = 'cover';
+            clonedElement.style.backgroundPosition = 'center';
+            clonedElement.style.backgroundRepeat = 'no-repeat';
+          }
+        }
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
@@ -161,18 +179,38 @@ const APCertificatePage = () => {
         <head>
           <title>Certificate - ${certificateData?.certificateId}</title>
           <style>
-            body { margin: 0; padding: 20px; background: white; }
+            body { 
+              margin: 0; 
+              padding: 20px; 
+              background: white; 
+              font-family: Arial, sans-serif;
+            }
             .certificate-container { 
               transform: scale(0.8); 
               transform-origin: top center;
               margin: 0 auto;
+              background-image: url('/images/certificate-bg.jpg') !important;
+              background-size: cover !important;
+              background-position: center !important;
+              background-repeat: no-repeat !important;
             }
             @media print {
-              body { margin: 0; padding: 0; }
+              body { 
+                margin: 0; 
+                padding: 0; 
+                width: 210mm;
+                height: 297mm;
+              }
               .certificate-container { 
                 transform: none;
-                width: 100% !important;
-                height: 100% !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                background-image: url('/images/certificate-bg.jpg') !important;
+                background-size: cover !important;
+                background-position: center !important;
+                background-repeat: no-repeat !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
             }
           </style>
