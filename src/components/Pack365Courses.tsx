@@ -55,7 +55,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
         setShowEnrollment(false);
       }
       
-      // Clear URL params
+      
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
