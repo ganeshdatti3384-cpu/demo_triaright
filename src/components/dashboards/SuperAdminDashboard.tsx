@@ -13,6 +13,7 @@ import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Packa
 import { pack365Api, collegeApi } from '@/services/api';
 import Pack365Management from '../admin/Pack365Management';
 import SuperUserManagement from '../admin/SuperUserManagement';
+import APInternshipCouponManagement from '../admin/APInternshipCouponManagement';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
 import type { Pack365Course } from '@/types/api';
@@ -278,10 +279,11 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">User Control</TabsTrigger>
             <TabsTrigger value="pack365">Pack365</TabsTrigger>
+            <TabsTrigger value="internship-coupons">Internship Coupons</TabsTrigger>
             <TabsTrigger value="college-approvals">College Approvals</TabsTrigger>
           </TabsList>
 
@@ -761,6 +763,10 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
                 </Card>
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          <TabsContent value="internship-coupons" className="space-y-6">
+            <APInternshipCouponManagement />
           </TabsContent>
 
           <TabsContent value="college-approvals" className="space-y-6">
