@@ -9,9 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, BookOpen, ArrowRight, Lock, AlertCircle, ArrowLeft, Star, Users, Zap, Award, CheckCircle } from 'lucide-react';
 import { pack365Api, Pack365Course } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import Slider from 'react-slick';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
 
 interface Pack365CoursesProps {
   showLoginRequired?: boolean;
@@ -444,24 +441,6 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
     );
   }
 
-  const sliderSettings = {
-    dots: true,
-    infinite: true,
-    speed: 800,
-    slidesToShow: 3,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 5000,
-    pauseOnHover: true,
-    cssEase: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-    responsive: [
-      { breakpoint: 1280, settings: { slidesToShow: 2, speed: 600 } },
-      { breakpoint: 1024, settings: { slidesToShow: 2, speed: 600 } },
-      { breakpoint: 768, settings: { slidesToShow: 1, speed: 500 } },
-      { breakpoint: 640, settings: { slidesToShow: 1, speed: 500 } }
-    ]
-  };
-
   return (
     <div className={showLoginRequired ? '' : 'min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 py-8'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -480,45 +459,6 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
         )}
         
         <style>{`
-          .slick-dots {
-            bottom: -60px;
-          }
-          .slick-dots li button:before {
-            font-size: 14px;
-            color: #60a5fa;
-            opacity: 0.5;
-          }
-          .slick-dots li.slick-active button:before {
-            opacity: 1;
-            color: #3b82f6;
-          }
-          .slick-prev,
-          .slick-next {
-            width: 44px;
-            height: 44px;
-            z-index: 1;
-            background: rgba(255, 255, 255, 0.1) !important;
-            backdrop-filter: blur(10px);
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-          }
-          .slick-prev { left: -50px; }
-          .slick-next { right: -50px; }
-          .slick-prev:before,
-          .slick-next:before {
-            font-size: 20px;
-            color: #bfdbfe;
-            opacity: 1;
-          }
-          .slick-prev:hover:before,
-          .slick-next:hover:before {
-            color: #60a5fa;
-          }
-          .slick-prev:hover,
-          .slick-next:hover {
-            background: rgba(255, 255, 255, 0.2) !important;
-            border-color: rgba(96, 165, 250, 0.5);
-          }
           .stream-card {
             height: 480px;
             transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -593,9 +533,9 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
           }
         `}</style>
         
-        <Slider {...sliderSettings}>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {streams.map((stream) => (
-            <div key={stream._id} className="px-4 pb-12">
+            <div key={stream._id} className="pb-12">
               <Card 
                 className="stream-card overflow-hidden cursor-pointer group relative"
                 onMouseEnter={() => setHoveredStream(stream.name)}
@@ -730,26 +670,7 @@ const Pack365Courses = ({ showLoginRequired = false, onLoginRequired }: Pack365C
               </Card>
             </div>
           ))}
-        </Slider>
-        
-        {!showLoginRequired && (
-          <div className="text-center mt-20">
-            <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl p-8 border border-white/20 backdrop-blur-lg max-w-2xl mx-auto">
-              <h3 className="text-2xl font-bold text-white mb-4">Ready to Transform Your Career?</h3>
-              <p className="text-blue-100 mb-6">Join thousands of students who have accelerated their learning with Pack365 bundles</p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-2xl">
-                  <Users className="h-4 w-4 mr-2" />
-                  View All Bundles
-                </Button>
-                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Browse Courses
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
