@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -87,9 +88,7 @@ const APCertificatePage = () => {
       
       if (data.success) {
         setCertificateData(data.certificateData);
-        console.log('✅ Certificate data loaded:', data.certificateData);
       } else {
-        console.log('❌ Certificate not available:', data.message);
         throw new Error(data.message || 'Failed to fetch certificate data');
       }
     } catch (error: any) {
@@ -110,33 +109,14 @@ const APCertificatePage = () => {
 
     setGenerating(true);
     try {
-      // Preload background image
-      const preloadImage = new Image();
-      preloadImage.crossOrigin = 'anonymous';
-      preloadImage.src = '/lovable-uploads/certificate-bg.jpg';
-      
-      await new Promise((resolve, reject) => {
-        preloadImage.onload = resolve;
-        preloadImage.onerror = reject;
-      });
-
       const canvas = await html2canvas(certificateRef.current, {
         scale: 2,
         useCORS: true,
-        allowTaint: false,
+        allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
         width: certificateRef.current.scrollWidth,
-        height: certificateRef.current.scrollHeight,
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.querySelector('.certificate-container') as HTMLElement;
-          if (clonedElement) {
-            clonedElement.style.backgroundImage = 'url(/lovable-uploads/certificate-bg.jpg)';
-            clonedElement.style.backgroundSize = 'cover';
-            clonedElement.style.backgroundPosition = 'center';
-            clonedElement.style.backgroundRepeat = 'no-repeat';
-          }
-        }
+        height: certificateRef.current.scrollHeight
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
@@ -179,38 +159,18 @@ const APCertificatePage = () => {
         <head>
           <title>Certificate - ${certificateData?.certificateId}</title>
           <style>
-            body { 
-              margin: 0; 
-              padding: 20px; 
-              background: white; 
-              font-family: Arial, sans-serif;
-            }
+            body { margin: 0; padding: 20px; background: white; }
             .certificate-container { 
               transform: scale(0.8); 
               transform-origin: top center;
               margin: 0 auto;
-              background-image: url('/lovable-uploads/certificate-bg.jpg') !important;
-              background-size: cover !important;
-              background-position: center !important;
-              background-repeat: no-repeat !important;
             }
             @media print {
-              body { 
-                margin: 0; 
-                padding: 0; 
-                width: 210mm;
-                height: 297mm;
-              }
+              body { margin: 0; padding: 0; }
               .certificate-container { 
                 transform: none;
-                width: 210mm !important;
-                height: 297mm !important;
-                background-image: url('/lovable-uploads/certificate-bg.jpg') !important;
-                background-size: cover !important;
-                background-position: center !important;
-                background-repeat: no-repeat !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+                width: 100% !important;
+                height: 100% !important;
               }
             }
           </style>
@@ -389,8 +349,8 @@ const APCertificatePage = () => {
                   <Award className="h-5 w-5 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Instructor</p>
-                  <p className="text-lg font-semibold text-gray-900">{certificateData.instructorName}</p>
+                  <p className="text-sm font-medium text-gray-600">Completion</p>
+                  <p className="text-lg font-semibold text-gray-900">{certificateData.completionPercentage}%</p>
                 </div>
               </div>
             </div>
