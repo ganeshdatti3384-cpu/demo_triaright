@@ -3,8 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, ArrowLeft, Loader2, CheckCircle, CreditCard, IndianRupee, Tag, X, Ticket } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 import { useToast } from '@/hooks/use-toast';
 
 interface APRazorpayPaymentProps {
@@ -314,7 +312,6 @@ const APRazorpayPayment = ({
   if (initializing) {
     return (
       <>
-        <Navbar />
         <div className="min-h-screen bg-gray-50 py-8">
           <div className="max-w-2xl mx-auto px-4">
             <div className="text-center py-12">
@@ -527,9 +524,9 @@ const APRazorpayPayment = ({
           </div>
         </div>
       </div>
-      <Footer />
     </>
   );
 };
 
 export default APRazorpayPayment;
+
