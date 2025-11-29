@@ -1,5 +1,5 @@
 // components/student/APCertificateGenerator.tsx
-import React from 'react';
+import React, { useRef, useState } from 'react';
 
 interface CertificateData {
   studentName: string;
@@ -19,100 +19,267 @@ interface CertificateData {
   certificateId: string;
 }
 
-interface APCertificateGeneratorProps {
-  certificateData: CertificateData;
+interface Enrollment {
+  _id: string;
+  completionPercentage: number;
+  courseId: {
+    title: string;
+  };
 }
 
-const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certificateData }) => {
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+interface Props {
+  enrollment: Enrollment;
+}
 
-  return (
-    <div 
-      className="certificate-container bg-white relative" 
-      style={{ 
-        width: '794px', 
-        height: '1123px',
-        backgroundImage: 'url(/lovable-uploads/certificate-bg.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
-      {/* Certificate Content */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center p-16 text-center">
-        
-        {/* Certificate Title - Removed as it's in background image */}
-        
-        {/* Present To Section */}
-        <div className="mb-8 mt-32">
-          <p className="text-lg text-gray-600 mb-4">This certificate is proudly presented to</p>
-          <h3 className="text-4xl font-bold text-gray-900 mb-4 border-b-4 border-green-600 pb-4 px-12">
-            {certificateData.studentName}
-          </h3>
+const APCertificateGenerator: React.FC<Props> = ({ enrollment }) => {
+  const [certificateData, setCertificateData] = useState<CertificateData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const generateCertificate = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/internships/apinternshipcertificate/${enrollment._id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to generate certificate');
+      
+      const data = await response.json();
+      setCertificateData(data.certificateData);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to generate certificate');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const drawCertificate = (ctx: CanvasRenderingContext2D, data: CertificateData) => {
+    // Clear canvas
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    // Gold border
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(20, 20, ctx.canvas.width - 40, ctx.canvas.height - 40);
+
+    // Blue inner border
+    ctx.strokeStyle = '#1a237e';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 40, ctx.canvas.width - 80, ctx.canvas.height - 80);
+
+    // Header
+    ctx.fillStyle = '#1a237e';
+    ctx.font = 'bold 48px "Times New Roman", serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TRIARIGHT', ctx.canvas.width / 2, 100);
+
+    // Subheader
+    ctx.fillStyle = '#d4af37';
+    ctx.font = 'italic 24px "Times New Roman", serif';
+    ctx.fillText('THE NEW ERA OF LEARNING', ctx.canvas.width / 2, 140);
+
+    // Certificate Title
+    ctx.fillStyle = '#1a237e';
+    ctx.font = 'bold 36px "Times New Roman", serif';
+    ctx.fillText('CERTIFICATE OF COMPLETION', ctx.canvas.width / 2, 220);
+
+    // Presented to
+    ctx.fillStyle = '#333333';
+    ctx.font = '24px "Times New Roman", serif';
+    ctx.fillText('This certificate is proudly presented to', ctx.canvas.width / 2, 280);
+
+    // Student Name
+    ctx.fillStyle = '#1a237e';
+    ctx.font = 'bold 42px "Times New Roman", serif';
+    ctx.fillText(data.studentName.toUpperCase(), ctx.canvas.width / 2, 340);
+
+    // Completion details
+    ctx.fillStyle = '#333333';
+    ctx.font = '20px "Times New Roman", serif';
+    ctx.fillText('has successfully completed the', ctx.canvas.width / 2, 390);
+
+    // Course Title
+    ctx.fillStyle = '#d4af37';
+    ctx.font = 'bold 28px "Times New Roman", serif';
+    ctx.fillText(data.courseTitle, ctx.canvas.width / 2, 430);
+
+    // Internship details
+    ctx.fillStyle = '#333333';
+    ctx.font = '20px "Times New Roman", serif';
+    ctx.fillText(`Internship: ${data.internshipTitle}`, ctx.canvas.width / 2, 470);
+    ctx.fillText(`at ${data.companyName}`, ctx.canvas.width / 2, 500);
+
+    // Duration and completion
+    ctx.fillStyle = '#666666';
+    ctx.font = '18px "Times New Roman", serif';
+    ctx.fillText(`Duration: ${data.internshipDuration} | Completion: ${data.completionPercentage}%`, ctx.canvas.width / 2, 540);
+
+    // Footer section
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(ctx.canvas.width / 4, 620);
+    ctx.lineTo((3 * ctx.canvas.width) / 4, 620);
+    ctx.stroke();
+
+    // Date and Certificate No
+    ctx.fillStyle = '#333333';
+    ctx.font = '16px "Times New Roman", serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Date of issue: ${new Date(data.completionDate).toLocaleDateString()}`, 100, 660);
+    ctx.fillText(`Certificate no: ${data.certificateId}`, 100, 685);
+
+    // Contact info
+    ctx.textAlign = 'right';
+    ctx.fillText('Mail id: info@triaright.com', ctx.canvas.width - 100, 660);
+    ctx.fillText('contact: 9059373300', ctx.canvas.width - 100, 685);
+
+    // Founder signature
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#333333';
+    ctx.font = 'bold 20px "Times New Roman", serif';
+    ctx.fillText('KISSHORE KUMAAR', ctx.canvas.width / 2, 750);
+    ctx.font = '18px "Times New Roman", serif';
+    ctx.fillText('Founder & Director - Triaright', ctx.canvas.width / 2, 780);
+
+    // Address
+    ctx.font = '14px "Times New Roman", serif';
+    ctx.fillText('7-1-58, 404B, 4th Floor, Surekha Chambers, Ameerpet, Hyderabad, Telangana - 500016', ctx.canvas.width / 2, 810);
+  };
+
+  const downloadCertificate = () => {
+    if (!canvasRef.current || !certificateData) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size and draw
+    canvas.width = 1200;
+    canvas.height = 848;
+    drawCertificate(ctx, certificateData);
+
+    // Download
+    const link = document.createElement('a');
+    link.download = `certificate-${certificateData.certificateId}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
+  // Progress section component
+  const ProgressSection = () => (
+    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <h3 className="text-xl font-bold mb-4">Your Progress</h3>
+      <div className="mb-4">
+        <div className="flex justify-between mb-1">
+          <span>Completion</span>
+          <span>{enrollment.completionPercentage}%</span>
         </div>
-
-        {/* Completion Details - Updated to match reference */}
-        <div className="mb-8 max-w-2xl">
-          <p className="text-xl text-gray-700 leading-relaxed text-justify">
-            This is to certify that <strong>{certificateData.studentName}</strong> has actively participated and successfully completed the live training course titled "<strong>{certificateData.courseTitle}</strong>" conducted by <strong>{certificateData.providerName}</strong>.
-          </p>
-          <p className="text-xl text-gray-700 leading-relaxed text-justify mt-4">
-            The course was conducted from <strong>{new Date(certificateData.enrollmentDate).toLocaleDateString()}</strong> to <strong>{new Date(certificateData.completionDate).toLocaleDateString()}</strong> and involved hands-on sessions, live projects, group discussions, and practical coding challenges that enhanced the participant's skillset and real-world development capabilities.
-          </p>
-          <p className="text-xl text-gray-700 leading-relaxed text-justify mt-4">
-            We congratulate the learner on their achievement and wish them continued success in their career journey.
-          </p>
-        </div>
-
-        {/* Performance Metrics - Updated to show Instructor name instead of Duration */}
-        <div className="grid grid-cols-2 gap-8 mb-8 text-sm text-gray-600">
-          <div className="text-center">
-            <p className="font-semibold">Completion Percentage</p>
-            <p className="text-2xl font-bold text-green-600">{certificateData.completionPercentage}%</p>
-          </div>
-          <div className="text-center">
-            <p className="font-semibold">Instructor</p>
-            <p className="text-lg font-bold text-blue-600">{certificateData.instructorName}</p>
-          </div>
-        </div>
-
-        {/* Date of Issue and Certificate No - Positioned according to background image */}
-        <div className="mt-auto w-full">
-          <div className="flex justify-between items-start px-20 mb-4">
-            <div className="text-left text-sm text-gray-600">
-              <p className="font-semibold">Date of issue:</p>
-              <p>{currentDate}</p>
-            </div>
-            <div className="text-right text-sm text-gray-600">
-              <p className="font-semibold">Certificate no:</p>
-              <p className="font-mono">{certificateData.certificateId}</p>
-            </div>
-          </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-green-600 h-2 rounded-full" 
+            style={{ width: `${enrollment.completionPercentage}%` }}
+          ></div>
         </div>
       </div>
+      
+      {enrollment.completionPercentage >= 80 && (
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <h4 className="font-semibold text-blue-800 mb-2">Certificate Available!</h4>
+          <p className="text-blue-600 mb-4">
+            You've completed {enrollment.completionPercentage}% of "{enrollment.courseId.title}".
+            Generate your certificate now.
+          </p>
+          <button 
+            onClick={generateCertificate}
+            className="bg-gradient-to-r from-blue-700 to-blue-800 text-white px-8 py-3 rounded-full font-semibold hover:shadow-lg transition-all duration-300"
+          >
+            Generate Certificate
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
-      {/* Print Styles */}
-      <style jsx>{`
-        @media print {
-          .certificate-container {
-            width: 100% !important;
-            height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            border: none !important;
-            background-image: url(/lovable-uploads/certificate-bg.jpg) !important;
-            background-size: cover !important;
-            background-position: center !important;
-            background-repeat: no-repeat !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-        }
-      `}</style>
+  // Certificate generation section
+  const CertificateSection = () => {
+    if (loading) {
+      return (
+        <div className="text-center p-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Generating Certificate...</p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <h3 className="text-red-800 font-semibold mb-2">Certificate Not Available</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={generateCertificate}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
+    if (!certificateData) {
+      return null;
+    }
+
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="flex gap-4 justify-center mb-6 flex-wrap">
+          <button 
+            onClick={downloadCertificate}
+            className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+          >
+            Download Certificate
+          </button>
+          <button 
+            onClick={() => window.print()}
+            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+          >
+            Print Certificate
+          </button>
+          <button 
+            onClick={() => setCertificateData(null)}
+            className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700"
+          >
+            Generate New
+          </button>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+          <canvas 
+            ref={canvasRef}
+            className="w-full h-auto border border-gray-300 rounded"
+            style={{ width: '100%', height: 'auto', maxWidth: '1200px' }}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="p-4">
+      <ProgressSection />
+      <CertificateSection />
     </div>
   );
 };
