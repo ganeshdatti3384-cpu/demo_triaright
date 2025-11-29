@@ -189,7 +189,7 @@ const APCertificatePage = () => {
               transform: scale(0.8); 
               transform-origin: top center;
               margin: 0 auto;
-              background-image: url('/images/certificate-bg.jpg') !important;
+              background-image: url('/lovable-uploads/certificate-bg.jpg') !important;
               background-size: cover !important;
               background-position: center !important;
               background-repeat: no-repeat !important;
