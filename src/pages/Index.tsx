@@ -1,4 +1,4 @@
-// Index.tsx (updated - with Pack365 cube animation section)
+// Index.tsx (updated - with Pack365 cube animation section with different colors)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -335,44 +335,20 @@ const Index = () => {
 
       {/* --- Cube Animation Sections --- */}
       
-      {/* Courses Cube Section */}
-      <section className="py-16 bg-gradient-to-br from-slate-900 to-blue-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="text-center lg:text-left">
-              <h2 className="text-4xl font-bold mb-6">Explore Our Courses</h2>
-              <p className="text-xl text-gray-300 mb-8">
-                Discover a wide range of courses designed to boost your career. 
-                From web development to data science, we have everything you need to succeed.
-              </p>
-              <Button 
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-full font-semibold"
-                onClick={() => navigate('/courses')}
-              >
-                Browse All Courses <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </div>
-            <div className="flex justify-center">
-              <CubeAnimation items={coursesCubeData} theme="primary" />
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* --- Pack365 Cube Animation Section --- */}
-      <section id="pack365-banner" className="py-16 bg-gradient-to-br from-emerald-900 to-teal-900 text-white">
+      <section id="pack365-banner" className="py-16 bg-gradient-to-br from-amber-900 to-orange-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="text-center lg:text-left">
               <h2 className="text-4xl font-bold mb-6">
-                Pack<span className="text-emerald-400">365</span>
+                Pack<span className="text-amber-400">365</span>
               </h2>
               <p className="text-xl text-gray-300 mb-8">
                 Complete annual learning package with unlimited access to all courses, 
                 mentorship, and career support. Everything you need to transform your career in one package.
               </p>
               <Button 
-                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-8 py-3 rounded-full font-semibold"
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-8 py-3 rounded-full font-semibold"
                 onClick={() => navigate('/pack365')}
               >
                 Explore Pack365 <ArrowRight className="ml-2 h-5 w-5" />
@@ -403,6 +379,30 @@ const Index = () => {
               >
                 Explore Jobs <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+         {/* Courses Cube Section */}
+      <section className="py-16 bg-gradient-to-br from-slate-900 to-blue-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="text-center lg:text-left">
+              <h2 className="text-4xl font-bold mb-6">Explore Our Courses</h2>
+              <p className="text-xl text-gray-300 mb-8">
+                Discover a wide range of courses designed to boost your career. 
+                From web development to data science, we have everything you need to succeed.
+              </p>
+              <Button 
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-full font-semibold"
+                onClick={() => navigate('/courses')}
+              >
+                Browse All Courses <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </div>
+            <div className="flex justify-center">
+              <CubeAnimation items={coursesCubeData} theme="primary" />
             </div>
           </div>
         </div>
