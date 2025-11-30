@@ -15,7 +15,8 @@ import {
   GraduationCap,
   BookCopy,
   Users,
-  FileText
+  FileText,
+  Award
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -97,6 +98,7 @@ const Pack365StreamLearning = () => {
   const [enrollment, setEnrollment] = useState<StreamEnrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [allCoursesCompleted, setAllCoursesCompleted] = useState(false);
 
   useEffect(() => {
     const fetchStreamEnrollment = async () => {
@@ -179,9 +181,13 @@ const Pack365StreamLearning = () => {
 
               setAllCourses(streamCourses);
               setEnrollment(enhancedEnrollment);
+
+              // Check if all courses are completed
+              checkAllCoursesCompleted(mergedCourses);
             } else {
               // fallback: no courses returned but we have enrollment
               setEnrollment(currentEnrollment);
+              setAllCoursesCompleted(false);
             }
           } else {
             toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
@@ -203,6 +209,24 @@ const Pack365StreamLearning = () => {
     fetchStreamEnrollment();
   }, [stream]);
 
+  const checkAllCoursesCompleted = (courses: any[]) => {
+    if (!courses || courses.length === 0) {
+      setAllCoursesCompleted(false);
+      return;
+    }
+
+    const allCompleted = courses.every(course => {
+      const progress = course.progress;
+      const completionPercentage = typeof progress?.completionPercentage === 'number'
+        ? progress.completionPercentage
+        : 0;
+      const isCompleted = completionPercentage === 100 || !!progress?.isCompleted;
+      return isCompleted;
+    });
+
+    setAllCoursesCompleted(allCompleted);
+  };
+
   const handleCourseStart = (course: Course) => {
     console.log('Starting course:', course.courseName);
     console.log('Navigation path:', `/pack365-learning/${stream}/course`);
@@ -215,6 +239,22 @@ const Pack365StreamLearning = () => {
         enrollment: enrollment
       } 
     });
+  };
+
+  const handleGenerateCertificate = () => {
+    if (!enrollment) return;
+    
+    // Navigate to certificate page with enrollment ID
+    const enrollmentId = enrollment._id || enrollment.enrollmentId;
+    if (enrollmentId) {
+      navigate(`/pack365-certificate/${enrollmentId}`);
+    } else {
+      toast({
+        title: 'Error',
+        description: 'Unable to generate certificate. Enrollment ID not found.',
+        variant: 'destructive'
+      });
+    }
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
@@ -261,6 +301,23 @@ const Pack365StreamLearning = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 capitalize">{stream} Stream</h1>
             <p className="text-gray-600 mt-2">Continue your learning journey</p>
+            
+            {/* Certificate Generation Button - Show when all courses completed */}
+            {allCoursesCompleted && (
+              <div className="mt-4">
+                <Button 
+                  onClick={handleGenerateCertificate}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="lg"
+                >
+                  <Award className="h-5 w-5 mr-2" />
+                  Generate Certificate
+                </Button>
+                <p className="text-sm text-green-600 mt-2">
+                  Congratulations! You've completed all courses in this stream. Generate your certificate now.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* --- Main Content Grid --- */}
@@ -288,6 +345,14 @@ const Pack365StreamLearning = () => {
                    <div className="flex items-center justify-between">
                       <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4"/>Access Until</span>
                       <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
+                   </div>
+                   
+                   {/* Completion Status in Sidebar */}
+                   <div className="flex items-center justify-between pt-2 border-t">
+                      <span className="text-gray-500 flex items-center gap-2"><Award className="h-4 w-4"/>Stream Completion</span>
+                      <span className={`font-semibold ${allCoursesCompleted ? 'text-green-600' : 'text-gray-800'}`}>
+                        {allCoursesCompleted ? 'Completed' : 'In Progress'}
+                      </span>
                    </div>
                 </CardContent>
               </Card>
@@ -367,7 +432,7 @@ const Pack365StreamLearning = () => {
                                 variant="default"
                               >
                                 <Play className="h-4 w-4 mr-2" />
-                                Start Learning
+                                {isCompleted ? 'Review Course' : 'Start Learning'}
                               </Button>
                             </div>
                           </div>
@@ -405,6 +470,12 @@ const Pack365StreamLearning = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Access expires:</span>
                       <span className="text-sm font-medium">{formatDate(enrollment.expiresAt)}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <span className="text-sm text-gray-600">Stream completion status:</span>
+                      <span className={`text-sm font-medium ${allCoursesCompleted ? 'text-green-600' : 'text-orange-600'}`}>
+                        {allCoursesCompleted ? 'Completed - Ready for Certificate' : 'In Progress'}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
