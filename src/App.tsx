@@ -135,9 +135,19 @@ const App = () => {
             }
           />
           
-          {/* Pack365 Certificate Route - ADD THIS ROUTE */}
+          {/* Pack365 Certificate Routes */}
+          {/* Keep the existing path-with-param for direct links */}
           <Route
             path="/pack365-certificate/:enrollmentId"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <Pack365CertificatePage />
+              </ProtectedRoute>
+            }
+          />
+          {/* NEW: Accept certificate page without path param so fallback query navigation works */}
+          <Route
+            path="/pack365-certificate"
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <Pack365CertificatePage />
