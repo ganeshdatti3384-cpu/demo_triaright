@@ -1,8 +1,9 @@
 // components/internships/APRazorpayPayment.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, ArrowLeft, Loader2, CheckCircle, CreditCard, IndianRupee, Tag, X, Ticket } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { AlertCircle, ArrowLeft, Loader2, CheckCircle, CreditCard, IndianRupee, Tag } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import { useToast } from '@/hooks/use-toast';
 
 interface APRazorpayPaymentProps {
@@ -16,42 +17,22 @@ interface APRazorpayPaymentProps {
   onBack: () => void;
 }
 
-interface Coupon {
-  code: string;
-  discountAmount: number;
-  discountType: 'fixed' | 'percentage';
-  description?: string;
-  expiresAt?: string;
-  isActive: boolean;
-}
-
 const APRazorpayPayment = ({
   internshipId,
   internshipTitle,
   amount,
   applicationId,
-  couponCode: initialCouponCode,
-  discountAmount: initialDiscountAmount = 0,
+  couponCode,
+  discountAmount = 0,
   onPaymentSuccess,
   onBack
 }: APRazorpayPaymentProps) => {
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
-  const [applyingCoupon, setApplyingCoupon] = useState(false);
-  const [couponInput, setCouponInput] = useState(initialCouponCode || '');
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(
-    initialCouponCode ? {
-      code: initialCouponCode,
-      discountAmount: initialDiscountAmount,
-      discountType: 'fixed',
-      isActive: true
-    } : null
-  );
-  const [couponError, setCouponError] = useState('');
   const { toast } = useToast();
 
-  const finalAmount = Math.max(0, amount - (appliedCoupon?.discountAmount || 0));
-  const hasDiscount = appliedCoupon !== null;
+  const finalAmount = Math.max(0, amount - discountAmount);
+  const hasDiscount = discountAmount > 0;
 
   useEffect(() => {
     // Load Razorpay script dynamically
@@ -89,81 +70,6 @@ const APRazorpayPayment = ({
         setInitializing(false);
       });
   }, [toast]);
-
-  const applyCoupon = async () => {
-    if (!couponInput.trim()) {
-      setCouponError('Please enter a coupon code');
-      return;
-    }
-
-    setApplyingCoupon(true);
-    setCouponError('');
-
-    try {
-      const token = localStorage.getItem('token');
-      
-      // First, get all coupons to validate locally
-      const response = await fetch('/api/internships/coupons', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        const coupons = data.coupons || [];
-        const coupon = coupons.find((c: any) => 
-          c.code === couponInput.trim().toUpperCase() && 
-          c.isActive &&
-          (!c.applicableInternship || c.applicableInternship === internshipId) &&
-          (!c.expiresAt || new Date(c.expiresAt) > new Date()) &&
-          c.usedCount < c.usageLimit
-        );
-
-        if (coupon) {
-          setAppliedCoupon({
-            code: coupon.code,
-            discountAmount: coupon.discountAmount,
-            discountType: coupon.discountType || 'fixed',
-            isActive: coupon.isActive,
-            expiresAt: coupon.expiresAt,
-            description: coupon.description
-          });
-          setCouponInput('');
-          toast({
-            title: 'Coupon Applied!',
-            description: `Discount of ₹${coupon.discountAmount} applied successfully`,
-            variant: 'default'
-          });
-        } else {
-          throw new Error('Invalid or expired coupon code');
-        }
-      } else {
-        throw new Error('Failed to validate coupon');
-      }
-    } catch (error: any) {
-      console.error('Error applying coupon:', error);
-      setCouponError(error.message || 'Failed to apply coupon');
-      toast({
-        title: 'Coupon Error',
-        description: error.message || 'Failed to apply coupon',
-        variant: 'destructive'
-      });
-    } finally {
-      setApplyingCoupon(false);
-    }
-  };
-
-  const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponError('');
-    toast({
-      title: 'Coupon Removed',
-      description: 'Coupon has been removed from your order',
-      variant: 'default'
-    });
-  };
 
   const initializeRazorpayPayment = async () => {
     if (!(window as any).Razorpay) {
@@ -210,7 +116,7 @@ const APRazorpayPayment = ({
       // Use the existing Razorpay order from the application
       const razorpayOrder = {
         id: application.orderId,
-        amount: Math.round(finalAmount * 100), // Use final amount with discount
+        amount: Math.round(Number(application.finalAmountPaid) * 100),
         currency: "INR"
       };
 
@@ -281,8 +187,7 @@ const APRazorpayPayment = ({
         body: JSON.stringify({
           razorpay_order_id: response.razorpay_order_id,
           razorpay_payment_id: response.razorpay_payment_id,
-          razorpay_signature: response.razorpay_signature,
-          couponCode: appliedCoupon?.code
+          razorpay_signature: response.razorpay_signature
         })
       });
 
@@ -312,6 +217,7 @@ const APRazorpayPayment = ({
   if (initializing) {
     return (
       <>
+        <Navbar />
         <div className="min-h-screen bg-gray-50 py-8">
           <div className="max-w-2xl mx-auto px-4">
             <div className="text-center py-12">
@@ -354,77 +260,6 @@ const APRazorpayPayment = ({
               </p>
             </div>
 
-            {/* Coupon Section */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-gray-700">Apply Coupon Code</label>
-                {appliedCoupon && (
-                  <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex items-center">
-                    <Ticket className="h-3 w-3 mr-1" />
-                    Coupon Applied
-                  </div>
-                )}
-              </div>
-              
-              {!appliedCoupon ? (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter coupon code"
-                    value={couponInput}
-                    onChange={(e) => {
-                      setCouponInput(e.target.value.toUpperCase());
-                      setCouponError('');
-                    }}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        applyCoupon();
-                      }
-                    }}
-                    className="flex-1 uppercase"
-                    disabled={applyingCoupon}
-                  />
-                  <Button
-                    onClick={applyCoupon}
-                    disabled={applyingCoupon || !couponInput.trim()}
-                    variant="outline"
-                  >
-                    {applyingCoupon ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      'Apply'
-                    )}
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center">
-                    <Ticket className="h-4 w-4 text-green-600 mr-2" />
-                    <div>
-                      <span className="font-medium text-green-800">{appliedCoupon.code}</span>
-                      <span className="text-green-600 ml-2">
-                        - ₹{appliedCoupon.discountAmount.toLocaleString()} discount applied
-                      </span>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={removeCoupon}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              
-              {couponError && (
-                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center">
-                  <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
-                  <span className="text-red-700 text-sm">{couponError}</span>
-                </div>
-              )}
-            </div>
-
             {/* Price Breakdown */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <h4 className="font-semibold text-blue-900 mb-3">Price Summary</h4>
@@ -441,16 +276,16 @@ const APRazorpayPayment = ({
                   </span>
                 </div>
                 
-                {hasDiscount && appliedCoupon && (
+                {hasDiscount && (
                   <>
                     <div className="flex justify-between items-center text-green-600">
                       <span className="text-sm flex items-center">
                         <Tag className="h-3 w-3 mr-1" />
-                        Discount ({appliedCoupon.code}):
+                        Discount ({couponCode}):
                       </span>
                       <span className="font-semibold flex items-center">
                         - <IndianRupee className="h-4 w-4 mr-1" />
-                        {appliedCoupon.discountAmount.toLocaleString()}
+                        {discountAmount.toLocaleString()}
                       </span>
                     </div>
                     <div className="border-t border-blue-200 pt-2">
@@ -524,9 +359,9 @@ const APRazorpayPayment = ({
           </div>
         </div>
       </div>
+      <Footer />
     </>
   );
 };
 
 export default APRazorpayPayment;
-
