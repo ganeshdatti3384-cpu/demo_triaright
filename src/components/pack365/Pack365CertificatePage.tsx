@@ -1,6 +1,6 @@
 // components/pack365/Pack365CertificatePage.tsx
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ArrowLeft, Download, Printer, Share2, Award, CheckCircle, Calendar, User, BookOpen, Building, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { pack365Api, authApi } from '@/services/api';
+import { pack365Api, profileApi } from '@/services/api';
 
 /**
  * CertificateData - shape used by the renderer / PDF generator
@@ -28,7 +28,6 @@ interface CertificateData {
 
 const Pack365CertificatePage: React.FC = () => {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
-  const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -39,23 +38,17 @@ const Pack365CertificatePage: React.FC = () => {
 
   const certificateRef = useRef<HTMLDivElement | null>(null);
 
-  const searchParams = new URLSearchParams(location.search);
-  const qStream = searchParams.get('stream') || undefined;
-  const qEnrollmentDate = searchParams.get('enrollmentDate') || undefined;
-
   useEffect(() => {
     if (enrollmentId) {
-      fetchData({ byId: String(enrollmentId) });
-    } else if (qStream || qEnrollmentDate) {
-      fetchData({ byQuery: { stream: qStream, enrollmentDate: qEnrollmentDate } });
+      fetchData();
     } else {
-      setError('Invalid enrollment identifier');
+      setError('Invalid enrollment ID');
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enrollmentId, qStream, qEnrollmentDate]);
+  }, [enrollmentId]);
 
-  const fetchData = async (options?: { byId?: string; byQuery?: { stream?: string | null; enrollmentDate?: string | null } }) => {
+  const fetchData = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
       toast({
@@ -71,53 +64,93 @@ const Pack365CertificatePage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // If asked to load by id, just find that enrollment
-      if (options?.byId) {
-        const enrollmentsRes = await pack365Api.getMyEnrollments(token);
-        if (!enrollmentsRes.success) {
-          throw new Error('Failed to fetch enrollments');
-        }
-        const enrollments = enrollmentsRes.enrollments || [];
-        const enrollment = enrollments.find((e: any) =>
-          String(e._id) === String(options.byId) ||
-          String(e.enrollmentId) === String(options.byId) ||
-          String(e.normalizedEnrollmentId) === String(options.byId)
-        );
-
-        if (!enrollment) {
-          throw new Error('Enrollment not found by id');
-        }
-
-        await buildCertificate(enrollment, token);
-        return;
+      // Get user's enrollments and find the specific one
+      const enrollmentsRes = await pack365Api.getMyEnrollments(token);
+      if (!enrollmentsRes.success) {
+        throw new Error('Failed to fetch enrollments');
       }
 
-      // If asked to load by query, fetch all enrollments then match by stream + enrollmentDate (loose match)
-      if (options?.byQuery) {
-        const enrollmentsRes = await pack365Api.getMyEnrollments(token);
-        if (!enrollmentsRes.success) {
-          throw new Error('Failed to fetch enrollments');
-        }
-        const enrollments = enrollmentsRes.enrollments || [];
-        const match = enrollments.find((e: any) => {
-          const streamMatch = options.byQuery?.stream ? String(e.stream).toLowerCase() === String(options.byQuery?.stream).toLowerCase() : true;
-          const dateSmall = (s?: string | null) => s ? new Date(s).toISOString().slice(0,10) : '';
-          const targetDate = dateSmall(options.byQuery?.enrollmentDate || '');
-          const eDate = dateSmall(e.enrollmentDate || e.createdAt || e.expiresAt);
-          const dateMatch = targetDate ? targetDate === eDate : false;
-          return streamMatch && dateMatch;
-        });
+      const enrollments = enrollmentsRes.enrollments || [];
+      console.log('All enrollments:', enrollments);
+      console.log('Looking for enrollmentId:', enrollmentId);
 
-        if (!match) {
-          throw new Error('Enrollment not found by stream/enrollmentDate');
-        }
+      // Enhanced search for enrollment with multiple ID fields
+      const enrollment = enrollments.find((e: any) => {
+        const possibleIds = [
+          e._id,
+          e.enrollmentId,
+          e.id,
+          e.normalizedEnrollmentId,
+          (e.enrollment && e.enrollment._id) || null,
+          (e.enrollment && e.enrollment.enrollmentId) || null
+        ].filter(id => id !== null && id !== undefined).map(id => String(id).trim());
+        
+        const targetId = String(enrollmentId).trim();
+        return possibleIds.some(id => id === targetId);
+      });
 
-        await buildCertificate(match, token);
-        return;
+      if (!enrollment) {
+        console.log('Available enrollment IDs:', enrollments.map((e: any) => ({
+          _id: e._id,
+          enrollmentId: e.enrollmentId,
+          id: e.id,
+          normalizedEnrollmentId: e.normalizedEnrollmentId
+        })));
+        throw new Error(`Enrollment not found for ID: ${enrollmentId}`);
       }
 
-      // fallback: no options provided
-      throw new Error('Invalid request for certificate data');
+      console.log('Found enrollment:', enrollment);
+
+      // FIXED: Use profileApi.getProfile which exists in backend
+      const userRes = await profileApi.getProfile(token);
+      console.log('User profile response:', userRes);
+      
+      if (!userRes) {
+        throw new Error('Failed to fetch user profile');
+      }
+
+      // Build certificate data
+      const certId = enrollment.certificateId || enrollment.certificate?.certificateId || `PACK365-${String(enrollment._id || enrollment.enrollmentId).slice(-8)}`;
+      const completionDate = enrollment.completedAt || enrollment.completionDate || enrollment.expiresAt || new Date().toISOString();
+      
+      // Calculate completion percentage
+      let completionPercentage = 100; // default to 100% if no progress data
+      if (typeof enrollment.totalWatchedPercentage === 'number') {
+        completionPercentage = Math.round(enrollment.totalWatchedPercentage);
+      } else if (enrollment.totalTopics && enrollment.watchedTopics) {
+        completionPercentage = Math.round((enrollment.watchedTopics / enrollment.totalTopics) * 100);
+      } else if (enrollment.courses && Array.isArray(enrollment.courses)) {
+        // Calculate from individual course progress
+        const totalCourses = enrollment.courses.length;
+        const completedCourses = enrollment.courses.filter((course: any) => {
+          const progress = course.progress;
+          return progress && (progress.completionPercentage === 100 || progress.isCompleted);
+        }).length;
+        completionPercentage = Math.round((completedCourses / totalCourses) * 100);
+      }
+
+      const coursesSummary = Array.isArray(enrollment.courses)
+        ? enrollment.courses.map((c: any) => c.courseName || c.courseId || '').filter(Boolean).join(', ')
+        : 'All courses in stream';
+
+      // Get user name from profile
+      const userName = userRes.name || userRes.fullName || userRes.firstName || 'Student';
+
+      const payload: CertificateData = {
+        studentName: userName,
+        studentEmail: userRes.email || '',
+        stream: enrollment.stream || enrollment.streamName || 'Pack365 Stream',
+        coursesSummary,
+        providerName: 'Triaright Education',
+        completionDate,
+        completionPercentage,
+        certificateId: certId,
+        enrollmentId: enrollment._id || enrollment.enrollmentId || enrollmentId,
+        enrollmentDate: enrollment.enrollmentDate || enrollment.createdAt || ''
+      };
+
+      setCertificateData(payload);
+      console.log('Certificate data prepared:', payload);
 
     } catch (err: any) {
       console.error('Error loading certificate data', err);
@@ -130,41 +163,6 @@ const Pack365CertificatePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // extract repeated payload-building into helper:
-  const buildCertificate = async (enrollment: any, token: string) => {
-    // Get user info
-    const userRes = await authApi.getUserDetails(token);
-    if (!userRes || !userRes.user) {
-      throw new Error('Failed to fetch user profile');
-    }
-    const user = userRes.user;
-
-    const certId = enrollment.certificateId || enrollment.certificate?.certificateId || `PACK365-${String(enrollment._id ?? enrollment.normalizedEnrollmentId ?? '').slice(-8)}`;
-    const completionDate = enrollment.completedAt || enrollment.completionDate || enrollment.expiresAt || new Date().toISOString();
-    const completionPercentage = typeof enrollment.totalWatchedPercentage === 'number'
-      ? Math.round(enrollment.totalWatchedPercentage)
-      : (enrollment.totalWatchedPercentage ? Number(enrollment.totalWatchedPercentage) : (enrollment.totalWatchedPercentage === 0 ? 0 : (enrollment.totalTopics && enrollment.watchedTopics ? Math.round((enrollment.watchedTopics / enrollment.totalTopics) * 100) : 100)));
-
-    const coursesSummary = Array.isArray(enrollment.courses)
-      ? enrollment.courses.map((c: any) => c.courseName || c.courseId || '').filter(Boolean).join(', ')
-      : '';
-
-    const payload: CertificateData = {
-      studentName: user?.name || user?.fullName || user?.firstName || 'Student',
-      studentEmail: user?.email || '',
-      stream: enrollment.stream || enrollment.streamName || enrollment.streamId || 'Pack365 Stream',
-      coursesSummary,
-      providerName: 'Triaright / Pack365',
-      completionDate,
-      completionPercentage: completionPercentage || 100,
-      certificateId: certId,
-      enrollmentId: enrollment._id || enrollment.enrollmentId || enrollment.normalizedEnrollmentId || enrollmentId || '',
-      enrollmentDate: enrollment.enrollmentDate || enrollment.createdAt || ''
-    };
-
-    setCertificateData(payload);
   };
 
   const handleDownloadPDF = async () => {
@@ -279,7 +277,7 @@ const Pack365CertificatePage: React.FC = () => {
 
   if (error || !certificateData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from_green-50 via-white to-blue-50 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <Card className="text-center py-16">
             <CardContent>
@@ -319,7 +317,7 @@ const Pack365CertificatePage: React.FC = () => {
         <div style={{ border: '8px solid #d4af37', padding: 12 }}>
           <div style={{ border: '2px solid #1a237e', padding: 18 }}>
             <div className="text-center">
-              <div className="text-3xl font-bold text-[#1a237e]">TRIARIGHT</div>
+              <div className="text-3xl font-bold text-[#1a237e]">TRIARIGHT EDUCATION</div>
               <div className="text-lg italic text-[#d4af37] mt-1">THE NEW ERA OF LEARNING</div>
 
               <div className="mt-8 text-2xl font-bold text-[#1a237e]">CERTIFICATE OF COMPLETION</div>
@@ -337,7 +335,7 @@ const Pack365CertificatePage: React.FC = () => {
               )}
 
               <div className="mt-8 text-gray-600">
-                Duration & Completion: <span className="font-semibold">{data.completionPercentage}%</span>
+                Completion: <span className="font-semibold">{data.completionPercentage}%</span>
               </div>
 
               <div className="mt-10 flex justify-between items-center px-8">
@@ -349,13 +347,13 @@ const Pack365CertificatePage: React.FC = () => {
 
                 <div className="text-right">
                   <div className="text-sm text-gray-700">Issued by</div>
-                  <div className="text-base font-semibold">Triaright / Pack365</div>
+                  <div className="text-base font-semibold">Triaright Education</div>
                 </div>
               </div>
 
               <div className="mt-12 text-center">
                 <div className="text-lg font-bold">KISSHORE KUMAAR</div>
-                <div className="text-sm">Founder & Director - Triaright</div>
+                <div className="text-sm">Founder & Director - Triaright Education</div>
               </div>
 
               <div className="mt-6 text-center text-xs text-gray-500 max-w-[760px] mx-auto">
