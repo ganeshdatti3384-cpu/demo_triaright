@@ -54,12 +54,39 @@ interface TopicProgress {
   watched: boolean;
 }
 
+// Shape of courses inside /pack365/enrollments response
+interface EnrollmentCourse {
+  courseId: string; // public courseId, e.g. COURSE_123
+  courseName: string;
+  description: string;
+  topicsCount: number;
+  progress?: {
+    courseId: string;            // Mongo _id as string
+    totalTopics: number;
+    watchedTopics: number;
+    isCompleted: boolean;
+    completionPercentage: number;
+  } | null;
+}
+
 interface Enrollment {
-  _id: string;
-  userId: string;
+  _id?: string;
+  userId?: string;
   stream: string;
-  topicProgress: TopicProgress[];
-  courseProgress: CourseProgress[];
+
+  // Old full-enrollment shape (from checkEnrollmentStatus) – optional
+  topicProgress?: TopicProgress[];
+  courseProgress?: {
+    courseId: string;
+    totalTopics: number;
+    watchedTopics: number;
+    isCompleted: boolean;
+    completionPercentage: number;
+  }[];
+
+  // New formatted enrollments from /pack365/enrollments
+  courses?: EnrollmentCourse[];
+
   totalCoursesInStream: number;
   completedCourses: number;
   streamCompletionPercentage: number;
@@ -101,7 +128,7 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // Check enrollment status
+      // 1️⃣ Get formatted enrollments (stream-level + course-level progress)
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       
       if (!enrollmentResponse.success || !enrollmentResponse.enrollments) {
@@ -110,8 +137,8 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      const streamEnrollment = enrollmentResponse.enrollments.find(
-        (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
+      const streamEnrollment: Enrollment | undefined = enrollmentResponse.enrollments.find(
+        (e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase()
       );
 
       if (!streamEnrollment) {
@@ -125,6 +152,7 @@ const StreamLearningInterface = () => {
       setEnrollment(streamEnrollment);
       initializeProgressMaps(streamEnrollment);
 
+      // 2️⃣ Load all pack365 courses and filter by stream
       const coursesResponse = await pack365Api.getAllCourses();
       
       if (!coursesResponse.success || !coursesResponse.data) {
@@ -133,7 +161,7 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      const streamCourses = coursesResponse.data.filter(
+      const streamCourses: Course[] = (coursesResponse.data as Course[]).filter(
         (course: Course) => course.stream?.toLowerCase() === stream?.toLowerCase()
       ) || [];
 
@@ -145,16 +173,44 @@ const StreamLearningInterface = () => {
 
       setCourses(streamCourses);
 
+      // 3️⃣ Decide which course to show first
       const selectedCourseFromState = (location.state as any)?.selectedCourse;
       const selectedCourseId = (location.state as any)?.selectedCourseId;
       
+      let initialCourse: Course | null = null;
+
       if (selectedCourseFromState) {
-        setSelectedCourse(selectedCourseFromState);
+        initialCourse =
+          streamCourses.find((c: Course) => c.courseId === selectedCourseFromState.courseId) ||
+          streamCourses[0];
       } else if (selectedCourseId) {
-        const course = streamCourses.find((c: Course) => c.courseId === selectedCourseId);
-        setSelectedCourse(course || streamCourses[0]);
+        initialCourse =
+          streamCourses.find((c: Course) => c.courseId === selectedCourseId) ||
+          streamCourses[0];
       } else {
-        setSelectedCourse(streamCourses[0]);
+        initialCourse = streamCourses[0];
+      }
+
+      setSelectedCourse(initialCourse);
+
+      // Set first topic as default, if available
+      if (initialCourse?.topics?.length) {
+        setSelectedTopic(initialCourse.topics[0]);
+        setCurrentTopicIndex(0);
+      }
+
+      // 4️⃣ Fetch full enrollment (with topicProgress + courseProgress) via checkEnrollmentStatus
+      // This gives us topic-level watched flags from backend.
+      if (initialCourse) {
+        try {
+          const detailed = await pack365Api.checkEnrollmentStatus(token, initialCourse.courseId);
+          if (detailed.success && detailed.enrollment) {
+            console.log('Detailed enrollment from checkEnrollmentStatus:', detailed.enrollment);
+            initializeProgressMaps(detailed.enrollment as Enrollment);
+          }
+        } catch (err) {
+          console.error('Error loading detailed enrollment progress:', err);
+        }
       }
 
     } catch (error: any) {
@@ -179,8 +235,8 @@ const StreamLearningInterface = () => {
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       
       if (enrollmentResponse.success && enrollmentResponse.enrollments) {
-        const streamEnrollment = enrollmentResponse.enrollments.find(
-          (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
+        const streamEnrollment: Enrollment | undefined = enrollmentResponse.enrollments.find(
+          (e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase()
         );
 
         if (streamEnrollment) {
@@ -199,26 +255,55 @@ const StreamLearningInterface = () => {
   const initializeProgressMaps = (enrollmentData: Enrollment) => {
     console.log('Initializing progress maps from enrollment:', enrollmentData);
     
-    // Initialize topic progress map
-    const topicMap = new Map<string, boolean>();
+    // 1️⃣ Topic progress map (only if backend actually sent topicProgress)
     if (enrollmentData.topicProgress && Array.isArray(enrollmentData.topicProgress)) {
+      const topicMap = new Map<string, boolean>();
       enrollmentData.topicProgress.forEach((tp: TopicProgress) => {
         const key = `${tp.courseId}-${tp.topicName}`;
         topicMap.set(key, tp.watched);
         console.log(`Topic progress: ${tp.topicName} - watched: ${tp.watched}`);
       });
+      setTopicProgress(topicMap);
     }
-    setTopicProgress(topicMap);
 
-    // Initialize course progress map
+    // 2️⃣ Course progress map
     const courseMap = new Map<string, CourseProgress>();
+
+    // 2a. Old shape: enrollment.courseProgress array
     if (enrollmentData.courseProgress && Array.isArray(enrollmentData.courseProgress)) {
-      enrollmentData.courseProgress.forEach((cp: CourseProgress) => {
-        courseMap.set(cp.courseId.toString(), cp);
-        console.log(`Course progress: ${cp.courseId} - ${cp.completionPercentage}% completed`);
+      enrollmentData.courseProgress.forEach((cp: any) => {
+        const key = cp.courseId?.toString?.() ?? cp.courseId;
+        if (!key) return;
+        courseMap.set(key, {
+          courseId: key,
+          totalTopics: cp.totalTopics,
+          watchedTopics: cp.watchedTopics,
+          isCompleted: cp.isCompleted,
+          completionPercentage: cp.completionPercentage,
+        });
+        console.log(`Course progress (old): ${key} - ${cp.completionPercentage}% completed`);
       });
     }
-    setCourseProgress(courseMap);
+
+    // 2b. New shape: enrollment.courses[].progress (from /pack365/enrollments)
+    if (enrollmentData.courses && Array.isArray(enrollmentData.courses)) {
+      enrollmentData.courses.forEach((c: EnrollmentCourse) => {
+        if (!c.progress) return;
+        const key = c.progress.courseId?.toString?.() ?? c.courseId;
+        courseMap.set(key, {
+          courseId: key,
+          totalTopics: c.progress.totalTopics,
+          watchedTopics: c.progress.watchedTopics,
+          isCompleted: c.progress.isCompleted,
+          completionPercentage: c.progress.completionPercentage,
+        });
+        console.log(`Course progress (new): ${key} - ${c.progress.completionPercentage}% completed`);
+      });
+    }
+
+    if (courseMap.size > 0) {
+      setCourseProgress(courseMap);
+    }
   };
 
   const extractYouTubeVideoId = (url: string): string | null => {
@@ -227,7 +312,7 @@ const StreamLearningInterface = () => {
     return match ? match[1] : null;
   };
 
-  const handleTopicClick = async (topic: Topic, index: number) => {
+  const handleTopicClick = (topic: Topic, index: number) => {
     if (!selectedCourse) return;
 
     setSelectedTopic(topic);
@@ -254,24 +339,40 @@ const StreamLearningInterface = () => {
         topicName: topic.name
       });
 
-      // Update topic progress in backend - using the correct payload structure
-      const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId, // Use courseId string, not _id
-        topicName: topic.name
-        // Remove other fields that backend doesn't expect
-      });
+      // Payload exactly as backend expects
+      const response = (await pack365Api.updateTopicProgress(token, {
+        courseId: selectedCourse.courseId, // public courseId string
+        topicName: topic.name,
+        // extra fields in type (watchedDuration, etc.) are optional – backend ignores them
+      } as any)) as any;
 
       console.log('Progress update response:', response);
 
       if (response.success) {
-        // Update local state immediately for better UX
+        // Update local topic map immediately
         const key = `${selectedCourse._id}-${topic.name}`;
         const newTopicProgress = new Map(topicProgress);
         newTopicProgress.set(key, true);
         setTopicProgress(newTopicProgress);
 
-        // Refresh enrollment data to get updated progress from backend
-        await refreshEnrollmentData();
+        // Update local course progress from backend response if present
+        if (response.courseProgress) {
+          const cp = response.courseProgress;
+          const courseKey = cp.courseId?.toString?.() ?? selectedCourse._id;
+          const newCourseMap = new Map(courseProgress);
+          newCourseMap.set(courseKey, {
+            courseId: courseKey,
+            totalTopics: cp.totalTopics,
+            watchedTopics: cp.watchedTopics,
+            isCompleted: cp.isCompleted,
+            completionPercentage: cp.completionPercentage,
+          });
+          setCourseProgress(newCourseMap);
+          console.log('Updated course progress from updateTopicProgress:', cp);
+        } else {
+          // Fallback: refresh enrollments if courseProgress not returned
+          await refreshEnrollmentData();
+        }
 
         toast({
           title: 'Progress Updated',
@@ -295,7 +396,6 @@ const StreamLearningInterface = () => {
 
   const handleVideoEnd = async () => {
     if (!selectedTopic) return;
-
     // Automatically mark topic as watched when video ends
     await markTopicAsWatched(selectedTopic);
   };
@@ -422,8 +522,8 @@ const StreamLearningInterface = () => {
                   <Button onClick={loadStreamData} variant="default">
                     Try Again
                   </Button>
-                  <Button onClick={() => navigate('/pack365-dashboard')} variant="outline">
-                    Back to Dashboard
+                  <Button onClick={() => navigate('/pack365')} variant="outline">
+                    Back to Streams
                   </Button>
                 </div>
               </div>
@@ -434,14 +534,14 @@ const StreamLearningInterface = () => {
     );
   }
 
-  if (loading) {
+  if (loading || !selectedCourse) {
     return (
       <>
         <Navbar />
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Loading course content...</p>
+            <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading your learning content...</p>
           </div>
         </div>
       </>
@@ -453,9 +553,8 @@ const StreamLearningInterface = () => {
   return (
     <>
       <Navbar />
-      
-      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -540,7 +639,7 @@ const StreamLearningInterface = () => {
                         )}
                         <Badge variant="outline" className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {selectedTopic.duration} min
+                          {selectedTopic?.duration} min
                         </Badge>
                       </div>
                     )}
@@ -558,7 +657,10 @@ const StreamLearningInterface = () => {
                             className="w-full h-full rounded-lg"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
-                            onEnded={handleVideoEnd}
+                            // onEnded doesn't fire on iframe; kept for future custom player
+                            onLoad={() => {
+                              // placeholder; real "end" tracking would need JS API
+                            }}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-white">
