@@ -18,8 +18,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Lock,
-  Loader2,
-  RefreshCw
+  Loader2
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -84,7 +83,6 @@ const StreamLearningInterface = () => {
   const [courseProgress, setCourseProgress] = useState<Map<string, CourseProgress>>(new Map());
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [refreshingEnrollment, setRefreshingEnrollment] = useState(false);
-  const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
 
   useEffect(() => {
     loadStreamData();
@@ -103,39 +101,33 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      console.log('🔄 Loading stream data for:', stream);
-
       // Check enrollment status
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       
-      if (!enrollmentResponse.success) {
-        console.error('Failed to load enrollments:', enrollmentResponse);
+      if (!enrollmentResponse.success || !enrollmentResponse.enrollments) {
         setError('Failed to load enrollment data');
         toast({ title: 'Error', description: 'Failed to load enrollment data', variant: 'destructive' });
         return;
       }
 
-      const streamEnrollment = enrollmentResponse.enrollments?.find(
+      const streamEnrollment = enrollmentResponse.enrollments.find(
         (e: any) => e.stream?.toLowerCase() === stream?.toLowerCase()
       );
 
       if (!streamEnrollment) {
-        console.log('No enrollment found for stream:', stream);
         setError('You are not enrolled in this stream');
         toast({ title: 'Access Denied', description: 'You are not enrolled in this stream', variant: 'destructive' });
         navigate('/pack365');
         return;
       }
 
-      console.log('✅ Loaded enrollment data:', streamEnrollment);
+      console.log('Loaded enrollment data:', streamEnrollment);
       setEnrollment(streamEnrollment);
       initializeProgressMaps(streamEnrollment);
 
-      // Load courses
       const coursesResponse = await pack365Api.getAllCourses();
       
       if (!coursesResponse.success || !coursesResponse.data) {
-        console.error('Failed to load courses:', coursesResponse);
         setError('Failed to load courses');
         toast({ title: 'Error', description: 'Failed to load courses', variant: 'destructive' });
         return;
@@ -151,7 +143,6 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      console.log('✅ Loaded courses:', streamCourses.length);
       setCourses(streamCourses);
 
       const selectedCourseFromState = (location.state as any)?.selectedCourse;
@@ -167,7 +158,7 @@ const StreamLearningInterface = () => {
       }
 
     } catch (error: any) {
-      console.error('❌ Error loading stream data:', error);
+      console.error('Error loading stream data:', error);
       setError('Failed to load stream data');
       toast({ 
         title: 'Error', 
@@ -179,13 +170,11 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const refreshEnrollmentData = async (showToast = false) => {
+  const refreshEnrollmentData = async () => {
     try {
       setRefreshingEnrollment(true);
       const token = localStorage.getItem('token');
       if (!token) return;
-
-      console.log('🔄 Refreshing enrollment data...');
 
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       
@@ -195,38 +184,20 @@ const StreamLearningInterface = () => {
         );
 
         if (streamEnrollment) {
-          console.log('✅ Refreshed enrollment data:', streamEnrollment);
+          console.log('Refreshed enrollment data:', streamEnrollment);
           setEnrollment(streamEnrollment);
           initializeProgressMaps(streamEnrollment);
-          setLastUpdateTime(Date.now());
-
-          if (showToast) {
-            toast({
-              title: 'Progress Updated',
-              description: 'Your progress has been updated successfully',
-              variant: 'default'
-            });
-          }
         }
-      } else {
-        console.error('Failed to refresh enrollment:', enrollmentResponse);
       }
     } catch (error) {
-      console.error('❌ Error refreshing enrollment data:', error);
-      if (showToast) {
-        toast({
-          title: 'Refresh Failed',
-          description: 'Failed to refresh progress data',
-          variant: 'destructive'
-        });
-      }
+      console.error('Error refreshing enrollment data:', error);
     } finally {
       setRefreshingEnrollment(false);
     }
   };
 
   const initializeProgressMaps = (enrollmentData: Enrollment) => {
-    console.log('🔄 Initializing progress maps from enrollment:', enrollmentData);
+    console.log('Initializing progress maps from enrollment:', enrollmentData);
     
     // Initialize topic progress map
     const topicMap = new Map<string, boolean>();
@@ -234,10 +205,8 @@ const StreamLearningInterface = () => {
       enrollmentData.topicProgress.forEach((tp: TopicProgress) => {
         const key = `${tp.courseId}-${tp.topicName}`;
         topicMap.set(key, tp.watched);
-        console.log(`📝 Topic progress: ${tp.topicName} - watched: ${tp.watched}`);
+        console.log(`Topic progress: ${tp.topicName} - watched: ${tp.watched}`);
       });
-    } else {
-      console.log('❌ No topic progress data found in enrollment');
     }
     setTopicProgress(topicMap);
 
@@ -246,10 +215,8 @@ const StreamLearningInterface = () => {
     if (enrollmentData.courseProgress && Array.isArray(enrollmentData.courseProgress)) {
       enrollmentData.courseProgress.forEach((cp: CourseProgress) => {
         courseMap.set(cp.courseId.toString(), cp);
-        console.log(`📊 Course progress: ${cp.courseId} - ${cp.watchedTopics}/${cp.totalTopics} topics - ${cp.completionPercentage}% completed`);
+        console.log(`Course progress: ${cp.courseId} - ${cp.completionPercentage}% completed`);
       });
-    } else {
-      console.log('❌ No course progress data found in enrollment');
     }
     setCourseProgress(courseMap);
   };
@@ -282,19 +249,19 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      console.log('🎯 Marking topic as watched:', {
+      console.log('Marking topic as watched:', {
         courseId: selectedCourse.courseId,
-        topicName: topic.name,
-        courseName: selectedCourse.courseName
+        topicName: topic.name
       });
 
       // Update topic progress in backend - using the correct payload structure
       const response = await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse.courseId, // Use courseId string, not _id
         topicName: topic.name
+        // Remove other fields that backend doesn't expect
       });
 
-      console.log('📨 Progress update API response:', response);
+      console.log('Progress update response:', response);
 
       if (response.success) {
         // Update local state immediately for better UX
@@ -303,30 +270,22 @@ const StreamLearningInterface = () => {
         newTopicProgress.set(key, true);
         setTopicProgress(newTopicProgress);
 
-        console.log('✅ Local state updated, refreshing enrollment data...');
+        // Refresh enrollment data to get updated progress from backend
+        await refreshEnrollmentData();
 
-        // Wait a moment then refresh enrollment data to get updated progress from backend
-        setTimeout(() => {
-          refreshEnrollmentData(true);
-        }, 500);
-
+        toast({
+          title: 'Progress Updated',
+          description: `Marked "${topic.name}" as completed`,
+          variant: 'default'
+        });
       } else {
-        console.error('❌ API returned success:false:', response);
         throw new Error(response.message || 'Failed to update progress');
       }
     } catch (error: any) {
-      console.error('❌ Error updating topic progress:', error);
-      
-      let errorMessage = 'Failed to update topic progress';
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
+      console.error('Error updating topic progress:', error);
       toast({
         title: 'Update Failed',
-        description: errorMessage,
+        description: error.message || 'Failed to update topic progress',
         variant: 'destructive'
       });
     } finally {
@@ -337,7 +296,6 @@ const StreamLearningInterface = () => {
   const handleVideoEnd = async () => {
     if (!selectedTopic) return;
 
-    console.log('🎬 Video ended, marking topic as watched');
     // Automatically mark topic as watched when video ends
     await markTopicAsWatched(selectedTopic);
   };
@@ -345,26 +303,26 @@ const StreamLearningInterface = () => {
   const isTopicWatched = (courseId: string, topicName: string): boolean => {
     const key = `${courseId}-${topicName}`;
     const isWatched = topicProgress.get(key) || false;
-    console.log(`🔍 Checking topic ${topicName} watched status:`, isWatched);
+    console.log(`Checking topic ${topicName} watched status:`, isWatched);
     return isWatched;
   };
 
   const getCourseProgress = (courseId: string): CourseProgress | undefined => {
     const progress = courseProgress.get(courseId);
-    console.log(`📊 Getting course progress for ${courseId}:`, progress);
+    console.log(`Getting course progress for ${courseId}:`, progress);
     return progress;
   };
 
   const isCourseCompleted = (courseId: string): boolean => {
     const progress = getCourseProgress(courseId);
     const completed = progress ? progress.isCompleted : false;
-    console.log(`✅ Course ${courseId} completed:`, completed);
+    console.log(`Course ${courseId} completed:`, completed);
     return completed;
   };
 
   const canTakeExam = (courseId: string): boolean => {
     const canTake = isCourseCompleted(courseId);
-    console.log(`🎯 Can take exam for course ${courseId}:`, canTake);
+    console.log(`Can take exam for course ${courseId}:`, canTake);
     return canTake;
   };
 
@@ -382,7 +340,7 @@ const StreamLearningInterface = () => {
       return;
     }
 
-    console.log('🚀 Take exam clicked:', {
+    console.log('Take exam clicked:', {
       courseId: selectedCourse.courseId,
       courseName: selectedCourse.courseName,
       isCourseCompleted: courseCompleted
@@ -427,7 +385,7 @@ const StreamLearningInterface = () => {
         total: progress.totalTopics,
         percentage: progress.completionPercentage
       };
-      console.log('📈 Course completion stats from backend:', stats);
+      console.log('Course completion stats:', stats);
       return stats;
     }
 
@@ -445,23 +403,8 @@ const StreamLearningInterface = () => {
       percentage: percentage
     };
     
-    console.log('📈 Fallback completion stats:', fallbackStats);
+    console.log('Fallback completion stats:', fallbackStats);
     return fallbackStats;
-  };
-
-  const handleManualRefresh = () => {
-    refreshEnrollmentData(true);
-  };
-
-  // Debug function to check current state
-  const debugCurrentState = () => {
-    console.log('=== DEBUG CURRENT STATE ===');
-    console.log('Selected Course:', selectedCourse);
-    console.log('Enrollment:', enrollment);
-    console.log('Topic Progress Map:', Array.from(topicProgress.entries()));
-    console.log('Course Progress Map:', Array.from(courseProgress.entries()));
-    console.log('Completion Stats:', getCompletionStats());
-    console.log('==========================');
   };
 
   if (error) {
@@ -539,30 +482,9 @@ const StreamLearningInterface = () => {
                 <Badge variant={completionStats.percentage === 100 ? "default" : "secondary"}>
                   {completionStats.percentage}%
                 </Badge>
-                
-                {/* Refresh Button */}
-                <Button
-                  onClick={handleManualRefresh}
-                  variant="outline"
-                  size="sm"
-                  disabled={refreshingEnrollment}
-                >
-                  {refreshingEnrollment ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                </Button>
-
-                {/* Debug Button (remove in production) */}
-                <Button
-                  onClick={debugCurrentState}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Debug
-                </Button>
+                {refreshingEnrollment && (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                )}
               </div>
             </div>
             
@@ -580,11 +502,6 @@ const StreamLearningInterface = () => {
                   <Badge variant="default" className="text-sm">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Completed
-                  </Badge>
-                )}
-                {lastUpdateTime > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    Updated: {new Date(lastUpdateTime).toLocaleTimeString()}
                   </Badge>
                 )}
               </div>
