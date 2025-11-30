@@ -241,20 +241,46 @@ const Pack365StreamLearning = () => {
     });
   };
 
-  const handleGenerateCertificate = () => {
-    if (!enrollment) return;
-    
-    // Navigate to certificate page with enrollment ID
-    const enrollmentId = enrollment._id || enrollment.enrollmentId;
-    if (enrollmentId) {
-      navigate(`/pack365-certificate/${enrollmentId}`);
-    } else {
+  // Improved certificate navigation handler - defensive and normalizes id
+  const handleGenerateCertificate = (e?: React.MouseEvent) => {
+    if (e && typeof (e as any).preventDefault === 'function') {
+      e.preventDefault();
+    }
+
+    if (!enrollment) {
+      toast({
+        title: 'Error',
+        description: 'Enrollment not available.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Try a few common fields, and handle objects (ObjectId) gracefully
+    let enrollmentId: any = enrollment._id ?? enrollment.enrollmentId ?? enrollment.id ?? enrollment.enrollment_id;
+    if (!enrollmentId && (enrollment as any).enrollment) {
+      enrollmentId = (enrollment as any).enrollment._id ?? (enrollment as any).enrollment.enrollmentId;
+    }
+
+    if (!enrollmentId) {
       toast({
         title: 'Error',
         description: 'Unable to generate certificate. Enrollment ID not found.',
         variant: 'destructive'
       });
+      return;
     }
+
+    // Normalize to string
+    try {
+      enrollmentId = typeof enrollmentId === 'object' ? String(enrollmentId) : enrollmentId;
+    } catch {
+      enrollmentId = `${enrollmentId}`;
+    }
+
+    // Encode the id to be safe in URL
+    const encodedId = encodeURIComponent(String(enrollmentId));
+    navigate(`/pack365-certificate/${encodedId}`);
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
@@ -306,6 +332,7 @@ const Pack365StreamLearning = () => {
             {allCoursesCompleted && (
               <div className="mt-4">
                 <Button 
+                  type="button"
                   onClick={handleGenerateCertificate}
                   className="bg-green-600 hover:bg-green-700 text-white"
                   size="lg"
@@ -430,6 +457,7 @@ const Pack365StreamLearning = () => {
                                 onClick={() => handleCourseStart(merged)}
                                 className="w-full sm:w-auto flex-shrink-0"
                                 variant="default"
+                                type="button"
                               >
                                 <Play className="h-4 w-4 mr-2" />
                                 {isCompleted ? 'Review Course' : 'Start Learning'}
