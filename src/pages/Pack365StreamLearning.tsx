@@ -55,6 +55,9 @@ interface EnrollmentCourseFromServer {
 }
 
 interface StreamEnrollment {
+  _id: string;
+  enrollmentId?: string;
+  id?: string;
   stream: string;
   enrollmentDate: string;
   expiresAt: string;
@@ -117,9 +120,13 @@ const Pack365StreamLearning = () => {
         
         if (response.success && response.enrollments) {
           const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
+          console.log('All enrollments:', streamEnrollments);
+          
           const currentEnrollment = streamEnrollments.find(
             (e) => e.stream?.toLowerCase() === stream?.toLowerCase()
           );
+
+          console.log('Found enrollment for stream:', currentEnrollment);
 
           if (currentEnrollment) {
             // Fetch all courses to get complete course data
@@ -241,13 +248,17 @@ const Pack365StreamLearning = () => {
     });
   };
 
-  // Use normalizedEnrollmentId pref (set in API helper). Fallback to query-based route when no id.
+  // FIXED: Improved certificate navigation handler with proper enrollment ID
   const handleGenerateCertificate = (e?: React.MouseEvent) => {
     if (e && typeof (e as any).preventDefault === 'function') {
       e.preventDefault();
     }
 
+    console.log('[CERT] Generate Certificate clicked');
+    console.log('[CERT] Current enrollment:', enrollment);
+
     if (!enrollment) {
+      console.error('[CERT] No enrollment state available');
       toast({
         title: 'Error',
         description: 'Enrollment not available.',
@@ -256,28 +267,36 @@ const Pack365StreamLearning = () => {
       return;
     }
 
-    // Prefer normalizedEnrollmentId (set by pack365Api.getMyEnrollments)
-    let enrollmentId: any = (enrollment as any).normalizedEnrollmentId ?? enrollment._id ?? enrollment.enrollmentId ?? enrollment.id;
-
-    if (enrollmentId) {
-      try {
-        enrollmentId = typeof enrollmentId === 'object' ? String(enrollmentId) : enrollmentId;
-      } catch {
-        enrollmentId = String(enrollmentId);
-      }
-      const encodedId = encodeURIComponent(String(enrollmentId));
-      navigate(`/pack365-certificate/${encodedId}`);
+    // Get the enrollment ID - try multiple possible fields
+    const enrollmentId = enrollment._id || enrollment.enrollmentId || enrollment.id;
+    
+    if (!enrollmentId) {
+      console.error('[CERT] enrollmentId not found in enrollment object');
+      console.error('[CERT] Enrollment object keys:', Object.keys(enrollment));
+      toast({
+        title: 'Error',
+        description: 'Unable to generate certificate. Enrollment ID not found.',
+        variant: 'destructive'
+      });
       return;
     }
 
-    // No stable id found — fallback to query-based navigation using stream + enrollmentDate
-    // Pack365CertificatePage will accept the query params and resolve the enrollment on load.
-    const qs = new URLSearchParams({
-      stream: enrollment.stream || stream || '',
-      enrollmentDate: String(enrollment.enrollmentDate || enrollment.createdAt || '')
-    }).toString();
+    console.log('[CERT] Using enrollment ID:', enrollmentId);
+    
+    // Encode the ID for URL safety
+    const encodedId = encodeURIComponent(String(enrollmentId));
+    const targetPath = `/pack365-certificate/${encodedId}`;
 
-    navigate(`/pack365-certificate?${qs}`);
+    console.log('[CERT] Navigating to:', targetPath);
+    
+    toast({ 
+      title: 'Generating Certificate', 
+      description: 'Preparing your certificate...',
+      variant: 'default' 
+    });
+
+    // Navigate to certificate page
+    navigate(targetPath);
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
