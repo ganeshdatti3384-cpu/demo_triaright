@@ -1,4 +1,4 @@
-```tsx
+
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -25,21 +25,10 @@ import {
 import { pack365Api } from "@/services/api";
 import Navbar from "@/components/Navbar";
 
-/**
- * Updated ExamInterface:
- * - Accepts optional URL param `courseId` (public courseId like COURSE_xxx).
- * - If courseId param is present, the page will:
- *   1) fetch available exams for the user,
- *   2) locate the exam that belongs to the requested course (handles both public courseId -> mongo _id lookup),
- *   3) show only that exam and automatically start the quiz (so user lands directly into that course exam).
- *
- * This ensures the "Take Course Exam" button in StreamLearning (which navigates to /exam/:courseId)
- * will open only the corresponding course exam/questions.
- */
 
 interface AvailableExam {
   examId: string;
-  courseId: string | { _id?: string } | any; // backend may return string or populated object
+  courseId: string | { _id?: string } | any; 
   courseName: string;
   attemptInfo?: {
     totalAttempts: number;
@@ -50,7 +39,7 @@ interface AvailableExam {
     canRetake: boolean;
     isPassed: boolean;
     lastAttempt?: string | null;
-    canTakeExam?: boolean; // sometimes present in details
+    canTakeExam?: boolean; 
   };
 }
 
@@ -676,4 +665,4 @@ const ExamInterface: React.FC = () => {
 };
 
 export default ExamInterface;
-```
+
