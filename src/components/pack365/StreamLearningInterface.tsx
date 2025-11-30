@@ -438,9 +438,8 @@ const StreamLearningInterface = () => {
       const res = await pack365Api.getAvailableExamsForUser(token);
       const exams = (res && (res as any).exams) || [];
 
-      // backend returns courseId as DB _id (string). Match with selectedCourse._id
+      // Match by DB course _id or string courseId depending on API shape
       const matched = exams.find((e: any) => {
-        // some responses might return courseId nested or as string
         const examCourseId = e.courseId?._id ? e.courseId._id.toString() : e.courseId?.toString?.();
         return examCourseId === selectedCourse._id || e.courseId === selectedCourse._id;
       });
@@ -454,8 +453,19 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // Navigate to the exam page for this exam only
-      navigate(`/exam/${matched.examId}`, { state: { courseId: selectedCourse._id } });
+      // Use the examId returned by the exams endpoint (EXAM_...)
+      const examIdToOpen = matched.examId;
+      if (!examIdToOpen) {
+        toast({
+          title: 'Invalid Exam ID',
+          description: 'Exam returned by server is missing an examId.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Navigate and pass examId in state as well as in the URL (encoded)
+      navigate(`/exam/${encodeURIComponent(examIdToOpen)}`, { state: { courseId: selectedCourse._id, examId: examIdToOpen } });
 
     } catch (err: any) {
       console.error('Error checking available exams:', err);
