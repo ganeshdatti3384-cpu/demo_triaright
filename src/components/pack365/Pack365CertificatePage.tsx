@@ -40,7 +40,9 @@ const Pack365CertificatePage: React.FC = () => {
 
   useEffect(() => {
     if (enrollmentId) {
-      fetchData();
+      const decodedEnrollmentId = decodeURIComponent(enrollmentId);
+      console.log('Certificate page loaded with enrollmentId:', decodedEnrollmentId);
+      fetchData(decodedEnrollmentId);
     } else {
       setError('Invalid enrollment ID');
       setLoading(false);
@@ -48,7 +50,7 @@ const Pack365CertificatePage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentId]);
 
-  const fetchData = async () => {
+  const fetchData = async (targetEnrollmentId: string) => {
     const token = localStorage.getItem('token');
     if (!token) {
       toast({
@@ -64,6 +66,8 @@ const Pack365CertificatePage: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      console.log('Fetching enrollments for certificate...');
+      
       // Get user's enrollments and find the specific one
       const enrollmentsRes = await pack365Api.getMyEnrollments(token);
       if (!enrollmentsRes.success) {
@@ -71,8 +75,8 @@ const Pack365CertificatePage: React.FC = () => {
       }
 
       const enrollments = enrollmentsRes.enrollments || [];
-      console.log('All enrollments:', enrollments);
-      console.log('Looking for enrollmentId:', enrollmentId);
+      console.log('All enrollments found:', enrollments);
+      console.log('Looking for enrollment with ID:', targetEnrollmentId);
 
       // Enhanced search for enrollment with multiple ID fields
       const enrollment = enrollments.find((e: any) => {
@@ -83,9 +87,11 @@ const Pack365CertificatePage: React.FC = () => {
           e.normalizedEnrollmentId,
           (e.enrollment && e.enrollment._id) || null,
           (e.enrollment && e.enrollment.enrollmentId) || null
-        ].filter(id => id !== null && id !== undefined).map(id => String(id).trim());
+        ]
+          .filter(id => id !== null && id !== undefined)
+          .map(id => String(id).trim().toLowerCase());
         
-        const targetId = String(enrollmentId).trim();
+        const targetId = String(targetEnrollmentId).trim().toLowerCase();
         return possibleIds.some(id => id === targetId);
       });
 
@@ -94,12 +100,13 @@ const Pack365CertificatePage: React.FC = () => {
           _id: e._id,
           enrollmentId: e.enrollmentId,
           id: e.id,
-          normalizedEnrollmentId: e.normalizedEnrollmentId
+          normalizedEnrollmentId: e.normalizedEnrollmentId,
+          stream: e.stream
         })));
-        throw new Error(`Enrollment not found for ID: ${enrollmentId}`);
+        throw new Error(`Enrollment not found for ID: ${targetEnrollmentId}. Please ensure you have completed all courses in the stream.`);
       }
 
-      console.log('Found enrollment:', enrollment);
+      console.log('Found matching enrollment:', enrollment);
 
       // FIXED: Use profileApi.getProfile which exists in backend
       const userRes = await profileApi.getProfile(token);
@@ -126,7 +133,7 @@ const Pack365CertificatePage: React.FC = () => {
           const progress = course.progress;
           return progress && (progress.completionPercentage === 100 || progress.isCompleted);
         }).length;
-        completionPercentage = Math.round((completedCourses / totalCourses) * 100);
+        completionPercentage = totalCourses > 0 ? Math.round((completedCourses / totalCourses) * 100) : 100;
       }
 
       const coursesSummary = Array.isArray(enrollment.courses)
@@ -145,7 +152,7 @@ const Pack365CertificatePage: React.FC = () => {
         completionDate,
         completionPercentage,
         certificateId: certId,
-        enrollmentId: enrollment._id || enrollment.enrollmentId || enrollmentId,
+        enrollmentId: enrollment._id || enrollment.enrollmentId || targetEnrollmentId,
         enrollmentDate: enrollment.enrollmentDate || enrollment.createdAt || ''
       };
 
@@ -298,6 +305,14 @@ const Pack365CertificatePage: React.FC = () => {
                 <Button onClick={() => navigate('/pack365')}>
                   Browse Streams
                 </Button>
+              </div>
+              {/* Debug information */}
+              <div className="mt-6 p-4 bg-gray-100 rounded-lg text-left">
+                <p className="text-sm font-mono text-gray-600">
+                  <strong>Debug Info:</strong><br />
+                  Enrollment ID from URL: {enrollmentId}<br />
+                  Decoded ID: {enrollmentId ? decodeURIComponent(enrollmentId) : 'N/A'}
+                </p>
               </div>
             </CardContent>
           </Card>
