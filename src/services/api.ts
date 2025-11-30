@@ -545,39 +545,95 @@ export const pack365Api = {
     return res.data;
   },
 
+  // UPDATED: normalize enrollment IDs and attach normalizedEnrollmentId to each enrollment
   getMyEnrollments: async (
     token: string
   ): Promise<{ success: boolean; enrollments: EnhancedPack365Enrollment[] }> => {
     try {
       console.log('Fetching pack365 enrollments from API...');
-      
+
+      // helper to extract an id from various shapes
+      const extractId = (enr: any): string | null => {
+        if (!enr) return null;
+        const candidates = [
+          enr._id,
+          enr.enrollmentId,
+          enr.enrollment_id,
+          enr.enrollmentID,
+          enr.id,
+          enr.orderId,
+          enr.order_id,
+          enr.enrollment?.enrollmentId,
+          enr.enrollment?._id,
+          enr.order?._id
+        ];
+
+        for (const c of candidates) {
+          if (c !== undefined && c !== null) {
+            try {
+              if (typeof c === 'object') {
+                if ((c as any).$oid) return String((c as any).$oid);
+                if (typeof c.toString === 'function') {
+                  const s = c.toString();
+                  if (s && s !== '[object Object]') return s;
+                }
+              } else {
+                return String(c);
+              }
+            } catch {
+              // ignore and continue
+            }
+          }
+        }
+
+        // try to find any value that looks like a 24-char hex ObjectId
+        for (const v of Object.values(enr)) {
+          if (typeof v === 'string' && /^[a-f0-9]{24}$/i.test(v)) return v;
+          if (typeof v === 'object' && v) {
+            const cand = (v as any).$oid || (typeof (v as any).toString === 'function' && (v as any).toString());
+            if (cand && typeof cand === 'string' && /^[a-f0-9]{24}$/i.test(cand)) return cand;
+          }
+        }
+
+        return null;
+      };
+
       // Try the primary pack365 enrollments endpoint first
       try {
         const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Pack365 enrollments response:', res.data);
-        if (res.data && res.data.success) {
-          return res.data;
+        if (res.data && res.data.success && Array.isArray(res.data.enrollments)) {
+          // normalize ids onto each enrollment
+          const normalized = res.data.enrollments.map((enr: any) => ({
+            ...enr,
+            normalizedEnrollmentId: extractId(enr)
+          }));
+          return { success: true, enrollments: normalized };
         }
       } catch (primaryError: any) {
         console.log('Primary pack365 endpoint failed:', primaryError.message);
       }
-      
-      // Try alternative pack365 endpoint
+
+      // Try alternative pack365 endpoint (kept same URL for backward compatibility)
       try {
         console.log('Trying alternative pack365 endpoint...');
         const res = await axios.get(`${API_BASE_URL}/pack365/enrollments`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Alternative pack365 endpoint response:', res.data);
-        if (res.data && res.data.success) {
-          return res.data;
+        if (res.data && res.data.success && Array.isArray(res.data.enrollments)) {
+          const normalized = res.data.enrollments.map((enr: any) => ({
+            ...enr,
+            normalizedEnrollmentId: extractId(enr)
+          }));
+          return { success: true, enrollments: normalized };
         }
       } catch (altError: any) {
         console.log('Alternative pack365 endpoint also failed:', altError.message);
       }
-      
+
       // Try general courses endpoint and filter for pack365 enrollments
       try {
         console.log('Trying general courses endpoint...');
@@ -585,15 +641,20 @@ export const pack365Api = {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('General courses response:', courseRes.data);
-        
-        if (courseRes.data && courseRes.data.enrollments) {
+
+        if (courseRes.data && Array.isArray(courseRes.data.enrollments)) {
           // Filter for pack365/stream based enrollments
-          const pack365Enrollments = courseRes.data.enrollments.filter((enrollment: any) => 
-            enrollment.stream || 
-            enrollment.enrollmentType === 'pack365' ||
-            (enrollment.courseName && enrollment.courseName.toLowerCase().includes('pack365'))
-          );
-          
+          const pack365Enrollments = courseRes.data.enrollments
+            .filter((enrollment: any) =>
+              enrollment.stream ||
+              enrollment.enrollmentType === 'pack365' ||
+              (enrollment.courseName && String(enrollment.courseName).toLowerCase().includes('pack365'))
+            )
+            .map((enr: any) => ({
+              ...enr,
+              normalizedEnrollmentId: extractId(enr)
+            }));
+
           console.log('Filtered pack365 enrollments:', pack365Enrollments);
           return {
             success: true,
@@ -603,10 +664,10 @@ export const pack365Api = {
       } catch (courseError: any) {
         console.log('General courses endpoint also failed:', courseError.message);
       }
-      
+
       console.log('All endpoints failed, returning empty array');
       return { success: true, enrollments: [] };
-      
+
     } catch (error: any) {
       console.error('Error fetching pack365 enrollments:', error);
       return { success: false, enrollments: [] };
@@ -1240,7 +1301,7 @@ export const jobsApi = {
     });
   },
 
-  // ✅ Get current user's job applications
+  // ✅ Create new job (admin/superadmin only)
   getMyApplications: (): Promise<AxiosResponse> => {
     const token = localStorage.getItem('token');
     if (!token) {
