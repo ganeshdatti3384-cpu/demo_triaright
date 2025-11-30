@@ -83,6 +83,7 @@ const StreamLearningInterface = () => {
   const [courseProgress, setCourseProgress] = useState<Map<string, CourseProgress>>(new Map());
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [refreshingEnrollment, setRefreshingEnrollment] = useState(false);
+  const [markedTopics, setMarkedTopics] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadStreamData();
@@ -123,7 +124,6 @@ const StreamLearningInterface = () => {
 
       console.log('Loaded enrollment data:', streamEnrollment);
       setEnrollment(streamEnrollment);
-      initializeProgressMaps(streamEnrollment);
 
       const coursesResponse = await pack365Api.getAllCourses();
       
@@ -144,6 +144,7 @@ const StreamLearningInterface = () => {
       }
 
       setCourses(streamCourses);
+      initializeProgressMaps(streamEnrollment, streamCourses);
 
       const selectedCourseFromState = (location.state as any)?.selectedCourse;
       const selectedCourseId = (location.state as any)?.selectedCourseId;
@@ -186,7 +187,7 @@ const StreamLearningInterface = () => {
         if (streamEnrollment) {
           console.log('Refreshed enrollment data:', streamEnrollment);
           setEnrollment(streamEnrollment);
-          initializeProgressMaps(streamEnrollment);
+          initializeProgressMaps(streamEnrollment, courses);
         }
       }
     } catch (error) {
@@ -196,18 +197,18 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const initializeProgressMaps = (enrollmentData: Enrollment) => {
+  const initializeProgressMaps = (enrollmentData: Enrollment, courseList: Course[]) => {
     console.log('Initializing progress maps from enrollment:', enrollmentData);
     
-    // Initialize topic progress map
+    // Initialize topic progress map with consistent key format
     const topicMap = new Map<string, boolean>();
     if (enrollmentData.topicProgress && Array.isArray(enrollmentData.topicProgress)) {
       enrollmentData.topicProgress.forEach((tp: TopicProgress) => {
-        // Ensure we use the MongoDB ObjectId string (mongoId) as the prefix
-        const mongoId = (tp.courseId as any)?.toString ? (tp.courseId as any).toString() : String(tp.courseId);
-        const key = `${mongoId}-${tp.topicName}`;
+        // Find the course to get courseId
+        const course = courseList.find(c => c._id === tp.courseId);
+        const key = course ? `${course.courseId}-${tp.topicName}` : `${tp.courseId}-${tp.topicName}`;
         topicMap.set(key, tp.watched);
-        console.log(`Topic progress: ${tp.topicName} - watched: ${tp.watched} - key: ${key}`);
+        console.log(`Topic progress: ${tp.topicName} - watched: ${tp.watched} - Key: ${key}`);
       });
     }
     setTopicProgress(topicMap);
@@ -216,9 +217,11 @@ const StreamLearningInterface = () => {
     const courseMap = new Map<string, CourseProgress>();
     if (enrollmentData.courseProgress && Array.isArray(enrollmentData.courseProgress)) {
       enrollmentData.courseProgress.forEach((cp: CourseProgress) => {
-        const mongoId = (cp.courseId as any)?.toString ? (cp.courseId as any).toString() : String(cp.courseId);
-        courseMap.set(mongoId, cp);
-        console.log(`Course progress: ${mongoId} - ${cp.completionPercentage}% completed`);
+        // Find the course to get courseId
+        const course = courseList.find(c => c._id === cp.courseId);
+        const key = course ? course.courseId : cp.courseId.toString();
+        courseMap.set(key, cp);
+        console.log(`Course progress: ${key} - ${cp.completionPercentage}% completed`);
       });
     }
     setCourseProgress(courseMap);
@@ -244,8 +247,17 @@ const StreamLearningInterface = () => {
   const markTopicAsWatched = async (topic: Topic) => {
     if (!selectedCourse || updatingProgress) return;
 
+    const topicKey = `${selectedCourse.courseId}-${topic.name}`;
+    
+    // Prevent multiple clicks on same topic
+    if (markedTopics.has(topicKey)) {
+      return;
+    }
+
     try {
       setUpdatingProgress(true);
+      setMarkedTopics(prev => new Set(prev).add(topicKey));
+      
       const token = localStorage.getItem('token');
       if (!token) {
         toast({ title: 'Authentication Required', variant: 'destructive' });
@@ -253,27 +265,31 @@ const StreamLearningInterface = () => {
       }
 
       console.log('Marking topic as watched:', {
-        courseId: selectedCourse._id,
+        courseId: selectedCourse.courseId,
         topicName: topic.name
       });
 
-      // Update topic progress in backend - using the correct payload structure (mongo _id)
+      // Optimistically update UI
+      const newTopicProgress = new Map(topicProgress);
+      newTopicProgress.set(topicKey, true);
+      setTopicProgress(newTopicProgress);
+
+      // Update backend
       const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse._id, // Use MongoDB ObjectId string from selectedCourse._id
+        courseId: selectedCourse.courseId,
         topicName: topic.name
       });
 
       console.log('Progress update response:', response);
 
       if (response.success) {
-        // Update local state immediately for better UX
-        const key = `${selectedCourse._id}-${topic.name}`;
-        const newTopicProgress = new Map(topicProgress);
-        newTopicProgress.set(key, true);
-        setTopicProgress(newTopicProgress);
-
-        // Refresh enrollment data to get updated progress from backend
-        await refreshEnrollmentData();
+        // Only refresh if backend confirms success
+        try {
+          await refreshEnrollmentData();
+        } catch (refreshError) {
+          console.warn('Progress refresh failed, but topic was marked:', refreshError);
+          // Don't show error to user since the main action succeeded
+        }
 
         toast({
           title: 'Progress Updated',
@@ -281,10 +297,19 @@ const StreamLearningInterface = () => {
           variant: 'default'
         });
       } else {
+        // Revert optimistic update on failure
+        const revertedProgress = new Map(topicProgress);
+        revertedProgress.set(topicKey, false);
+        setTopicProgress(revertedProgress);
+        
         throw new Error(response.message || 'Failed to update progress');
       }
     } catch (error: any) {
       console.error('Error updating topic progress:', error);
+      
+      // Ensure UI is in sync with actual state
+      await refreshEnrollmentData();
+      
       toast({
         title: 'Update Failed',
         description: error.message || 'Failed to update topic progress',
@@ -292,6 +317,11 @@ const StreamLearningInterface = () => {
       });
     } finally {
       setUpdatingProgress(false);
+      setMarkedTopics(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(topicKey);
+        return newSet;
+      });
     }
   };
 
@@ -303,18 +333,19 @@ const StreamLearningInterface = () => {
   };
 
   const isTopicWatched = (courseId: string, topicName: string): boolean => {
-    // Ensure we use the mongoId string when checking the key
-    const mongoId = courseId?.toString ? courseId.toString() : String(courseId);
-    const key = `${mongoId}-${topicName}`;
+    // Use the same key format consistently
+    const course = courses.find(c => c._id === courseId);
+    const key = course ? `${course.courseId}-${topicName}` : `${courseId}-${topicName}`;
     const isWatched = topicProgress.get(key) || false;
-    console.log(`Checking topic ${topicName} watched status for course ${mongoId}:`, isWatched);
+    console.log(`Checking topic ${topicName} watched status:`, isWatched, 'Key:', key);
     return isWatched;
   };
 
   const getCourseProgress = (courseId: string): CourseProgress | undefined => {
-    const mongoId = courseId?.toString ? courseId.toString() : String(courseId);
-    const progress = courseProgress.get(mongoId);
-    console.log(`Getting course progress for ${mongoId}:`, progress);
+    const course = courses.find(c => c._id === courseId);
+    const key = course ? course.courseId : courseId;
+    const progress = courseProgress.get(key);
+    console.log(`Getting course progress for ${key}:`, progress);
     return progress;
   };
 
@@ -390,7 +421,7 @@ const StreamLearningInterface = () => {
         total: progress.totalTopics,
         percentage: progress.completionPercentage
       };
-      console.log('Course completion stats:', stats);
+      console.log('Course completion stats from backend:', stats);
       return stats;
     }
 
@@ -410,6 +441,113 @@ const StreamLearningInterface = () => {
     
     console.log('Fallback completion stats:', fallbackStats);
     return fallbackStats;
+  };
+
+  // Display backend progress data in a clean, responsive way
+  const renderBackendProgressData = () => {
+    if (!enrollment || !selectedCourse) return null;
+
+    const courseProgressData = getCourseProgress(selectedCourse._id);
+    const completionStats = getCompletionStats();
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Backend Progress Card */}
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-800">Backend Progress</p>
+                <p className="text-2xl font-bold text-blue-900">
+                  {courseProgressData ? `${courseProgressData.completionPercentage}%` : '0%'}
+                </p>
+              </div>
+              <div className="bg-blue-100 p-2 rounded-full">
+                <CheckCircle2 className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-blue-700">
+              {courseProgressData ? (
+                <>
+                  {courseProgressData.watchedTopics} / {courseProgressData.totalTopics} topics
+                  <br />
+                  {courseProgressData.isCompleted ? 'Course Completed' : 'In Progress'}
+                </>
+              ) : (
+                'Loading progress...'
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stream Progress Card */}
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-800">Stream Progress</p>
+                <p className="text-2xl font-bold text-green-900">
+                  {enrollment.streamCompletionPercentage}%
+                </p>
+              </div>
+              <div className="bg-green-100 p-2 rounded-full">
+                <BookOpen className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-green-700">
+              {enrollment.completedCourses} / {enrollment.totalCoursesInStream} courses
+              <br />
+              {enrollment.isStreamCompleted ? 'Stream Completed' : 'In Progress'}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Current Course Progress */}
+        <Card className="bg-purple-50 border-purple-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-800">This Course</p>
+                <p className="text-2xl font-bold text-purple-900">
+                  {completionStats.percentage}%
+                </p>
+              </div>
+              <div className="bg-purple-100 p-2 rounded-full">
+                <FileText className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-purple-700">
+              {completionStats.completed} / {completionStats.total} topics
+              <br />
+              {completionStats.percentage === 100 ? 'Ready for Exam' : 'Keep Learning'}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Exam Status Card */}
+        <Card className={`${completionStats.percentage === 100 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-800">Exam Status</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {completionStats.percentage === 100 ? 'Available' : 'Locked'}
+                </p>
+              </div>
+              <div className={`p-2 rounded-full ${completionStats.percentage === 100 ? 'bg-green-100' : 'bg-gray-100'}`}>
+                <Award className={`h-6 w-6 ${completionStats.percentage === 100 ? 'text-green-600' : 'text-gray-400'}`} />
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-gray-700">
+              {completionStats.percentage === 100 
+                ? 'You can take the exam now' 
+                : `${completionStats.total - completionStats.completed} topics remaining`
+              }
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   };
 
   if (error) {
@@ -513,6 +651,9 @@ const StreamLearningInterface = () => {
             </div>
           </div>
 
+          {/* Backend Progress Data Display */}
+          {renderBackendProgressData()}
+
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Content Section */}
@@ -533,7 +674,7 @@ const StreamLearningInterface = () => {
                             onClick={() => markTopicAsWatched(selectedTopic)}
                             variant="outline"
                             size="sm"
-                            disabled={updatingProgress}
+                            disabled={updatingProgress || markedTopics.has(`${selectedCourse?.courseId}-${selectedTopic.name}`)}
                           >
                             {updatingProgress ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -681,8 +822,8 @@ const StreamLearningInterface = () => {
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {selectedCourse?.topics.map((topic, index) => {
                       const isCurrent = index === currentTopicIndex;
-                      // Use mongo _id for watched check
                       const isWatched = isTopicWatched(selectedCourse._id, topic.name);
+                      const isBeingProcessed = markedTopics.has(`${selectedCourse.courseId}-${topic.name}`);
 
                       return (
                         <div
@@ -693,12 +834,14 @@ const StreamLearningInterface = () => {
                               : isWatched
                               ? 'border-green-200 bg-green-50'
                               : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                          onClick={() => handleTopicClick(topic, index)}
+                          } ${isBeingProcessed ? 'opacity-60' : ''}`}
+                          onClick={() => !isBeingProcessed && handleTopicClick(topic, index)}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {isWatched ? (
+                              {isBeingProcessed ? (
+                                <Loader2 className="h-4 w-4 text-blue-600 flex-shrink-0 animate-spin" />
+                              ) : isWatched ? (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
                               ) : (
                                 <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />
