@@ -203,9 +203,11 @@ const StreamLearningInterface = () => {
     const topicMap = new Map<string, boolean>();
     if (enrollmentData.topicProgress && Array.isArray(enrollmentData.topicProgress)) {
       enrollmentData.topicProgress.forEach((tp: TopicProgress) => {
-        const key = `${tp.courseId}-${tp.topicName}`;
+        // Ensure we use the MongoDB ObjectId string (mongoId) as the prefix
+        const mongoId = (tp.courseId as any)?.toString ? (tp.courseId as any).toString() : String(tp.courseId);
+        const key = `${mongoId}-${tp.topicName}`;
         topicMap.set(key, tp.watched);
-        console.log(`Topic progress: ${tp.topicName} - watched: ${tp.watched}`);
+        console.log(`Topic progress: ${tp.topicName} - watched: ${tp.watched} - key: ${key}`);
       });
     }
     setTopicProgress(topicMap);
@@ -214,8 +216,9 @@ const StreamLearningInterface = () => {
     const courseMap = new Map<string, CourseProgress>();
     if (enrollmentData.courseProgress && Array.isArray(enrollmentData.courseProgress)) {
       enrollmentData.courseProgress.forEach((cp: CourseProgress) => {
-        courseMap.set(cp.courseId.toString(), cp);
-        console.log(`Course progress: ${cp.courseId} - ${cp.completionPercentage}% completed`);
+        const mongoId = (cp.courseId as any)?.toString ? (cp.courseId as any).toString() : String(cp.courseId);
+        courseMap.set(mongoId, cp);
+        console.log(`Course progress: ${mongoId} - ${cp.completionPercentage}% completed`);
       });
     }
     setCourseProgress(courseMap);
@@ -250,15 +253,14 @@ const StreamLearningInterface = () => {
       }
 
       console.log('Marking topic as watched:', {
-        courseId: selectedCourse._id, // 🔥 FIXED: Use _id instead of courseId
+        courseId: selectedCourse._id,
         topicName: topic.name
       });
 
-      // Update topic progress in backend - using the correct payload structure
+      // Update topic progress in backend - using the correct payload structure (mongo _id)
       const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse._id, // 🔥 FIXED: Use MongoDB _id, not courseId string
+        courseId: selectedCourse._id, // Use MongoDB ObjectId string from selectedCourse._id
         topicName: topic.name
-        // Remove other fields that backend doesn't expect
       });
 
       console.log('Progress update response:', response);
@@ -301,15 +303,18 @@ const StreamLearningInterface = () => {
   };
 
   const isTopicWatched = (courseId: string, topicName: string): boolean => {
-    const key = `${courseId}-${topicName}`;
+    // Ensure we use the mongoId string when checking the key
+    const mongoId = courseId?.toString ? courseId.toString() : String(courseId);
+    const key = `${mongoId}-${topicName}`;
     const isWatched = topicProgress.get(key) || false;
-    console.log(`Checking topic ${topicName} watched status:`, isWatched);
+    console.log(`Checking topic ${topicName} watched status for course ${mongoId}:`, isWatched);
     return isWatched;
   };
 
   const getCourseProgress = (courseId: string): CourseProgress | undefined => {
-    const progress = courseProgress.get(courseId);
-    console.log(`Getting course progress for ${courseId}:`, progress);
+    const mongoId = courseId?.toString ? courseId.toString() : String(courseId);
+    const progress = courseProgress.get(mongoId);
+    console.log(`Getting course progress for ${mongoId}:`, progress);
     return progress;
   };
 
@@ -676,6 +681,7 @@ const StreamLearningInterface = () => {
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {selectedCourse?.topics.map((topic, index) => {
                       const isCurrent = index === currentTopicIndex;
+                      // Use mongo _id for watched check
                       const isWatched = isTopicWatched(selectedCourse._id, topic.name);
 
                       return (
