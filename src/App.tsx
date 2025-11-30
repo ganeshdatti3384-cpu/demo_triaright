@@ -64,6 +64,7 @@ import APTopicExamPage from './components/student/APTopicExamPage';
 import APFinalExamPage from './components/student/APFinalExamPage';
 import APCertificatePage from './components/student/APCertificatePage';
 import StreamLearningInterface from '@/components/pack365/StreamLearningInterface';
+import Pack365CertificatePage from '@/components/pack365/Pack365CertificatePage'; // ADD THIS IMPORT
 
 const queryClient = new QueryClient();
 
@@ -124,12 +125,22 @@ const App = () => {
           <Route path="/ap-internship-exam/:courseId/:topicName" element={<APTopicExamPage />} />
           <Route path="/ap-internship-final-exam/:courseId" element={<APFinalExamPage />} />
           
-          {/* Certificate Route */}
+          {/* Certificate Routes */}
           <Route
             path="/ap-internship-certificate/:enrollmentId"
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <APCertificatePage />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Pack365 Certificate Route - ADD THIS ROUTE */}
+          <Route
+            path="/pack365-certificate/:enrollmentId"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <Pack365CertificatePage />
               </ProtectedRoute>
             }
           />
@@ -188,7 +199,7 @@ const App = () => {
             } 
           />
           
-          {/* Exam Routes - CORRECTLY PLACED */}
+          {/* Exam Routes */}
           <Route
             path="/exam/:stream"
             element={
