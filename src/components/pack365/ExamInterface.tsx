@@ -1,5 +1,6 @@
+```tsx
 import React, { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Card,
   CardHeader,
@@ -24,10 +25,21 @@ import {
 import { pack365Api } from "@/services/api";
 import Navbar from "@/components/Navbar";
 
+/**
+ * Updated ExamInterface:
+ * - Accepts optional URL param `courseId` (public courseId like COURSE_xxx).
+ * - If courseId param is present, the page will:
+ *   1) fetch available exams for the user,
+ *   2) locate the exam that belongs to the requested course (handles both public courseId -> mongo _id lookup),
+ *   3) show only that exam and automatically start the quiz (so user lands directly into that course exam).
+ *
+ * This ensures the "Take Course Exam" button in StreamLearning (which navigates to /exam/:courseId)
+ * will open only the corresponding course exam/questions.
+ */
 
 interface AvailableExam {
   examId: string;
-  courseId: string;
+  courseId: string | { _id?: string } | any; // backend may return string or populated object
   courseName: string;
   attemptInfo?: {
     totalAttempts: number;
@@ -38,6 +50,7 @@ interface AvailableExam {
     canRetake: boolean;
     isPassed: boolean;
     lastAttempt?: string | null;
+    canTakeExam?: boolean; // sometimes present in details
   };
 }
 
@@ -45,7 +58,6 @@ interface Question {
   questionText: string;
   options: string[];
   type?: string;
-  // correctAnswer is only present when showAnswers=true
   correctAnswer?: string;
   description?: string;
 }
@@ -53,7 +65,7 @@ interface Question {
 const ExamInterface: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-
+  const { courseId: courseIdParam } = useParams<{ courseId?: string }>(); // public courseId from StreamLearning
   const [loading, setLoading] = useState<boolean>(true);
   const [exams, setExams] = useState<AvailableExam[]>([]);
   const [selectedExam, setSelectedExam] = useState<AvailableExam | null>(null);
@@ -65,13 +77,12 @@ const ExamInterface: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [fetchingQuestions, setFetchingQuestions] = useState<boolean>(false);
   const [historyForCourse, setHistoryForCourse] = useState<any | null>(null);
-
   const startTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     loadAvailableExams();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [courseIdParam]);
 
   const getToken = () => localStorage.getItem("token");
 
@@ -85,6 +96,18 @@ const ExamInterface: React.FC = () => {
     return token;
   };
 
+  const normalizeExamCourseId = (exam: any): string | null => {
+    // The backend may return exam.courseId as:
+    // - a string (mongo id)
+    // - an object { _id: "...", courseName: "..." } when populated
+    if (!exam) return null;
+    if (typeof exam.courseId === "string") return exam.courseId;
+    if (exam.courseId?._id) return exam.courseId._id;
+    // fallback if backend returned courseId directly as nested field
+    if (exam.courseId?.toString) return exam.courseId.toString();
+    return null;
+  };
+
   const loadAvailableExams = async () => {
     try {
       setLoading(true);
@@ -92,10 +115,60 @@ const ExamInterface: React.FC = () => {
       if (!token) return;
 
       const res = await pack365Api.getAvailableExamsForUser(token);
+      const available: AvailableExam[] = res?.exams || [];
 
-      // Backend returns { exams: [...] } per pack365Routes -> examController.getAvailableExamsForUser
-      const examsList: AvailableExam[] = res?.exams || res?.data || [];
-      setExams(examsList);
+      // If there is a courseId param, attempt to find the exam for that specific course
+      if (courseIdParam) {
+        // First try direct match (exam.courseId may be Mongo id string matching the param)
+        const directMatch = available.find((e) => {
+          const normalized = normalizeExamCourseId(e);
+          return normalized && normalized === courseIdParam;
+        });
+
+        if (directMatch) {
+          setExams([directMatch]);
+          // auto-start the exam for a smoother UX
+          setTimeout(() => beginExam(directMatch), 200);
+          return;
+        }
+
+        // If direct match not found, the param may be the public courseId (e.g. COURSE_...)
+        // so fetch course details to get its mongo _id and try to match.
+        try {
+          const courseRes = await pack365Api.getCourseById(courseIdParam);
+          // pack365Api.getCourseById may return different shapes; attempt to obtain the mongo _id:
+          const courseMongoId =
+            (courseRes && (courseRes.course?._id || courseRes.data?._id || courseRes._id)) ||
+            null;
+
+          if (courseMongoId) {
+            const found = available.find((e) => {
+              const normalized = normalizeExamCourseId(e);
+              return normalized && normalized === courseMongoId;
+            });
+
+            if (found) {
+              setExams([found]);
+              setTimeout(() => beginExam(found), 200);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn("Could not map public courseId to mongo _id:", err);
+        }
+
+        // No exam found for the requested course
+        toast({
+          title: "Exam not found",
+          description: "No exam is configured for the selected course (yet).",
+          variant: "destructive",
+        });
+        setExams([]); // show empty list because user asked for specific course
+        return;
+      }
+
+      // Default behaviour: show all available exams
+      setExams(available);
     } catch (err: any) {
       console.error("Error loading available exams:", err);
       toast({
@@ -111,11 +184,9 @@ const ExamInterface: React.FC = () => {
   const handleViewDetails = async (exam: AvailableExam) => {
     const token = ensureAuth();
     if (!token) return;
-
     try {
       setExamDetails(null);
       const res = await pack365Api.getExamDetails(exam.examId, token);
-      // backend returns { examDetails }
       setExamDetails(res?.examDetails || res?.exam || null);
       setSelectedExam(exam);
     } catch (err: any) {
@@ -131,11 +202,11 @@ const ExamInterface: React.FC = () => {
   const handleViewHistory = async (exam: AvailableExam) => {
     const token = ensureAuth();
     if (!token) return;
-
     try {
       setHistoryForCourse(null);
-      const res = await pack365Api.getExamHistory(token, exam.courseId);
-      // backend returns { examHistory }
+      // backend expects courseId (mongo _id)
+      const courseMongoId = normalizeExamCourseId(exam) || exam.courseId;
+      const res = await pack365Api.getExamHistory(token, courseMongoId);
       setHistoryForCourse(res?.examHistory || res?.data?.examHistory || null);
       setSelectedExam(exam);
     } catch (err: any) {
@@ -152,14 +223,10 @@ const ExamInterface: React.FC = () => {
     const token = ensureAuth();
     if (!token) return;
 
-    // Check if user can take exam via attemptInfo or by fetching details
-    const canTake =
-      exam.attemptInfo?.canRetake ||
-      (exam.attemptInfo && exam.attemptInfo.remainingAttempts > 0);
-
-    // But server also requires course completed check - we fetch details to confirm
     try {
       setFetchingQuestions(true);
+
+      // Confirm eligibility using exam details (server checks course completion)
       const detailsRes = await pack365Api.getExamDetails(exam.examId, token);
       const details = detailsRes?.examDetails || detailsRes?.exam || null;
       if (!details) {
@@ -178,13 +245,16 @@ const ExamInterface: React.FC = () => {
           description: "You must complete 100% of this course to take the exam.",
           variant: "destructive",
         });
+        // still show details to the user
+        setExamDetails(details);
+        setSelectedExam(exam);
         return;
       }
 
-      // Fetch questions WITHOUT answers for actual attempt
+      // Fetch questions without answers for the attempt
       const qRes = await pack365Api.getExamQuestions(exam.examId, false, token);
-      // backend returns { questions: [...] } or res.data directly
       const fetchedQuestions: Question[] = qRes?.questions || qRes?.data || [];
+
       if (!Array.isArray(fetchedQuestions) || fetchedQuestions.length === 0) {
         toast({
           title: "No questions",
@@ -216,12 +286,8 @@ const ExamInterface: React.FC = () => {
     setAnswers((prev) => ({ ...prev, [qIndex]: option }));
   };
 
-  const goToNext = () => {
-    setCurrentQuestionIndex((c) => Math.min(c + 1, questions.length - 1));
-  };
-  const goToPrev = () => {
-    setCurrentQuestionIndex((c) => Math.max(c - 1, 0));
-  };
+  const goToNext = () => setCurrentQuestionIndex((c) => Math.min(c + 1, questions.length - 1));
+  const goToPrev = () => setCurrentQuestionIndex((c) => Math.max(c - 1, 0));
 
   const submitExam = async () => {
     if (!selectedExam) return;
@@ -230,7 +296,7 @@ const ExamInterface: React.FC = () => {
 
     setSubmitting(true);
     try {
-      // 1) Fetch questions WITH answers so we can compute marks securely on client (backend requires marks)
+      // fetch answers to grade
       const qRes = await pack365Api.getExamQuestions(selectedExam.examId, true, token);
       const fullQuestions: Question[] = qRes?.questions || qRes?.data || [];
 
@@ -243,12 +309,10 @@ const ExamInterface: React.FC = () => {
         return;
       }
 
-      // 2) Compare answers to compute score
       let correctCount = 0;
       fullQuestions.forEach((q, idx) => {
         const selected = answers[idx];
         if (!selected) return;
-        // Ensure option comparison tolerant of types
         if (q.correctAnswer && String(selected).trim() === String(q.correctAnswer).trim()) {
           correctCount++;
         }
@@ -259,37 +323,32 @@ const ExamInterface: React.FC = () => {
       const timeTakenMs = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
       const timeTakenSeconds = Math.round(timeTakenMs / 1000);
 
-      // 3) Submit to backend
+      // backend expects the courseId as mongo _id
+      const courseMongoId = normalizeExamCourseId(selectedExam) || selectedExam.courseId;
+
       const submitRes = await pack365Api.submitExam(token, {
-        courseId: selectedExam.courseId,
+        courseId: courseMongoId,
         examId: selectedExam.examId,
         marks,
         timeTaken: timeTakenSeconds,
       });
 
-      // backend returns currentScore, bestScore, attemptNumber, remainingAttempts, isPassed etc
-      if (submitRes && (submitRes.currentScore !== undefined || submitRes.message)) {
-        toast({
-          title: "Exam submitted",
-          description: submitRes.message || "Your attempt was submitted",
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Exam submitted",
-          description: "Submission completed",
-          variant: "default",
-        });
-      }
+      toast({
+        title: "Exam submitted",
+        description: submitRes?.message || "Your attempt was submitted",
+        variant: "default",
+      });
 
-      // Reset quiz mode and reload available exams to refresh attemptInfo
+      // reset state & refresh
       setQuizMode(false);
       setQuestions([]);
       setSelectedExam(null);
       await loadAvailableExams();
-
-      // Show history for the course after submit
-      await handleViewHistory(selectedExam);
+      if (courseMongoId) {
+        // show history for the course attempted
+        const hist = await pack365Api.getExamHistory(token, courseMongoId);
+        setHistoryForCourse(hist?.examHistory || hist?.data?.examHistory || null);
+      }
     } catch (err: any) {
       console.error("Error submitting exam:", err);
       toast({
@@ -320,7 +379,6 @@ const ExamInterface: React.FC = () => {
   return (
     <>
       <Navbar />
-
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
@@ -332,14 +390,17 @@ const ExamInterface: React.FC = () => {
             </div>
           </div>
 
-          {/* List of available exams */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {exams.length === 0 && (
               <Card>
                 <CardContent>
                   <div className="text-center py-6">
                     <BookOpen className="mx-auto mb-4 h-10 w-10 text-gray-400" />
-                    <p className="text-gray-700">No exams available. Complete a course to unlock its exam.</p>
+                    <p className="text-gray-700">
+                      {courseIdParam
+                        ? "No exam found for the selected course."
+                        : "No exams available. Complete a course to unlock its exam."}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -347,7 +408,7 @@ const ExamInterface: React.FC = () => {
 
             {exams.map((exam) => {
               const attempt = exam.attemptInfo;
-              const canTake = attempt?.canRetake || (attempt && attempt.remainingAttempts > 0);
+              const canTake = attempt?.canRetake || (attempt && attempt.remainingAttempts > 0) || attempt?.canTakeExam;
               return (
                 <Card key={exam.examId} className="shadow">
                   <CardHeader>
@@ -388,20 +449,12 @@ const ExamInterface: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Button
-                          onClick={() => handleViewDetails(exam)}
-                          variant="outline"
-                          size="sm"
-                        >
+                        <Button onClick={() => handleViewDetails(exam)} variant="outline" size="sm">
                           <Archive className="h-4 w-4 mr-2" />
                           Details
                         </Button>
 
-                        <Button
-                          onClick={() => handleViewHistory(exam)}
-                          variant="ghost"
-                          size="sm"
-                        >
+                        <Button onClick={() => handleViewHistory(exam)} variant="ghost" size="sm">
                           <Clock className="h-4 w-4 mr-2" />
                           History
                         </Button>
@@ -429,7 +482,7 @@ const ExamInterface: React.FC = () => {
             })}
           </div>
 
-          {/* Exam Details / History / Quiz */}
+          {/* Details / History / Quiz */}
           <div>
             {examDetails && selectedExam && !quizMode && (
               <Card className="shadow">
@@ -475,11 +528,7 @@ const ExamInterface: React.FC = () => {
                       Back
                     </Button>
 
-                    <Button
-                      onClick={() => beginExam(selectedExam)}
-                      variant="default"
-                      disabled={!examDetails.userAttemptInfo?.canTakeExam}
-                    >
+                    <Button onClick={() => beginExam(selectedExam)} variant="default" disabled={!examDetails.userAttemptInfo?.canTakeExam}>
                       <Play className="h-4 w-4 mr-2" />
                       Start Exam
                     </Button>
@@ -582,18 +631,13 @@ const ExamInterface: React.FC = () => {
                           Previous
                         </Button>
 
-                        <Button
-                          onClick={goToNext}
-                          variant="outline"
-                          disabled={currentQuestionIndex === questions.length - 1}
-                        >
+                        <Button onClick={goToNext} variant="outline" disabled={currentQuestionIndex === questions.length - 1}>
                           Next
                         </Button>
 
                         <div className="ml-auto flex items-center gap-2">
                           <Button
                             onClick={() => {
-                              // Cancel quiz and return to list/details
                               setQuizMode(false);
                               setQuestions([]);
                               setSelectedExam(null);
@@ -632,3 +676,4 @@ const ExamInterface: React.FC = () => {
 };
 
 export default ExamInterface;
+```
