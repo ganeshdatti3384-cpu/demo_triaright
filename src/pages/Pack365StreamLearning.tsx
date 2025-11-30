@@ -35,7 +35,6 @@ interface Course {
     duration: number;
   }>;
   documentLink?: string;
-  progress?: any;
 }
 
 interface CourseProgressFromServer {
@@ -44,13 +43,6 @@ interface CourseProgressFromServer {
   watchedTopics?: number;
   isCompleted?: boolean;
   completionPercentage?: number;
-  // exam-related fields that backend might provide (names vary)
-  isExamPassed?: boolean;
-  isPassed?: boolean;
-  examStatus?: string;
-  bestScore?: number;
-  passingScore?: number;
-  examHistory?: any;
 }
 
 interface EnrollmentCourseFromServer {
@@ -62,16 +54,13 @@ interface EnrollmentCourseFromServer {
 }
 
 interface StreamEnrollment {
-  _id?: string;
-  stream?: string;
+  stream: string;
   enrollmentDate: string;
   expiresAt: string;
   coursesCount: number;
   totalTopics: number;
   courses?: EnrollmentCourseFromServer[];
   // keep any other fields that backend may return (like examAttempts, etc.)
-  totalWatchedPercentage?: number;
-  isExamCompleted?: boolean; // stream-level flag if available
   [key: string]: any;
 }
 
@@ -127,7 +116,7 @@ const Pack365StreamLearning = () => {
         if (response.success && response.enrollments) {
           const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
           const currentEnrollment = streamEnrollments.find(
-            (e) => (e.stream || '').toString().toLowerCase() === (stream || '').toLowerCase()
+            (e) => e.stream?.toLowerCase() === stream?.toLowerCase()
           );
 
           if (currentEnrollment) {
@@ -135,15 +124,17 @@ const Pack365StreamLearning = () => {
             const coursesResponse = await pack365Api.getAllCourses();
             if (coursesResponse.success && coursesResponse.data) {
               const streamCourses = coursesResponse.data.filter(
-                (course: Course) => (course.stream || '').toString().toLowerCase() === (stream || '').toLowerCase()
+                (course: Course) => course.stream?.toLowerCase() === stream?.toLowerCase()
               );
 
               // Merge server-side course progress (if available) into the UI course list
               const mergedCourses = streamCourses.map((course: Course) => {
                 // Try to find matching entry from the enrollment returned by the server
                 const serverCourseEntry = (currentEnrollment.courses || []).find((c: EnrollmentCourseFromServer) => {
+                  // Compare by courseId (string), or by DB _id (if server returns that)
                   const serverCourseIdStr = c?.courseId ?? (c?.progress?.courseId ? (c.progress.courseId.toString?.() ?? '') : '');
                   const uiCourseIdStr = course.courseId ?? course._id;
+                  // Normalize to string
                   try {
                     return String(serverCourseIdStr) === String(uiCourseIdStr) || String(serverCourseIdStr) === String(course._id) || String(serverCourseIdStr) === String(course.courseId);
                   } catch {
@@ -160,14 +151,8 @@ const Pack365StreamLearning = () => {
                   progress: progressFromServer ? {
                     totalTopics: progressFromServer.totalTopics ?? course.topics?.length ?? 0,
                     watchedTopics: progressFromServer.watchedTopics ?? 0,
-                    isCompleted: !!progressFromServer.isCompleted,
-                    completionPercentage: progressFromServer.completionPercentage ?? 0,
-                    isExamPassed: progressFromServer.isExamPassed ?? progressFromServer.isPassed ?? false,
-                    // keep other exam fields for robust checking
-                    examStatus: progressFromServer.examStatus,
-                    bestScore: progressFromServer.bestScore,
-                    passingScore: progressFromServer.passingScore,
-                    examHistory: progressFromServer.examHistory
+                    isCompleted:!!progressFromServer.isCompleted,
+                    completionPercentage: progressFromServer.completionPercentage ?? 0
                   } : undefined
                 };
               });
@@ -219,6 +204,9 @@ const Pack365StreamLearning = () => {
   }, [stream]);
 
   const handleCourseStart = (course: Course) => {
+    console.log('Starting course:', course.courseName);
+    console.log('Navigation path:', `/pack365-learning/${stream}/course`);
+    
     navigate(`/pack365-learning/${stream}/course`, { 
       state: { 
         selectedCourse: course,
@@ -250,44 +238,7 @@ const Pack365StreamLearning = () => {
     );
   }
 
-  // Helper: robust detection whether a course's exam is passed
-  const isCourseExamPassed = (course: any) => {
-    const p = course.progress || {};
-
-    // 1) Direct booleans (common)
-    if (p.isExamPassed === true) return true;
-    if (p.isPassed === true) return true;
-
-    // 2) String statuses
-    if (typeof p.examStatus === 'string') {
-      const s = p.examStatus.toLowerCase();
-      if (s === 'passed' || s === 'pass' || s === 'cleared') return true;
-    }
-
-    // 3) examHistory flags
-    if (p.examHistory && typeof p.examHistory === 'object') {
-      if (p.examHistory.isPassed === true) return true;
-      // sometimes examHistory.bestAttempt or attempts array
-      if (Array.isArray(p.examHistory.attempts)) {
-        const last = p.examHistory.attempts[p.examHistory.attempts.length - 1];
-        if (last && last.isPassed) return true;
-      }
-    }
-
-    // 4) numeric scores: bestScore and passingScore
-    if (typeof p.bestScore === 'number' && typeof p.passingScore === 'number') {
-      if (p.bestScore >= p.passingScore) return true;
-    }
-
-    // 5) course-level top-level flags (in case backend attaches directly)
-    if (course.isExamPassed === true) return true;
-    if (course.isPassed === true) return true;
-
-    // Not passed as far as we can detect
-    return false;
-  };
-
-  // Helper to determine completion and exam status for a course (UI only)
+  // Helper to determine completion for a course (UI only)
   const getCourseStatus = (course: Course & { progress?: CourseProgressFromServer | any }) => {
     const progress = course.progress;
     const completionPercentage = typeof progress?.completionPercentage === 'number'
@@ -295,42 +246,11 @@ const Pack365StreamLearning = () => {
       : // fallback compute from topics (if progress missing, try to guess 0)
         0;
     const isCompleted = completionPercentage === 100 || !!progress?.isCompleted;
-    const isExamPassed = isCourseExamPassed(course);
     return {
       completionPercentage,
-      isCompleted,
-      isExamPassed
+      isCompleted
     };
   };
-
-  const getExamStatusForCourse = (course: Course & { progress?: CourseProgressFromServer | any }) => {
-    const { isCompleted, isExamPassed } = getCourseStatus(course);
-    if (isCompleted && isExamPassed) return { label: 'Passed', color: 'green' };
-    if (isCompleted && !isExamPassed) return { label: 'Exam Pending', color: 'yellow' };
-    return { label: 'Locked', color: 'gray' };
-  };
-
-  // Determine if certificate button should be displayed:
-  // Criteria: all courses completed AND all exams passed (robust detection)
-  const canShowCertificate = () => {
-    if (!enrollment?.courses || enrollment.courses.length === 0) return false;
-
-    const courseEntries = enrollment.courses as any[];
-
-    // All courses must be completed (progress.completionPercentage >= 100 or isCompleted flag)
-    const allCompleted = courseEntries.every((c: any) => {
-      const completion = typeof c.progress?.completionPercentage === 'number' ? c.progress.completionPercentage : (c.progress?.isCompleted ? 100 : 0);
-      return completion >= 100 || !!c.progress?.isCompleted;
-    });
-
-    // All exams passed (use robust helper)
-    const allExamsPassed = courseEntries.every((c: any) => isCourseExamPassed(c)) || !!enrollment.isExamCompleted;
-
-    return allCompleted && allExamsPassed;
-  };
-
-  // If pack365 server provides an enrollment id field, prefer that when navigating to certificate
-  const enrollmentIdForCertificate = (enrollment._id || (enrollment as any).enrollmentId || '');
 
   return (
     <>
@@ -338,23 +258,9 @@ const Pack365StreamLearning = () => {
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8 flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 capitalize">{stream} Stream</h1>
-              <p className="text-gray-600 mt-2">Continue your learning journey</p>
-            </div>
-
-            {/* Show Certificate button when eligible */}
-            <div className="flex items-center gap-4">
-              {canShowCertificate() && enrollmentIdForCertificate && (
-                <Button
-                  onClick={() => navigate(`/pack365-certificate/${enrollmentIdForCertificate}`)}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  Get Certificate
-                </Button>
-              )}
-            </div>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 capitalize">{stream} Stream</h1>
+            <p className="text-gray-600 mt-2">Continue your learning journey</p>
           </div>
 
           {/* --- Main Content Grid --- */}
@@ -410,8 +316,7 @@ const Pack365StreamLearning = () => {
                         progress: course.progress ?? (uiCourse as any).progress ?? null
                       };
 
-                      const { completionPercentage, isCompleted, isExamPassed } = getCourseStatus(merged);
-                      const examStatus = getExamStatusForCourse(merged);
+                      const { completionPercentage, isCompleted } = getCourseStatus(merged);
 
                       return (
                         <div key={merged.courseId || merged._id} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
@@ -441,19 +346,13 @@ const Pack365StreamLearning = () => {
                                   </span>
                                 )}
 
-                                {/* --- Selection square area: show Course Status & Exam Status --- */}
+                                {/* --- Selection square area: show Course Status only --- */}
                                 <div className="ml-4">
                                   <div className="w-56 border rounded-md p-3 bg-white shadow-sm">
-                                    <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center justify-between">
                                       <span className="text-xs text-gray-500">Course Status</span>
                                       <span className={`text-xs font-semibold ${isCompleted ? 'text-green-700' : 'text-gray-700'}`}>
                                         {isCompleted ? 'Completed' : `${completionPercentage}%`}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-gray-500">Exam Status</span>
-                                      <span className={`text-xs font-semibold ${examStatus.color === 'green' ? 'text-green-700' : examStatus.color === 'yellow' ? 'text-yellow-700' : 'text-gray-700'}`}>
-                                        {examStatus.label}
                                       </span>
                                     </div>
                                   </div>
@@ -507,16 +406,6 @@ const Pack365StreamLearning = () => {
                       <span className="text-sm text-gray-600">Access expires:</span>
                       <span className="text-sm font-medium">{formatDate(enrollment.expiresAt)}</span>
                     </div>
-                    {canShowCertificate() && enrollmentIdForCertificate && (
-                      <div className="mt-4">
-                        <Button
-                          onClick={() => navigate(`/pack365-certificate/${enrollmentIdForCertificate}`)}
-                          className="w-full bg-green-600 hover:bg-green-700"
-                        >
-                          Download Stream Certificate
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
