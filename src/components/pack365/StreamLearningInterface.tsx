@@ -199,31 +199,23 @@ const StreamLearningInterface = () => {
   const initializeProgressMaps = (enrollmentData: Enrollment) => {
     console.log('Initializing progress maps from enrollment:', enrollmentData);
     
-    // Initialize topic progress map - use courseId string instead of _id
+    // Initialize topic progress map
     const topicMap = new Map<string, boolean>();
     if (enrollmentData.topicProgress && Array.isArray(enrollmentData.topicProgress)) {
       enrollmentData.topicProgress.forEach((tp: TopicProgress) => {
-        // Find the course to get the courseId string
-        const course = courses.find(c => c._id === tp.courseId.toString());
-        if (course) {
-          const key = `${course.courseId}-${tp.topicName}`;
-          topicMap.set(key, tp.watched);
-          console.log(`Topic progress: ${tp.topicName} - watched: ${tp.watched}`);
-        }
+        const key = `${tp.courseId}-${tp.topicName}`;
+        topicMap.set(key, tp.watched);
+        console.log(`Topic progress: ${tp.topicName} - watched: ${tp.watched}`);
       });
     }
     setTopicProgress(topicMap);
 
-    // Initialize course progress map - use courseId string instead of _id
+    // Initialize course progress map
     const courseMap = new Map<string, CourseProgress>();
     if (enrollmentData.courseProgress && Array.isArray(enrollmentData.courseProgress)) {
       enrollmentData.courseProgress.forEach((cp: CourseProgress) => {
-        // Find the course to get the courseId string
-        const course = courses.find(c => c._id === cp.courseId.toString());
-        if (course) {
-          courseMap.set(course.courseId, cp);
-          console.log(`Course progress: ${course.courseId} - ${cp.completionPercentage}% completed`);
-        }
+        courseMap.set(cp.courseId.toString(), cp);
+        console.log(`Course progress: ${cp.courseId} - ${cp.completionPercentage}% completed`);
       });
     }
     setCourseProgress(courseMap);
@@ -258,21 +250,22 @@ const StreamLearningInterface = () => {
       }
 
       console.log('Marking topic as watched:', {
-        courseId: selectedCourse.courseId,
+        courseId: selectedCourse._id, // 🔥 FIXED: Use _id instead of courseId
         topicName: topic.name
       });
 
-      // Update topic progress in backend
+      // Update topic progress in backend - using the correct payload structure
       const response = await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId,
+        courseId: selectedCourse._id, // 🔥 FIXED: Use MongoDB _id, not courseId string
         topicName: topic.name
+        // Remove other fields that backend doesn't expect
       });
 
       console.log('Progress update response:', response);
 
       if (response.success) {
         // Update local state immediately for better UX
-        const key = `${selectedCourse.courseId}-${topic.name}`;
+        const key = `${selectedCourse._id}-${topic.name}`;
         const newTopicProgress = new Map(topicProgress);
         newTopicProgress.set(key, true);
         setTopicProgress(newTopicProgress);
@@ -336,7 +329,7 @@ const StreamLearningInterface = () => {
   const handleTakeExam = () => {
     if (!selectedCourse) return;
 
-    const courseCompleted = isCourseCompleted(selectedCourse.courseId);
+    const courseCompleted = isCourseCompleted(selectedCourse._id);
     
     if (!courseCompleted) {
       toast({
@@ -385,7 +378,7 @@ const StreamLearningInterface = () => {
   const getCompletionStats = () => {
     if (!selectedCourse) return { completed: 0, total: 0, percentage: 0 };
 
-    const progress = getCourseProgress(selectedCourse.courseId);
+    const progress = getCourseProgress(selectedCourse._id);
     if (progress) {
       const stats = {
         completed: progress.watchedTopics,
@@ -398,7 +391,7 @@ const StreamLearningInterface = () => {
 
     // Fallback: calculate from topic progress
     const completedTopics = selectedCourse.topics.filter(topic => 
-      isTopicWatched(selectedCourse.courseId, topic.name)
+      isTopicWatched(selectedCourse._id, topic.name)
     ).length;
     
     const totalTopics = selectedCourse.topics.length;
@@ -524,13 +517,13 @@ const StreamLearningInterface = () => {
                   <CardTitle className="flex items-center justify-between">
                     <span>
                       {selectedTopic ? selectedTopic.name : `Welcome to ${selectedCourse?.courseName}`}
-                      {selectedTopic && isTopicWatched(selectedCourse?.courseId || '', selectedTopic.name) && (
+                      {selectedTopic && isTopicWatched(selectedCourse?._id || '', selectedTopic.name) && (
                         <CheckCircle2 className="h-5 w-5 text-green-600 inline-block ml-2" />
                       )}
                     </span>
                     {selectedTopic && (
                       <div className="flex items-center gap-2">
-                        {!isTopicWatched(selectedCourse?.courseId || '', selectedTopic.name) && (
+                        {!isTopicWatched(selectedCourse?._id || '', selectedTopic.name) && (
                           <Button
                             onClick={() => markTopicAsWatched(selectedTopic)}
                             variant="outline"
@@ -607,7 +600,7 @@ const StreamLearningInterface = () => {
                         </div>
                         
                         <div className="flex items-center gap-2">
-                          {isTopicWatched(selectedCourse?.courseId || '', selectedTopic.name) && (
+                          {isTopicWatched(selectedCourse?._id || '', selectedTopic.name) && (
                             <Badge variant="default" className="flex items-center gap-1">
                               <CheckCircle2 className="h-3 w-3" />
                               Completed
@@ -683,7 +676,7 @@ const StreamLearningInterface = () => {
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {selectedCourse?.topics.map((topic, index) => {
                       const isCurrent = index === currentTopicIndex;
-                      const isWatched = isTopicWatched(selectedCourse.courseId, topic.name);
+                      const isWatched = isTopicWatched(selectedCourse._id, topic.name);
 
                       return (
                         <div
