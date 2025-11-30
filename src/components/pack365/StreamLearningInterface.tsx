@@ -54,14 +54,13 @@ interface TopicProgress {
   watched: boolean;
 }
 
-// Shape of courses inside /pack365/enrollments response
 interface EnrollmentCourse {
-  courseId: string; // public courseId, e.g. COURSE_123
+  courseId: string;
   courseName: string;
   description: string;
   topicsCount: number;
   progress?: {
-    courseId: string;            // Mongo _id as string
+    courseId: string;
     totalTopics: number;
     watchedTopics: number;
     isCompleted: boolean;
@@ -73,8 +72,6 @@ interface Enrollment {
   _id?: string;
   userId?: string;
   stream: string;
-
-  // Old full-enrollment shape (from checkEnrollmentStatus) – optional
   topicProgress?: TopicProgress[];
   courseProgress?: {
     courseId: string;
@@ -83,10 +80,7 @@ interface Enrollment {
     isCompleted: boolean;
     completionPercentage: number;
   }[];
-
-  // New formatted enrollments from /pack365/enrollments
   courses?: EnrollmentCourse[];
-
   totalCoursesInStream: number;
   completedCourses: number;
   streamCompletionPercentage: number;
@@ -110,6 +104,7 @@ const StreamLearningInterface = () => {
   const [courseProgress, setCourseProgress] = useState<Map<string, CourseProgress>>(new Map());
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [refreshingEnrollment, setRefreshingEnrollment] = useState(false);
+  const [checkingExam, setCheckingExam] = useState(false);
 
   useEffect(() => {
     loadStreamData();
@@ -200,7 +195,6 @@ const StreamLearningInterface = () => {
       }
 
       // 4️⃣ Fetch full enrollment (with topicProgress + courseProgress) via checkEnrollmentStatus
-      // This gives us topic-level watched flags from backend.
       if (initialCourse) {
         try {
           const detailed = await pack365Api.checkEnrollmentStatus(token, initialCourse.courseId);
@@ -255,7 +249,7 @@ const StreamLearningInterface = () => {
   const initializeProgressMaps = (enrollmentData: Enrollment) => {
     console.log('Initializing progress maps from enrollment:', enrollmentData);
     
-    // 1️⃣ Topic progress map (only if backend actually sent topicProgress)
+    // topic progress
     if (enrollmentData.topicProgress && Array.isArray(enrollmentData.topicProgress)) {
       const topicMap = new Map<string, boolean>();
       enrollmentData.topicProgress.forEach((tp: TopicProgress) => {
@@ -266,10 +260,9 @@ const StreamLearningInterface = () => {
       setTopicProgress(topicMap);
     }
 
-    // 2️⃣ Course progress map
+    // course progress
     const courseMap = new Map<string, CourseProgress>();
 
-    // 2a. Old shape: enrollment.courseProgress array
     if (enrollmentData.courseProgress && Array.isArray(enrollmentData.courseProgress)) {
       enrollmentData.courseProgress.forEach((cp: any) => {
         const key = cp.courseId?.toString?.() ?? cp.courseId;
@@ -285,7 +278,6 @@ const StreamLearningInterface = () => {
       });
     }
 
-    // 2b. New shape: enrollment.courses[].progress (from /pack365/enrollments)
     if (enrollmentData.courses && Array.isArray(enrollmentData.courses)) {
       enrollmentData.courses.forEach((c: EnrollmentCourse) => {
         if (!c.progress) return;
@@ -314,7 +306,6 @@ const StreamLearningInterface = () => {
 
   const handleTopicClick = (topic: Topic, index: number) => {
     if (!selectedCourse) return;
-
     setSelectedTopic(topic);
     setCurrentTopicIndex(index);
   };
@@ -339,23 +330,19 @@ const StreamLearningInterface = () => {
         topicName: topic.name
       });
 
-      // Payload exactly as backend expects
       const response = (await pack365Api.updateTopicProgress(token, {
-        courseId: selectedCourse.courseId, // public courseId string
+        courseId: selectedCourse.courseId,
         topicName: topic.name,
-        // extra fields in type (watchedDuration, etc.) are optional – backend ignores them
       } as any)) as any;
 
       console.log('Progress update response:', response);
 
       if (response.success) {
-        // Update local topic map immediately
         const key = `${selectedCourse._id}-${topic.name}`;
         const newTopicProgress = new Map(topicProgress);
         newTopicProgress.set(key, true);
         setTopicProgress(newTopicProgress);
 
-        // Update local course progress from backend response if present
         if (response.courseProgress) {
           const cp = response.courseProgress;
           const courseKey = cp.courseId?.toString?.() ?? selectedCourse._id;
@@ -370,7 +357,6 @@ const StreamLearningInterface = () => {
           setCourseProgress(newCourseMap);
           console.log('Updated course progress from updateTopicProgress:', cp);
         } else {
-          // Fallback: refresh enrollments if courseProgress not returned
           await refreshEnrollmentData();
         }
 
@@ -396,7 +382,6 @@ const StreamLearningInterface = () => {
 
   const handleVideoEnd = async () => {
     if (!selectedTopic) return;
-    // Automatically mark topic as watched when video ends
     await markTopicAsWatched(selectedTopic);
   };
 
@@ -426,7 +411,8 @@ const StreamLearningInterface = () => {
     return canTake;
   };
 
-  const handleTakeExam = () => {
+  // UPDATED: Only fetch available exams and open the exam for the current course.
+  const handleTakeExam = async () => {
     if (!selectedCourse) return;
 
     const courseCompleted = isCourseCompleted(selectedCourse._id);
@@ -440,19 +426,47 @@ const StreamLearningInterface = () => {
       return;
     }
 
-    console.log('Take exam clicked:', {
-      courseId: selectedCourse.courseId,
-      courseName: selectedCourse.courseName,
-      isCourseCompleted: courseCompleted
-    });
+    try {
+      setCheckingExam(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({ title: 'Authentication Required', variant: 'destructive' });
+        return;
+      }
 
-    toast({
-      title: 'Exam Available',
-      description: 'You can now take the exam for this course',
-      variant: 'default'
-    });
-    
-    navigate(`/exam/${selectedCourse.courseId}`);
+      // Fetch only exams available for the user (backend only returns exams for courses completed)
+      const res = await pack365Api.getAvailableExamsForUser(token);
+      const exams = (res && (res as any).exams) || [];
+
+      // backend returns courseId as DB _id (string). Match with selectedCourse._id
+      const matched = exams.find((e: any) => {
+        // some responses might return courseId nested or as string
+        const examCourseId = e.courseId?._id ? e.courseId._id.toString() : e.courseId?.toString?.();
+        return examCourseId === selectedCourse._id || e.courseId === selectedCourse._id;
+      });
+
+      if (!matched) {
+        toast({
+          title: 'Exam Not Found',
+          description: 'No exam found for this course. Please contact support.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Navigate to the exam page for this exam only
+      navigate(`/exam/${matched.examId}`, { state: { courseId: selectedCourse._id } });
+
+    } catch (err: any) {
+      console.error('Error checking available exams:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch exam information. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setCheckingExam(false);
+    }
   };
 
   const goToNextTopic = () => {
@@ -489,7 +503,6 @@ const StreamLearningInterface = () => {
       return stats;
     }
 
-    // Fallback: calculate from topic progress
     const completedTopics = selectedCourse.topics.filter(topic => 
       isTopicWatched(selectedCourse._id, topic.name)
     ).length;
@@ -657,9 +670,8 @@ const StreamLearningInterface = () => {
                             className="w-full h-full rounded-lg"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
-                            // onEnded doesn't fire on iframe; kept for future custom player
                             onLoad={() => {
-                              // placeholder; real "end" tracking would need JS API
+                              // placeholder
                             }}
                           />
                         ) : (
@@ -862,10 +874,19 @@ const StreamLearningInterface = () => {
                       onClick={handleTakeExam}
                       className="w-full mt-4 flex items-center justify-center gap-2"
                       variant={completionStats.percentage === 100 ? "default" : "outline"}
-                      disabled={completionStats.percentage !== 100}
+                      disabled={completionStats.percentage !== 100 || checkingExam}
                     >
-                      <Award className="h-4 w-4" />
-                      {completionStats.percentage === 100 ? 'Take Course Exam' : 'Complete Course to Unlock Exam'}
+                      {checkingExam ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Checking...
+                        </>
+                      ) : (
+                        <>
+                          <Award className="h-4 w-4" />
+                          {completionStats.percentage === 100 ? 'Take Course Exam' : 'Complete Course to Unlock Exam'}
+                        </>
+                      )}
                     </Button>
 
                     {completionStats.percentage === 100 && (
