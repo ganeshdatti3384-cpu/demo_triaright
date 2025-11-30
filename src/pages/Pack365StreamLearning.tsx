@@ -241,13 +241,17 @@ const Pack365StreamLearning = () => {
     });
   };
 
-  // Improved certificate navigation handler - defensive and normalizes id
+  // Improved certificate navigation handler - adds diagnostics + fallback
   const handleGenerateCertificate = (e?: React.MouseEvent) => {
     if (e && typeof (e as any).preventDefault === 'function') {
       e.preventDefault();
     }
 
+    console.log('[CERT] Generate Certificate clicked');
+    toast({ title: 'Generating', description: 'Preparing certificate...', variant: 'default' });
+
     if (!enrollment) {
+      console.error('[CERT] No enrollment state available');
       toast({
         title: 'Error',
         description: 'Enrollment not available.',
@@ -257,12 +261,16 @@ const Pack365StreamLearning = () => {
     }
 
     // Try a few common fields, and handle objects (ObjectId) gracefully
-    let enrollmentId: any = enrollment._id ?? enrollment.enrollmentId ?? enrollment.id ?? enrollment.enrollment_id;
-    if (!enrollmentId && (enrollment as any).enrollment) {
-      enrollmentId = (enrollment as any).enrollment._id ?? (enrollment as any).enrollment.enrollmentId;
-    }
+    let enrollmentId: any = enrollment._id ?? enrollment.enrollmentId ?? enrollment.id ?? (enrollment as any).enrollmentId ?? (enrollment as any).enrollment?._id;
+    console.log('[CERT] Raw enrollment object:', enrollment);
+    console.log('[CERT] Candidate IDs:', {
+      _id: (enrollment as any)._id,
+      enrollmentId: (enrollment as any).enrollmentId,
+      id: (enrollment as any).id,
+    });
 
     if (!enrollmentId) {
+      console.error('[CERT] enrollmentId not found in enrollment object');
       toast({
         title: 'Error',
         description: 'Unable to generate certificate. Enrollment ID not found.',
@@ -274,13 +282,37 @@ const Pack365StreamLearning = () => {
     // Normalize to string
     try {
       enrollmentId = typeof enrollmentId === 'object' ? String(enrollmentId) : enrollmentId;
-    } catch {
+    } catch (err) {
+      console.warn('[CERT] Could not stringify enrollmentId, fallback to template', err);
       enrollmentId = `${enrollmentId}`;
     }
 
-    // Encode the id to be safe in URL
     const encodedId = encodeURIComponent(String(enrollmentId));
-    navigate(`/pack365-certificate/${encodedId}`);
+    const targetPath = `/pack365-certificate/${encodedId}`;
+
+    console.log('[CERT] Navigating to targetPath:', targetPath);
+    // Try react-router navigation first
+    try {
+      navigate(targetPath);
+    } catch (navErr) {
+      console.error('[CERT] react-router navigate threw error:', navErr);
+    }
+
+    // After short delay, if navigation did not happen (e.g. ProtectedRoute blocked it),
+    // fallback to a full page redirect so we can test route accessibility.
+    setTimeout(() => {
+      const currentPath = window.location.pathname;
+      console.log('[CERT] After navigate, currentPath =', currentPath);
+      if (!currentPath.includes('/pack365-certificate')) {
+        console.warn('[CERT] react-router navigation did not take effect; falling back to window.location.href');
+        toast({
+          title: 'Fallback',
+          description: 'Falling back to full page navigation to certificate (for debugging).',
+          variant: 'warning'
+        });
+        window.location.href = targetPath;
+      }
+    }, 300);
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
