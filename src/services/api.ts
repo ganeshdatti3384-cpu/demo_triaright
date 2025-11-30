@@ -121,7 +121,8 @@ export const profileApi = {
     token: string,
     data: Partial<College>
   ): Promise<{ message: string }> => {
-    const res = await axios.put(`${API_BASE_URL}/users/colleges/profile`, toFormData(data), {
+    const formData = toFormData(data);
+    const res = await axios.put(`${API_BASE_URL}/users/colleges/profile`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -141,7 +142,8 @@ export const profileApi = {
     token: string,
     data: Partial<Employer>
   ): Promise<{ message: string }> => {
-    const res = await axios.put(`${API_BASE_URL}/employers/profile`, toFormData(data), {
+    const formData = toFormData(data);
+    const res = await axios.put(`${API_BASE_URL}/employers/profile`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -161,7 +163,8 @@ export const profileApi = {
     token: string,
     data: Partial<JobSeekerProfile>
   ): Promise<{ message: string }> => {
-    const res = await axios.put(`${API_BASE_URL}/jobseekers/profile`, toFormData(data), {
+    const formData = toFormData(data);
+    const res = await axios.put(`${API_BASE_URL}/jobseekers/profile`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -181,7 +184,8 @@ export const profileApi = {
     token: string,
     data: Partial<StudentProfile>
   ): Promise<{ message: string }> => {
-    const res = await axios.put(`${API_BASE_URL}/users/students/profile`, toFormData(data), {
+    const formData = toFormData(data);
+    const res = await axios.put(`${API_BASE_URL}/users/students/profile`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -205,7 +209,8 @@ export const profileApi = {
   },
 
   updateProfile: async (token: string, profileData: any): Promise<any> => {
-    const res = await axios.put(`${API_BASE_URL}/users/profile`, toFormData(profileData), {
+    const formData = toFormData(profileData);
+    const res = await axios.put(`${API_BASE_URL}/users/profile`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
@@ -702,7 +707,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Get available exams - matches backend response structure
   getAvailableExamsForUser: async (
     token: string
   ): Promise<{ success: boolean; exams: any[]; message?: string }> => {
@@ -712,20 +717,20 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Get exam questions - matches backend endpoint and response
   getExamQuestions: async (
     examId: string,
     sendAnswers: boolean = false,
     token?: string
   ): Promise<{ success: boolean; questions: any[]; message?: string }> => {
-    const url = `${API_BASE_URL}/pack365/exams/${examId}/questions?sendAnswers=${sendAnswers}`;
+    const url = `${API_BASE_URL}/pack365/exams/${examId}/questions?showAnswers=${sendAnswers}`;
     const res = await axios.get(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Get exam details - matches backend response
   getExamDetails: async (
     examId: string,
     token?: string
@@ -736,7 +741,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Submit exam - matches backend payload and response structure
   submitExam: async (
     token: string,
     data: {
@@ -762,7 +767,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Get exam history - matches backend endpoint
   getExamHistory: async (
     token: string,
     courseId: string
@@ -773,7 +778,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Get exam statistics - matches backend endpoint
   getExamStatistics: async (
     token: string,
     courseId: string
@@ -784,7 +789,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Reset exam attempts - matches backend endpoint
   resetExamAttempts: async (
     token: string,
     data: { userId: string; courseId: string }
@@ -795,7 +800,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Update exam max attempts - matches backend endpoint
   updateExamMaxAttempts: async (
     token: string,
     data: { examId: string; maxAttempts: number }
@@ -806,7 +811,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Check stream enrollment - matches backend endpoint
   checkStreamCodeEnrollment: async (
     token: string,
     stream: string
@@ -817,7 +822,7 @@ export const pack365Api = {
     return res.data;
   },
 
-  // FIXED: Updated endpoint to match backend exactly
+  // FIXED: Check order status - matches backend endpoint
   checkOrderStatus: async (
     token: string,
     orderId: string
