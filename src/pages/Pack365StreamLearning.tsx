@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 
@@ -37,13 +38,31 @@ interface Course {
   documentLink?: string;
 }
 
+interface CourseProgressFromServer {
+  courseId?: string | { toString?: () => string } | any;
+  totalTopics?: number;
+  watchedTopics?: number;
+  isCompleted?: boolean;
+  completionPercentage?: number;
+}
+
+interface EnrollmentCourseFromServer {
+  courseId?: string;
+  courseName?: string;
+  description?: string;
+  topicsCount?: number;
+  progress?: CourseProgressFromServer | null;
+}
+
 interface StreamEnrollment {
   stream: string;
   enrollmentDate: string;
   expiresAt: string;
   coursesCount: number;
   totalTopics: number;
-  courses: Course[];
+  courses?: EnrollmentCourseFromServer[];
+  // keep any other fields that backend may return (like examAttempts, etc.)
+  [key: string]: any;
 }
 
 const SkeletonLoader = () => (
@@ -98,7 +117,7 @@ const Pack365StreamLearning = () => {
         if (response.success && response.enrollments) {
           const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
           const currentEnrollment = streamEnrollments.find(
-            (e) => e.stream.toLowerCase() === stream?.toLowerCase()
+            (e) => e.stream?.toLowerCase() === stream?.toLowerCase()
           );
 
           if (currentEnrollment) {
@@ -106,27 +125,63 @@ const Pack365StreamLearning = () => {
             const coursesResponse = await pack365Api.getAllCourses();
             if (coursesResponse.success && coursesResponse.data) {
               const streamCourses = coursesResponse.data.filter(
-                (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
+                (course: Course) => course.stream?.toLowerCase() === stream?.toLowerCase()
               );
-              setAllCourses(streamCourses);
-              
-              // Calculate total topics
+
+              // Merge server-side course progress (if available) into the UI course list
+              const mergedCourses = streamCourses.map((course: Course) => {
+                // Try to find matching entry from the enrollment returned by the server
+                const serverCourseEntry = (currentEnrollment.courses || []).find((c: EnrollmentCourseFromServer) => {
+                  // Compare by courseId (string), or by DB _id (if server returns that)
+                  const serverCourseIdStr = c?.courseId ?? (c?.progress?.courseId ? (c.progress.courseId.toString?.() ?? '') : '');
+                  const uiCourseIdStr = course.courseId ?? course._id;
+                  // Normalize to string
+                  try {
+                    return String(serverCourseIdStr) === String(uiCourseIdStr) || String(serverCourseIdStr) === String(course._id) || String(serverCourseIdStr) === String(course.courseId);
+                  } catch {
+                    return false;
+                  }
+                });
+
+                // prefer progress from serverCourseEntry.progress if available
+                const progressFromServer: CourseProgressFromServer | undefined = serverCourseEntry?.progress;
+
+                return {
+                  ...course,
+                  // attach a progress field that the UI can read
+                  progress: progressFromServer ? {
+                    totalTopics: progressFromServer.totalTopics ?? course.topics?.length ?? 0,
+                    watchedTopics: progressFromServer.watchedTopics ?? 0,
+                    isCompleted:!!progressFromServer.isCompleted,
+                    completionPercentage: progressFromServer.completionPercentage ?? 0
+                  } : undefined
+                };
+              });
+
+              // Calculate total topics based on the streamCourses
               let totalTopicsInStream = 0;
-              streamCourses.forEach(course => {
+              streamCourses.forEach((course: Course) => {
                 const courseTopics = course.topics?.length || 0;
                 totalTopicsInStream += courseTopics;
               });
 
-              // Enhance enrollment with data
-              const enhancedEnrollment = {
+              const enhancedEnrollment: StreamEnrollment = {
                 ...currentEnrollment,
-                courses: streamCourses,
+                courses: mergedCourses.map((c: any) => ({
+                  courseId: c.courseId,
+                  courseName: c.courseName,
+                  description: c.description,
+                  topicsCount: c.topics?.length || 0,
+                  progress: c.progress || null
+                })),
                 totalTopics: totalTopicsInStream,
                 coursesCount: streamCourses.length
               };
-              
+
+              setAllCourses(streamCourses);
               setEnrollment(enhancedEnrollment);
             } else {
+              // fallback: no courses returned but we have enrollment
               setEnrollment(currentEnrollment);
             }
           } else {
@@ -184,6 +239,28 @@ const Pack365StreamLearning = () => {
     );
   }
 
+  // Helper to determine completion and exam status for a course (UI only)
+  const getCourseStatus = (course: Course & { progress?: CourseProgressFromServer | any }) => {
+    const progress = course.progress;
+    const completionPercentage = typeof progress?.completionPercentage === 'number'
+      ? progress.completionPercentage
+      : // fallback compute from topics (if progress missing, try to guess 0)
+        0;
+    const isCompleted = completionPercentage === 100 || !!progress?.isCompleted;
+    return {
+      completionPercentage,
+      isCompleted
+    };
+  };
+
+  const getExamStatusForCourse = (course: Course & { progress?: CourseProgressFromServer | any }) => {
+    // As per requirement: if course is completed (all topics) display course status completed and exam cleared display passed
+    // We'll follow that rule: if course completed -> show "Passed", otherwise "Locked / Not attempted"
+    const { isCompleted } = getCourseStatus(course);
+    if (isCompleted) return { label: 'Passed', color: 'green' };
+    return { label: 'Locked', color: 'gray' };
+  };
+
   return (
     <>
       <Navbar />
@@ -234,47 +311,85 @@ const Pack365StreamLearning = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {enrollment.courses && enrollment.courses.length > 0 ? (
-                    enrollment.courses.map((course) => (
-                      <div key={course.courseId} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
-                        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between mb-3">
-                              <h3 className="font-semibold text-gray-800 text-lg">{course.courseName}</h3>
-                              <Badge variant="secondary">
-                                {course.topics?.length || 0} topics
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
-                            
-                            <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
-                              <span className="flex items-center gap-1.5">
-                                <Clock className="h-4 w-4" /> 
-                                {course.totalDuration} minutes
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                <BookOpen className="h-4 w-4" /> 
-                                {course.topics?.length || 0} topics
-                              </span>
-                              {course.documentLink && (
+                    enrollment.courses.map((course: any) => {
+                      // course here is the merged item (contains progress if server provided)
+                      const uiCourse = allCourses.find(c => String(c.courseId) === String(course.courseId) || String(c._id) === String(course.courseId)) || (course as any);
+                      // prefer uiCourse (full course object) but also copy progress from enrollment.course entry
+                      const merged = {
+                        ...uiCourse,
+                        courseId: uiCourse.courseId ?? course.courseId,
+                        courseName: uiCourse.courseName ?? course.courseName,
+                        description: uiCourse.description ?? course.description,
+                        topics: uiCourse.topics ?? [],
+                        totalDuration: uiCourse.totalDuration ?? uiCourse.totalDuration ?? 0,
+                        progress: course.progress ?? (uiCourse as any).progress ?? null
+                      };
+
+                      const { completionPercentage, isCompleted } = getCourseStatus(merged);
+                      const examStatus = getExamStatusForCourse(merged);
+
+                      return (
+                        <div key={merged.courseId || merged._id} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
+                          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between mb-3">
+                                <h3 className="font-semibold text-gray-800 text-lg">{merged.courseName}</h3>
+                                <Badge variant="secondary">
+                                  {merged.topics?.length || 0} topics
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{merged.description}</p>
+                              
+                              <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
                                 <span className="flex items-center gap-1.5">
-                                  <FileText className="h-4 w-4" /> 
-                                  Resources
+                                  <Clock className="h-4 w-4" /> 
+                                  {merged.totalDuration} minutes
                                 </span>
-                              )}
+                                <span className="flex items-center gap-1.5">
+                                  <BookOpen className="h-4 w-4" /> 
+                                  {merged.topics?.length || 0} topics
+                                </span>
+                                {merged.documentLink && (
+                                  <span className="flex items-center gap-1.5">
+                                    <FileText className="h-4 w-4" /> 
+                                    Resources
+                                  </span>
+                                )}
+
+                                {/* --- Selection square area: show Course Status & Exam Status --- */}
+                                <div className="ml-4">
+                                  <div className="w-56 border rounded-md p-3 bg-white shadow-sm">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-xs text-gray-500">Course Status</span>
+                                      <span className={`text-xs font-semibold ${isCompleted ? 'text-green-700' : 'text-gray-700'}`}>
+                                        {isCompleted ? 'Completed' : `${completionPercentage}%`}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-gray-500">Exam Status</span>
+                                      <span className={`text-xs font-semibold ${examStatus.color === 'green' ? 'text-green-700' : 'text-gray-700'}`}>
+                                        {examStatus.label}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex flex-col items-end gap-3">
+                              <Button 
+                                onClick={() => handleCourseStart(merged)}
+                                className="w-full sm:w-auto flex-shrink-0"
+                                variant="default"
+                              >
+                                <Play className="h-4 w-4 mr-2" />
+                                Start Learning
+                              </Button>
                             </div>
                           </div>
-                          
-                          <Button 
-                            onClick={() => handleCourseStart(course)}
-                            className="w-full sm:w-auto flex-shrink-0"
-                            variant="default"
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            Start Learning
-                          </Button>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center py-8">
                       <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
