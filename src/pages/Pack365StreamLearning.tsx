@@ -44,9 +44,13 @@ interface CourseProgressFromServer {
   watchedTopics?: number;
   isCompleted?: boolean;
   completionPercentage?: number;
-  // possibly includes exam flags
+  // exam-related fields that backend might provide (names vary)
   isExamPassed?: boolean;
   isPassed?: boolean;
+  examStatus?: string;
+  bestScore?: number;
+  passingScore?: number;
+  examHistory?: any;
 }
 
 interface EnrollmentCourseFromServer {
@@ -68,7 +72,6 @@ interface StreamEnrollment {
   // keep any other fields that backend may return (like examAttempts, etc.)
   totalWatchedPercentage?: number;
   isExamCompleted?: boolean; // stream-level flag if available
-  // keep any other fields
   [key: string]: any;
 }
 
@@ -159,7 +162,12 @@ const Pack365StreamLearning = () => {
                     watchedTopics: progressFromServer.watchedTopics ?? 0,
                     isCompleted: !!progressFromServer.isCompleted,
                     completionPercentage: progressFromServer.completionPercentage ?? 0,
-                    isExamPassed: progressFromServer.isExamPassed ?? progressFromServer.isPassed ?? false
+                    isExamPassed: progressFromServer.isExamPassed ?? progressFromServer.isPassed ?? false,
+                    // keep other exam fields for robust checking
+                    examStatus: progressFromServer.examStatus,
+                    bestScore: progressFromServer.bestScore,
+                    passingScore: progressFromServer.passingScore,
+                    examHistory: progressFromServer.examHistory
                   } : undefined
                 };
               });
@@ -242,6 +250,43 @@ const Pack365StreamLearning = () => {
     );
   }
 
+  // Helper: robust detection whether a course's exam is passed
+  const isCourseExamPassed = (course: any) => {
+    const p = course.progress || {};
+
+    // 1) Direct booleans (common)
+    if (p.isExamPassed === true) return true;
+    if (p.isPassed === true) return true;
+
+    // 2) String statuses
+    if (typeof p.examStatus === 'string') {
+      const s = p.examStatus.toLowerCase();
+      if (s === 'passed' || s === 'pass' || s === 'cleared') return true;
+    }
+
+    // 3) examHistory flags
+    if (p.examHistory && typeof p.examHistory === 'object') {
+      if (p.examHistory.isPassed === true) return true;
+      // sometimes examHistory.bestAttempt or attempts array
+      if (Array.isArray(p.examHistory.attempts)) {
+        const last = p.examHistory.attempts[p.examHistory.attempts.length - 1];
+        if (last && last.isPassed) return true;
+      }
+    }
+
+    // 4) numeric scores: bestScore and passingScore
+    if (typeof p.bestScore === 'number' && typeof p.passingScore === 'number') {
+      if (p.bestScore >= p.passingScore) return true;
+    }
+
+    // 5) course-level top-level flags (in case backend attaches directly)
+    if (course.isExamPassed === true) return true;
+    if (course.isPassed === true) return true;
+
+    // Not passed as far as we can detect
+    return false;
+  };
+
   // Helper to determine completion and exam status for a course (UI only)
   const getCourseStatus = (course: Course & { progress?: CourseProgressFromServer | any }) => {
     const progress = course.progress;
@@ -250,10 +295,11 @@ const Pack365StreamLearning = () => {
       : // fallback compute from topics (if progress missing, try to guess 0)
         0;
     const isCompleted = completionPercentage === 100 || !!progress?.isCompleted;
+    const isExamPassed = isCourseExamPassed(course);
     return {
       completionPercentage,
       isCompleted,
-      isExamPassed: !!progress?.isExamPassed || !!progress?.isPassed
+      isExamPassed
     };
   };
 
@@ -265,7 +311,7 @@ const Pack365StreamLearning = () => {
   };
 
   // Determine if certificate button should be displayed:
-  // Criteria per request: when all course status is completed AND all courses exams are passed
+  // Criteria: all courses completed AND all exams passed (robust detection)
   const canShowCertificate = () => {
     if (!enrollment?.courses || enrollment.courses.length === 0) return false;
 
@@ -277,12 +323,8 @@ const Pack365StreamLearning = () => {
       return completion >= 100 || !!c.progress?.isCompleted;
     });
 
-    // All courses must have exam passed flag (progress.isExamPassed or progress.isPassed) OR stream-level isExamCompleted
-    const allExamsPassed = courseEntries.every((c: any) => {
-      if (typeof c.progress?.isExamPassed === 'boolean') return c.progress.isExamPassed === true;
-      if (typeof c.progress?.isPassed === 'boolean') return c.progress.isPassed === true;
-      return false;
-    }) || !!enrollment.isExamCompleted; // if stream-level flag present and true
+    // All exams passed (use robust helper)
+    const allExamsPassed = courseEntries.every((c: any) => isCourseExamPassed(c)) || !!enrollment.isExamCompleted;
 
     return allCompleted && allExamsPassed;
   };
