@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Play, 
@@ -15,7 +13,6 @@ import {
   Award,
   Video,
   FileText,
-  X,
   ExternalLink,
   Circle,
   ChevronRight,
@@ -41,39 +38,6 @@ interface Course {
   topics: Topic[];
 }
 
-// Local storage interfaces
-interface LocalTopicProgress {
-  watched: boolean;
-  watchedDuration: number;
-  lastUpdated: string;
-  completedAt?: string;
-}
-
-interface LocalProgress {
-  [key: string]: LocalTopicProgress;
-}
-
-interface CourseProgress {
-  completedTopics: number;
-  totalTopics: number;
-  overallProgress: number;
-}
-
-interface BackendTopicProgress {
-  courseId: string;
-  topicName: string;
-  watched: boolean;
-  watchedDuration: number;
-}
-
-interface BackendEnrollment {
-  stream: string;
-  topicProgress: BackendTopicProgress[];
-  totalWatchedPercentage: number;
-  watchedTopics?: number;
-  totalTopics?: number;
-}
-
 const StreamLearningInterface = () => {
   const { stream } = useParams<{ stream: string }>();
   const location = useLocation();
@@ -82,209 +46,16 @@ const StreamLearningInterface = () => {
   
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [localProgress, setLocalProgress] = useState<LocalProgress>({});
-  const [courseProgress, setCourseProgress] = useState<CourseProgress>({
-    completedTopics: 0,
-    totalTopics: 0,
-    overallProgress: 0
-  });
   const [loading, setLoading] = useState(true);
   const [enrollment, setEnrollment] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-  const [videoProgress, setVideoProgress] = useState<number>(0);
-  const [isTrackingProgress, setIsTrackingProgress] = useState(false);
-  const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
-  const [examEligible, setExamEligible] = useState(false);
   const [currentTopicIndex, setCurrentTopicIndex] = useState(0);
-  const [realWatchedSeconds, setRealWatchedSeconds] = useState<number>(0);
-  const [videoStartTime, setVideoStartTime] = useState<number | null>(null);
-
-  // Load local progress from localStorage on component mount
-  useEffect(() => {
-    loadLocalProgress();
-  }, []);
 
   useEffect(() => {
     loadStreamData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
-
-  useEffect(() => {
-    // Update course progress whenever localProgress or selectedCourse changes
-    if (selectedCourse) {
-      updateCourseProgress();
-    }
-  }, [localProgress, selectedCourse, enrollment]);
-
-  useEffect(() => {
-    return () => {
-      if (progressIntervalId) {
-        clearInterval(progressIntervalId);
-      }
-    };
-  }, [progressIntervalId]);
-
-  // Load local progress from localStorage
-  const loadLocalProgress = () => {
-    try {
-      const savedProgress = localStorage.getItem(`pack365-progress-${stream}`);
-      if (savedProgress) {
-        setLocalProgress(JSON.parse(savedProgress));
-      }
-    } catch (error) {
-      console.warn('Failed to load local progress:', error);
-    }
-  };
-
-  // Save progress to localStorage
-  const saveLocalProgress = (courseId: string, topicName: string, progressData: LocalTopicProgress) => {
-    const key = `${courseId}-${topicName}`;
-    const updatedProgress = {
-      ...localProgress,
-      [key]: {
-        ...progressData,
-        lastUpdated: new Date().toISOString()
-      }
-    };
-    
-    setLocalProgress(updatedProgress);
-    
-    // Save to localStorage
-    try {
-      localStorage.setItem(`pack365-progress-${stream}`, JSON.stringify(updatedProgress));
-    } catch (error) {
-      console.warn('Failed to save local progress:', error);
-      toast({
-        title: 'Storage Warning',
-        description: 'Progress may not be saved locally',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  // Get local progress for a specific topic
-  const getLocalProgress = (courseId: string, topicName: string): LocalTopicProgress => {
-    const key = `${courseId}-${topicName}`;
-    return localProgress[key] || { watched: false, watchedDuration: 0, lastUpdated: new Date().toISOString() };
-  };
-
-  // Calculate topic counts from backend data
-  const calculateTopicCountsFromBackend = (): { completed: number; total: number } => {
-    if (!selectedCourse || !enrollment?.topicProgress) {
-      return { completed: 0, total: 0 };
-    }
-
-    const courseTopics = enrollment.topicProgress.filter((tp: BackendTopicProgress) => 
-      tp.courseId === selectedCourse._id
-    );
-
-    const completed = courseTopics.filter((tp: BackendTopicProgress) => tp.watched).length;
-    const total = courseTopics.length;
-
-    return { completed, total };
-  };
-
-  // Sync local storage with backend data
-  const syncLocalWithBackend = async (backendEnrollment: any, streamCourses: Course[]) => {
-    try {
-      const localProgressKey = `pack365-progress-${stream}`;
-      let localProgress = JSON.parse(localStorage.getItem(localProgressKey) || '{}');
-      let hasChanges = false;
-
-      // For each course in the stream
-      streamCourses.forEach(course => {
-        // For each topic in the course
-        course.topics.forEach(topic => {
-          const localKey = `${course._id}-${topic.name}`;
-          const backendTopic = backendEnrollment.topicProgress?.find((tp: BackendTopicProgress) => 
-            tp.courseId === course._id && tp.topicName === topic.name
-          );
-
-          if (backendTopic) {
-            // If backend has more progress, update local storage
-            if (backendTopic.watched && (!localProgress[localKey] || !localProgress[localKey].watched)) {
-              localProgress[localKey] = {
-                watched: true,
-                watchedDuration: Math.max(localProgress[localKey]?.watchedDuration || 0, backendTopic.watchedDuration),
-                lastUpdated: new Date().toISOString()
-              };
-              hasChanges = true;
-            } else if (backendTopic.watchedDuration > (localProgress[localKey]?.watchedDuration || 0)) {
-              // If backend has more watched duration, update local
-              localProgress[localKey] = {
-                ...localProgress[localKey],
-                watchedDuration: backendTopic.watchedDuration,
-                lastUpdated: new Date().toISOString()
-              };
-              hasChanges = true;
-            }
-          }
-        });
-      });
-
-      if (hasChanges) {
-        localStorage.setItem(localProgressKey, JSON.stringify(localProgress));
-        setLocalProgress(localProgress);
-        console.log('Synced local storage with backend data');
-      }
-
-    } catch (error) {
-      console.warn('Failed to sync local storage with backend:', error);
-    }
-  };
-
-  // Update course progress statistics
-  const updateCourseProgress = () => {
-    if (!selectedCourse) return;
-
-    let completedTopics = 0;
-    let totalWatchedDuration = 0;
-    let totalDuration = 0;
-
-    // Calculate from local storage (primary source)
-    selectedCourse.topics.forEach(topic => {
-      const progress = getLocalProgress(selectedCourse._id, topic.name);
-      if (progress.watched) {
-        completedTopics++;
-      }
-      totalWatchedDuration += progress.watchedDuration;
-      totalDuration += topic.duration * 60; // Convert minutes to seconds
-    });
-
-    // If we have backend data, merge it (as backup/verification)
-    if (enrollment?.topicProgress) {
-      const backendCompleted = enrollment.topicProgress.filter((tp: BackendTopicProgress) => 
-        tp.courseId === selectedCourse._id && tp.watched
-      ).length;
-      
-      // Use the higher count between local and backend
-      completedTopics = Math.max(completedTopics, backendCompleted);
-    }
-
-    const overallProgress = totalDuration > 0 ? Math.min(100, (totalWatchedDuration / totalDuration) * 100) : 0;
-
-    setCourseProgress({
-      completedTopics,
-      totalTopics: selectedCourse.topics.length,
-      overallProgress
-    });
-
-    // FIXED: Use backend definition for eligibility (>= 80% watched)
-    const backendPercentage = enrollment?.totalWatchedPercentage ?? 0;
-    const effectiveProgress = Math.max(overallProgress, backendPercentage || 0);
-    setExamEligible(effectiveProgress >= 80);
-    
-    console.log('Exam Eligibility Check:', {
-      completedTopics,
-      totalTopics: selectedCourse.topics.length,
-      overallProgress,
-      backendPercentage,
-      effectiveProgress,
-      examEligible: effectiveProgress >= 80
-    });
-  };
 
   const loadStreamData = async () => {
     try {
@@ -352,9 +123,6 @@ const StreamLearningInterface = () => {
         setSelectedCourse(streamCourses[0]);
       }
 
-      // Sync local storage with backend data on initial load
-      await syncLocalWithBackend(streamEnrollment, streamCourses);
-
     } catch (error: any) {
       console.error('Error loading stream data:', error);
       setError('Failed to load stream data');
@@ -379,152 +147,6 @@ const StreamLearningInterface = () => {
 
     setSelectedTopic(topic);
     setCurrentTopicIndex(index);
-    setIsVideoModalOpen(true);
-    
-    // Load existing progress for this topic
-    const existingProgress = getLocalProgress(selectedCourse._id, topic.name);
-    const topicDurationSeconds = topic.duration * 60;
-    const progressPercentage = Math.min(100, (existingProgress.watchedDuration / topicDurationSeconds) * 100);
-    
-    setVideoProgress(progressPercentage);
-    setRealWatchedSeconds(existingProgress.watchedDuration);
-    setVideoStartTime(Date.now());
-    setIsTrackingProgress(false);
-
-    if (progressIntervalId) {
-      clearInterval(progressIntervalId);
-      setProgressIntervalId(null);
-    }
-
-    const intervalId = startRealProgressTracking(topic);
-    setProgressIntervalId(intervalId);
-  };
-
-  const startRealProgressTracking = (topic: Topic): NodeJS.Timeout => {
-    const interval = setInterval(() => {
-      if (videoStartTime) {
-        const secondsWatched = Math.floor((Date.now() - videoStartTime) / 1000);
-        const totalWatchedSeconds = realWatchedSeconds + secondsWatched;
-        setRealWatchedSeconds(totalWatchedSeconds);
-        
-        const topicDurationSeconds = topic.duration * 60;
-        const progress = Math.min(100, (totalWatchedSeconds / topicDurationSeconds) * 100);
-        setVideoProgress(progress);
-        
-        // Auto-save progress every 15 seconds (more frequent for better UX)
-        if (secondsWatched % 15 === 0) {
-          saveLocalProgress(selectedCourse!._id, topic.name, {
-            watched: progress >= 80,
-            watchedDuration: totalWatchedSeconds,
-            lastUpdated: new Date().toISOString()
-          });
-        }
-        
-        // Auto-complete at 80% progress
-        if (progress >= 80 && !getLocalProgress(selectedCourse!._id, topic.name).watched) {
-          markTopicAsCompleted(topic, totalWatchedSeconds);
-          clearInterval(interval);
-          setProgressIntervalId(null);
-        }
-      }
-    }, 1000);
-
-    setIsTrackingProgress(true);
-    return interval;
-  };
-
-  const markTopicAsCompleted = async (topic: Topic, watchedSeconds?: number) => {
-    if (!selectedCourse) return;
-
-    const finalWatchedSeconds = watchedSeconds && watchedSeconds > 0
-      ? watchedSeconds
-      : (topic.duration * 60);
-
-    // Update local storage immediately with completion
-    saveLocalProgress(selectedCourse._id, topic.name, {
-      watched: true,
-      watchedDuration: finalWatchedSeconds,
-      lastUpdated: new Date().toISOString(),
-      completedAt: new Date().toISOString()
-    });
-
-    // Update backend - but don't rely on its response for UI updates
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await pack365Api.updateTopicProgress(token, {
-          courseId: selectedCourse._id,
-          topicName: topic.name,
-          watchedDuration: finalWatchedSeconds
-        });
-        console.log('Topic completion synced with backend');
-      }
-    } catch (error: any) {
-      console.warn('Backend sync failed, but progress saved locally:', error);
-      // Don't show error to user - progress is saved locally
-    }
-
-    // Update UI immediately from local storage
-    updateCourseProgress();
-    
-    setIsTrackingProgress(false);
-    
-    toast({
-      title: 'Topic Completed! 🎉',
-      description: `"${topic.name}" has been marked as completed.`,
-      variant: 'default'
-    });
-  };
-
-  const handleManualComplete = async (topic: Topic) => {
-    const finalWatchedSeconds = realWatchedSeconds > 0 ? realWatchedSeconds : (topic.duration * 60);
-    await markTopicAsCompleted(topic, finalWatchedSeconds);
-    setIsVideoModalOpen(false);
-    setSelectedTopic(null);
-    if (progressIntervalId) {
-      clearInterval(progressIntervalId);
-      setProgressIntervalId(null);
-    }
-  };
-
-  const handleCloseModal = () => {
-    // Save current progress before closing (if any progress was made)
-    if (selectedTopic && selectedCourse && realWatchedSeconds > 0) {
-      const currentProgress = getLocalProgress(selectedCourse._id, selectedTopic.name);
-      const newWatchedDuration = Math.max(currentProgress.watchedDuration, realWatchedSeconds);
-      
-      saveLocalProgress(selectedCourse._id, selectedTopic.name, {
-        watched: currentProgress.watched || videoProgress >= 80,
-        watchedDuration: newWatchedDuration,
-        lastUpdated: new Date().toISOString()
-      });
-    }
-    
-    setIsVideoModalOpen(false);
-    setSelectedTopic(null);
-    if (progressIntervalId) {
-      clearInterval(progressIntervalId);
-      setProgressIntervalId(null);
-    }
-    setIsTrackingProgress(false);
-    setRealWatchedSeconds(0);
-    setVideoStartTime(null);
-  };
-
-  const isTopicWatched = (topicName: string): boolean => {
-    if (!selectedCourse) return false;
-    const progress = getLocalProgress(selectedCourse._id, topicName);
-    return progress.watched;
-  };
-
-  const getTopicProgressPercentage = (topicName: string): number => {
-    if (!selectedCourse) return 0;
-    const topic = selectedCourse.topics.find(t => t.name === topicName);
-    if (!topic) return 0;
-    
-    const progress = getLocalProgress(selectedCourse._id, topicName);
-    const topicDurationSeconds = topic.duration * 60;
-    return Math.min(100, (progress.watchedDuration / topicDurationSeconds) * 100);
   };
 
   const handleOpenInNewTab = (topic: Topic) => {
@@ -534,21 +156,17 @@ const StreamLearningInterface = () => {
   const handleTakeExam = () => {
     console.log('Take exam clicked:', {
       stream,
-      examEligible,
-      completedTopics: courseProgress.completedTopics,
-      totalTopics: courseProgress.totalTopics
+      completedTopics: 0,
+      totalTopics: selectedCourse?.topics.length || 0
     });
 
-    if (examEligible) {
-      console.log('Navigating to exam page for stream:', stream);
-      navigate(`/exam/${stream}`);
-    } else {
-      toast({
-        title: 'Not Eligible',
-        description: `You need to reach 80% watched to unlock the exam. Current: ${Math.round(courseProgress.overallProgress)}%`,
-        variant: 'destructive'
-      });
-    }
+    toast({
+      title: 'Exam Feature',
+      description: 'Exam functionality is available for this stream.',
+      variant: 'default'
+    });
+    
+    navigate(`/exam/${stream}`);
   };
 
   const goToNextTopic = () => {
@@ -559,24 +177,6 @@ const StreamLearningInterface = () => {
       const nextTopic = selectedCourse.topics[nextIndex];
       setCurrentTopicIndex(nextIndex);
       setSelectedTopic(nextTopic);
-      
-      // Load progress for next topic
-      const existingProgress = getLocalProgress(selectedCourse._id, nextTopic.name);
-      const topicDurationSeconds = nextTopic.duration * 60;
-      const progressPercentage = Math.min(100, (existingProgress.watchedDuration / topicDurationSeconds) * 100);
-      
-      setVideoProgress(progressPercentage);
-      setRealWatchedSeconds(existingProgress.watchedDuration);
-      setVideoStartTime(Date.now());
-      setIsTrackingProgress(false);
-
-      if (progressIntervalId) {
-        clearInterval(progressIntervalId);
-        setProgressIntervalId(null);
-      }
-
-      const intervalId = startRealProgressTracking(nextTopic);
-      setProgressIntervalId(intervalId);
     }
   };
 
@@ -586,28 +186,6 @@ const StreamLearningInterface = () => {
       const prevTopic = selectedCourse?.topics[prevIndex];
       setCurrentTopicIndex(prevIndex);
       setSelectedTopic(prevTopic || null);
-      
-      if (prevTopic) {
-        const existingProgress = getLocalProgress(selectedCourse!._id, prevTopic.name);
-        const topicDurationSeconds = prevTopic.duration * 60;
-        const progressPercentage = Math.min(100, (existingProgress.watchedDuration / topicDurationSeconds) * 100);
-        
-        setVideoProgress(progressPercentage);
-        setRealWatchedSeconds(existingProgress.watchedDuration);
-      }
-      
-      setVideoStartTime(Date.now());
-      setIsTrackingProgress(false);
-
-      if (progressIntervalId) {
-        clearInterval(progressIntervalId);
-        setProgressIntervalId(null);
-      }
-
-      if (prevTopic) {
-        const intervalId = startRealProgressTracking(prevTopic);
-        setProgressIntervalId(intervalId);
-      }
     }
   };
 
@@ -656,127 +234,6 @@ const StreamLearningInterface = () => {
     <>
       <Navbar />
       
-      {/* Video Modal */}
-      <Dialog open={isVideoModalOpen} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-w-4xl w-full h-[80vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>{selectedTopic?.name}</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => selectedTopic && handleOpenInNewTab(selectedTopic)}
-                >
-                  <ExternalLink className="h-4 w-4 mr-1" />
-                  Open in New Tab
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCloseModal}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="flex-1 flex flex-col">
-            {selectedTopic && (
-              <>
-                {/* YouTube Video Embed */}
-                <div className="flex-1 bg-black rounded-lg mb-4">
-                  {extractYouTubeVideoId(selectedTopic.link) ? (
-                    <iframe
-                      src={`https://www.youtube.com/embed/${extractYouTubeVideoId(selectedTopic.link)}?autoplay=1`}
-                      title={selectedTopic.name}
-                      className="w-full h-full rounded-lg"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white">
-                      <div className="text-center">
-                        <Video className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                        <p className="text-lg mb-2">Video not available</p>
-                        <Button 
-                          onClick={() => handleOpenInNewTab(selectedTopic)}
-                          variant="default"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open Video Link
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Progress Tracking */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Watching Progress</span>
-                    <span className="text-sm text-gray-600">{Math.round(videoProgress)}%</span>
-                  </div>
-                  <Progress value={videoProgress} className="h-2 mb-4" />
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                      <Button
-                        variant="outline"
-                        onClick={goToPreviousTopic}
-                        disabled={currentTopicIndex === 0}
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-2" />
-                        Previous
-                      </Button>
-                      
-                      <div className="text-sm text-gray-600">
-                        {isTopicWatched(selectedTopic.name) ? (
-                          <span className="flex items-center text-green-600">
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Completed
-                          </span>
-                        ) : isTrackingProgress ? (
-                          <span className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1" />
-                            Watching... ({realWatchedSeconds}s)
-                          </span>
-                        ) : (
-                          <span className="flex items-center text-gray-500">
-                            <Clock className="h-4 w-4 mr-1" />
-                            Not completed yet
-                          </span>
-                        )}
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        onClick={goToNextTopic}
-                        disabled={currentTopicIndex === (selectedCourse?.topics?.length || 0) - 1}
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </div>
-                    
-                    <Button
-                      onClick={() => selectedTopic && handleManualComplete(selectedTopic)}
-                      variant="default"
-                      size="sm"
-                      disabled={isTopicWatched(selectedTopic.name)}
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {isTopicWatched(selectedTopic.name) ? 'Completed' : 'Mark as Completed'}
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -799,8 +256,8 @@ const StreamLearningInterface = () => {
               </div>
               
               <div className="mt-4 sm:mt-0">
-                <Badge variant={courseProgress.overallProgress >= 100 ? "default" : "secondary"} className="text-sm">
-                  {courseProgress.completedTopics}/{courseProgress.totalTopics} Topics
+                <Badge variant="secondary" className="text-sm">
+                  {selectedCourse?.topics.length || 0} Topics
                 </Badge>
               </div>
             </div>
@@ -808,12 +265,14 @@ const StreamLearningInterface = () => {
 
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Content Section - Clean white area */}
+            {/* Content Section */}
             <div className="lg:col-span-3">
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <span>Welcome to {selectedCourse?.courseName}</span>
+                    <span>
+                      {selectedTopic ? selectedTopic.name : `Welcome to ${selectedCourse?.courseName}`}
+                    </span>
                     {selectedTopic && (
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -823,45 +282,108 @@ const StreamLearningInterface = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center min-h-[500px]">
-                    <div className="text-center max-w-md mx-auto p-8">
-                      <BookOpen className="h-20 w-20 text-gray-400 mx-auto mb-6" />
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                        Welcome to {selectedCourse?.courseName}
-                      </h3>
-                      <p className="text-gray-600 mb-2">
-                        Ready to start your learning journey?
-                      </p>
-                      <p className="text-gray-500 text-sm mb-6">
-                        Select a topic from the sidebar to begin watching the course content
-                      </p>
-                      <Button 
-                        onClick={() => {
-                          const firstTopic = selectedCourse?.topics?.[0];
-                          if (firstTopic) {
-                            handleTopicClick(firstTopic, 0);
-                          } else {
-                            toast({
-                              title: 'No Topics',
-                              description: 'No topics available for this course.',
-                              variant: 'destructive'
-                            });
-                          }
-                        }}
-                        variant="default"
-                        size="lg"
-                        className="flex items-center gap-2 mx-auto"
-                      >
-                        <Play className="h-4 w-4" />
-                        Start Learning
-                      </Button>
+                  {selectedTopic ? (
+                    <div className="bg-white rounded-lg">
+                      {/* YouTube Video Embed */}
+                      <div className="bg-black rounded-lg mb-4 aspect-video">
+                        {extractYouTubeVideoId(selectedTopic.link) ? (
+                          <iframe
+                            src={`https://www.youtube.com/embed/${extractYouTubeVideoId(selectedTopic.link)}?autoplay=1`}
+                            title={selectedTopic.name}
+                            className="w-full h-full rounded-lg"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white">
+                            <div className="text-center">
+                              <Video className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                              <p className="text-lg mb-2">Video not available</p>
+                              <Button 
+                                onClick={() => handleOpenInNewTab(selectedTopic)}
+                                variant="default"
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Open Video Link
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Video Controls */}
+                      <div className="flex justify-between items-center mt-4">
+                        <div className="flex items-center gap-4">
+                          <Button
+                            variant="outline"
+                            onClick={goToPreviousTopic}
+                            disabled={currentTopicIndex === 0}
+                          >
+                            <ChevronLeft className="h-4 w-4 mr-2" />
+                            Previous
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            onClick={goToNextTopic}
+                            disabled={currentTopicIndex === (selectedCourse?.topics?.length || 0) - 1}
+                          >
+                            Next
+                            <ChevronRight className="h-4 w-4 ml-2" />
+                          </Button>
+                        </div>
+                        
+                        <Button
+                          onClick={() => handleOpenInNewTab(selectedTopic)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open in New Tab
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center min-h-[500px]">
+                      <div className="text-center max-w-md mx-auto p-8">
+                        <BookOpen className="h-20 w-20 text-gray-400 mx-auto mb-6" />
+                        <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                          Welcome to {selectedCourse?.courseName}
+                        </h3>
+                        <p className="text-gray-600 mb-2">
+                          Ready to start your learning journey?
+                        </p>
+                        <p className="text-gray-500 text-sm mb-6">
+                          Select a topic from the sidebar to begin watching the course content
+                        </p>
+                        <Button 
+                          onClick={() => {
+                            const firstTopic = selectedCourse?.topics?.[0];
+                            if (firstTopic) {
+                              handleTopicClick(firstTopic, 0);
+                            } else {
+                              toast({
+                                title: 'No Topics',
+                                description: 'No topics available for this course.',
+                                variant: 'destructive'
+                              });
+                            }
+                          }}
+                          variant="default"
+                          size="lg"
+                          className="flex items-center gap-2 mx-auto"
+                        >
+                          <Play className="h-4 w-4" />
+                          Start Learning
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
 
-            {/* Sidebar - Topics & Progress */}
+            {/* Sidebar - Topics */}
             <div className="lg:col-span-1">
               <Card className="shadow-md">
                 <CardHeader>
@@ -879,9 +401,7 @@ const StreamLearningInterface = () => {
                 <CardContent>
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {selectedCourse?.topics.map((topic, index) => {
-                      const isWatched = isTopicWatched(topic.name);
                       const isCurrent = index === currentTopicIndex;
-                      const topicProgress = getTopicProgressPercentage(topic.name);
 
                       return (
                         <div
@@ -890,38 +410,18 @@ const StreamLearningInterface = () => {
                             isCurrent
                               ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300'
-                          } ${
-                            isWatched ? 'bg-green-50 border-green-200' : ''
                           }`}
                           onClick={() => handleTopicClick(topic, index)}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {isWatched ? (
-                                <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                              ) : (
-                                <div className="relative">
-                                  <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                  {topicProgress > 0 && (
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                      <span className="text-[10px] font-bold text-gray-600">
-                                        {Math.round(topicProgress)}%
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+                              <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />
                               <span className="text-sm font-medium truncate">{topic.name}</span>
                             </div>
                             <Badge variant="outline" className="text-xs flex-shrink-0">
                               {topic.duration}m
                             </Badge>
                           </div>
-                          {!isWatched && topicProgress > 0 && (
-                            <div className="mt-2">
-                              <Progress value={topicProgress} className="h-1" />
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -933,42 +433,36 @@ const StreamLearningInterface = () => {
                     )}
                   </div>
 
-                  {/* Course Progress Summary */}
+                  {/* Course Summary */}
                   <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-semibold text-sm mb-2">Progress Summary</h4>
+                    <h4 className="font-semibold text-sm mb-2">Course Summary</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span>Completed Topics:</span>
-                        <span>
-                          {courseProgress.completedTopics}/{courseProgress.totalTopics}
-                        </span>
+                        <span>Total Topics:</span>
+                        <span>{selectedCourse?.topics.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total Duration:</span>
+                        <span>{selectedCourse?.totalDuration} min</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Exam Available:</span>
                         <span>
-                          {examEligible ? (
-                            <Badge variant="default" className="text-xs">
-                              Yes
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              No
-                            </Badge>
-                          )}
+                          <Badge variant="default" className="text-xs">
+                            Yes
+                          </Badge>
                         </span>
                       </div>
                     </div>
 
-                    {examEligible && (
-                      <Button
-                        onClick={handleTakeExam}
-                        className="w-full mt-4 flex items-center justify-center gap-2"
-                        variant="default"
-                      >
-                        <Award className="h-4 w-4" />
-                        Take Stream Exam
-                      </Button>
-                    )}
+                    <Button
+                      onClick={handleTakeExam}
+                      className="w-full mt-4 flex items-center justify-center gap-2"
+                      variant="default"
+                    >
+                      <Award className="h-4 w-4" />
+                      Take Stream Exam
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
