@@ -32,8 +32,8 @@ type CertificateData = {
   courseName: string;
   courseDescription?: string;
   stream?: string;
-  enrollmentDate?: string; // expected to be a formatted date string
-  completedDate?: string; // expected to be a formatted date string
+  enrollmentDate?: string; 
+  completedDate?: string;
 };
 
 const Pack365CertificatePage: React.FC = () => {
@@ -150,8 +150,7 @@ const Pack365CertificatePage: React.FC = () => {
       return;
     }
 
-    // html2canvas might not be included in the project; check before using
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
     const html2canvas = (window as any).html2canvas;
     if (!html2canvas) {
       toast({
@@ -284,14 +283,9 @@ const Pack365CertificatePage: React.FC = () => {
     }
   };
 
-  /**
-   * Course body component (AP-like phrasing adapted for a course)
-   * - Does NOT modify certificate data.
-   * - Incorporates descriptive text from the provided reference image but adapts "internship" -> "course".
-   */
   const Pack365CourseBody: React.FC<{
     certificate: CertificateData;
-    providerName?: string; // optional provider/company name (e.g., "Triaright Solutions Pvt. Ltd.")
+    providerName?: string;
   }> = ({ certificate, providerName }) => {
     const provider = providerName || "Pack365";
     const start = certificate.enrollmentDate || "N/A";
@@ -299,7 +293,7 @@ const Pack365CertificatePage: React.FC = () => {
 
     return (
       <div className="px-8 text-center max-w-3xl mx-auto">
-        <h3 className="text-2xl font-bold mb-4">COURSE CERTIFICATE</h3>
+        <h3 className="text-2xl font-bold mb-4">Certificate of Completion</h3>
 
         <p className="text-base text-gray-800 leading-relaxed mb-6">
           This is to certify that <strong>{certificate.studentName}</strong> has successfully completed the professional course <strong>{certificate.courseName}</strong> ({certificate.stream || "—"}). The course was provided by <strong>{provider}</strong>. During the course period from <strong>{start}</strong> to <strong>{end}</strong>, the candidate demonstrated commendable dedication, technical competence, and a proactive attitude toward assigned tasks.
