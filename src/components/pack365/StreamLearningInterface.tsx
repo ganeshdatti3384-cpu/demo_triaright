@@ -93,6 +93,9 @@ interface Enrollment {
   isExamCompleted?: boolean;
   isPassed?: boolean;
   normalizedEnrollmentId?: string;
+  enrollmentId?: string;
+  completedDate?: string;
+  enrollmentDate?: string;
 }
 
 const StreamLearningInterface = () => {
@@ -159,9 +162,9 @@ const StreamLearningInterface = () => {
       // Check if exam is passed - SIMPLIFIED LOGIC
       const passedExam = streamEnrollment.isPassed || 
                         streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
-                        streamEnrollment.bestExamScore >= 50 ||
-                        streamEnrollment.examScore >= 50;
-      setHasPassedExam(passedExam);
+                        (streamEnrollment.bestExamScore !== undefined && streamEnrollment.bestExamScore >= 50) ||
+                        (streamEnrollment.examScore !== undefined && streamEnrollment.examScore >= 50);
+      setHasPassedExam(passedExam || false);
       
       initializeProgressMaps(streamEnrollment);
 
@@ -412,7 +415,7 @@ const StreamLearningInterface = () => {
     }
   };
 
-  // SIMPLIFIED: Direct navigation to certificate page
+  // UPDATED: Handle certificate navigation
   const handleViewCertificate = () => {
     if (!enrollment || !selectedCourse) {
       toast({
@@ -426,22 +429,25 @@ const StreamLearningInterface = () => {
     try {
       setNavigatingToCertificate(true);
       
-      // Get enrollment ID - ensure it's a string
-      const enrollmentId = enrollment.normalizedEnrollmentId || 
-                          enrollment._id?.toString() || 
-                          enrollment.enrollmentId ||
-                          enrollment._id; // Fallback to raw _id
+      // Use _id directly since that's what the enrollment schema uses
+      const enrollmentId = enrollment._id?.toString();
       
-      console.log('Navigating to certificate with enrollmentId:', enrollmentId);
+      if (!enrollmentId) {
+        toast({
+          title: 'Certificate Error',
+          description: 'Unable to determine enrollment ID',
+          variant: 'destructive'
+        });
+        return;
+      }
       
-      // Navigate to certificate page with ALL required data
+      console.log('Navigating to certificate with enrollmentId:', enrollmentId, 'courseId:', selectedCourse.courseId);
+      
+      // Navigate to certificate page
       navigate('/pack365-certificate', {
-        replace: true,
         state: {
           enrollmentId: enrollmentId,
-          courseId: selectedCourse._id,
-          courseName: selectedCourse.courseName,
-          stream: stream
+          courseId: selectedCourse.courseId, // Use courseId instead of _id
         }
       });
       
@@ -880,7 +886,7 @@ const StreamLearningInterface = () => {
                       )}
                     </Button>
 
-                    {/* Certificate Button - SIMPLIFIED */}
+                    {/* Certificate Button */}
                     {hasPassedExam && (
                       <Button
                         onClick={handleViewCertificate}
@@ -927,5 +933,3 @@ const StreamLearningInterface = () => {
 };
 
 export default StreamLearningInterface;
-
-
