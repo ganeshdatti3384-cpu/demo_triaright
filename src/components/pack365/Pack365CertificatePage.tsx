@@ -32,7 +32,7 @@ type CertificateData = {
   courseName: string;
   courseDescription?: string;
   stream?: string;
-  enrollmentDate?: string; 
+  enrollmentDate?: string;
   completedDate?: string;
 };
 
@@ -150,7 +150,8 @@ const Pack365CertificatePage: React.FC = () => {
       return;
     }
 
- 
+    // html2canvas might not be included in the project; check before using
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const html2canvas = (window as any).html2canvas;
     if (!html2canvas) {
       toast({
@@ -217,7 +218,7 @@ const Pack365CertificatePage: React.FC = () => {
         return;
       }
 
-      // Preload background image
+      // Preload background image used in preview (if any) to improve rendering
       const preloadImage = new Image();
       preloadImage.crossOrigin = "anonymous";
       preloadImage.src = "/lovable-uploads/certificate-bg.jpg";
@@ -249,6 +250,7 @@ const Pack365CertificatePage: React.FC = () => {
       const imgData = canvas.toDataURL("image/png", 1.0);
 
       if (jsPDFLib) {
+        // create PDF using jsPDF
         const pdf = new jsPDFLib({
           orientation: "portrait",
           unit: "px",
@@ -257,7 +259,7 @@ const Pack365CertificatePage: React.FC = () => {
         pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
         pdf.save(`${formattedCertificateId() || certificate.courseId}.pdf`);
       } else {
-        // fallback to PNG download
+        // fallback: download PNG if jsPDF not available
         const a = document.createElement("a");
         a.href = imgData;
         a.download = `${formattedCertificateId() || certificate.courseId}.png`;
@@ -291,21 +293,33 @@ const Pack365CertificatePage: React.FC = () => {
     const start = certificate.enrollmentDate || "N/A";
     const end = certificate.completedDate || new Date().toLocaleDateString();
 
+    // Body adapted from provided reference images but using "course" wording (not internship).
     return (
       <div className="px-8 text-center max-w-3xl mx-auto">
-        <h3 className="text-2xl font-bold mb-4">Certificate of Completion</h3>
+        <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-2">Certificate of Completion</h2>
+        <p className="text-sm text-gray-700 mb-6">This certifies that</p>
 
-        <p className="text-base text-gray-800 leading-relaxed mb-6">
-          This is to certify that <strong>{certificate.studentName}</strong> has successfully completed the professional course <strong>{certificate.courseName}</strong> ({certificate.stream || "—"}). The course was provided by <strong>{provider}</strong>. During the course period from <strong>{start}</strong> to <strong>{end}</strong>, the candidate demonstrated commendable dedication, technical competence, and a proactive attitude toward assigned tasks.
-        </p>
+        <h3 className="text-2xl font-semibold text-gray-900 mb-2">{certificate.studentName}</h3>
+        <p className="text-sm text-gray-700 mb-4">has successfully completed the course</p>
+        <h4 className="text-xl font-medium text-gray-900 mb-6">{certificate.courseName}</h4>
+        {certificate.stream && <p className="text-sm text-gray-700 mb-6">{certificate.stream} Stream</p>}
 
-        <p className="text-base text-gray-800 leading-relaxed mb-6">
-          The program included hands-on experience with front-end and back-end web development tools, collaboration with project teams, and regular participation in code reviews and technical discussions — all designed to enhance practical skills and real-world development capabilities.
-        </p>
+        <div className="mb-6 mx-auto text-left max-w-2xl text-gray-800">
+          <p className="mb-4">
+            This is to certify that <strong>{certificate.studentName}</strong> has successfully completed the professional
+            course <strong>{certificate.courseName}</strong> {certificate.stream ? `(${certificate.stream})` : ""}. The course was provided by <strong>{provider}</strong>.
+            During the course period from <strong>{start}</strong> to <strong>{end}</strong>, the candidate demonstrated commendable dedication, technical competence, and a proactive attitude toward assigned tasks.
+          </p>
 
-        <p className="text-base text-gray-800 leading-relaxed">
-          We appreciate the learner’s contribution and wish them continued success in their future endeavors.
-        </p>
+          <p className="mb-4">
+            The program included hands-on experience with front-end and back-end web development tools, collaboration with project teams,
+            and regular participation in code reviews and technical discussions — all designed to enhance practical skills and real-world development capabilities.
+          </p>
+
+          <p>
+            We appreciate the learner’s contribution and wish them continued success in their future endeavors.
+          </p>
+        </div>
       </div>
     );
   };
@@ -338,10 +352,12 @@ const Pack365CertificatePage: React.FC = () => {
                 Certificate of Completion
               </Badge>
 
-              {/* Keep only Download image (PNG) shortcut in header for convenience */}
-              <Button onClick={handleDownloadPNG} variant="secondary">
-                <Download className="h-4 w-4 mr-2" />
-                Download PNG
+              {/* Keep only Download PNG & PDF controls as requested; Print/Share removed */}
+              <Button onClick={handleDownloadPDF} disabled={generating || !certificate} className="bg-green-600 hover:bg-green-700 px-3 py-2">
+                {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4" />}
+              </Button>
+              <Button onClick={handleDownloadPNG} className="px-3 py-2">
+                <Download className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -455,10 +471,10 @@ const Pack365CertificatePage: React.FC = () => {
             </Card>
           )}
 
-          {/* Actions */}
+          {/* Actions (only downloads available) */}
           <Card className="mb-6">
             <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+              <div className="flex justify-center space-x-4">
                 <Button
                   onClick={handleDownloadPDF}
                   disabled={generating || !certificate}
@@ -472,17 +488,15 @@ const Pack365CertificatePage: React.FC = () => {
                   ) : (
                     <>
                       <Download className="h-4 w-4 mr-2" />
-                      Download Certificate
+                      Download Certificate (PDF)
                     </>
                   )}
                 </Button>
 
-                <Button onClick={handleDownloadPNG} variant="outline" className="px-8">
+                <Button onClick={handleDownloadPNG} disabled={!certificate} className="px-8">
                   <Download className="h-4 w-4 mr-2" />
                   Download PNG
                 </Button>
-
-                {/* Print and Share buttons removed as requested */}
               </div>
             </CardContent>
           </Card>
@@ -496,6 +510,7 @@ const Pack365CertificatePage: React.FC = () => {
             <CardContent className="flex justify-center p-4">
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white shadow-lg">
                 <div ref={previewRef} className="scale-90 origin-top">
+                  {/* Certificate visual - single unified body (removed top duplicate header and removed overlay signature box) */}
                   <div
                     ref={certRef}
                     className="certificate-container bg-white relative"
@@ -508,58 +523,35 @@ const Pack365CertificatePage: React.FC = () => {
                       backgroundRepeat: "no-repeat",
                     }}
                   >
-                    <div className="relative z-10 h-full flex flex-col items-center justify-center p-16 text-center">
-                      {/* Top Title area */}
-                      <div className="mb-6 mt-6 w-full text-center">
-                        <h2 className="text-3xl font-extrabold tracking-tight text-gray-900">
-                          Certificate of Completion
-                        </h2>
-                        <p className="mt-1 text-sm text-gray-700">This certifies that</p>
-                        <h3 className="mt-4 text-2xl font-semibold text-gray-900">{certificate?.studentName}</h3>
-                        <p className="mt-2 text-sm text-gray-700">has successfully completed the course</p>
-                        <h4 className="mt-3 text-xl font-medium text-gray-900">{certificate?.courseName}</h4>
-                        {certificate?.stream && <p className="mt-2 text-sm text-gray-700">{certificate.stream} Stream</p>}
-                      </div>
+                    <div className="relative z-10 h-full flex flex-col items-center justify-start p-16 text-center">
+                      {/* Keep only the single certificate body (title+student+course+detailed text) */}
+                      {certificate && <Pack365CourseBody certificate={certificate} providerName={undefined} />}
 
-                      {/* Course description / body adapted from provided image text */}
-                      <div className="mb-8 max-w-2xl px-8">
-                        {certificate && (
-                          <Pack365CourseBody
-                            certificate={certificate}
-                            // Do not override provider unless needed. Left undefined to preserve data integrity.
-                            providerName={undefined}
-                          />
-                        )}
-                      </div>
-
-                      {/* Bottom-left contact area: move Completed On & Certificate ID above Mail id & contact */}
+                      {/* Bottom fixed area: Completed On & Certificate ID (moved above mail/contact) and mail only (hide student phone) */}
                       <div className="mt-auto w-full px-12 pb-8">
-                        <div className="flex justify-between items-start text-sm text-gray-700 mb-4">
-                          {/* Left column: Completed On & Certificate ID (moved above mail/contact as requested) */}
-                          <div>
+                        <div className="flex justify-between items-end text-sm text-gray-700">
+                          {/* Left column: Completed On & Certificate ID + mail */}
+                          <div className="text-left">
                             <p className="font-semibold">Completed On:</p>
-                            <p className="mb-2">{certificate?.completedDate || new Date().toLocaleDateString()}</p>
+                            <p className="mb-1">{certificate?.completedDate || new Date().toLocaleDateString()}</p>
 
-                            <p className="font-semibold">Certificate ID:</p>
+                            <p className="font-semibold mt-2">Certificate ID:</p>
                             <p className="font-mono mb-3">{formattedCertificateId()}</p>
 
-                            {/* Mail & contact below the Completed/ID */}
-                            <p className="font-semibold">Mail id :</p>
-                            <p className="mb-1">{certificate?.email || "—"}</p>
-                            <p className="font-semibold">contact :</p>
-                            <p>{certificate?.phoneNumber || "—"}</p>
+                            <div className="mt-2">
+                              <p className="font-semibold">Mail id :</p>
+                              <p className="mb-1">{certificate?.email || "—"}</p>
+                              {/* student contact number intentionally hidden as requested */}
+                            </div>
                           </div>
 
-                          {/* Right column: signature placeholder */}
+                          {/* Right column: signature area and signer (kept clean, removed overlay square) */}
                           <div className="text-right">
-                            <div className="w-36 h-36 bg-white border rounded-md flex items-center justify-center mx-auto">
-                              <div className="text-center">
-                                <p className="text-xs text-gray-500">Authorized By</p>
-                                <p className="font-semibold">Pack365 Team</p>
-                              </div>
+                            <div className="w-36 h-36 bg-transparent flex items-center justify-center mx-auto">
+                              {/* optional image signature could be placed here if available */}
                             </div>
 
-                            <p className="mt-2 text-sm text-gray-700">KISSHORE KUMAAR</p>
+                            <p className="mt-2 text-sm font-semibold text-gray-800">KISSHORE KUMAAR</p>
                             <p className="text-xs text-gray-500">Founder & Director - Triaright</p>
                           </div>
                         </div>
