@@ -15,8 +15,7 @@ import {
   GraduationCap,
   BookCopy,
   Users,
-  FileText,
-  Award
+  FileText
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -38,31 +37,13 @@ interface Course {
   documentLink?: string;
 }
 
-interface CourseProgressFromServer {
-  courseId?: string | { toString?: () => string } | any;
-  totalTopics?: number;
-  watchedTopics?: number;
-  isCompleted?: boolean;
-  completionPercentage?: number;
-}
-
-interface EnrollmentCourseFromServer {
-  courseId?: string;
-  courseName?: string;
-  description?: string;
-  topicsCount?: number;
-  progress?: CourseProgressFromServer | null;
-}
-
 interface StreamEnrollment {
   stream: string;
   enrollmentDate: string;
   expiresAt: string;
   coursesCount: number;
   totalTopics: number;
-  courses?: EnrollmentCourseFromServer[];
-  // keep any other fields that backend may return (like examAttempts, etc.)
-  [key: string]: any;
+  courses: Course[];
 }
 
 const SkeletonLoader = () => (
@@ -98,7 +79,6 @@ const Pack365StreamLearning = () => {
   const [enrollment, setEnrollment] = useState<StreamEnrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
-  const [allCoursesCompleted, setAllCoursesCompleted] = useState(false);
 
   useEffect(() => {
     const fetchStreamEnrollment = async () => {
@@ -118,7 +98,7 @@ const Pack365StreamLearning = () => {
         if (response.success && response.enrollments) {
           const streamEnrollments = response.enrollments as unknown as StreamEnrollment[];
           const currentEnrollment = streamEnrollments.find(
-            (e) => e.stream?.toLowerCase() === stream?.toLowerCase()
+            (e) => e.stream.toLowerCase() === stream?.toLowerCase()
           );
 
           if (currentEnrollment) {
@@ -126,68 +106,28 @@ const Pack365StreamLearning = () => {
             const coursesResponse = await pack365Api.getAllCourses();
             if (coursesResponse.success && coursesResponse.data) {
               const streamCourses = coursesResponse.data.filter(
-                (course: Course) => course.stream?.toLowerCase() === stream?.toLowerCase()
+                (course: Course) => course.stream.toLowerCase() === stream?.toLowerCase()
               );
-
-              // Merge server-side course progress (if available) into the UI course list
-              const mergedCourses = streamCourses.map((course: Course) => {
-                // Try to find matching entry from the enrollment returned by the server
-                const serverCourseEntry = (currentEnrollment.courses || []).find((c: EnrollmentCourseFromServer) => {
-                  // Compare by courseId (string), or by DB _id (if server returns that)
-                  const serverCourseIdStr = c?.courseId ?? (c?.progress?.courseId ? (c.progress.courseId.toString?.() ?? '') : '');
-                  const uiCourseIdStr = course.courseId ?? course._id;
-                  // Normalize to string
-                  try {
-                    return String(serverCourseIdStr) === String(uiCourseIdStr) || String(serverCourseIdStr) === String(course._id) || String(serverCourseIdStr) === String(course.courseId);
-                  } catch {
-                    return false;
-                  }
-                });
-
-                // prefer progress from serverCourseEntry.progress if available
-                const progressFromServer: CourseProgressFromServer | undefined = serverCourseEntry?.progress;
-
-                return {
-                  ...course,
-                  // attach a progress field that the UI can read
-                  progress: progressFromServer ? {
-                    totalTopics: progressFromServer.totalTopics ?? course.topics?.length ?? 0,
-                    watchedTopics: progressFromServer.watchedTopics ?? 0,
-                    isCompleted:!!progressFromServer.isCompleted,
-                    completionPercentage: progressFromServer.completionPercentage ?? 0
-                  } : undefined
-                };
-              });
-
-              // Calculate total topics based on the streamCourses
+              setAllCourses(streamCourses);
+              
+              // Calculate total topics
               let totalTopicsInStream = 0;
-              streamCourses.forEach((course: Course) => {
+              streamCourses.forEach(course => {
                 const courseTopics = course.topics?.length || 0;
                 totalTopicsInStream += courseTopics;
               });
 
-              const enhancedEnrollment: StreamEnrollment = {
+              // Enhance enrollment with data
+              const enhancedEnrollment = {
                 ...currentEnrollment,
-                courses: mergedCourses.map((c: any) => ({
-                  courseId: c.courseId,
-                  courseName: c.courseName,
-                  description: c.description,
-                  topicsCount: c.topics?.length || 0,
-                  progress: c.progress || null
-                })),
+                courses: streamCourses,
                 totalTopics: totalTopicsInStream,
                 coursesCount: streamCourses.length
               };
-
-              setAllCourses(streamCourses);
+              
               setEnrollment(enhancedEnrollment);
-
-              // Check if all courses are completed
-              checkAllCoursesCompleted(mergedCourses);
             } else {
-              // fallback: no courses returned but we have enrollment
               setEnrollment(currentEnrollment);
-              setAllCoursesCompleted(false);
             }
           } else {
             toast({ title: 'Access Denied', description: 'You are not enrolled in this stream.', variant: 'destructive' });
@@ -209,24 +149,6 @@ const Pack365StreamLearning = () => {
     fetchStreamEnrollment();
   }, [stream]);
 
-  const checkAllCoursesCompleted = (courses: any[]) => {
-    if (!courses || courses.length === 0) {
-      setAllCoursesCompleted(false);
-      return;
-    }
-
-    const allCompleted = courses.every(course => {
-      const progress = course.progress;
-      const completionPercentage = typeof progress?.completionPercentage === 'number'
-        ? progress.completionPercentage
-        : 0;
-      const isCompleted = completionPercentage === 100 || !!progress?.isCompleted;
-      return isCompleted;
-    });
-
-    setAllCoursesCompleted(allCompleted);
-  };
-
   const handleCourseStart = (course: Course) => {
     console.log('Starting course:', course.courseName);
     console.log('Navigation path:', `/pack365-learning/${stream}/course`);
@@ -239,80 +161,6 @@ const Pack365StreamLearning = () => {
         enrollment: enrollment
       } 
     });
-  };
-
-  // Improved certificate navigation handler - adds diagnostics + fallback
-  const handleGenerateCertificate = (e?: React.MouseEvent) => {
-    if (e && typeof (e as any).preventDefault === 'function') {
-      e.preventDefault();
-    }
-
-    console.log('[CERT] Generate Certificate clicked');
-    toast({ title: 'Generating', description: 'Preparing certificate...', variant: 'default' });
-
-    if (!enrollment) {
-      console.error('[CERT] No enrollment state available');
-      toast({
-        title: 'Error',
-        description: 'Enrollment not available.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Try a few common fields, and handle objects (ObjectId) gracefully
-    let enrollmentId: any = enrollment._id ?? enrollment.enrollmentId ?? enrollment.id ?? (enrollment as any).enrollmentId ?? (enrollment as any).enrollment?._id;
-    console.log('[CERT] Raw enrollment object:', enrollment);
-    console.log('[CERT] Candidate IDs:', {
-      _id: (enrollment as any)._id,
-      enrollmentId: (enrollment as any).enrollmentId,
-      id: (enrollment as any).id,
-    });
-
-    if (!enrollmentId) {
-      console.error('[CERT] enrollmentId not found in enrollment object');
-      toast({
-        title: 'Error',
-        description: 'Unable to generate certificate. Enrollment ID not found.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Normalize to string
-    try {
-      enrollmentId = typeof enrollmentId === 'object' ? String(enrollmentId) : enrollmentId;
-    } catch (err) {
-      console.warn('[CERT] Could not stringify enrollmentId, fallback to template', err);
-      enrollmentId = `${enrollmentId}`;
-    }
-
-    const encodedId = encodeURIComponent(String(enrollmentId));
-    const targetPath = `/pack365-certificate/${encodedId}`;
-
-    console.log('[CERT] Navigating to targetPath:', targetPath);
-    // Try react-router navigation first
-    try {
-      navigate(targetPath);
-    } catch (navErr) {
-      console.error('[CERT] react-router navigate threw error:', navErr);
-    }
-
-    // After short delay, if navigation did not happen (e.g. ProtectedRoute blocked it),
-    // fallback to a full page redirect so we can test route accessibility.
-    setTimeout(() => {
-      const currentPath = window.location.pathname;
-      console.log('[CERT] After navigate, currentPath =', currentPath);
-      if (!currentPath.includes('/pack365-certificate')) {
-        console.warn('[CERT] react-router navigation did not take effect; falling back to window.location.href');
-        toast({
-          title: 'Fallback',
-          description: 'Falling back to full page navigation to certificate (for debugging).',
-          variant: 'warning'
-        });
-        window.location.href = targetPath;
-      }
-    }, 300);
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
@@ -336,20 +184,6 @@ const Pack365StreamLearning = () => {
     );
   }
 
-  // Helper to determine completion for a course (UI only)
-  const getCourseStatus = (course: Course & { progress?: CourseProgressFromServer | any }) => {
-    const progress = course.progress;
-    const completionPercentage = typeof progress?.completionPercentage === 'number'
-      ? progress.completionPercentage
-      : // fallback compute from topics (if progress missing, try to guess 0)
-        0;
-    const isCompleted = completionPercentage === 100 || !!progress?.isCompleted;
-    return {
-      completionPercentage,
-      isCompleted
-    };
-  };
-
   return (
     <>
       <Navbar />
@@ -359,24 +193,6 @@ const Pack365StreamLearning = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 capitalize">{stream} Stream</h1>
             <p className="text-gray-600 mt-2">Continue your learning journey</p>
-            
-            {/* Certificate Generation Button - Show when all courses completed */}
-            {allCoursesCompleted && (
-              <div className="mt-4">
-                <Button 
-                  type="button"
-                  onClick={handleGenerateCertificate}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  size="lg"
-                >
-                  <Award className="h-5 w-5 mr-2" />
-                  Generate Certificate
-                </Button>
-                <p className="text-sm text-green-600 mt-2">
-                  Congratulations! You've completed all courses in this stream. Generate your certificate now.
-                </p>
-              </div>
-            )}
           </div>
 
           {/* --- Main Content Grid --- */}
@@ -405,14 +221,6 @@ const Pack365StreamLearning = () => {
                       <span className="text-gray-500 flex items-center gap-2"><Users className="h-4 w-4"/>Access Until</span>
                       <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
                    </div>
-                   
-                   {/* Completion Status in Sidebar */}
-                   <div className="flex items-center justify-between pt-2 border-t">
-                      <span className="text-gray-500 flex items-center gap-2"><Award className="h-4 w-4"/>Stream Completion</span>
-                      <span className={`font-semibold ${allCoursesCompleted ? 'text-green-600' : 'text-gray-800'}`}>
-                        {allCoursesCompleted ? 'Completed' : 'In Progress'}
-                      </span>
-                   </div>
                 </CardContent>
               </Card>
             </aside>
@@ -426,79 +234,47 @@ const Pack365StreamLearning = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {enrollment.courses && enrollment.courses.length > 0 ? (
-                    enrollment.courses.map((course: any) => {
-                      // course here is the merged item (contains progress if server provided)
-                      const uiCourse = allCourses.find(c => String(c.courseId) === String(course.courseId) || String(c._id) === String(course.courseId)) || (course as any);
-                      // prefer uiCourse (full course object) but also copy progress from enrollment.course entry
-                      const merged = {
-                        ...uiCourse,
-                        courseId: uiCourse.courseId ?? course.courseId,
-                        courseName: uiCourse.courseName ?? course.courseName,
-                        description: uiCourse.description ?? course.description,
-                        topics: uiCourse.topics ?? [],
-                        totalDuration: uiCourse.totalDuration ?? uiCourse.totalDuration ?? 0,
-                        progress: course.progress ?? (uiCourse as any).progress ?? null
-                      };
-
-                      const { completionPercentage, isCompleted } = getCourseStatus(merged);
-
-                      return (
-                        <div key={merged.courseId || merged._id} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
-                          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between mb-3">
-                                <h3 className="font-semibold text-gray-800 text-lg">{merged.courseName}</h3>
-                                <Badge variant="secondary">
-                                  {merged.topics?.length || 0} topics
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{merged.description}</p>
-                              
-                              <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
-                                <span className="flex items-center gap-1.5">
-                                  <Clock className="h-4 w-4" /> 
-                                  {merged.totalDuration} minutes
-                                </span>
-                                <span className="flex items-center gap-1.5">
-                                  <BookOpen className="h-4 w-4" /> 
-                                  {merged.topics?.length || 0} topics
-                                </span>
-                                {merged.documentLink && (
-                                  <span className="flex items-center gap-1.5">
-                                    <FileText className="h-4 w-4" /> 
-                                    Resources
-                                  </span>
-                                )}
-
-                                {/* --- Selection square area: show Course Status only --- */}
-                                <div className="ml-4">
-                                  <div className="w-56 border rounded-md p-3 bg-white shadow-sm">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-gray-500">Course Status</span>
-                                      <span className={`text-xs font-semibold ${isCompleted ? 'text-green-700' : 'text-gray-700'}`}>
-                                        {isCompleted ? 'Completed' : `${completionPercentage}%`}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
+                    enrollment.courses.map((course) => (
+                      <div key={course.courseId} className="border bg-white rounded-lg p-6 hover:border-blue-300 hover:shadow-sm transition-all">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between mb-3">
+                              <h3 className="font-semibold text-gray-800 text-lg">{course.courseName}</h3>
+                              <Badge variant="secondary">
+                                {course.topics?.length || 0} topics
+                              </Badge>
                             </div>
+                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
                             
-                            <div className="flex flex-col items-end gap-3">
-                              <Button 
-                                onClick={() => handleCourseStart(merged)}
-                                className="w-full sm:w-auto flex-shrink-0"
-                                variant="default"
-                                type="button"
-                              >
-                                <Play className="h-4 w-4 mr-2" />
-                                {isCompleted ? 'Review Course' : 'Start Learning'}
-                              </Button>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
+                              <span className="flex items-center gap-1.5">
+                                <Clock className="h-4 w-4" /> 
+                                {course.totalDuration} minutes
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <BookOpen className="h-4 w-4" /> 
+                                {course.topics?.length || 0} topics
+                              </span>
+                              {course.documentLink && (
+                                <span className="flex items-center gap-1.5">
+                                  <FileText className="h-4 w-4" /> 
+                                  Resources
+                                </span>
+                              )}
                             </div>
                           </div>
+                          
+                          <Button 
+                            onClick={() => handleCourseStart(course)}
+                            className="w-full sm:w-auto flex-shrink-0"
+                            variant="default"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Start Learning
+                          </Button>
                         </div>
-                      );
-                    })
+                      </div>
+                    ))
                   ) : (
                     <div className="text-center py-8">
                       <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -530,12 +306,6 @@ const Pack365StreamLearning = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Access expires:</span>
                       <span className="text-sm font-medium">{formatDate(enrollment.expiresAt)}</span>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t">
-                      <span className="text-sm text-gray-600">Stream completion status:</span>
-                      <span className={`text-sm font-medium ${allCoursesCompleted ? 'text-green-600' : 'text-orange-600'}`}>
-                        {allCoursesCompleted ? 'Completed - Ready for Certificate' : 'In Progress'}
-                      </span>
                     </div>
                   </div>
                 </CardContent>
