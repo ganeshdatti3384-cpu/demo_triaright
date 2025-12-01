@@ -646,24 +646,7 @@ const StreamLearningInterface = () => {
                 Back to Stream
               </Button>
 
-              {/* Progress Bar */}
-              <div className="flex items-center gap-4">
-                <div className="text-sm text-gray-600">
-                  {completionStats.completed} / {completionStats.total} topics completed
-                </div>
-                <div className="w-32 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${completionStats.percentage}%` }}
-                  ></div>
-                </div>
-                <Badge variant={completionStats.percentage === 100 ? "default" : "secondary"}>
-                  {completionStats.percentage}%
-                </Badge>
-                {refreshingEnrollment && (
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                )}
-              </div>
+              {/* Removed: Progress Bar Section */}
             </div>
             
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -757,7 +740,7 @@ const StreamLearningInterface = () => {
                         )}
                       </div>
 
-                      {/* Video Controls */}
+                      {/* Video Controls - Removed "Open in New Tab" button */}
                       <div className="flex justify-between items-center mt-4">
                         <div className="flex items-center gap-4">
                           <Button
@@ -786,14 +769,7 @@ const StreamLearningInterface = () => {
                               Completed
                             </Badge>
                           )}
-                          <Button
-                            onClick={() => handleOpenInNewTab(selectedTopic)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Open in New Tab
-                          </Button>
+                          {/* Removed: Open in New Tab button */}
                         </div>
                       </div>
                     </div>
