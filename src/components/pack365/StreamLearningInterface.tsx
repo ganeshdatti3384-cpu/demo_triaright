@@ -544,87 +544,108 @@ const StreamLearningInterface = () => {
     }
   };
 
-  /**
-   * FIXED: Certificate button navigation
-   *
-   * Problem observed:
-   * - Certificate button previously navigated to '/pack365-certificate' and relied only on state.
-   * - In some flows the certificate page expects an enrollmentId either in the URL params or in state.
-   * - If the enrollmentId wasn't present in the enrollment object (or had a different key), certificate page could not find the enrollment and failed.
-   *
-   * Fix implemented:
-   * - Ensure we construct a reliable enrollmentId by checking multiple possible fields:
-   *     normalizedEnrollmentId, _id, enrollmentId
-   * - If not available, try to re-fetch enrollments from the backend (pack365Api.getMyEnrollments)
-   *   and extract the correct enrollment id.
-   * - Navigate to '/pack365-certificate/:enrollmentId' (so the certificate page can pick it from params),
-   *   and also pass courseId/courseName/stream in location.state to keep the previous behaviour.
-   */
   const handleViewCertificate = async () => {
-    if (!enrollment || !selectedCourse) {
-      toast({
-        title: 'Certificate Not Available',
-        description: 'Could not find enrollment or course data for certificate',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Try to build an enrollmentId from all plausible fields
-    let enrollmentId =
-      (enrollment.normalizedEnrollmentId && enrollment.normalizedEnrollmentId.toString()) ||
-      (enrollment._id && enrollment._id.toString && enrollment._id.toString()) ||
-      (enrollment.enrollmentId && enrollment.enrollmentId.toString && enrollment.enrollmentId.toString()) ||
-      '';
-
-    // If still empty, attempt to refresh enrollments from backend and look up again
-    if (!enrollmentId) {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          toast({ title: 'Authentication Required', variant: 'destructive' });
-          navigate('/login');
-          return;
-        }
-
-        const resp = await pack365Api.getMyEnrollments(token);
-        if (resp.success && resp.enrollments) {
-          const streamEnrollment = resp.enrollments.find((e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase());
-          if (streamEnrollment) {
-            enrollmentId =
-              (streamEnrollment.normalizedEnrollmentId && streamEnrollment.normalizedEnrollmentId.toString()) ||
-              (streamEnrollment._id && streamEnrollment._id.toString && streamEnrollment._id.toString()) ||
-              (streamEnrollment.enrollmentId && streamEnrollment.enrollmentId.toString && streamEnrollment.enrollmentId.toString()) ||
-              '';
-            // update local enrollment state so subsequent actions have a valid id
-            setEnrollment(streamEnrollment);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching enrollments while resolving certificate ID:', err);
+    try {
+      if (!enrollment || !selectedCourse) {
+        toast({
+          title: 'Certificate Not Available',
+          description: 'Could not find enrollment or course data for certificate',
+          variant: 'destructive'
+        });
+        console.warn('handleViewCertificate: missing enrollment or selectedCourse', { enrollment, selectedCourse });
+        return;
       }
-    }
 
-    if (!enrollmentId) {
-      toast({
-        title: 'Certificate Not Available',
-        description: 'Could not determine enrollment id for certificate. Please contact support.',
-        variant: 'destructive'
-      });
-      return;
-    }
+      // Try multiple possible fields for enrollment id
+      let enrollmentId =
+        (enrollment.normalizedEnrollmentId && enrollment.normalizedEnrollmentId.toString()) ||
+        (enrollment._id && (enrollment._id as any).toString && (enrollment._id as any).toString()) ||
+        (enrollment.enrollmentId && (enrollment.enrollmentId as any).toString && (enrollment.enrollmentId as any).toString()) ||
+        '';
 
-    // Navigate including enrollmentId in path and also send state to certificate page.
-    // The certificate page supports reading the id from params or state; providing both makes it robust.
-    const encodedId = encodeURIComponent(enrollmentId);
-    navigate(`/pack365-certificate/${encodedId}`, {
-      state: {
+      console.log('handleViewCertificate: initial enrollmentId guess:', enrollmentId, { enrollment });
+
+      // If still missing, attempt to refetch enrollments to resolve id (useful when local enrollment lacks id field)
+      if (!enrollmentId) {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            toast({ title: 'Authentication Required', variant: 'destructive' });
+            navigate('/login');
+            return;
+          }
+
+          const resp = await pack365Api.getMyEnrollments(token);
+          if (resp && resp.success && resp.enrollments) {
+            const streamEnrollment: Enrollment | undefined = resp.enrollments.find(
+              (e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase()
+            );
+            if (streamEnrollment) {
+              enrollmentId =
+                (streamEnrollment.normalizedEnrollmentId && streamEnrollment.normalizedEnrollmentId.toString()) ||
+                (streamEnrollment._id && (streamEnrollment._id as any).toString && (streamEnrollment._id as any).toString()) ||
+                (streamEnrollment.enrollmentId && (streamEnrollment.enrollmentId as any).toString && (streamEnrollment.enrollmentId as any).toString()) ||
+                '';
+              console.log('handleViewCertificate: resolved enrollmentId after refetch:', enrollmentId, streamEnrollment);
+              setEnrollment(streamEnrollment);
+            } else {
+              console.warn('handleViewCertificate: no stream enrollment found after refetch', resp.enrollments);
+            }
+          } else {
+            console.warn('handleViewCertificate: getMyEnrollments returned no enrollments', resp);
+          }
+        } catch (fetchErr) {
+          console.error('handleViewCertificate: error refetching enrollments', fetchErr);
+        }
+      }
+
+      if (!enrollmentId) {
+        toast({
+          title: 'Certificate Not Available',
+          description: 'Could not determine enrollment id for certificate. Please contact support.',
+          variant: 'destructive'
+        });
+        console.error('handleViewCertificate: unable to resolve enrollmentId, aborting', { enrollment });
+        return;
+      }
+
+      const encodedId = encodeURIComponent(enrollmentId);
+      const pathWithId = `/pack365-certificate/${encodedId}`;
+      const stateToSend = {
         courseId: selectedCourse._id,
         courseName: selectedCourse.courseName,
         enrollmentId,
         stream
+      };
+
+      console.log('handleViewCertificate: navigating to certificate', { pathWithId, stateToSend });
+
+      // Primary navigation: react-router
+      try {
+        navigate(pathWithId, { state: stateToSend });
+      } catch (navErr) {
+        console.warn('handleViewCertificate: react-router navigate threw an error', navErr);
       }
-    });
+
+      // After a short delay, if the SPA route didn't take the user to certificate page (some route setups might not declare :enrollmentId),
+      // perform a full-page redirect which will hit the router path or server route. This is a fallback only.
+      setTimeout(() => {
+        if (!window.location.pathname.includes('/pack365-certificate')) {
+          console.warn('handleViewCertificate: path still not changed - performing full-page redirect to', pathWithId);
+          // Use assign so it's recorded in history
+          window.location.assign(pathWithId);
+        } else {
+          console.log('handleViewCertificate: navigation successful via SPA router', window.location.pathname);
+        }
+      }, 450);
+    } catch (err) {
+      console.error('handleViewCertificate: unexpected error', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to open certificate page. See console for details.',
+        variant: 'destructive'
+      });
+    }
   };
 
   const goToNextTopic = () => {
