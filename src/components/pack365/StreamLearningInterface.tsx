@@ -4,11 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Play, 
-  Clock, 
-  CheckCircle2, 
-  BookOpen, 
+import {
+  Play,
+  Clock,
+  CheckCircle2,
+  BookOpen,
   ArrowLeft,
   Award,
   Video,
@@ -93,6 +93,8 @@ interface Enrollment {
   isExamCompleted?: boolean;
   isPassed?: boolean;
   normalizedEnrollmentId?: string;
+  // some APIs may return enrollmentId under different key names
+  enrollmentId?: string;
 }
 
 const StreamLearningInterface = () => {
@@ -100,7 +102,7 @@ const StreamLearningInterface = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,18 +129,19 @@ const StreamLearningInterface = () => {
         try {
           const token = localStorage.getItem('token');
           if (!token) return;
-          
+
           const enrollmentResponse = await pack365Api.getMyEnrollments(token);
           if (enrollmentResponse.success && enrollmentResponse.enrollments) {
             const streamEnrollment: Enrollment | undefined = enrollmentResponse.enrollments.find(
               (e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase()
             );
-            
+
             if (streamEnrollment) {
-              const passedExam = streamEnrollment.isPassed || 
-                                streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
-                                streamEnrollment.bestExamScore >= 50 ||
-                                streamEnrollment.examScore >= 50;
+              const passedExam =
+                streamEnrollment.isPassed ||
+                streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
+                (streamEnrollment.bestExamScore ?? 0) >= 50 ||
+                (streamEnrollment.examScore ?? 0) >= 50;
               setHasPassedExam(passedExam);
             }
           }
@@ -165,7 +168,7 @@ const StreamLearningInterface = () => {
 
       // 1️⃣ Get formatted enrollments (stream-level + course-level progress)
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-      
+
       if (!enrollmentResponse.success || !enrollmentResponse.enrollments) {
         setError('Failed to load enrollment data');
         toast({ title: 'Error', description: 'Failed to load enrollment data', variant: 'destructive' });
@@ -185,19 +188,20 @@ const StreamLearningInterface = () => {
 
       console.log('Loaded enrollment data:', streamEnrollment);
       setEnrollment(streamEnrollment);
-      
+
       // Check if exam is passed
-      const passedExam = streamEnrollment.isPassed || 
-                        streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
-                        streamEnrollment.bestExamScore >= 50 ||
-                        streamEnrollment.examScore >= 50;
+      const passedExam =
+        streamEnrollment.isPassed ||
+        streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
+        (streamEnrollment.bestExamScore ?? 0) >= 50 ||
+        (streamEnrollment.examScore ?? 0) >= 50;
       setHasPassedExam(passedExam);
-      
+
       initializeProgressMaps(streamEnrollment);
 
       // 2️⃣ Load all pack365 courses and filter by stream
       const coursesResponse = await pack365Api.getAllCourses();
-      
+
       if (!coursesResponse.success || !coursesResponse.data) {
         setError('Failed to load courses');
         toast({ title: 'Error', description: 'Failed to load courses', variant: 'destructive' });
@@ -219,7 +223,7 @@ const StreamLearningInterface = () => {
       // 3️⃣ Decide which course to show first
       const selectedCourseFromState = (location.state as any)?.selectedCourse;
       const selectedCourseId = (location.state as any)?.selectedCourseId;
-      
+
       let initialCourse: Course | null = null;
 
       if (selectedCourseFromState) {
@@ -249,10 +253,11 @@ const StreamLearningInterface = () => {
           if (detailed.success && detailed.enrollment) {
             console.log('Detailed enrollment from checkEnrollmentStatus:', detailed.enrollment);
             initializeProgressMaps(detailed.enrollment as Enrollment);
-            
+
             // Update exam status
-            const detailedPassedExam = (detailed.enrollment as any).isPassed || 
-                                      (detailed.enrollment as any).examAttempts?.some((attempt: any) => attempt.isPassed);
+            const detailedPassedExam =
+              (detailed.enrollment as any).isPassed ||
+              (detailed.enrollment as any).examAttempts?.some((attempt: any) => attempt.isPassed);
             if (detailedPassedExam) {
               setHasPassedExam(true);
             }
@@ -261,14 +266,13 @@ const StreamLearningInterface = () => {
           console.error('Error loading detailed enrollment progress:', err);
         }
       }
-
     } catch (error: any) {
       console.error('Error loading stream data:', error);
       setError('Failed to load stream data');
-      toast({ 
-        title: 'Error', 
-        description: 'Failed to load stream data. Please try again.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Error',
+        description: 'Failed to load stream data. Please try again.',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -282,7 +286,7 @@ const StreamLearningInterface = () => {
       if (!token) return;
 
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-      
+
       if (enrollmentResponse.success && enrollmentResponse.enrollments) {
         const streamEnrollment: Enrollment | undefined = enrollmentResponse.enrollments.find(
           (e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase()
@@ -291,13 +295,14 @@ const StreamLearningInterface = () => {
         if (streamEnrollment) {
           console.log('Refreshed enrollment data:', streamEnrollment);
           setEnrollment(streamEnrollment);
-          
+
           // Update exam status
-          const passedExam = streamEnrollment.isPassed || 
-                            streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
-                            streamEnrollment.bestExamScore >= 50;
+          const passedExam =
+            streamEnrollment.isPassed ||
+            streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
+            (streamEnrollment.bestExamScore ?? 0) >= 50;
           setHasPassedExam(passedExam);
-          
+
           initializeProgressMaps(streamEnrollment);
         }
       }
@@ -310,7 +315,7 @@ const StreamLearningInterface = () => {
 
   const initializeProgressMaps = (enrollmentData: Enrollment) => {
     console.log('Initializing progress maps from enrollment:', enrollmentData);
-    
+
     // topic progress
     if (enrollmentData.topicProgress && Array.isArray(enrollmentData.topicProgress)) {
       const topicMap = new Map<string, boolean>();
@@ -477,7 +482,7 @@ const StreamLearningInterface = () => {
     if (!selectedCourse) return;
 
     const courseCompleted = isCourseCompleted(selectedCourse._id);
-    
+
     if (!courseCompleted) {
       toast({
         title: 'Exam Not Available',
@@ -527,7 +532,6 @@ const StreamLearningInterface = () => {
 
       // Navigate and pass examId in state as well as in the URL (encoded)
       navigate(`/exam/${encodeURIComponent(examIdToOpen)}`, { state: { courseId: selectedCourse._id, examId: examIdToOpen } });
-
     } catch (err: any) {
       console.error('Error checking available exams:', err);
       toast({
@@ -540,30 +544,85 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const handleViewCertificate = () => {
-    if (!enrollment || !selectedCourse) return;
-
-    // Get enrollment ID from various possible locations
-    const enrollmentId = enrollment.normalizedEnrollmentId || 
-                        enrollment._id?.toString() || 
-                        enrollment.enrollmentId;
-    
-    if (!enrollmentId) {
+  /**
+   * FIXED: Certificate button navigation
+   *
+   * Problem observed:
+   * - Certificate button previously navigated to '/pack365-certificate' and relied only on state.
+   * - In some flows the certificate page expects an enrollmentId either in the URL params or in state.
+   * - If the enrollmentId wasn't present in the enrollment object (or had a different key), certificate page could not find the enrollment and failed.
+   *
+   * Fix implemented:
+   * - Ensure we construct a reliable enrollmentId by checking multiple possible fields:
+   *     normalizedEnrollmentId, _id, enrollmentId
+   * - If not available, try to re-fetch enrollments from the backend (pack365Api.getMyEnrollments)
+   *   and extract the correct enrollment id.
+   * - Navigate to '/pack365-certificate/:enrollmentId' (so the certificate page can pick it from params),
+   *   and also pass courseId/courseName/stream in location.state to keep the previous behaviour.
+   */
+  const handleViewCertificate = async () => {
+    if (!enrollment || !selectedCourse) {
       toast({
         title: 'Certificate Not Available',
-        description: 'Could not find enrollment data for certificate',
+        description: 'Could not find enrollment or course data for certificate',
         variant: 'destructive'
       });
       return;
     }
 
-    // Navigate to certificate page without ID in URL, pass everything in state
-    navigate('/pack365-certificate', {
+    // Try to build an enrollmentId from all plausible fields
+    let enrollmentId =
+      (enrollment.normalizedEnrollmentId && enrollment.normalizedEnrollmentId.toString()) ||
+      (enrollment._id && enrollment._id.toString && enrollment._id.toString()) ||
+      (enrollment.enrollmentId && enrollment.enrollmentId.toString && enrollment.enrollmentId.toString()) ||
+      '';
+
+    // If still empty, attempt to refresh enrollments from backend and look up again
+    if (!enrollmentId) {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          toast({ title: 'Authentication Required', variant: 'destructive' });
+          navigate('/login');
+          return;
+        }
+
+        const resp = await pack365Api.getMyEnrollments(token);
+        if (resp.success && resp.enrollments) {
+          const streamEnrollment = resp.enrollments.find((e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase());
+          if (streamEnrollment) {
+            enrollmentId =
+              (streamEnrollment.normalizedEnrollmentId && streamEnrollment.normalizedEnrollmentId.toString()) ||
+              (streamEnrollment._id && streamEnrollment._id.toString && streamEnrollment._id.toString()) ||
+              (streamEnrollment.enrollmentId && streamEnrollment.enrollmentId.toString && streamEnrollment.enrollmentId.toString()) ||
+              '';
+            // update local enrollment state so subsequent actions have a valid id
+            setEnrollment(streamEnrollment);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching enrollments while resolving certificate ID:', err);
+      }
+    }
+
+    if (!enrollmentId) {
+      toast({
+        title: 'Certificate Not Available',
+        description: 'Could not determine enrollment id for certificate. Please contact support.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Navigate including enrollmentId in path and also send state to certificate page.
+    // The certificate page supports reading the id from params or state; providing both makes it robust.
+    const encodedId = encodeURIComponent(enrollmentId);
+    navigate(`/pack365-certificate/${encodedId}`, {
       state: {
         courseId: selectedCourse._id,
         courseName: selectedCourse.courseName,
-        enrollmentId: enrollmentId,
-        stream: stream
+        enrollmentId,
+        stream
       }
     });
   };
@@ -602,19 +661,19 @@ const StreamLearningInterface = () => {
       return stats;
     }
 
-    const completedTopics = selectedCourse.topics.filter(topic => 
+    const completedTopics = selectedCourse.topics.filter(topic =>
       isTopicWatched(selectedCourse._id, topic.name)
     ).length;
-    
+
     const totalTopics = selectedCourse.topics.length;
     const percentage = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
-    
+
     const fallbackStats = {
       completed: completedTopics,
       total: totalTopics,
       percentage: percentage
     };
-    
+
     console.log('Fallback completion stats:', fallbackStats);
     return fallbackStats;
   };
@@ -671,7 +730,7 @@ const StreamLearningInterface = () => {
           {/* Header */}
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-              <Button 
+              <Button
                 onClick={() => navigate(`/pack365-learning/${stream}`)}
                 variant="outline"
                 className="self-start"
@@ -680,13 +739,13 @@ const StreamLearningInterface = () => {
                 Back to Stream
               </Button>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">{selectedCourse?.courseName}</h1>
                 <p className="text-gray-600 mt-2">{selectedCourse?.description}</p>
               </div>
-              
+
               <div className="mt-4 sm:mt-0 flex items-center gap-2">
                 <Badge variant="secondary" className="text-sm">
                   {selectedCourse?.topics.length || 0} Topics
@@ -760,7 +819,7 @@ const StreamLearningInterface = () => {
                             <div className="text-center">
                               <Video className="h-16 w-16 mx-auto mb-4 text-gray-400" />
                               <p className="text-lg mb-2">Video not available</p>
-                              <Button 
+                              <Button
                                 onClick={() => handleOpenInNewTab(selectedTopic)}
                                 variant="default"
                               >
@@ -783,7 +842,7 @@ const StreamLearningInterface = () => {
                             <ChevronLeft className="h-4 w-4 mr-2" />
                             Previous
                           </Button>
-                          
+
                           <Button
                             variant="outline"
                             onClick={goToNextTopic}
@@ -793,7 +852,7 @@ const StreamLearningInterface = () => {
                             <ChevronRight className="h-4 w-4 ml-2" />
                           </Button>
                         </div>
-                        
+
                         <div className="flex items-center gap-2">
                           {isTopicWatched(selectedCourse?._id || '', selectedTopic.name) && (
                             <Badge variant="default" className="flex items-center gap-1">
@@ -817,7 +876,7 @@ const StreamLearningInterface = () => {
                         <p className="text-gray-500 text-sm mb-6">
                           Select a topic from the sidebar to begin watching the course content
                         </p>
-                        <Button 
+                        <Button
                           onClick={() => {
                             const firstTopic = selectedCourse?.topics?.[0];
                             if (firstTopic) {
@@ -890,8 +949,8 @@ const StreamLearningInterface = () => {
                                 {topic.name}
                               </span>
                             </div>
-                            <Badge 
-                              variant="outline" 
+                            <Badge
+                              variant="outline"
                               className={`text-xs flex-shrink-0 ${
                                 isWatched ? 'border-green-200 text-green-700' : ''
                               }`}
@@ -902,7 +961,7 @@ const StreamLearningInterface = () => {
                         </div>
                       );
                     })}
-                    
+
                     {(!selectedCourse?.topics || selectedCourse.topics.length === 0) && (
                       <div className="text-center py-4 text-gray-500">
                         No topics available for this course
