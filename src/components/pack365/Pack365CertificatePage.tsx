@@ -5,9 +5,7 @@ import Navbar from "@/components/Navbar";
 import {
   Loader2,
   Download,
-  Printer,
   ArrowLeft,
-  Share2,
   Award,
   CheckCircle,
   Calendar,
@@ -34,8 +32,8 @@ type CertificateData = {
   courseName: string;
   courseDescription?: string;
   stream?: string;
-  enrollmentDate?: string;
-  completedDate?: string;
+  enrollmentDate?: string; // expected to be a formatted date string
+  completedDate?: string; // expected to be a formatted date string
 };
 
 const Pack365CertificatePage: React.FC = () => {
@@ -61,6 +59,7 @@ const Pack365CertificatePage: React.FC = () => {
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
+    // If a courseId was supplied in navigation state, fetch automatically
     if (state.courseId) {
       fetchCertificate(state.courseId, state.completedDate);
     }
@@ -139,35 +138,10 @@ const Pack365CertificatePage: React.FC = () => {
   };
 
   const formattedCertificateId = () => {
+    // Build a readable id using enrollmentId (if available) + courseId
     const cid = certificate?.courseId || courseIdInput || "UNKNOWN";
     const eid = enrollmentId || state.enrollmentId || "";
     return eid ? `${eid}-${cid}` : cid;
-  };
-
-  const handlePrint = () => {
-    if (!certRef.current) {
-      window.print();
-      return;
-    }
-
-    const html = certRef.current.outerHTML;
-    const style = `
-      <style>
-        @page { size: A4 landscape; margin: 20mm; }
-        body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding: 0; margin: 0; background: #fff; }
-        .certificate-container { background-image: url('/lovable-uploads/certificate-bg.jpg') !important; background-size: cover !important; background-position: center !important; background-repeat: no-repeat !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      </style>
-    `;
-    const w = window.open("", "_blank");
-    if (!w) {
-      toast({ title: "Blocked", description: "Popup blocked. Allow popups to print.", variant: "destructive" });
-      return;
-    }
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8" /><title>Certificate</title>${style}</head><body>${html}</body></html>`);
-    w.document.close();
-    setTimeout(() => {
-      w.print();
-    }, 500);
   };
 
   const handleDownloadPNG = async () => {
@@ -176,6 +150,7 @@ const Pack365CertificatePage: React.FC = () => {
       return;
     }
 
+    // html2canvas might not be included in the project; check before using
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const html2canvas = (window as any).html2canvas;
     if (!html2canvas) {
@@ -243,6 +218,7 @@ const Pack365CertificatePage: React.FC = () => {
         return;
       }
 
+      // Preload background image
       const preloadImage = new Image();
       preloadImage.crossOrigin = "anonymous";
       preloadImage.src = "/lovable-uploads/certificate-bg.jpg";
@@ -282,6 +258,7 @@ const Pack365CertificatePage: React.FC = () => {
         pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
         pdf.save(`${formattedCertificateId() || certificate.courseId}.pdf`);
       } else {
+        // fallback to PNG download
         const a = document.createElement("a");
         a.href = imgData;
         a.download = `${formattedCertificateId() || certificate.courseId}.png`;
@@ -307,61 +284,33 @@ const Pack365CertificatePage: React.FC = () => {
     }
   };
 
-  const handleShare = async () => {
-    if (!certificate) return;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${certificate.courseName} - Certificate of Completion`,
-          text: `I successfully completed ${certificate.courseName}`,
-          url: window.location.href,
-        });
-      } catch (error) {
-        console.error("Error sharing:", error);
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href).then(() => {
-        toast({
-          title: "Link Copied",
-          description: "Certificate link copied to clipboard",
-          variant: "default",
-        });
-      });
-    }
-  };
-
   /**
-   * Internship body component (AP-like layout)
+   * Course body component (AP-like phrasing adapted for a course)
    * - Does NOT modify certificate data.
-   * - Uses certificate values and optional role/company passed below.
+   * - Incorporates descriptive text from the provided reference image but adapts "internship" -> "course".
    */
-  const Pack365InternshipBody: React.FC<{
+  const Pack365CourseBody: React.FC<{
     certificate: CertificateData;
-    roleTitle?: string;
-    companyName?: string;
-  }> = ({ certificate, roleTitle, companyName }) => {
-    const role = roleTitle || "Intern";
-    const company = companyName || "Pack365";
+    providerName?: string; // optional provider/company name (e.g., "Triaright Solutions Pvt. Ltd.")
+  }> = ({ certificate, providerName }) => {
+    const provider = providerName || "Pack365";
     const start = certificate.enrollmentDate || "N/A";
     const end = certificate.completedDate || new Date().toLocaleDateString();
 
     return (
       <div className="px-8 text-center max-w-3xl mx-auto">
-        <h3 className="text-2xl font-bold mb-4">INTERNSHIP CERTIFICATE</h3>
+        <h3 className="text-2xl font-bold mb-4">COURSE CERTIFICATE</h3>
 
         <p className="text-base text-gray-800 leading-relaxed mb-6">
-          This is to certify that <strong>{certificate.studentName}</strong> has successfully completed a professional internship as a{" "}
-          <strong>{role}</strong> at <strong>{company}</strong>. During the internship period from{" "}
-          <strong>{start}</strong> to <strong>{end}</strong>, the candidate demonstrated commendable dedication, technical competence, and a proactive attitude toward assigned tasks.
+          This is to certify that <strong>{certificate.studentName}</strong> has successfully completed the professional course <strong>{certificate.courseName}</strong> ({certificate.stream || "—"}). The course was provided by <strong>{provider}</strong>. During the course period from <strong>{start}</strong> to <strong>{end}</strong>, the candidate demonstrated commendable dedication, technical competence, and a proactive attitude toward assigned tasks.
         </p>
 
         <p className="text-base text-gray-800 leading-relaxed mb-6">
-          The internship program included hands-on experience with front-end and back-end web development tools, collaboration with project teams, and regular participation in code reviews and technical discussions.
+          The program included hands-on experience with front-end and back-end web development tools, collaboration with project teams, and regular participation in code reviews and technical discussions — all designed to enhance practical skills and real-world development capabilities.
         </p>
 
         <p className="text-base text-gray-800 leading-relaxed">
-          We appreciate the intern’s contribution and wish them continued success in their future endeavors.
+          We appreciate the learner’s contribution and wish them continued success in their future endeavors.
         </p>
       </div>
     );
@@ -372,6 +321,7 @@ const Pack365CertificatePage: React.FC = () => {
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
               <Button
@@ -388,12 +338,21 @@ const Pack365CertificatePage: React.FC = () => {
               </div>
             </div>
 
-            <Badge variant="default" className="bg-green-600 text-white">
-              <Award className="h-4 w-4 mr-1" />
-              Certificate of Completion
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="bg-green-600 text-white">
+                <Award className="h-4 w-4 mr-1" />
+                Certificate of Completion
+              </Badge>
+
+              {/* Keep only Download image (PNG) shortcut in header for convenience */}
+              <Button onClick={handleDownloadPNG} variant="secondary">
+                <Download className="h-4 w-4 mr-2" />
+                Download PNG
+              </Button>
+            </div>
           </div>
 
+          {/* Input area if courseId was not provided */}
           {!state.courseId && !certificate && (
             <div className="mb-6 p-4 bg-white rounded-md shadow-sm">
               <p className="text-sm text-gray-600 mb-3">
@@ -414,6 +373,7 @@ const Pack365CertificatePage: React.FC = () => {
             </div>
           )}
 
+          {/* Loader */}
           {loading && !certificate && (
             <div className="p-8 bg-white rounded-md shadow text-center">
               <Loader2 className="h-8 w-8 text-green-600 animate-spin mx-auto mb-4" />
@@ -421,6 +381,7 @@ const Pack365CertificatePage: React.FC = () => {
             </div>
           )}
 
+          {/* Certificate Info Card */}
           {certificate && (
             <Card className="mb-6">
               <CardHeader>
@@ -500,6 +461,7 @@ const Pack365CertificatePage: React.FC = () => {
             </Card>
           )}
 
+          {/* Actions */}
           <Card className="mb-6">
             <CardContent className="p-6">
               <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
@@ -521,19 +483,17 @@ const Pack365CertificatePage: React.FC = () => {
                   )}
                 </Button>
 
-                <Button onClick={handlePrint} variant="outline" className="px-8">
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print Certificate
+                <Button onClick={handleDownloadPNG} variant="outline" className="px-8">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download PNG
                 </Button>
 
-                <Button onClick={handleShare} variant="outline" className="px-8">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share Certificate
-                </Button>
+                {/* Print and Share buttons removed as requested */}
               </div>
             </CardContent>
           </Card>
 
+          {/* Certificate Preview */}
           <Card>
             <CardHeader>
               <CardTitle>Certificate Preview</CardTitle>
@@ -555,7 +515,8 @@ const Pack365CertificatePage: React.FC = () => {
                     }}
                   >
                     <div className="relative z-10 h-full flex flex-col items-center justify-center p-16 text-center">
-                      <div className="mb-8 mt-16 w-full text-center">
+                      {/* Top Title area */}
+                      <div className="mb-6 mt-6 w-full text-center">
                         <h2 className="text-3xl font-extrabold tracking-tight text-gray-900">
                           Certificate of Completion
                         </h2>
@@ -566,40 +527,52 @@ const Pack365CertificatePage: React.FC = () => {
                         {certificate?.stream && <p className="mt-2 text-sm text-gray-700">{certificate.stream} Stream</p>}
                       </div>
 
+                      {/* Course description / body adapted from provided image text */}
                       <div className="mb-8 max-w-2xl px-8">
-                        {certificate?.courseDescription && (
-                          <p className="text-md text-gray-700 leading-relaxed">
-                            {certificate.courseDescription}
-                          </p>
+                        {certificate && (
+                          <Pack365CourseBody
+                            certificate={certificate}
+                            // Do not override provider unless needed. Left undefined to preserve data integrity.
+                            providerName={undefined}
+                          />
                         )}
                       </div>
 
-                      {/* Internship body - uses AP-like phrasing and layout, does NOT modify certificate data */}
-                      {certificate && (
-                        <div className="w-full px-8 mb-6">
-                          <Pack365InternshipBody
-                            certificate={certificate}
-                            // you can optionally override role/company here if you want to display something specific:
-                            roleTitle={undefined} // keep undefined to avoid changing certificate data
-                            companyName={undefined} // keep undefined; falls back to "Pack365"
-                          />
-                        </div>
-                      )}
-
-                      <div className="mt-auto w-full">
-                        <div className="flex justify-between items-start px-20 mb-4 text-sm text-gray-700">
-                          <div className="text-left">
+                      {/* Bottom-left contact area: move Completed On & Certificate ID above Mail id & contact */}
+                      <div className="mt-auto w-full px-12 pb-8">
+                        <div className="flex justify-between items-start text-sm text-gray-700 mb-4">
+                          {/* Left column: Completed On & Certificate ID (moved above mail/contact as requested) */}
+                          <div>
                             <p className="font-semibold">Completed On:</p>
-                            <p>{certificate?.completedDate || new Date().toLocaleDateString()}</p>
-                          </div>
-                          <div className="text-right">
+                            <p className="mb-2">{certificate?.completedDate || new Date().toLocaleDateString()}</p>
+
                             <p className="font-semibold">Certificate ID:</p>
-                            <p className="font-mono">{formattedCertificateId()}</p>
+                            <p className="font-mono mb-3">{formattedCertificateId()}</p>
+
+                            {/* Mail & contact below the Completed/ID */}
+                            <p className="font-semibold">Mail id :</p>
+                            <p className="mb-1">{certificate?.email || "—"}</p>
+                            <p className="font-semibold">contact :</p>
+                            <p>{certificate?.phoneNumber || "—"}</p>
+                          </div>
+
+                          {/* Right column: signature placeholder */}
+                          <div className="text-right">
+                            <div className="w-36 h-36 bg-white border rounded-md flex items-center justify-center mx-auto">
+                              <div className="text-center">
+                                <p className="text-xs text-gray-500">Authorized By</p>
+                                <p className="font-semibold">Pack365 Team</p>
+                              </div>
+                            </div>
+
+                            <p className="mt-2 text-sm text-gray-700">KISSHORE KUMAAR</p>
+                            <p className="text-xs text-gray-500">Founder & Director - Triaright</p>
                           </div>
                         </div>
                       </div>
                     </div>
 
+                    {/* Print styles inline to ensure background prints if allowed */}
                     <style>{`
                       @media print {
                         .certificate-container {
@@ -623,6 +596,7 @@ const Pack365CertificatePage: React.FC = () => {
             </CardContent>
           </Card>
 
+          {/* Verification Info */}
           {certificate && (
             <Card className="mt-6">
               <CardContent className="p-6">
@@ -641,6 +615,7 @@ const Pack365CertificatePage: React.FC = () => {
             </Card>
           )}
 
+          {/* If no certificate and no state and not loading show hint */}
           {!certificate && !loading && state.courseId && (
             <div className="mt-6 p-4 bg-white rounded-md shadow-sm text-sm text-gray-600">
               <p>
@@ -650,6 +625,7 @@ const Pack365CertificatePage: React.FC = () => {
             </div>
           )}
 
+          {/* Error / Not available */}
           {(!certificate && !loading && error) && (
             <div className="mt-6">
               <Card className="text-center py-8">
