@@ -543,12 +543,12 @@ const StreamLearningInterface = () => {
   };
 
   const handleViewCertificate = () => {
-    if (!enrollment || !selectedCourse) return;
+    if (!selectedCourse) return;
 
     // Get enrollment ID from various possible locations
-    const enrollmentId = enrollment.normalizedEnrollmentId || 
-                        enrollment._id?.toString() || 
-                        (enrollment as any).enrollmentId;
+    const enrollmentId = enrollment?.normalizedEnrollmentId || 
+                        enrollment?._id?.toString() || 
+                        (enrollment as any)?.enrollmentId;
     
     if (!enrollmentId) {
       toast({
@@ -559,21 +559,11 @@ const StreamLearningInterface = () => {
       return;
     }
 
-    // Debug logging - VERY IMPORTANT FOR TROUBLESHOOTING
-    console.log('Certificate navigation data:', {
-      enrollmentId,
-      courseId: selectedCourse.courseId, // Use courseId, not _id
-      selectedCourse,
-      hasCourseIdField: !!selectedCourse.courseId,
-      courseIdType: typeof selectedCourse.courseId,
-      courseIdValue: selectedCourse.courseId
-    });
-
-    // Navigate to certificate page with proper data passing
+    // Navigate to certificate page with required data
     navigate(`/pack365-certificate/${enrollmentId}`, {
       state: {
         enrollmentId: enrollmentId,
-        courseId: selectedCourse.courseId, // CRITICAL FIX: Use courseId not _id
+        courseId: selectedCourse.courseId, // Use courseId, not _id
         completedDate: new Date().toISOString(),
         courseName: selectedCourse.courseName,
         stream: stream
