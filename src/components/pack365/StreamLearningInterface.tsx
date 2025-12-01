@@ -545,22 +545,16 @@ const StreamLearningInterface = () => {
   const handleViewCertificate = () => {
     if (!selectedCourse) return;
 
-    // Get enrollment ID from various possible locations
+    // Try to get an enrollment id if present, but do NOT block navigation if it's missing.
     const enrollmentId = enrollment?.normalizedEnrollmentId || 
-                        enrollment?._id?.toString() || 
-                        (enrollment as any)?.enrollmentId;
-    
-    if (!enrollmentId) {
-      toast({
-        title: 'Certificate Not Available',
-        description: 'Could not find enrollment data for certificate',
-        variant: 'destructive'
-      });
-      return;
-    }
+                        enrollment?._id?.toString?.() || 
+                        (enrollment as any)?.enrollmentId || undefined;
 
-    // Navigate to certificate page with required data
-    navigate(`/pack365-certificate/${enrollmentId}`, {
+    // Always navigate to the certificate page. The certificate page accepts courseId in location.state
+    // and will fetch the certificate using courseId even when enrollmentId is not provided.
+    const targetPath = enrollmentId ? `/pack365-certificate/${enrollmentId}` : `/pack365-certificate`;
+
+    navigate(targetPath, {
       state: {
         enrollmentId: enrollmentId,
         courseId: selectedCourse.courseId, // Use courseId, not _id
