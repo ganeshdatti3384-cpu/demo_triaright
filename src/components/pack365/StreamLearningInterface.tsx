@@ -120,6 +120,37 @@ const StreamLearningInterface = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
+  // Refresh exam status when component mounts
+  useEffect(() => {
+    const refreshExamStatus = async () => {
+      if (enrollment && stream) {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) return;
+          
+          const enrollmentResponse = await pack365Api.getMyEnrollments(token);
+          if (enrollmentResponse.success && enrollmentResponse.enrollments) {
+            const streamEnrollment: Enrollment | undefined = enrollmentResponse.enrollments.find(
+              (e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase()
+            );
+            
+            if (streamEnrollment) {
+              const passedExam = streamEnrollment.isPassed || 
+                                streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
+                                streamEnrollment.bestExamScore >= 50 ||
+                                streamEnrollment.examScore >= 50;
+              setHasPassedExam(passedExam);
+            }
+          }
+        } catch (error) {
+          console.error('Error refreshing exam status:', error);
+        }
+      }
+    };
+
+    refreshExamStatus();
+  }, [enrollment, stream]);
+
   const loadStreamData = async () => {
     try {
       setLoading(true);
@@ -513,7 +544,9 @@ const StreamLearningInterface = () => {
     if (!enrollment || !selectedCourse) return;
 
     // Get enrollment ID from various possible locations
-    const enrollmentId = enrollment.normalizedEnrollmentId || enrollment._id || enrollment.enrollmentId;
+    const enrollmentId = enrollment.normalizedEnrollmentId || 
+                        enrollment._id?.toString() || 
+                        enrollment.enrollmentId;
     
     if (!enrollmentId) {
       toast({
@@ -524,7 +557,8 @@ const StreamLearningInterface = () => {
       return;
     }
 
-    navigate(`/pack365-certificate/${enrollmentId}`, {
+    // Navigate to certificate page without ID in URL, pass everything in state
+    navigate('/pack365-certificate', {
       state: {
         courseId: selectedCourse._id,
         courseName: selectedCourse.courseName,
@@ -645,8 +679,6 @@ const StreamLearningInterface = () => {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Stream
               </Button>
-
-              {/* Removed: Progress Bar Section */}
             </div>
             
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -740,7 +772,7 @@ const StreamLearningInterface = () => {
                         )}
                       </div>
 
-                      {/* Video Controls - Removed "Open in New Tab" button */}
+                      {/* Video Controls */}
                       <div className="flex justify-between items-center mt-4">
                         <div className="flex items-center gap-4">
                           <Button
@@ -769,7 +801,6 @@ const StreamLearningInterface = () => {
                               Completed
                             </Badge>
                           )}
-                          {/* Removed: Open in New Tab button */}
                         </div>
                       </div>
                     </div>
@@ -906,6 +937,26 @@ const StreamLearningInterface = () => {
                             <Badge variant="secondary" className="text-xs">
                               <Lock className="h-3 w-3 mr-1" />
                               Locked
+                            </Badge>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Exam Passed:</span>
+                        <span>
+                          {hasPassedExam ? (
+                            <Badge variant="default" className="text-xs bg-green-600">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Passed
+                            </Badge>
+                          ) : completionStats.percentage === 100 ? (
+                            <Badge variant="secondary" className="text-xs">
+                              Not Taken
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              <Lock className="h-3 w-3 mr-1" />
+                              Complete Course
                             </Badge>
                           )}
                         </span>
