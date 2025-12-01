@@ -559,11 +559,21 @@ const StreamLearningInterface = () => {
       return;
     }
 
+    // Debug logging - VERY IMPORTANT FOR TROUBLESHOOTING
+    console.log('Certificate navigation data:', {
+      enrollmentId,
+      courseId: selectedCourse.courseId, // Use courseId, not _id
+      selectedCourse,
+      hasCourseIdField: !!selectedCourse.courseId,
+      courseIdType: typeof selectedCourse.courseId,
+      courseIdValue: selectedCourse.courseId
+    });
+
     // Navigate to certificate page with proper data passing
     navigate(`/pack365-certificate/${enrollmentId}`, {
       state: {
         enrollmentId: enrollmentId,
-        courseId: selectedCourse.courseId,
+        courseId: selectedCourse.courseId, // CRITICAL FIX: Use courseId not _id
         completedDate: new Date().toISOString(),
         courseName: selectedCourse.courseName,
         stream: stream
