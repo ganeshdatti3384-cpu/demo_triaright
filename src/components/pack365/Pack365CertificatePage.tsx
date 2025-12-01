@@ -243,12 +243,6 @@ const Pack365CertificatePage: React.FC = () => {
     }
   };
 
-  /**
-   * Course body component
-   * - Centered vertically & horizontally in the certificate area
-   * - Adds side padding and displays Completed On & Certificate ID inside the body text as requested
-   * - Does NOT display Mail id or phone number in footer
-   */
   const Pack365CourseBody: React.FC<{ certificate: CertificateData; providerName?: string }> = ({ certificate, providerName }) => {
     const provider = providerName || "Pack365";
     const start = certificate.enrollmentDate || "12/1/2025";
