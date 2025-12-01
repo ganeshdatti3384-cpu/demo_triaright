@@ -135,17 +135,9 @@ const App = () => {
             }
           />
           
-          {/* Pack365 Certificate Routes */}
+          {/* Pack365 Certificate Routes - FIXED: Use optional parameter */}
           <Route
-            path="/pack365-certificate/:enrollmentId"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <Pack365CertificatePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pack365-certificate"
+            path="/pack365-certificate/:enrollmentId?"
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <Pack365CertificatePage />
