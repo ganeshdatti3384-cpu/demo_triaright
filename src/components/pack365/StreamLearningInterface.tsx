@@ -1,4 +1,3 @@
-[file content begin]
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -928,4 +927,5 @@ const StreamLearningInterface = () => {
 };
 
 export default StreamLearningInterface;
-[file content end]
+
+
