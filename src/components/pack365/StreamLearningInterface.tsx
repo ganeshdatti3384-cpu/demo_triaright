@@ -1,3 +1,4 @@
+[file content begin]
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -114,42 +115,12 @@ const StreamLearningInterface = () => {
   const [refreshingEnrollment, setRefreshingEnrollment] = useState(false);
   const [checkingExam, setCheckingExam] = useState(false);
   const [hasPassedExam, setHasPassedExam] = useState(false);
+  const [navigatingToCertificate, setNavigatingToCertificate] = useState(false);
 
   useEffect(() => {
     loadStreamData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
-
-  // Refresh exam status when component mounts
-  useEffect(() => {
-    const refreshExamStatus = async () => {
-      if (enrollment && stream) {
-        try {
-          const token = localStorage.getItem('token');
-          if (!token) return;
-          
-          const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-          if (enrollmentResponse.success && enrollmentResponse.enrollments) {
-            const streamEnrollment: Enrollment | undefined = enrollmentResponse.enrollments.find(
-              (e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase()
-            );
-            
-            if (streamEnrollment) {
-              const passedExam = streamEnrollment.isPassed || 
-                                streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
-                                streamEnrollment.bestExamScore >= 50 ||
-                                streamEnrollment.examScore >= 50;
-              setHasPassedExam(passedExam);
-            }
-          }
-        } catch (error) {
-          console.error('Error refreshing exam status:', error);
-        }
-      }
-    };
-
-    refreshExamStatus();
-  }, [enrollment, stream]);
 
   const loadStreamData = async () => {
     try {
@@ -163,7 +134,7 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // 1️⃣ Get formatted enrollments (stream-level + course-level progress)
+      // 1️⃣ Get formatted enrollments
       const enrollmentResponse = await pack365Api.getMyEnrollments(token);
       
       if (!enrollmentResponse.success || !enrollmentResponse.enrollments) {
@@ -186,7 +157,7 @@ const StreamLearningInterface = () => {
       console.log('Loaded enrollment data:', streamEnrollment);
       setEnrollment(streamEnrollment);
       
-      // Check if exam is passed
+      // Check if exam is passed - SIMPLIFIED LOGIC
       const passedExam = streamEnrollment.isPassed || 
                         streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
                         streamEnrollment.bestExamScore >= 50 ||
@@ -242,26 +213,6 @@ const StreamLearningInterface = () => {
         setCurrentTopicIndex(0);
       }
 
-      // 4️⃣ Fetch full enrollment (with topicProgress + courseProgress) via checkEnrollmentStatus
-      if (initialCourse) {
-        try {
-          const detailed = await pack365Api.checkEnrollmentStatus(token, initialCourse.courseId);
-          if (detailed.success && detailed.enrollment) {
-            console.log('Detailed enrollment from checkEnrollmentStatus:', detailed.enrollment);
-            initializeProgressMaps(detailed.enrollment as Enrollment);
-            
-            // Update exam status
-            const detailedPassedExam = (detailed.enrollment as any).isPassed || 
-                                      (detailed.enrollment as any).examAttempts?.some((attempt: any) => attempt.isPassed);
-            if (detailedPassedExam) {
-              setHasPassedExam(true);
-            }
-          }
-        } catch (err) {
-          console.error('Error loading detailed enrollment progress:', err);
-        }
-      }
-
     } catch (error: any) {
       console.error('Error loading stream data:', error);
       setError('Failed to load stream data');
@@ -275,39 +226,6 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const refreshEnrollmentData = async () => {
-    try {
-      setRefreshingEnrollment(true);
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-      
-      if (enrollmentResponse.success && enrollmentResponse.enrollments) {
-        const streamEnrollment: Enrollment | undefined = enrollmentResponse.enrollments.find(
-          (e: Enrollment) => e.stream?.toLowerCase() === stream?.toLowerCase()
-        );
-
-        if (streamEnrollment) {
-          console.log('Refreshed enrollment data:', streamEnrollment);
-          setEnrollment(streamEnrollment);
-          
-          // Update exam status
-          const passedExam = streamEnrollment.isPassed || 
-                            streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
-                            streamEnrollment.bestExamScore >= 50;
-          setHasPassedExam(passedExam);
-          
-          initializeProgressMaps(streamEnrollment);
-        }
-      }
-    } catch (error) {
-      console.error('Error refreshing enrollment data:', error);
-    } finally {
-      setRefreshingEnrollment(false);
-    }
-  };
-
   const initializeProgressMaps = (enrollmentData: Enrollment) => {
     console.log('Initializing progress maps from enrollment:', enrollmentData);
     
@@ -317,7 +235,6 @@ const StreamLearningInterface = () => {
       enrollmentData.topicProgress.forEach((tp: TopicProgress) => {
         const key = `${tp.courseId}-${tp.topicName}`;
         topicMap.set(key, tp.watched);
-        console.log(`Topic progress: ${tp.topicName} - watched: ${tp.watched}`);
       });
       setTopicProgress(topicMap);
     }
@@ -336,7 +253,6 @@ const StreamLearningInterface = () => {
           isCompleted: cp.isCompleted,
           completionPercentage: cp.completionPercentage,
         });
-        console.log(`Course progress (old): ${key} - ${cp.completionPercentage}% completed`);
       });
     }
 
@@ -351,7 +267,6 @@ const StreamLearningInterface = () => {
           isCompleted: c.progress.isCompleted,
           completionPercentage: c.progress.completionPercentage,
         });
-        console.log(`Course progress (new): ${key} - ${c.progress.completionPercentage}% completed`);
       });
     }
 
@@ -387,40 +302,16 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      console.log('Marking topic as watched:', {
-        courseId: selectedCourse.courseId,
-        topicName: topic.name
-      });
-
       const response = (await pack365Api.updateTopicProgress(token, {
         courseId: selectedCourse.courseId,
         topicName: topic.name,
       } as any)) as any;
-
-      console.log('Progress update response:', response);
 
       if (response.success) {
         const key = `${selectedCourse._id}-${topic.name}`;
         const newTopicProgress = new Map(topicProgress);
         newTopicProgress.set(key, true);
         setTopicProgress(newTopicProgress);
-
-        if (response.courseProgress) {
-          const cp = response.courseProgress;
-          const courseKey = cp.courseId?.toString?.() ?? selectedCourse._id;
-          const newCourseMap = new Map(courseProgress);
-          newCourseMap.set(courseKey, {
-            courseId: courseKey,
-            totalTopics: cp.totalTopics,
-            watchedTopics: cp.watchedTopics,
-            isCompleted: cp.isCompleted,
-            completionPercentage: cp.completionPercentage,
-          });
-          setCourseProgress(newCourseMap);
-          console.log('Updated course progress from updateTopicProgress:', cp);
-        } else {
-          await refreshEnrollmentData();
-        }
 
         toast({
           title: 'Progress Updated',
@@ -442,35 +333,21 @@ const StreamLearningInterface = () => {
     }
   };
 
-  const handleVideoEnd = async () => {
-    if (!selectedTopic) return;
-    await markTopicAsWatched(selectedTopic);
-  };
-
   const isTopicWatched = (courseId: string, topicName: string): boolean => {
     const key = `${courseId}-${topicName}`;
     const isWatched = topicProgress.get(key) || false;
-    console.log(`Checking topic ${topicName} watched status:`, isWatched);
     return isWatched;
   };
 
   const getCourseProgress = (courseId: string): CourseProgress | undefined => {
     const progress = courseProgress.get(courseId);
-    console.log(`Getting course progress for ${courseId}:`, progress);
     return progress;
   };
 
   const isCourseCompleted = (courseId: string): boolean => {
     const progress = getCourseProgress(courseId);
     const completed = progress ? progress.isCompleted : false;
-    console.log(`Course ${courseId} completed:`, completed);
     return completed;
-  };
-
-  const canTakeExam = (courseId: string): boolean => {
-    const canTake = isCourseCompleted(courseId);
-    console.log(`Can take exam for course ${courseId}:`, canTake);
-    return canTake;
   };
 
   const handleTakeExam = async () => {
@@ -495,11 +372,9 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // Fetch only exams available for the user (backend only returns exams for courses completed)
       const res = await pack365Api.getAvailableExamsForUser(token);
       const exams = (res && (res as any).exams) || [];
 
-      // Match by DB course _id or string courseId depending on API shape
       const matched = exams.find((e: any) => {
         const examCourseId = e.courseId?._id ? e.courseId._id.toString() : e.courseId?.toString?.();
         return examCourseId === selectedCourse._id || e.courseId === selectedCourse._id;
@@ -514,7 +389,6 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // Use the examId returned by the exams endpoint (EXAM_...)
       const examIdToOpen = matched.examId;
       if (!examIdToOpen) {
         toast({
@@ -525,7 +399,6 @@ const StreamLearningInterface = () => {
         return;
       }
 
-      // Navigate and pass examId in state as well as in the URL (encoded)
       navigate(`/exam/${encodeURIComponent(examIdToOpen)}`, { state: { courseId: selectedCourse._id, examId: examIdToOpen } });
 
     } catch (err: any) {
@@ -540,32 +413,49 @@ const StreamLearningInterface = () => {
     }
   };
 
+  // SIMPLIFIED: Direct navigation to certificate page
   const handleViewCertificate = () => {
-    if (!enrollment || !selectedCourse) return;
-
-    // Get enrollment ID from various possible locations
-    const enrollmentId = enrollment.normalizedEnrollmentId || 
-                        enrollment._id?.toString() || 
-                        enrollment.enrollmentId;
-    
-    if (!enrollmentId) {
+    if (!enrollment || !selectedCourse) {
       toast({
         title: 'Certificate Not Available',
-        description: 'Could not find enrollment data for certificate',
+        description: 'Required data not found',
         variant: 'destructive'
       });
       return;
     }
 
-    // Navigate to certificate page without ID in URL, pass everything in state
-    navigate('/pack365-certificate', {
-      state: {
-        courseId: selectedCourse._id,
-        courseName: selectedCourse.courseName,
-        enrollmentId: enrollmentId,
-        stream: stream
-      }
-    });
+    try {
+      setNavigatingToCertificate(true);
+      
+      // Get enrollment ID - ensure it's a string
+      const enrollmentId = enrollment.normalizedEnrollmentId || 
+                          enrollment._id?.toString() || 
+                          enrollment.enrollmentId ||
+                          enrollment._id; // Fallback to raw _id
+      
+      console.log('Navigating to certificate with enrollmentId:', enrollmentId);
+      
+      // Navigate to certificate page with ALL required data
+      navigate('/pack365-certificate', {
+        replace: true,
+        state: {
+          enrollmentId: enrollmentId,
+          courseId: selectedCourse._id,
+          courseName: selectedCourse.courseName,
+          stream: stream
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error navigating to certificate:', error);
+      toast({
+        title: 'Navigation Error',
+        description: 'Failed to open certificate page',
+        variant: 'destructive'
+      });
+    } finally {
+      setNavigatingToCertificate(false);
+    }
   };
 
   const goToNextTopic = () => {
@@ -593,13 +483,11 @@ const StreamLearningInterface = () => {
 
     const progress = getCourseProgress(selectedCourse._id);
     if (progress) {
-      const stats = {
+      return {
         completed: progress.watchedTopics,
         total: progress.totalTopics,
         percentage: progress.completionPercentage
       };
-      console.log('Course completion stats:', stats);
-      return stats;
     }
 
     const completedTopics = selectedCourse.topics.filter(topic => 
@@ -609,14 +497,11 @@ const StreamLearningInterface = () => {
     const totalTopics = selectedCourse.topics.length;
     const percentage = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
     
-    const fallbackStats = {
+    return {
       completed: completedTopics,
       total: totalTopics,
       percentage: percentage
     };
-    
-    console.log('Fallback completion stats:', fallbackStats);
-    return fallbackStats;
   };
 
   if (error) {
@@ -751,9 +636,6 @@ const StreamLearningInterface = () => {
                             className="w-full h-full rounded-lg"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
-                            onLoad={() => {
-                              // placeholder
-                            }}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-white">
@@ -999,15 +881,25 @@ const StreamLearningInterface = () => {
                       )}
                     </Button>
 
-                    {/* Certificate Button - Show only when exam is passed */}
+                    {/* Certificate Button - SIMPLIFIED */}
                     {hasPassedExam && (
                       <Button
                         onClick={handleViewCertificate}
                         className="w-full mt-3 flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                         variant="default"
+                        disabled={navigatingToCertificate}
                       >
-                        <Download className="h-4 w-4" />
-                        Download Certificate
+                        {navigatingToCertificate ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Opening...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4" />
+                            Download Certificate
+                          </>
+                        )}
                       </Button>
                     )}
 
@@ -1036,3 +928,4 @@ const StreamLearningInterface = () => {
 };
 
 export default StreamLearningInterface;
+[file content end]
