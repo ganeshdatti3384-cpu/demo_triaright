@@ -500,9 +500,9 @@ const Pack365CertificatePage: React.FC = () => {
                   <div className="mt-4">
                     <div className="flex justify-between items-end text-sm text-gray-700">
                       <div className="text-left">
+                         <p className="font-semibold">Issued by Pack365</p>
                         <p className="font-semibold">Verified Completion</p>
-                        <p className="font-semibold"> </p>
-                         <p className="font-semibold"> </p>
+                         <p className="font-semibold">.</p>
                          <p className="font-semibold"> </p>
                       </div>
 
