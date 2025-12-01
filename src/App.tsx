@@ -64,7 +64,7 @@ import APTopicExamPage from './components/student/APTopicExamPage';
 import APFinalExamPage from './components/student/APFinalExamPage';
 import APCertificatePage from './components/student/APCertificatePage';
 import StreamLearningInterface from '@/components/pack365/StreamLearningInterface';
-import Pack365CertificatePage from '@/components/pack365/Pack365CertificatePage'; // ADD THIS IMPORT
+import Pack365CertificatePage from '@/components/pack365/Pack365CertificatePage';
 
 const queryClient = new QueryClient();
 
@@ -125,7 +125,7 @@ const App = () => {
           <Route path="/ap-internship-exam/:courseId/:topicName" element={<APTopicExamPage />} />
           <Route path="/ap-internship-final-exam/:courseId" element={<APFinalExamPage />} />
           
-          {/* Certificate Routes */}
+          {/* AP Internship Certificate Route */}
           <Route
             path="/ap-internship-certificate/:enrollmentId"
             element={
@@ -136,7 +136,6 @@ const App = () => {
           />
           
           {/* Pack365 Certificate Routes */}
-          {/* Keep the existing path-with-param for direct links */}
           <Route
             path="/pack365-certificate/:enrollmentId"
             element={
@@ -145,7 +144,6 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          {/* NEW: Accept certificate page without path param so fallback query navigation works */}
           <Route
             path="/pack365-certificate"
             element={
@@ -211,7 +209,7 @@ const App = () => {
           
           {/* Exam Routes */}
           <Route
-            path="/exam/:stream"
+            path="/exam/:examId"
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <ExamInterface />
@@ -219,7 +217,7 @@ const App = () => {
             }
           />
           <Route
-            path="/exam-result/:stream"
+            path="/exam-result/:examId"
             element={
               <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
                 <ExamResult />
