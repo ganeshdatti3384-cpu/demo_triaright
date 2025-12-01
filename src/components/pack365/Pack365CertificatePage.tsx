@@ -61,7 +61,6 @@ const Pack365CertificatePage: React.FC = () => {
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    // If a courseId was supplied in navigation state, fetch automatically
     if (state.courseId) {
       fetchCertificate(state.courseId, state.completedDate);
     }
@@ -111,8 +110,14 @@ const Pack365CertificatePage: React.FC = () => {
         courseName: payload.courseName || state.courseName || payload.courseName || "Course",
         courseDescription: payload.courseDescription || payload.courseDescription || "",
         stream: payload.stream || state.stream || "",
-        enrollmentDate: payload.enrollmentDate ? new Date(payload.enrollmentDate).toLocaleDateString() : undefined,
-        completedDate: payload.completedDate ? new Date(payload.completedDate).toLocaleDateString() : (completedDate ? new Date(completedDate).toLocaleDateString() : new Date().toLocaleDateString()),
+        enrollmentDate: payload.enrollmentDate
+          ? new Date(payload.enrollmentDate).toLocaleDateString()
+          : undefined,
+        completedDate: payload.completedDate
+          ? new Date(payload.completedDate).toLocaleDateString()
+          : completedDate
+          ? new Date(completedDate).toLocaleDateString()
+          : new Date().toLocaleDateString(),
       };
 
       setCertificate(cert);
@@ -133,13 +138,18 @@ const Pack365CertificatePage: React.FC = () => {
     fetchCertificate(courseIdInput);
   };
 
+  const formattedCertificateId = () => {
+    const cid = certificate?.courseId || courseIdInput || "UNKNOWN";
+    const eid = enrollmentId || state.enrollmentId || "";
+    return eid ? `${eid}-${cid}` : cid;
+  };
+
   const handlePrint = () => {
     if (!certRef.current) {
       window.print();
       return;
     }
 
-    // Open printable window with certificate HTML to ensure clean print
     const html = certRef.current.outerHTML;
     const style = `
       <style>
@@ -155,11 +165,8 @@ const Pack365CertificatePage: React.FC = () => {
     }
     w.document.write(`<!doctype html><html><head><meta charset="utf-8" /><title>Certificate</title>${style}</head><body>${html}</body></html>`);
     w.document.close();
-    // give browser a moment before printing
     setTimeout(() => {
       w.print();
-      // optional close
-      // w.close();
     }, 500);
   };
 
@@ -169,7 +176,6 @@ const Pack365CertificatePage: React.FC = () => {
       return;
     }
 
-    // html2canvas might not be included in the project; check before using
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const html2canvas = (window as any).html2canvas;
     if (!html2canvas) {
@@ -196,12 +202,10 @@ const Pack365CertificatePage: React.FC = () => {
     }
   };
 
-  // Try to generate a PDF similar to APCertificatePage if html2canvas and jsPDF are available.
   const handleDownloadPDF = async () => {
     if (!certRef.current || !certificate) return;
     setGenerating(true);
 
-    // Prefer window.html2canvas if present
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const html2canvasWin = (window as any).html2canvas;
 
@@ -210,8 +214,8 @@ const Pack365CertificatePage: React.FC = () => {
       let jsPDFLib: any = (window as any).jspdf;
 
       if (!html2canvasLib) {
-        // try dynamic import as a fallback
         try {
+          // dynamic import fallback
           // @ts-ignore
           html2canvasLib = (await import("html2canvas")).default;
         } catch (e) {
@@ -221,7 +225,6 @@ const Pack365CertificatePage: React.FC = () => {
 
       if (!jsPDFLib) {
         try {
-          // try to import jspdf
           // @ts-ignore
           const jspdfModule = await import("jspdf");
           jsPDFLib = jspdfModule.jsPDF || jspdfModule.default;
@@ -240,7 +243,6 @@ const Pack365CertificatePage: React.FC = () => {
         return;
       }
 
-      // Preload background image used in preview (if any) to improve rendering
       const preloadImage = new Image();
       preloadImage.crossOrigin = "anonymous";
       preloadImage.src = "/lovable-uploads/certificate-bg.jpg";
@@ -272,7 +274,6 @@ const Pack365CertificatePage: React.FC = () => {
       const imgData = canvas.toDataURL("image/png", 1.0);
 
       if (jsPDFLib) {
-        // create PDF using jsPDF
         const pdf = new jsPDFLib({
           orientation: "portrait",
           unit: "px",
@@ -281,7 +282,6 @@ const Pack365CertificatePage: React.FC = () => {
         pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
         pdf.save(`${formattedCertificateId() || certificate.courseId}.pdf`);
       } else {
-        // fallback: download PNG if jsPDF not available
         const a = document.createElement("a");
         a.href = imgData;
         a.download = `${formattedCertificateId() || certificate.courseId}.png`;
@@ -321,7 +321,6 @@ const Pack365CertificatePage: React.FC = () => {
         console.error("Error sharing:", error);
       }
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href).then(() => {
         toast({
           title: "Link Copied",
@@ -332,11 +331,40 @@ const Pack365CertificatePage: React.FC = () => {
     }
   };
 
-  const formattedCertificateId = () => {
-    // Build a readable id using enrollmentId (if available) + courseId
-    const cid = certificate?.courseId || courseIdInput || "UNKNOWN";
-    const eid = enrollmentId || state.enrollmentId || "";
-    return eid ? `${eid}-${cid}` : cid;
+  /**
+   * Internship body component (AP-like layout)
+   * - Does NOT modify certificate data.
+   * - Uses certificate values and optional role/company passed below.
+   */
+  const Pack365InternshipBody: React.FC<{
+    certificate: CertificateData;
+    roleTitle?: string;
+    companyName?: string;
+  }> = ({ certificate, roleTitle, companyName }) => {
+    const role = roleTitle || "Intern";
+    const company = companyName || "Pack365";
+    const start = certificate.enrollmentDate || "N/A";
+    const end = certificate.completedDate || new Date().toLocaleDateString();
+
+    return (
+      <div className="px-8 text-center max-w-3xl mx-auto">
+        <h3 className="text-2xl font-bold mb-4">INTERNSHIP CERTIFICATE</h3>
+
+        <p className="text-base text-gray-800 leading-relaxed mb-6">
+          This is to certify that <strong>{certificate.studentName}</strong> has successfully completed a professional internship as a{" "}
+          <strong>{role}</strong> at <strong>{company}</strong>. During the internship period from{" "}
+          <strong>{start}</strong> to <strong>{end}</strong>, the candidate demonstrated commendable dedication, technical competence, and a proactive attitude toward assigned tasks.
+        </p>
+
+        <p className="text-base text-gray-800 leading-relaxed mb-6">
+          The internship program included hands-on experience with front-end and back-end web development tools, collaboration with project teams, and regular participation in code reviews and technical discussions.
+        </p>
+
+        <p className="text-base text-gray-800 leading-relaxed">
+          We appreciate the intern’s contribution and wish them continued success in their future endeavors.
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -344,7 +372,6 @@ const Pack365CertificatePage: React.FC = () => {
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
               <Button
@@ -367,7 +394,6 @@ const Pack365CertificatePage: React.FC = () => {
             </Badge>
           </div>
 
-          {/* Input area if courseId was not provided */}
           {!state.courseId && !certificate && (
             <div className="mb-6 p-4 bg-white rounded-md shadow-sm">
               <p className="text-sm text-gray-600 mb-3">
@@ -388,7 +414,6 @@ const Pack365CertificatePage: React.FC = () => {
             </div>
           )}
 
-          {/* Loader */}
           {loading && !certificate && (
             <div className="p-8 bg-white rounded-md shadow text-center">
               <Loader2 className="h-8 w-8 text-green-600 animate-spin mx-auto mb-4" />
@@ -396,7 +421,6 @@ const Pack365CertificatePage: React.FC = () => {
             </div>
           )}
 
-          {/* Info Card */}
           {certificate && (
             <Card className="mb-6">
               <CardHeader>
@@ -476,7 +500,6 @@ const Pack365CertificatePage: React.FC = () => {
             </Card>
           )}
 
-          {/* Actions */}
           <Card className="mb-6">
             <CardContent className="p-6">
               <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
@@ -511,7 +534,6 @@ const Pack365CertificatePage: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Certificate Preview */}
           <Card>
             <CardHeader>
               <CardTitle>Certificate Preview</CardTitle>
@@ -520,7 +542,6 @@ const Pack365CertificatePage: React.FC = () => {
             <CardContent className="flex justify-center p-4">
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white shadow-lg">
                 <div ref={previewRef} className="scale-90 origin-top">
-                  {/* Certificate visual - preserves all certificate data but uses AP-like layout */}
                   <div
                     ref={certRef}
                     className="certificate-container bg-white relative"
@@ -553,6 +574,18 @@ const Pack365CertificatePage: React.FC = () => {
                         )}
                       </div>
 
+                      {/* Internship body - uses AP-like phrasing and layout, does NOT modify certificate data */}
+                      {certificate && (
+                        <div className="w-full px-8 mb-6">
+                          <Pack365InternshipBody
+                            certificate={certificate}
+                            // you can optionally override role/company here if you want to display something specific:
+                            roleTitle={undefined} // keep undefined to avoid changing certificate data
+                            companyName={undefined} // keep undefined; falls back to "Pack365"
+                          />
+                        </div>
+                      )}
+
                       <div className="mt-auto w-full">
                         <div className="flex justify-between items-start px-20 mb-4 text-sm text-gray-700">
                           <div className="text-left">
@@ -567,7 +600,6 @@ const Pack365CertificatePage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Print styles inline to ensure background prints if allowed */}
                     <style>{`
                       @media print {
                         .certificate-container {
@@ -591,7 +623,6 @@ const Pack365CertificatePage: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Verification Info */}
           {certificate && (
             <Card className="mt-6">
               <CardContent className="p-6">
@@ -610,7 +641,6 @@ const Pack365CertificatePage: React.FC = () => {
             </Card>
           )}
 
-          {/* If no certificate and no state and not loading show hint */}
           {!certificate && !loading && state.courseId && (
             <div className="mt-6 p-4 bg-white rounded-md shadow-sm text-sm text-gray-600">
               <p>
@@ -620,7 +650,6 @@ const Pack365CertificatePage: React.FC = () => {
             </div>
           )}
 
-          {/* Error / Not available */}
           {(!certificate && !loading && error) && (
             <div className="mt-6">
               <Card className="text-center py-8">
