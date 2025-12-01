@@ -93,9 +93,6 @@ interface Enrollment {
   isExamCompleted?: boolean;
   isPassed?: boolean;
   normalizedEnrollmentId?: string;
-  enrollmentId?: string;
-  completedDate?: string;
-  enrollmentDate?: string;
 }
 
 const StreamLearningInterface = () => {
@@ -162,9 +159,9 @@ const StreamLearningInterface = () => {
       // Check if exam is passed - SIMPLIFIED LOGIC
       const passedExam = streamEnrollment.isPassed || 
                         streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
-                        (streamEnrollment.bestExamScore !== undefined && streamEnrollment.bestExamScore >= 50) ||
-                        (streamEnrollment.examScore !== undefined && streamEnrollment.examScore >= 50);
-      setHasPassedExam(passedExam || false);
+                        streamEnrollment.bestExamScore >= 50 ||
+                        streamEnrollment.examScore >= 50;
+      setHasPassedExam(passedExam);
       
       initializeProgressMaps(streamEnrollment);
 
@@ -415,7 +412,7 @@ const StreamLearningInterface = () => {
     }
   };
 
-  // UPDATED: Handle certificate navigation
+  // SIMPLIFIED: Direct navigation to certificate page
   const handleViewCertificate = () => {
     if (!enrollment || !selectedCourse) {
       toast({
@@ -429,25 +426,22 @@ const StreamLearningInterface = () => {
     try {
       setNavigatingToCertificate(true);
       
-      // Use _id directly since that's what the enrollment schema uses
-      const enrollmentId = enrollment._id?.toString();
+      // Get enrollment ID - ensure it's a string
+      const enrollmentId = enrollment.normalizedEnrollmentId || 
+                          enrollment._id?.toString() || 
+                          enrollment.enrollmentId ||
+                          enrollment._id; // Fallback to raw _id
       
-      if (!enrollmentId) {
-        toast({
-          title: 'Certificate Error',
-          description: 'Unable to determine enrollment ID',
-          variant: 'destructive'
-        });
-        return;
-      }
+      console.log('Navigating to certificate with enrollmentId:', enrollmentId);
       
-      console.log('Navigating to certificate with enrollmentId:', enrollmentId, 'courseId:', selectedCourse.courseId);
-      
-      // Navigate to certificate page
+      // Navigate to certificate page with ALL required data
       navigate('/pack365-certificate', {
+        replace: true,
         state: {
           enrollmentId: enrollmentId,
-          courseId: selectedCourse.courseId, // Use courseId instead of _id
+          courseId: selectedCourse._id,
+          courseName: selectedCourse.courseName,
+          stream: stream
         }
       });
       
@@ -886,7 +880,7 @@ const StreamLearningInterface = () => {
                       )}
                     </Button>
 
-                    {/* Certificate Button */}
+                    {/* Certificate Button - SIMPLIFIED */}
                     {hasPassedExam && (
                       <Button
                         onClick={handleViewCertificate}
@@ -933,3 +927,4 @@ const StreamLearningInterface = () => {
 };
 
 export default StreamLearningInterface;
+
