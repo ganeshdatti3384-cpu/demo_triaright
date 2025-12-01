@@ -19,7 +19,7 @@ import {
   Mail,
   Phone
 } from 'lucide-react';
-import { pack365Api } from '@/services/api';
+import { pack365Api, authApi } from '@/services/api';
 import Navbar from '@/components/Navbar';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -65,6 +65,7 @@ const Pack365CertificatePage: React.FC = () => {
   // Get enrollmentId from params or state
   const enrollmentIdFromState = (location.state as any)?.enrollmentId;
   const courseIdFromState = (location.state as any)?.courseId;
+  const completedDateFromState = (location.state as any)?.completedDate;
   const enrollmentId = paramEnrollmentId || enrollmentIdFromState;
 
   const [loading, setLoading] = useState(true);
@@ -87,80 +88,26 @@ const Pack365CertificatePage: React.FC = () => {
           return;
         }
 
-        // Step 1: Get user details
-        let userProfile: any = null;
-        try {
-          const profileResponse = await pack365Api.getUserDetails(token);
-          userProfile = profileResponse.user || profileResponse;
-        } catch (profileErr) {
-          console.log('Could not fetch user profile:', profileErr);
-        }
-
-        // Step 2: Get enrollments
-        let enrollments: Enrollment[] = [];
-        try {
-          const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-          if (enrollmentResponse.success && enrollmentResponse.enrollments) {
-            enrollments = enrollmentResponse.enrollments;
-          }
-        } catch (enrollmentErr) {
-          console.log('Could not fetch enrollments:', enrollmentErr);
-        }
-
-        // Step 3: Find specific enrollment
-        let targetEnrollment: Enrollment | null = null;
-        let targetCourseId: string = '';
-
-        if (enrollmentId) {
-          // Case 1: Direct enrollment ID provided
-          targetEnrollment = enrollments.find((e: Enrollment) => 
-            e._id?.toString() === enrollmentId.toString() ||
-            (e as any).normalizedEnrollmentId?.toString() === enrollmentId.toString()
-          ) || null;
-        } else if (courseIdFromState) {
-          // Case 2: Course ID provided, find first matching enrollment
-          for (const enroll of enrollments) {
-            if (enroll.courses?.some(course => course.courseId === courseIdFromState)) {
-              targetEnrollment = enroll;
-              targetCourseId = courseIdFromState;
-              break;
-            }
-          }
-        } else {
-          // Case 3: No ID provided, use first enrollment with completed exam
-          targetEnrollment = enrollments.find(e => 
-            e.bestExamScore !== undefined || 
-            e.examScore !== undefined ||
-            e.examAttempts?.some((attempt: any) => attempt.score)
-          ) || enrollments[0] || null;
-        }
-
-        if (!targetEnrollment) {
-          setError('No enrollment found or certificate not available. Please ensure you have completed a course exam.');
+        // Check if we have required data
+        if (!enrollmentId) {
+          setError('Enrollment ID is required for certificate generation');
           setLoading(false);
           return;
         }
 
-        setEnrollmentDetails(targetEnrollment);
+        // Get courseId and completedDate from state or use defaults
+        const courseId = courseIdFromState;
+        const completedDate = completedDateFromState || new Date().toISOString();
 
-        // Determine course ID
-        const courseId = targetCourseId || 
-                        targetEnrollment.courses?.[0]?.courseId || 
-                        courseIdFromState;
+        if (!courseId) {
+          setError('Course ID is required for certificate generation');
+          setLoading(false);
+          return;
+        }
 
-        // Determine completion date
-        const completedDate = targetEnrollment.completedDate || 
-                             targetEnrollment.examAttempts?.[0]?.submittedAt || 
-                             new Date().toISOString();
-
-        // Determine exam score
-        const examScore = targetEnrollment.bestExamScore || 
-                         targetEnrollment.examScore || 
-                         targetEnrollment.examAttempts?.[0]?.score || 0;
-
-        // Try to fetch from backend first
+        // Step 1: Try to fetch certificate data from backend
         try {
-          const backendResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/pack365/enrollment/certificate/data`, {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/pack365/enrollment/certificate/data`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -172,13 +119,10 @@ const Pack365CertificatePage: React.FC = () => {
             })
           });
 
-          if (backendResponse.ok) {
-            const backendData = await backendResponse.json();
+          if (response.ok) {
+            const backendData = await response.json();
             if (backendData.success && backendData.data) {
-              setCertificateData({
-                ...backendData.data,
-                examScore: examScore
-              });
+              setCertificateData(backendData.data);
               setLoading(false);
               return;
             }
@@ -187,7 +131,62 @@ const Pack365CertificatePage: React.FC = () => {
           console.log('Backend certificate API failed, using fallback:', backendErr);
         }
 
-        // Fallback: Construct data manually
+        // Step 2: Fallback - Get user details using authApi
+        let userProfile: any = null;
+        try {
+          userProfile = await authApi.getUserDetails(token);
+        } catch (profileErr) {
+          console.log('Could not fetch user profile:', profileErr);
+          // Try alternative endpoint
+          try {
+            const profileRes = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/users/profile`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            if (profileRes.ok) {
+              userProfile = await profileRes.json();
+            }
+          } catch (altErr) {
+            console.log('Alternative profile fetch also failed:', altErr);
+          }
+        }
+
+        // Step 3: Get enrollments to find details
+        let enrollments: Enrollment[] = [];
+        try {
+          const enrollmentResponse = await pack365Api.getMyEnrollments(token);
+          if (enrollmentResponse.success && enrollmentResponse.enrollments) {
+            enrollments = enrollmentResponse.enrollments;
+          }
+        } catch (enrollmentErr) {
+          console.log('Could not fetch enrollments:', enrollmentErr);
+        }
+
+        // Step 4: Find specific enrollment
+        let targetEnrollment: Enrollment | null = null;
+        if (enrollmentId) {
+          // Case 1: Direct enrollment ID provided
+          targetEnrollment = enrollments.find((e: Enrollment) => 
+            e._id?.toString() === enrollmentId.toString() ||
+            (e as any).normalizedEnrollmentId?.toString() === enrollmentId.toString()
+          ) || null;
+        }
+
+        if (!targetEnrollment) {
+          setError('No enrollment found or certificate not available. Please ensure you have completed a course exam.');
+          setLoading(false);
+          return;
+        }
+
+        setEnrollmentDetails(targetEnrollment);
+
+        // Step 5: Determine exam score
+        const examScore = targetEnrollment.bestExamScore || 
+                         targetEnrollment.examScore || 
+                         targetEnrollment.examAttempts?.[0]?.score || 0;
+
+        // Step 6: Construct fallback data
         const fallbackData: CertificateData = {
           studentName: userProfile?.fullName || 
                       `${userProfile?.firstName || ''} ${userProfile?.lastName || ''}`.trim() || 
@@ -219,7 +218,7 @@ const Pack365CertificatePage: React.FC = () => {
     };
 
     loadCertificateData();
-  }, [enrollmentId, navigate, toast, courseIdFromState]);
+  }, [enrollmentId, navigate, toast, courseIdFromState, completedDateFromState]);
 
   const handleDownloadPDF = async () => {
     if (!certificateData || downloading) return;
