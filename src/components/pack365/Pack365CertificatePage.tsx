@@ -19,7 +19,7 @@ import {
   Mail,
   Phone
 } from 'lucide-react';
-import { pack365Api, authApi } from '@/services/api';
+import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -66,7 +66,22 @@ const Pack365CertificatePage: React.FC = () => {
   const enrollmentIdFromState = (location.state as any)?.enrollmentId;
   const courseIdFromState = (location.state as any)?.courseId;
   const completedDateFromState = (location.state as any)?.completedDate;
+  const courseNameFromState = (location.state as any)?.courseName;
+  const streamFromState = (location.state as any)?.stream;
+  
   const enrollmentId = paramEnrollmentId || enrollmentIdFromState;
+
+  // Debug logging
+  console.log('Certificate page debug:', {
+    paramEnrollmentId,
+    enrollmentIdFromState,
+    courseIdFromState,
+    completedDateFromState,
+    courseNameFromState,
+    streamFromState,
+    locationState: location.state,
+    enrollmentId
+  });
 
   const [loading, setLoading] = useState(true);
   const [certificateData, setCertificateData] = useState<CertificateData | null>(null);
@@ -89,120 +104,67 @@ const Pack365CertificatePage: React.FC = () => {
         }
 
         // Check if we have required data
-        if (!enrollmentId) {
-          setError('Enrollment ID is required for certificate generation');
-          setLoading(false);
-          return;
-        }
-
-        // Get courseId and completedDate from state or use defaults
         const courseId = courseIdFromState;
         const completedDate = completedDateFromState || new Date().toISOString();
 
         if (!courseId) {
-          setError('Course ID is required for certificate generation');
+          setError('Course ID is required for certificate generation. Please go back and try again.');
           setLoading(false);
           return;
         }
 
-        // Step 1: Try to fetch certificate data from backend
-        try {
-          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/pack365/enrollment/certificate/data`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              courseId: courseId,
-              completedDate: completedDate
-            })
-          });
+        console.log('Certificate request data:', {
+          courseId,
+          completedDate,
+          enrollmentId,
+          courseNameFromState,
+          streamFromState
+        });
 
-          if (response.ok) {
-            const backendData = await response.json();
-            if (backendData.success && backendData.data) {
-              setCertificateData(backendData.data);
-              setLoading(false);
-              return;
-            }
-          }
-        } catch (backendErr) {
-          console.log('Backend certificate API failed, using fallback:', backendErr);
-        }
-
-        // Step 2: Fallback - Get user details using authApi
-        let userProfile: any = null;
+        // Call backend API for certificate data
         try {
-          userProfile = await authApi.getUserDetails(token);
-        } catch (profileErr) {
-          console.log('Could not fetch user profile:', profileErr);
-          // Try alternative endpoint
-          try {
-            const profileRes = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/users/profile`, {
+          const API_URL = import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api';
+          const response = await fetch(
+            `${API_URL}/pack365/enrollment/certificate/data`,
+            {
+              method: 'POST',
               headers: {
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
-              }
-            });
-            if (profileRes.ok) {
-              userProfile = await profileRes.json();
+              },
+              body: JSON.stringify({
+                courseId: courseId,
+                completedDate: completedDate
+              })
             }
-          } catch (altErr) {
-            console.log('Alternative profile fetch also failed:', altErr);
+          );
+
+          const data = await response.json();
+          console.log('Backend certificate response:', data);
+
+          if (data.success && data.data) {
+            setCertificateData(data.data);
+            setLoading(false);
+            return;
+          } else {
+            // If backend returns an error, check if it's a student profile issue
+            if (data.message?.includes('Student profile not found')) {
+              setError('Please complete your student profile before generating a certificate.');
+              toast({
+                title: 'Profile Required',
+                description: 'Complete your student profile to generate certificates.',
+                variant: 'destructive'
+              });
+            } else {
+              throw new Error(data.message || 'Failed to fetch certificate data from server');
+            }
           }
+        } catch (backendErr: any) {
+          console.error('Backend certificate API error:', backendErr);
+          
+          // Fallback: Create certificate data from available information
+          await loadFallbackCertificateData(token, courseId, completedDate);
         }
-
-        // Step 3: Get enrollments to find details
-        let enrollments: Enrollment[] = [];
-        try {
-          const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-          if (enrollmentResponse.success && enrollmentResponse.enrollments) {
-            enrollments = enrollmentResponse.enrollments;
-          }
-        } catch (enrollmentErr) {
-          console.log('Could not fetch enrollments:', enrollmentErr);
-        }
-
-        // Step 4: Find specific enrollment
-        let targetEnrollment: Enrollment | null = null;
-        if (enrollmentId) {
-          // Case 1: Direct enrollment ID provided
-          targetEnrollment = enrollments.find((e: Enrollment) => 
-            e._id?.toString() === enrollmentId.toString() ||
-            (e as any).normalizedEnrollmentId?.toString() === enrollmentId.toString()
-          ) || null;
-        }
-
-        if (!targetEnrollment) {
-          setError('No enrollment found or certificate not available. Please ensure you have completed a course exam.');
-          setLoading(false);
-          return;
-        }
-
-        setEnrollmentDetails(targetEnrollment);
-
-        // Step 5: Determine exam score
-        const examScore = targetEnrollment.bestExamScore || 
-                         targetEnrollment.examScore || 
-                         targetEnrollment.examAttempts?.[0]?.score || 0;
-
-        // Step 6: Construct fallback data
-        const fallbackData: CertificateData = {
-          studentName: userProfile?.fullName || 
-                      `${userProfile?.firstName || ''} ${userProfile?.lastName || ''}`.trim() || 
-                      'Student',
-          email: userProfile?.email || '',
-          phoneNumber: userProfile?.phoneNumber || '',
-          courseId: courseId || 'N/A',
-          courseName: targetEnrollment.courses?.[0]?.courseName || 'Pack365 Course',
-          courseDescription: targetEnrollment.courses?.[0]?.description || '',
-          stream: targetEnrollment.stream || '',
-          enrollmentDate: targetEnrollment.enrollmentDate || new Date().toISOString(),
-          completedDate: completedDate,
-          examScore: examScore
-        };
-
-        setCertificateData(fallbackData);
 
       } catch (err: any) {
         console.error('Error loading certificate:', err);
@@ -217,8 +179,120 @@ const Pack365CertificatePage: React.FC = () => {
       }
     };
 
+    const loadFallbackCertificateData = async (token: string, courseId: string, completedDate: string) => {
+      try {
+        // Try to get user profile
+        let userProfile: any = null;
+        try {
+          const profileRes = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/users/profile`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          );
+          if (profileRes.ok) {
+            userProfile = await profileRes.json();
+          }
+        } catch (profileErr) {
+          console.error('Profile fetch error:', profileErr);
+        }
+
+        // Get enrollments to find course details
+        let enrollments: any[] = [];
+        try {
+          const enrollmentRes = await pack365Api.getMyEnrollments(token);
+          if (enrollmentRes.success) {
+            enrollments = enrollmentRes.enrollments;
+          }
+        } catch (enrollmentErr) {
+          console.error('Enrollment fetch error:', enrollmentErr);
+        }
+
+        // Create fallback data
+        const fallbackData: CertificateData = {
+          studentName: userProfile?.fullName || 
+                      `${userProfile?.firstName || ''} ${userProfile?.lastName || ''}`.trim() || 
+                      'Student',
+          email: userProfile?.email || '',
+          phoneNumber: userProfile?.phoneNumber || '',
+          courseId: courseId,
+          courseName: courseNameFromState || 'Pack365 Course',
+          courseDescription: '',
+          stream: streamFromState || '',
+          enrollmentDate: new Date().toISOString(),
+          completedDate: completedDate,
+          examScore: 0
+        };
+
+        // Try to find course details from enrollments
+        if (enrollments.length > 0) {
+          // Find enrollment that contains this course
+          for (const enrollment of enrollments) {
+            if (enrollment.courses) {
+              const matchingCourse = enrollment.courses.find((c: any) => c.courseId === courseId);
+              if (matchingCourse) {
+                fallbackData.courseName = matchingCourse.courseName || courseNameFromState || 'Pack365 Course';
+                fallbackData.courseDescription = matchingCourse.description || '';
+                fallbackData.stream = enrollment.stream || streamFromState || '';
+                fallbackData.enrollmentDate = enrollment.enrollmentDate || new Date().toISOString();
+                
+                // Get exam score if available
+                if (enrollment.bestExamScore || enrollment.examScore) {
+                  fallbackData.examScore = enrollment.bestExamScore || enrollment.examScore;
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        // If we still don't have course name, try to fetch course details
+        if (!fallbackData.courseName || fallbackData.courseName === 'Pack365 Course') {
+          try {
+            const coursesRes = await pack365Api.getAllCourses();
+            if (coursesRes.success && coursesRes.data) {
+              const course = coursesRes.data.find((c: any) => c.courseId === courseId);
+              if (course) {
+                fallbackData.courseName = course.courseName;
+                fallbackData.courseDescription = course.description;
+                fallbackData.stream = course.stream;
+              }
+            }
+          } catch (courseErr) {
+            console.error('Course fetch error:', courseErr);
+          }
+        }
+
+        setCertificateData(fallbackData);
+        toast({
+          title: 'Certificate Loaded',
+          description: 'Using available data for certificate generation',
+          variant: 'default'
+        });
+
+      } catch (fallbackErr) {
+        console.error('Fallback data loading error:', fallbackErr);
+        // Create minimal fallback data
+        const minimalData: CertificateData = {
+          studentName: 'Student',
+          email: '',
+          phoneNumber: '',
+          courseId: courseId,
+          courseName: courseNameFromState || 'Pack365 Course',
+          courseDescription: '',
+          stream: streamFromState || '',
+          enrollmentDate: new Date().toISOString(),
+          completedDate: completedDate,
+          examScore: 0
+        };
+        setCertificateData(minimalData);
+      }
+    };
+
     loadCertificateData();
-  }, [enrollmentId, navigate, toast, courseIdFromState, completedDateFromState]);
+  }, [enrollmentId, navigate, toast, courseIdFromState, completedDateFromState, courseNameFromState, streamFromState]);
 
   const handleDownloadPDF = async () => {
     if (!certificateData || downloading) return;
@@ -660,12 +734,20 @@ const Pack365CertificatePage: React.FC = () => {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
   };
 
   return (
