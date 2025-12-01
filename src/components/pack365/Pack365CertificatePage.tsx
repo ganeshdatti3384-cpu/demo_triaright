@@ -141,7 +141,7 @@ const Pack365CertificatePage: React.FC = () => {
     return eid ? `${eid}-${cid}` : cid;
   };
 
-  // PDF generation only (we removed PNG option per request)
+  // PDF generation only
   const handleDownloadPDF = async () => {
     if (!certRef.current || !certificate) return;
     setGenerating(true);
@@ -182,7 +182,7 @@ const Pack365CertificatePage: React.FC = () => {
         return;
       }
 
-      // Preload any bg (defensive)
+      // Preload background
       const preloadImage = new Image();
       preloadImage.crossOrigin = "anonymous";
       preloadImage.src = "/lovable-uploads/certificate-bg.jpg";
@@ -201,9 +201,16 @@ const Pack365CertificatePage: React.FC = () => {
         width: certRef.current.scrollWidth,
         height: certRef.current.scrollHeight,
         onclone: (clonedDoc: Document) => {
-          // remove any elements meant to be hidden during export
           const removeElems = clonedDoc.querySelectorAll(".remove-on-clone");
           removeElems.forEach((el) => el.remove());
+          // ensure certificate background is applied in cloned doc
+          const container = clonedDoc.querySelector(".certificate-container") as HTMLElement | null;
+          if (container) {
+            container.style.backgroundImage = "url('/lovable-uploads/certificate-bg.jpg')";
+            container.style.backgroundSize = "cover";
+            container.style.backgroundPosition = "center";
+            container.style.backgroundRepeat = "no-repeat";
+          }
         },
       });
 
@@ -243,6 +250,12 @@ const Pack365CertificatePage: React.FC = () => {
     }
   };
 
+  /**
+   * Course body component
+   * - Centered vertically & horizontally in the certificate area
+   * - Adds side padding and displays Completed On & Certificate ID inside the body text as requested
+   * - Does NOT display Mail id or phone number in footer
+   */
   const Pack365CourseBody: React.FC<{ certificate: CertificateData; providerName?: string }> = ({ certificate, providerName }) => {
     const provider = providerName || "Pack365";
     const start = certificate.enrollmentDate || "12/1/2025";
@@ -473,7 +486,10 @@ const Pack365CertificatePage: React.FC = () => {
                     maxWidth: "794px",
                     width: "100%",
                     height: "1123px",
-                    backgroundColor: "#ffffff",
+                    backgroundImage: "url('/lovable-uploads/certificate-bg.jpg')",
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat",
                     padding: "48px",
                     boxSizing: "border-box",
                   }}
@@ -511,6 +527,10 @@ const Pack365CertificatePage: React.FC = () => {
                         margin: 0 !important;
                         padding: 48px !important;
                         box-sizing: border-box !important;
+                        background-image: url('/lovable-uploads/certificate-bg.jpg') !important;
+                        background-size: cover !important;
+                        background-position: center !important;
+                        background-repeat: no-repeat !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                       }
