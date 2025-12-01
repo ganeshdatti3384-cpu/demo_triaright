@@ -18,7 +18,9 @@ import {
   ChevronRight,
   ChevronLeft,
   Lock,
-  Loader2
+  Loader2,
+  Download,
+  Trophy
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -85,6 +87,12 @@ interface Enrollment {
   completedCourses: number;
   streamCompletionPercentage: number;
   isStreamCompleted: boolean;
+  examAttempts?: any[];
+  bestExamScore?: number;
+  examScore?: number;
+  isExamCompleted?: boolean;
+  isPassed?: boolean;
+  normalizedEnrollmentId?: string;
 }
 
 const StreamLearningInterface = () => {
@@ -105,6 +113,7 @@ const StreamLearningInterface = () => {
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [refreshingEnrollment, setRefreshingEnrollment] = useState(false);
   const [checkingExam, setCheckingExam] = useState(false);
+  const [hasPassedExam, setHasPassedExam] = useState(false);
 
   useEffect(() => {
     loadStreamData();
@@ -145,6 +154,14 @@ const StreamLearningInterface = () => {
 
       console.log('Loaded enrollment data:', streamEnrollment);
       setEnrollment(streamEnrollment);
+      
+      // Check if exam is passed
+      const passedExam = streamEnrollment.isPassed || 
+                        streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
+                        streamEnrollment.bestExamScore >= 50 ||
+                        streamEnrollment.examScore >= 50;
+      setHasPassedExam(passedExam);
+      
       initializeProgressMaps(streamEnrollment);
 
       // 2️⃣ Load all pack365 courses and filter by stream
@@ -201,6 +218,13 @@ const StreamLearningInterface = () => {
           if (detailed.success && detailed.enrollment) {
             console.log('Detailed enrollment from checkEnrollmentStatus:', detailed.enrollment);
             initializeProgressMaps(detailed.enrollment as Enrollment);
+            
+            // Update exam status
+            const detailedPassedExam = (detailed.enrollment as any).isPassed || 
+                                      (detailed.enrollment as any).examAttempts?.some((attempt: any) => attempt.isPassed);
+            if (detailedPassedExam) {
+              setHasPassedExam(true);
+            }
           }
         } catch (err) {
           console.error('Error loading detailed enrollment progress:', err);
@@ -236,6 +260,13 @@ const StreamLearningInterface = () => {
         if (streamEnrollment) {
           console.log('Refreshed enrollment data:', streamEnrollment);
           setEnrollment(streamEnrollment);
+          
+          // Update exam status
+          const passedExam = streamEnrollment.isPassed || 
+                            streamEnrollment.examAttempts?.some((attempt: any) => attempt.isPassed) ||
+                            streamEnrollment.bestExamScore >= 50;
+          setHasPassedExam(passedExam);
+          
           initializeProgressMaps(streamEnrollment);
         }
       }
@@ -411,7 +442,6 @@ const StreamLearningInterface = () => {
     return canTake;
   };
 
-  // UPDATED: Only fetch available exams and open the exam for the current course.
   const handleTakeExam = async () => {
     if (!selectedCourse) return;
 
@@ -477,6 +507,31 @@ const StreamLearningInterface = () => {
     } finally {
       setCheckingExam(false);
     }
+  };
+
+  const handleViewCertificate = () => {
+    if (!enrollment || !selectedCourse) return;
+
+    // Get enrollment ID from various possible locations
+    const enrollmentId = enrollment.normalizedEnrollmentId || enrollment._id || enrollment.enrollmentId;
+    
+    if (!enrollmentId) {
+      toast({
+        title: 'Certificate Not Available',
+        description: 'Could not find enrollment data for certificate',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    navigate(`/pack365-certificate/${enrollmentId}`, {
+      state: {
+        courseId: selectedCourse._id,
+        courseName: selectedCourse.courseName,
+        enrollmentId: enrollmentId,
+        stream: stream
+      }
+    });
   };
 
   const goToNextTopic = () => {
@@ -572,6 +627,7 @@ const StreamLearningInterface = () => {
   }
 
   const completionStats = getCompletionStats();
+  const courseCompleted = isCourseCompleted(selectedCourse._id);
 
   return (
     <>
@@ -878,8 +934,25 @@ const StreamLearningInterface = () => {
                           )}
                         </span>
                       </div>
+                      <div className="flex justify-between">
+                        <span>Certificate:</span>
+                        <span>
+                          {hasPassedExam ? (
+                            <Badge variant="default" className="text-xs bg-green-600">
+                              <Download className="h-3 w-3 mr-1" />
+                              Available
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              <Lock className="h-3 w-3 mr-1" />
+                              Pass Exam
+                            </Badge>
+                          )}
+                        </span>
+                      </div>
                     </div>
 
+                    {/* Exam Button */}
                     <Button
                       onClick={handleTakeExam}
                       className="w-full mt-4 flex items-center justify-center gap-2"
@@ -899,10 +972,29 @@ const StreamLearningInterface = () => {
                       )}
                     </Button>
 
-                    {completionStats.percentage === 100 && (
+                    {/* Certificate Button - Show only when exam is passed */}
+                    {hasPassedExam && (
+                      <Button
+                        onClick={handleViewCertificate}
+                        className="w-full mt-3 flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                        variant="default"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Certificate
+                      </Button>
+                    )}
+
+                    {completionStats.percentage === 100 && !hasPassedExam && (
                       <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-center">
                         <CheckCircle2 className="h-4 w-4 text-green-600 inline-block mr-1" />
-                        <span className="text-sm text-green-700">Course completed! You can now take the exam.</span>
+                        <span className="text-sm text-green-700">Course completed! Take the exam to earn your certificate.</span>
+                      </div>
+                    )}
+
+                    {hasPassedExam && (
+                      <div className="mt-3 p-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded text-center">
+                        <Trophy className="h-4 w-4 text-yellow-600 inline-block mr-1" />
+                        <span className="text-sm text-green-800 font-medium">Congratulations! You passed the exam. Download your certificate.</span>
                       </div>
                     )}
                   </div>
