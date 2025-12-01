@@ -14,7 +14,10 @@ import {
   CheckCircle2,
   Loader2,
   Share2,
-  Printer
+  Printer,
+  Home,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { pack365Api } from '@/services/api';
 import Navbar from '@/components/Navbar';
@@ -42,6 +45,7 @@ const Pack365CertificatePage: React.FC = () => {
 
   // Get enrollmentId from params, state, or query
   const enrollmentIdFromState = (location.state as any)?.enrollmentId;
+  const courseIdFromState = (location.state as any)?.courseId;
   const enrollmentIdFromQuery = new URLSearchParams(location.search).get('enrollmentId');
   const enrollmentId = paramEnrollmentId || enrollmentIdFromState || enrollmentIdFromQuery;
 
@@ -50,6 +54,7 @@ const Pack365CertificatePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [enrollmentDetails, setEnrollmentDetails] = useState<any>(null);
 
   useEffect(() => {
     const loadCertificateData = async () => {
@@ -70,33 +75,84 @@ const Pack365CertificatePage: React.FC = () => {
           return;
         }
 
-        // First, get enrollment details
-        const enrollmentResponse = await pack365Api.getMyEnrollments(token);
-        const enrollments = enrollmentResponse.enrollments || [];
-        
+        // Get user profile first
+        let userProfile: any = null;
+        try {
+          const profileResponse = await pack365Api.getUserDetails(token);
+          userProfile = profileResponse.user || profileResponse;
+        } catch (profileErr) {
+          console.log('Could not fetch user profile:', profileErr);
+        }
+
+        // Get enrollments to find the specific one
+        let enrollments: any[] = [];
+        try {
+          const enrollmentResponse = await pack365Api.getMyEnrollments(token);
+          enrollments = enrollmentResponse.enrollments || [];
+        } catch (enrollmentErr) {
+          console.log('Could not fetch enrollments:', enrollmentErr);
+        }
+
         // Find the specific enrollment
-        const enrollment = enrollments.find((e: any) => 
-          e.normalizedEnrollmentId === enrollmentId || 
-          e._id === enrollmentId ||
-          e.enrollmentId === enrollmentId
-        );
+        const enrollment = enrollments.find((e: any) => {
+          // Check all possible ID fields
+          const possibleIds = [
+            e.normalizedEnrollmentId,
+            e._id,
+            e.enrollmentId,
+            e.id,
+            e.enrollment?.enrollmentId,
+            e.enrollment?._id
+          ];
+          return possibleIds.some(id => id && id.toString() === enrollmentId.toString());
+        });
 
         if (!enrollment) {
-          setError('Enrollment not found');
+          // Try direct API call as fallback
+          try {
+            const courseId = courseIdFromState;
+            if (courseId) {
+              const statusResponse = await pack365Api.checkEnrollmentStatus(token, courseId);
+              if (statusResponse.success && statusResponse.enrollment) {
+                setEnrollmentDetails(statusResponse.enrollment);
+                // Extract certificate data from enrollment
+                const certificateResponse = await fetchCertificateData(token, statusResponse.enrollment);
+                if (certificateResponse.success) {
+                  setCertificateData(certificateResponse.data);
+                  setLoading(false);
+                  return;
+                }
+              }
+            }
+          } catch (fallbackErr) {
+            console.log('Fallback enrollment check failed:', fallbackErr);
+          }
+
+          setError('Enrollment not found or certificate not available');
           setLoading(false);
           return;
         }
 
-        // Get course completion date (use current date as fallback)
-        const completedDate = new Date().toISOString();
+        setEnrollmentDetails(enrollment);
 
-        // Fetch certificate data from backend
-        const certificateResponse = await fetchCertificateData(token, enrollment, completedDate);
-        
-        if (certificateResponse.success) {
-          setCertificateData(certificateResponse.data);
-        } else {
-          throw new Error(certificateResponse.message || 'Failed to load certificate data');
+        // Use completed date from enrollment or current date
+        const completedDate = enrollment.completedDate || 
+                             enrollment.lastExamAttempt || 
+                             new Date().toISOString();
+
+        // Try to fetch certificate data from backend
+        try {
+          const certificateResponse = await fetchCertificateDataFromBackend(token, enrollment, completedDate);
+          if (certificateResponse.success) {
+            setCertificateData(certificateResponse.data);
+          } else {
+            // Fallback: Construct from enrollment
+            setCertificateData(constructCertificateData(enrollment, userProfile, completedDate));
+          }
+        } catch (certErr) {
+          console.log('Certificate API failed, using fallback:', certErr);
+          // Fallback: Construct from enrollment
+          setCertificateData(constructCertificateData(enrollment, userProfile, completedDate));
         }
 
       } catch (err: any) {
@@ -113,47 +169,76 @@ const Pack365CertificatePage: React.FC = () => {
     };
 
     loadCertificateData();
-  }, [enrollmentId, navigate, toast]);
+  }, [enrollmentId, navigate, toast, courseIdFromState]);
+
+  const fetchCertificateDataFromBackend = async (token: string, enrollment: any, completedDate: string) => {
+    const courseId = enrollment.courses?.[0]?.courseId || courseIdFromState;
+    
+    if (!courseId) {
+      throw new Error('Course ID not found');
+    }
+
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/pack365/enrollment/certificate/data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        courseId: courseId,
+        completedDate: completedDate
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return await response.json();
+  };
+
+  const constructCertificateData = (enrollment: any, userProfile: any, completedDate: string): CertificateData => {
+    const course = enrollment.courses?.[0] || {};
+    const examScore = enrollment.bestExamScore || enrollment.examScore || 
+                     enrollment.examAttempts?.[0]?.score || 0;
+    
+    return {
+      studentName: userProfile?.fullName || 
+                  `${userProfile?.firstName || ''} ${userProfile?.lastName || ''}`.trim() || 
+                  enrollment.studentName || 
+                  'Student',
+      email: userProfile?.email || enrollment.email || '',
+      phoneNumber: userProfile?.phoneNumber || enrollment.phoneNumber || '',
+      courseId: course.courseId || enrollment.courseId || 'N/A',
+      courseName: course.courseName || enrollment.courseName || 'Pack365 Course',
+      courseDescription: course.description || enrollment.description || '',
+      stream: enrollment.stream || course.stream || '',
+      enrollmentDate: enrollment.enrollmentDate || enrollment.createdAt || new Date().toISOString(),
+      completedDate: completedDate,
+      examScore: examScore
+    };
+  };
 
   const fetchCertificateData = async (token: string, enrollment: any, completedDate: string) => {
     try {
-      // Try to get certificate data from the new endpoint
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/pack365/enrollment/certificate/data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          enrollmentId: enrollment._id || enrollment.normalizedEnrollmentId,
-          completedDate: completedDate
-        })
-      });
-
-      if (response.ok) {
-        return await response.json();
-      }
+      const data = await fetchCertificateDataFromBackend(token, enrollment, completedDate);
+      return data;
     } catch (error) {
       console.log('Certificate endpoint not available, using fallback');
-    }
-
-    // Fallback: Construct certificate data from enrollment
-    const course = enrollment.courses?.[0] || {};
-    return {
-      success: true,
-      data: {
-        studentName: enrollment.studentName || 'Student Name',
-        email: enrollment.email || '',
-        phoneNumber: enrollment.phoneNumber || '',
-        courseId: course.courseId || 'N/A',
-        courseName: course.courseName || 'Pack365 Course',
-        courseDescription: course.description || '',
-        stream: enrollment.stream || '',
-        enrollmentDate: enrollment.enrollmentDate || new Date().toISOString(),
-        completedDate: completedDate,
-        examScore: enrollment.examScore || enrollment.bestExamScore || 0
+      // Fallback: Construct certificate data from enrollment
+      let userProfile: any = null;
+      try {
+        const profileResponse = await pack365Api.getUserDetails(token);
+        userProfile = profileResponse.user || profileResponse;
+      } catch (profileErr) {
+        console.log('Could not fetch user profile:', profileErr);
       }
-    };
+      
+      return {
+        success: true,
+        data: constructCertificateData(enrollment, userProfile, completedDate)
+      };
+    }
   };
 
   const handleDownloadPDF = async () => {
@@ -171,7 +256,8 @@ const Pack365CertificatePage: React.FC = () => {
       const canvas = await html2canvas(certificateElement, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        logging: false
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -185,7 +271,7 @@ const Pack365CertificatePage: React.FC = () => {
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      pdf.save(`Pack365-Certificate-${certificateData.courseName}-${certificateData.studentName}.pdf`);
+      pdf.save(`Pack365-Certificate-${certificateData.courseName.replace(/\s+/g, '-')}-${certificateData.studentName.replace(/\s+/g, '-')}.pdf`);
 
       toast({
         title: 'Download Complete',
@@ -215,15 +301,16 @@ const Pack365CertificatePage: React.FC = () => {
       if (!certificateElement) return;
 
       const canvas = await html2canvas(certificateElement, {
-        scale: 2,
+        scale: 1,
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        logging: false
       });
 
       canvas.toBlob(async (blob) => {
         if (!blob) return;
 
-        const file = new File([blob], `certificate-${certificateData.studentName}.png`, {
+        const file = new File([blob], `certificate-${certificateData.studentName.replace(/\s+/g, '-')}.png`, {
           type: 'image/png'
         });
 
@@ -232,29 +319,27 @@ const Pack365CertificatePage: React.FC = () => {
             await navigator.share({
               files: [file],
               title: `My Pack365 Certificate: ${certificateData.courseName}`,
-              text: `I just completed ${certificateData.courseName} on Pack365!`
+              text: `I just completed ${certificateData.courseName} on Pack365! Check out my certificate.`
             });
           } catch (shareErr) {
             console.log('Sharing cancelled or failed');
           }
         } else {
-          // Fallback: Copy image to clipboard
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({ 'image/png': blob })
-            ]);
-            toast({
-              title: 'Copied to Clipboard',
-              description: 'Certificate image copied to clipboard',
-              variant: 'default'
-            });
-          } catch (clipboardErr) {
-            toast({
-              title: 'Share Unavailable',
-              description: 'Sharing not supported on this device',
-              variant: 'destructive'
-            });
-          }
+          // Fallback: Create download link
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `certificate-${certificateData.studentName.replace(/\s+/g, '-')}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          toast({
+            title: 'Image Downloaded',
+            description: 'Certificate image downloaded as PNG',
+            variant: 'default'
+          });
         }
       }, 'image/png');
     } catch (err) {
@@ -273,60 +358,282 @@ const Pack365CertificatePage: React.FC = () => {
     const certificateElement = document.getElementById('certificate-content');
     if (!certificateElement) return;
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast({
-        title: 'Print Failed',
-        description: 'Please allow popups to print',
-        variant: 'destructive'
-      });
-      return;
-    }
+    const printContent = certificateElement.innerHTML;
+    const originalContent = document.body.innerHTML;
 
-    printWindow.document.write(`
+    document.body.innerHTML = `
+      <!DOCTYPE html>
       <html>
         <head>
           <title>Pack365 Certificate - ${certificateData?.courseName}</title>
           <style>
-            body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
-            .certificate { 
-              border: 3px solid #1e40af; 
-              padding: 40px; 
-              text-align: center;
-              background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+            
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
             }
-            .logo { font-size: 48px; color: #1e40af; margin-bottom: 20px; }
-            .title { font-size: 36px; color: #1e40af; margin-bottom: 30px; font-weight: bold; }
-            .subtitle { font-size: 24px; color: #374151; margin-bottom: 40px; }
-            .student-name { font-size: 32px; color: #1e40af; margin: 30px 0; font-weight: bold; }
-            .course-name { font-size: 28px; color: #374151; margin-bottom: 20px; }
-            .details { font-size: 18px; color: #4b5563; margin: 20px 0; }
-            .date { font-size: 16px; color: #6b7280; margin-top: 40px; }
-            .signature { margin-top: 60px; border-top: 2px solid #1e40af; padding-top: 20px; }
+            
+            body {
+              font-family: 'Inter', sans-serif;
+              background: white;
+              color: #333;
+              padding: 20px;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            
+            .certificate-container {
+              width: 100%;
+              max-width: 1200px;
+              margin: 0 auto;
+              border: 20px solid transparent;
+              background: linear-gradient(white, white) padding-box,
+                        linear-gradient(135deg, #1e40af 0%, #3b82f6 100%) border-box;
+              position: relative;
+              overflow: hidden;
+            }
+            
+            .certificate-container::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: 
+                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(30, 64, 175, 0.1) 0%, transparent 50%);
+              pointer-events: none;
+            }
+            
+            .watermark {
+              position: absolute;
+              font-size: 180px;
+              font-weight: bold;
+              color: rgba(30, 64, 175, 0.03);
+              transform: rotate(-45deg);
+              top: 30%;
+              left: -50px;
+              white-space: nowrap;
+              font-family: 'Playfair Display', serif;
+            }
+            
+            .logo-section {
+              text-align: center;
+              padding: 40px 0 20px;
+            }
+            
+            .logo-title {
+              font-family: 'Playfair Display', serif;
+              font-size: 48px;
+              font-weight: 700;
+              color: #1e40af;
+              letter-spacing: 2px;
+              margin-bottom: 10px;
+            }
+            
+            .logo-subtitle {
+              font-size: 18px;
+              color: #6b7280;
+              letter-spacing: 4px;
+              text-transform: uppercase;
+            }
+            
+            .main-title {
+              text-align: center;
+              margin: 40px 0;
+            }
+            
+            .certificate-title {
+              font-family: 'Playfair Display', serif;
+              font-size: 42px;
+              font-weight: 700;
+              color: #1e40af;
+              margin-bottom: 15px;
+            }
+            
+            .certificate-subtitle {
+              font-size: 20px;
+              color: #4b5563;
+              font-weight: 400;
+            }
+            
+            .student-name {
+              text-align: center;
+              margin: 60px 0;
+              padding: 40px 0;
+              border-top: 3px solid #3b82f6;
+              border-bottom: 3px solid #3b82f6;
+            }
+            
+            .name-text {
+              font-family: 'Playfair Display', serif;
+              font-size: 48px;
+              font-weight: 700;
+              color: #1e40af;
+              line-height: 1.2;
+            }
+            
+            .course-details {
+              text-align: center;
+              margin: 40px 0;
+              padding: 0 40px;
+            }
+            
+            .completion-text {
+              font-size: 22px;
+              color: #4b5563;
+              margin-bottom: 30px;
+            }
+            
+            .course-name {
+              font-family: 'Playfair Display', serif;
+              font-size: 36px;
+              font-weight: 700;
+              color: #1f2937;
+              margin-bottom: 15px;
+            }
+            
+            .course-description {
+              font-size: 18px;
+              color: #6b7280;
+              line-height: 1.6;
+              max-width: 800px;
+              margin: 0 auto 20px;
+            }
+            
+            .stream-badge {
+              display: inline-block;
+              background: linear-gradient(135deg, #1e40af, #3b82f6);
+              color: white;
+              padding: 8px 24px;
+              border-radius: 30px;
+              font-weight: 600;
+              font-size: 16px;
+              margin-top: 10px;
+            }
+            
+            .dates-section {
+              display: flex;
+              justify-content: center;
+              gap: 80px;
+              margin: 60px 0 40px;
+              padding-top: 40px;
+              border-top: 1px solid #e5e7eb;
+            }
+            
+            .date-item {
+              text-align: center;
+            }
+            
+            .date-label {
+              font-size: 14px;
+              color: #6b7280;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              margin-bottom: 8px;
+            }
+            
+            .date-value {
+              font-size: 20px;
+              font-weight: 600;
+              color: #1f2937;
+            }
+            
+            .signatures {
+              display: flex;
+              justify-content: space-between;
+              margin: 80px 0 40px;
+              padding-top: 40px;
+              border-top: 2px solid #1e40af;
+            }
+            
+            .signature-item {
+              text-align: center;
+              flex: 1;
+            }
+            
+            .signature-name {
+              font-size: 20px;
+              font-weight: 700;
+              color: #1f2937;
+              margin-bottom: 8px;
+            }
+            
+            .signature-title {
+              font-size: 14px;
+              color: #6b7280;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            
+            .signature-line {
+              width: 200px;
+              height: 1px;
+              background: #1f2937;
+              margin: 30px auto;
+            }
+            
+            .certificate-id {
+              text-align: center;
+              font-size: 14px;
+              color: #9ca3af;
+              padding: 30px 0;
+              border-top: 1px solid #e5e7eb;
+              margin-top: 40px;
+            }
+            
+            .verification-badge {
+              display: inline-block;
+              background: #10b981;
+              color: white;
+              padding: 6px 16px;
+              border-radius: 20px;
+              font-size: 12px;
+              font-weight: 600;
+              margin-left: 10px;
+            }
+            
             @media print {
-              body { -webkit-print-color-adjust: exact; }
+              body {
+                padding: 0;
+              }
+              
+              .no-print {
+                display: none !important;
+              }
+              
+              .certificate-container {
+                border: none;
+              }
             }
           </style>
         </head>
         <body>
-          ${certificateElement.outerHTML}
+          ${printContent}
         </body>
       </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    `;
+
+    window.print();
+    document.body.innerHTML = originalContent;
+    window.location.reload();
   };
 
   if (loading) {
     return (
       <>
         <Navbar />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading certificate...</p>
+            <div className="relative inline-block">
+              <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+              <Award className="absolute inset-0 m-auto text-blue-600" size={32} />
+            </div>
+            <p className="mt-6 text-lg font-medium text-gray-700">Loading your certificate...</p>
+            <p className="mt-2 text-sm text-gray-500">Preparing your achievement</p>
           </div>
         </div>
       </>
@@ -337,21 +644,31 @@ const Pack365CertificatePage: React.FC = () => {
     return (
       <>
         <Navbar />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <Card className="max-w-md w-full">
-            <CardContent className="pt-6">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full shadow-2xl border-0">
+            <CardContent className="pt-8 pb-8">
               <div className="text-center">
-                <Award className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Certificate Not Available</h2>
-                <p className="text-gray-600 mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+                  <Award className="h-8 w-8 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Certificate Not Available</h2>
+                <p className="text-gray-600 mb-6">
                   {error || 'Certificate data not found. Please ensure you have completed the course exam.'}
                 </p>
-                <div className="space-x-2">
-                  <Button onClick={() => navigate(-1)} variant="outline">
+                <div className="space-y-3">
+                  <Button 
+                    onClick={() => navigate(-1)} 
+                    variant="outline" 
+                    className="w-full"
+                  >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Go Back
                   </Button>
-                  <Button onClick={() => navigate('/pack365-dashboard')} variant="default">
+                  <Button 
+                    onClick={() => navigate('/pack365-dashboard')} 
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                  >
+                    <Home className="h-4 w-4 mr-2" />
                     Go to Dashboard
                   </Button>
                 </div>
@@ -363,233 +680,306 @@ const Pack365CertificatePage: React.FC = () => {
     );
   }
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          {/* Header */}
-          <div className="mb-8">
-            <Button
-              onClick={() => navigate(-1)}
-              variant="outline"
-              className="mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Course Certificate</h1>
-                <p className="text-gray-600 mt-2">
-                  Official certificate of completion for {certificateData.courseName}
-                </p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+        {/* Top Navigation Bar */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4">
+              <div className="flex items-center space-x-4 mb-4 sm:mb-0">
+                <Button
+                  onClick={() => navigate(-1)}
+                  variant="ghost"
+                  size="sm"
+                  className="hover:bg-blue-50"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <div className="hidden sm:block">
+                  <h1 className="text-xl font-bold text-gray-900">Certificate of Completion</h1>
+                  <p className="text-sm text-gray-600">{certificateData.courseName}</p>
+                </div>
               </div>
               
               <div className="flex flex-wrap gap-2">
-                <Badge variant="default" className="flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Verified Certificate
+                <Badge variant="default" className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Verified
                 </Badge>
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <BookOpen className="h-3 w-3" />
-                  {certificateData.stream} Stream
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                  <BookOpen className="h-3 w-3 mr-1" />
+                  {certificateData.stream}
                 </Badge>
               </div>
             </div>
           </div>
+        </div>
 
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Certificate Display */}
+            {/* Certificate Display - Main Content */}
             <div className="lg:col-span-2">
-              <Card className="shadow-lg overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="h-6 w-6" />
-                    Certificate of Completion
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border-0">
+                {/* Certificate Content */}
+                <div 
+                  id="certificate-content"
+                  className="p-8 md:p-12 bg-gradient-to-br from-white to-blue-50 min-h-[600px] relative"
+                >
+                  {/* Watermark Background */}
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-100 rounded-full opacity-10"></div>
+                    <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-indigo-100 rounded-full opacity-10"></div>
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-8xl font-black text-blue-50 opacity-20 select-none">
+                      Pack365
+                    </div>
+                  </div>
+
+                  {/* Certificate Border */}
+                  <div className="absolute inset-4 border-4 border-double border-blue-200 rounded-xl pointer-events-none"></div>
+
                   {/* Certificate Content */}
-                  <div 
-                    id="certificate-content"
-                    className="p-8 bg-gradient-to-br from-blue-50 to-indigo-50 min-h-[500px] flex flex-col items-center justify-center"
-                  >
-                    {/* Decorative Border */}
-                    <div className="absolute top-4 left-4 right-4 bottom-4 border-4 border-blue-300 border-dashed rounded-lg pointer-events-none"></div>
-                    
-                    {/* Certificate Design */}
-                    <div className="text-center relative z-10 max-w-2xl">
-                      {/* Logo/Header */}
-                      <div className="mb-8">
-                        <div className="text-5xl font-bold text-blue-600 mb-2">Pack365</div>
-                        <div className="text-lg text-gray-600">Skill Development Platform</div>
+                  <div className="relative z-10">
+                    {/* Header */}
+                    <div className="text-center mb-12">
+                      <div className="text-5xl md:text-6xl font-bold text-blue-600 mb-2 font-serif">
+                        Pack365
                       </div>
-
-                      {/* Title */}
-                      <div className="mb-10">
-                        <div className="text-4xl font-bold text-gray-900 mb-2">
-                          CERTIFICATE OF COMPLETION
-                        </div>
-                        <div className="text-lg text-gray-600">
-                          This is to certify that
-                        </div>
+                      <div className="text-lg text-gray-600 tracking-widest uppercase">
+                        Excellence in Learning
                       </div>
+                    </div>
 
-                      {/* Student Name */}
-                      <div className="my-10">
-                        <div className="text-3xl font-bold text-blue-700 py-4 px-8 border-t-2 border-b-2 border-blue-300 inline-block">
-                          {certificateData.studentName}
-                        </div>
+                    {/* Certificate Title */}
+                    <div className="text-center mb-16">
+                      <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 font-serif">
+                        CERTIFICATE OF ACHIEVEMENT
                       </div>
-
-                      {/* Course Details */}
-                      <div className="mb-8">
-                        <div className="text-xl text-gray-700 mb-4">
-                          has successfully completed the course
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900 mb-2">
-                          {certificateData.courseName}
-                        </div>
-                        <div className="text-lg text-gray-600 mb-4">
-                          {certificateData.courseDescription}
-                        </div>
-                        <div className="text-md text-gray-500">
-                          {certificateData.stream} Stream • Pack365
-                        </div>
+                      <div className="text-xl text-gray-600">
+                        This certificate is proudly presented to
                       </div>
+                    </div>
 
-                      {/* Dates */}
-                      <div className="grid grid-cols-2 gap-8 mt-12 pt-8 border-t border-gray-300">
-                        <div className="text-center">
-                          <div className="text-sm text-gray-500 mb-1">Enrollment Date</div>
-                          <div className="font-semibold">
-                            {new Date(certificateData.enrollmentDate).toLocaleDateString()}
-                          </div>
+                    {/* Student Name */}
+                    <div className="text-center my-16 py-8 border-t-4 border-b-4 border-blue-300 border-double">
+                      <div className="text-4xl md:text-5xl font-bold text-blue-700 leading-tight font-serif">
+                        {certificateData.studentName}
+                      </div>
+                    </div>
+
+                    {/* Course Details */}
+                    <div className="text-center mb-16 max-w-3xl mx-auto">
+                      <div className="text-xl text-gray-700 mb-8">
+                        for successfully completing the course
+                      </div>
+                      <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                        {certificateData.courseName}
+                      </div>
+                      <div className="text-lg text-gray-600 mb-6 leading-relaxed">
+                        {certificateData.courseDescription}
+                      </div>
+                      <div className="inline-block px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-semibold">
+                        {certificateData.stream} Stream
+                      </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="flex justify-center gap-16 mt-20 pt-8 border-t border-gray-300">
+                      <div className="text-center">
+                        <div className="text-sm text-gray-500 uppercase tracking-wider mb-2">
+                          Enrolled On
                         </div>
-                        <div className="text-center">
-                          <div className="text-sm text-gray-500 mb-1">Completion Date</div>
-                          <div className="font-semibold">
-                            {new Date(certificateData.completedDate).toLocaleDateString()}
-                          </div>
+                        <div className="text-lg font-semibold text-gray-900">
+                          {formatDate(certificateData.enrollmentDate)}
                         </div>
                       </div>
-
-                      {/* Signature Area */}
-                      <div className="mt-16 pt-8 border-t border-gray-400">
-                        <div className="flex justify-between items-end">
-                          <div className="text-center">
-                            <div className="font-semibold text-gray-900">Triple A Education</div>
-                            <div className="text-sm text-gray-600">Authorized Signature</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-semibold text-gray-900">Pack365</div>
-                            <div className="text-sm text-gray-600">Verified & Issued</div>
-                          </div>
+                      <div className="text-center">
+                        <div className="text-sm text-gray-500 uppercase tracking-wider mb-2">
+                          Completed On
+                        </div>
+                        <div className="text-lg font-semibold text-gray-900">
+                          {formatDate(certificateData.completedDate)}
                         </div>
                       </div>
+                    </div>
 
-                      {/* Certificate ID */}
-                      <div className="mt-8 text-sm text-gray-500">
-                        Certificate ID: {certificateData.courseId}-{new Date(certificateData.completedDate).getTime()}
+                    {/* Signatures */}
+                    <div className="flex justify-between mt-24 pt-8 border-t-2 border-blue-400">
+                      <div className="text-center flex-1">
+                        <div className="text-lg font-bold text-gray-900 mb-1">Dr. Ajay Prabhakar</div>
+                        <div className="text-sm text-gray-600">Founder & Director</div>
+                        <div className="text-xs text-gray-500 mt-4">Triple A Education</div>
+                      </div>
+                      <div className="text-center flex-1">
+                        <div className="text-lg font-bold text-gray-900 mb-1">Pack365</div>
+                        <div className="text-sm text-gray-600">Skill Development Platform</div>
+                        <div className="text-xs text-gray-500 mt-4">Verified & Authenticated</div>
+                      </div>
+                    </div>
+
+                    {/* Certificate ID */}
+                    <div className="text-center mt-12 pt-6 border-t border-gray-200">
+                      <div className="text-sm text-gray-500">
+                        Certificate ID: <span className="font-mono font-medium">
+                          {certificateData.courseId}-{new Date(certificateData.completedDate).getTime().toString(36).toUpperCase()}
+                        </span>
+                        <span className="ml-4 px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                          ✓ Verified
+                        </span>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
-            {/* Actions Panel */}
+            {/* Sidebar - Actions and Info */}
             <div>
-              <Card className="shadow-md">
-                <CardHeader>
-                  <CardTitle className="text-lg">Certificate Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
+              <div className="space-y-6">
+                {/* Action Buttons */}
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg flex items-center">
+                      <Award className="h-5 w-5 mr-2 text-blue-600" />
+                      Certificate Actions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     <Button
                       onClick={handleDownloadPDF}
-                      className="w-full flex items-center justify-center gap-2"
-                      variant="default"
+                      className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
                       disabled={downloading}
                     >
                       {downloading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generating PDF...
+                        </>
                       ) : (
-                        <Download className="h-4 w-4" />
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download PDF Certificate
+                        </>
                       )}
-                      Download PDF Certificate
                     </Button>
 
                     <Button
                       onClick={handlePrint}
-                      className="w-full flex items-center justify-center gap-2"
+                      className="w-full h-12"
                       variant="outline"
                     >
-                      <Printer className="h-4 w-4" />
+                      <Printer className="h-4 w-4 mr-2" />
                       Print Certificate
                     </Button>
 
                     <Button
                       onClick={handleShare}
-                      className="w-full flex items-center justify-center gap-2"
+                      className="w-full h-12"
                       variant="outline"
                       disabled={sharing}
                     >
                       {sharing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       ) : (
-                        <Share2 className="h-4 w-4" />
+                        <Share2 className="h-4 w-4 mr-2" />
                       )}
                       Share Certificate
                     </Button>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  {/* Certificate Details */}
-                  <div className="pt-4 border-t">
-                    <h3 className="font-semibold mb-3">Certificate Details</h3>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600">Recipient:</span>
-                        <span className="font-medium">{certificateData.studentName}</span>
+                {/* Certificate Details */}
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg flex items-center">
+                      <User className="h-5 w-5 mr-2 text-blue-600" />
+                      Certificate Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-start">
+                        <User className="h-4 w-4 text-gray-400 mt-1 mr-3" />
+                        <div>
+                          <div className="text-sm text-gray-500">Recipient</div>
+                          <div className="font-medium">{certificateData.studentName}</div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <BookOpen className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600">Course:</span>
-                        <span className="font-medium">{certificateData.courseName}</span>
+                      
+                      <div className="flex items-start">
+                        <Mail className="h-4 w-4 text-gray-400 mt-1 mr-3" />
+                        <div>
+                          <div className="text-sm text-gray-500">Email</div>
+                          <div className="font-medium">{certificateData.email || 'Not provided'}</div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600">Completed:</span>
-                        <span className="font-medium">
-                          {new Date(certificateData.completedDate).toLocaleDateString()}
-                        </span>
+                      
+                      <div className="flex items-start">
+                        <Phone className="h-4 w-4 text-gray-400 mt-1 mr-3" />
+                        <div>
+                          <div className="text-sm text-gray-500">Phone</div>
+                          <div className="font-medium">{certificateData.phoneNumber || 'Not provided'}</div>
+                        </div>
                       </div>
-                      {certificateData.examScore && (
-                        <div className="flex items-center gap-2">
-                          <Award className="h-4 w-4 text-yellow-500" />
-                          <span className="text-gray-600">Exam Score:</span>
-                          <span className="font-medium">{certificateData.examScore}%</span>
+                      
+                      <div className="flex items-start">
+                        <BookOpen className="h-4 w-4 text-gray-400 mt-1 mr-3" />
+                        <div>
+                          <div className="text-sm text-gray-500">Course</div>
+                          <div className="font-medium">{certificateData.courseName}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start">
+                        <Calendar className="h-4 w-4 text-gray-400 mt-1 mr-3" />
+                        <div>
+                          <div className="text-sm text-gray-500">Completion Date</div>
+                          <div className="font-medium">{formatDate(certificateData.completedDate)}</div>
+                        </div>
+                      </div>
+                      
+                      {certificateData.examScore && certificateData.examScore > 0 && (
+                        <div className="flex items-start">
+                          <Award className="h-4 w-4 text-yellow-500 mt-1 mr-3" />
+                          <div>
+                            <div className="text-sm text-gray-500">Exam Score</div>
+                            <div className="font-medium">{certificateData.examScore}%</div>
+                          </div>
                         </div>
                       )}
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  {/* Verification Info */}
-                  <div className="pt-4 border-t">
-                    <h3 className="font-semibold mb-2">Verification</h3>
-                    <p className="text-sm text-gray-600">
-                      This certificate is digitally verified and can be validated through the Pack365 platform.
-                    </p>
-                    <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-center">
-                      <CheckCircle2 className="h-4 w-4 text-green-600 inline-block mr-1" />
-                      <span className="text-sm text-green-700">Verified & Authentic</span>
+                {/* Verification Info */}
+                <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-emerald-50">
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
+                        <CheckCircle2 className="h-6 w-6 text-green-600" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Verified & Authentic</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        This certificate is digitally verified and can be validated through the Pack365 platform.
+                      </p>
+                      <div className="text-xs text-gray-500 bg-white/50 p-3 rounded-lg">
+                        Certificate ID: {certificateData.courseId}-{new Date(certificateData.completedDate).getTime().toString(36).toUpperCase()}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </div>
