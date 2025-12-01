@@ -241,13 +241,17 @@ const Pack365StreamLearning = () => {
     });
   };
 
-  // Use normalizedEnrollmentId pref (set in API helper). Fallback to query-based route when no id.
+  // Improved certificate navigation handler - adds diagnostics + fallback
   const handleGenerateCertificate = (e?: React.MouseEvent) => {
     if (e && typeof (e as any).preventDefault === 'function') {
       e.preventDefault();
     }
 
+    console.log('[CERT] Generate Certificate clicked');
+    toast({ title: 'Generating', description: 'Preparing certificate...', variant: 'default' });
+
     if (!enrollment) {
+      console.error('[CERT] No enrollment state available');
       toast({
         title: 'Error',
         description: 'Enrollment not available.',
@@ -256,28 +260,59 @@ const Pack365StreamLearning = () => {
       return;
     }
 
-    // Prefer normalizedEnrollmentId (set by pack365Api.getMyEnrollments)
-    let enrollmentId: any = (enrollment as any).normalizedEnrollmentId ?? enrollment._id ?? enrollment.enrollmentId ?? enrollment.id;
+    // Try a few common fields, and handle objects (ObjectId) gracefully
+    let enrollmentId: any = enrollment._id ?? enrollment.enrollmentId ?? enrollment.id ?? (enrollment as any).enrollmentId ?? (enrollment as any).enrollment?._id;
+    console.log('[CERT] Raw enrollment object:', enrollment);
+    console.log('[CERT] Candidate IDs:', {
+      _id: (enrollment as any)._id,
+      enrollmentId: (enrollment as any).enrollmentId,
+      id: (enrollment as any).id,
+    });
 
-    if (enrollmentId) {
-      try {
-        enrollmentId = typeof enrollmentId === 'object' ? String(enrollmentId) : enrollmentId;
-      } catch {
-        enrollmentId = String(enrollmentId);
-      }
-      const encodedId = encodeURIComponent(String(enrollmentId));
-      navigate(`/pack365-certificate/${encodedId}`);
+    if (!enrollmentId) {
+      console.error('[CERT] enrollmentId not found in enrollment object');
+      toast({
+        title: 'Error',
+        description: 'Unable to generate certificate. Enrollment ID not found.',
+        variant: 'destructive'
+      });
       return;
     }
 
-    // No stable id found — fallback to query-based navigation using stream + enrollmentDate
-    // Pack365CertificatePage will accept the query params and resolve the enrollment on load.
-    const qs = new URLSearchParams({
-      stream: enrollment.stream || stream || '',
-      enrollmentDate: String(enrollment.enrollmentDate || enrollment.createdAt || '')
-    }).toString();
+    // Normalize to string
+    try {
+      enrollmentId = typeof enrollmentId === 'object' ? String(enrollmentId) : enrollmentId;
+    } catch (err) {
+      console.warn('[CERT] Could not stringify enrollmentId, fallback to template', err);
+      enrollmentId = `${enrollmentId}`;
+    }
 
-    navigate(`/pack365-certificate?${qs}`);
+    const encodedId = encodeURIComponent(String(enrollmentId));
+    const targetPath = `/pack365-certificate/${encodedId}`;
+
+    console.log('[CERT] Navigating to targetPath:', targetPath);
+    // Try react-router navigation first
+    try {
+      navigate(targetPath);
+    } catch (navErr) {
+      console.error('[CERT] react-router navigate threw error:', navErr);
+    }
+
+    // After short delay, if navigation did not happen (e.g. ProtectedRoute blocked it),
+    // fallback to a full page redirect so we can test route accessibility.
+    setTimeout(() => {
+      const currentPath = window.location.pathname;
+      console.log('[CERT] After navigate, currentPath =', currentPath);
+      if (!currentPath.includes('/pack365-certificate')) {
+        console.warn('[CERT] react-router navigation did not take effect; falling back to window.location.href');
+        toast({
+          title: 'Fallback',
+          description: 'Falling back to full page navigation to certificate (for debugging).',
+          variant: 'warning'
+        });
+        window.location.href = targetPath;
+      }
+    }, 300);
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-GB', {
