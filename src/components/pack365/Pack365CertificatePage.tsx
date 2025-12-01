@@ -182,7 +182,7 @@ const Pack365CertificatePage: React.FC = () => {
         return;
       }
 
-      // Preload background
+      // Preload any bg (defensive)
       const preloadImage = new Image();
       preloadImage.crossOrigin = "anonymous";
       preloadImage.src = "/lovable-uploads/certificate-bg.jpg";
@@ -201,6 +201,7 @@ const Pack365CertificatePage: React.FC = () => {
         width: certRef.current.scrollWidth,
         height: certRef.current.scrollHeight,
         onclone: (clonedDoc: Document) => {
+          // remove any elements meant to be hidden during export
           const removeElems = clonedDoc.querySelectorAll(".remove-on-clone");
           removeElems.forEach((el) => el.remove());
           // ensure certificate background is applied in cloned doc
@@ -250,7 +251,7 @@ const Pack365CertificatePage: React.FC = () => {
     }
   };
 
-
+ 
   const Pack365CourseBody: React.FC<{ certificate: CertificateData; providerName?: string }> = ({ certificate, providerName }) => {
     const provider = providerName || "Pack365";
     const start = certificate.enrollmentDate || "12/1/2025";
@@ -496,23 +497,7 @@ const Pack365CertificatePage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Footer: Completed On then Certificate ID (left) and signature (right). Mail id removed. */}
-                  <div className="mt-4">
-                    <div className="flex justify-between items-end text-sm text-gray-700">
-                      <div className="text-left">
-                        <p className="font-semibold">Completed On:</p>
-                        <p className="mb-2">{certificate?.completedDate || "12/2/2025"}</p>
-
-                        <p className="font-semibold">Certificate ID:</p>
-                        <p className="font-mono">{formattedCertificateId() || "COURSE_386337"}</p>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-gray-800">KISSHORE KUMAAR</p>
-                        <p className="text-xs text-gray-500">Founder & Director - Triaright</p>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Removed  */}
 
                   <style>{`
                     @media print {
