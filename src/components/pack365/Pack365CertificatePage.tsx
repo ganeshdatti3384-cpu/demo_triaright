@@ -5,30 +5,6 @@ import Navbar from "@/components/Navbar";
 import { Loader2, Download, Printer, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-/**
- * Pack365CertificatePage
- *
- * Usage:
- * - Navigated from StreamLearningInterface with:
- *   navigate(`/pack365-certificate/${enrollmentId}`, {
- *     state: {
- *       enrollmentId,
- *       courseId,         // REQUIRED for backend call
- *       completedDate,    // optional
- *       courseName,
- *       stream
- *     }
- *   });
- *
- * - The component calls POST /api/pack365/enrollment/certificate/data
- *   with { courseId, completedDate } and Authorization header.
- *
- * - Backend returns certificate data (studentName, email, phoneNumber,
- *   courseId, courseName, courseDescription, stream, enrollmentDate, completedDate)
- *
- * - This page renders a printable certificate and exposes Print and
- *   Download (PNG via html2canvas if available) actions.
- */
 
 type CertificateData = {
   studentName: string;
