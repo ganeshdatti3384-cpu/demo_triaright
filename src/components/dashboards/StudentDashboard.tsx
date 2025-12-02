@@ -731,17 +731,27 @@ const StudentDashboard = () => {
   const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
     console.log('🚀 Continue Learning clicked, enrollment:', enrollment);
     
-    // Navigate to Pack365 stream learning page
-    if (enrollment.stream) {
-      console.log('📋 Stream identified:', enrollment.stream);
-      console.log('🎯 Navigation path:', `/pack365-stream/${enrollment.stream}`);
-      
-      navigate(`/pack365-stream/${enrollment.stream}`);
+    let courseId: string;
+    
+    if (typeof enrollment.courseId === 'string') {
+      courseId = enrollment.courseId;
+    } else if (enrollment.courseId && typeof enrollment.courseId === 'object' && 'courseId' in enrollment.courseId) {
+      courseId = (enrollment.courseId as any)._id;
     } else {
-      console.error('❌ No valid stream found in enrollment:', enrollment);
+      courseId = enrollment._id || '';
+    }
+    
+    console.log('📋 Course ID extracted:', courseId);
+    console.log('🎯 Navigation path:', `/learning/${courseId}`);
+
+    if (courseId) {
+      console.log('✅ Navigating to course learning page...');
+      navigate(`/learning/${courseId}`);
+    } else {
+      console.error('❌ No valid course ID found in enrollment:', enrollment);
       toast({
         title: "Navigation Error",
-        description: "Stream not found. Please try again or contact support.",
+        description: "Course ID not found. Please try again or contact support.",
         variant: "destructive",
       });
     }
@@ -1225,7 +1235,7 @@ const StudentDashboard = () => {
                                     </div>
 
                                     <Button 
-                                      onClick={() => handleContinueLearning(enrollment)}
+                                      onClick={() => handleStreamLearning(enrollment.stream)}
                                       className="w-full"
                                       size="sm"
                                     >
