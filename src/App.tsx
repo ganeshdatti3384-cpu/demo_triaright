@@ -174,7 +174,7 @@ const App = () => {
             }
           />
           
-          {/* Pack365 Learning Routes */}
+          {/* Pack365 Learning Routes - UNCHANGED */}
           <Route 
             path="/pack365-learning/:stream" 
             element={
@@ -200,7 +200,7 @@ const App = () => {
             } 
           />
           
-          {/* Regular Course Learning Route - UPDATED to use CourseLearningInterface */}
+          {/* Regular Course Learning Route - UPDATED: Use CourseLearningInterface */}
           <Route
             path="/learning/:id"
             element={
