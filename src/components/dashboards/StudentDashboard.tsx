@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,129 +94,6 @@ interface APInternship {
   postedBy: string;
   createdAt: string;
 }
-
-const TrustBadgesScroller = () => {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-
-    const scroll = () => {
-      if (scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth) {
-        // Reset to start
-        scroller.scrollLeft = 0;
-      } else {
-        scroller.scrollLeft += 1;
-      }
-    };
-
-    const interval = setInterval(scroll, 30);
-    return () => clearInterval(interval);
-  }, []);
-
-  const trustBadges = [
-    {
-      name: "Skill India",
-      image: "/lovable-uploads/skill-india-badge.png",
-      alt: "Skill India - Government of India",
-      category: "Government"
-    },
-    {
-      name: "Startup India",
-      image: "/lovable-uploads/startup-india-badge.png",
-      alt: "Startup India - Government of India",
-      category: "Government"
-    },
-    {
-      name: "AICTE",
-      image: "/lovable-uploads/aicte-badge.png",
-      alt: "AICTE Approved",
-      category: "Education"
-    },
-    {
-      name: "APSSDC",
-      image: "/lovable-uploads/apssdc-badge.png",
-      alt: "APSSDC Partner",
-      category: "Government"
-    },
-    {
-      name: "ISO 9001:2015",
-      image: "/lovable-uploads/iso-badge.png",
-      alt: "ISO 9001:2015 Certified",
-      category: "Quality"
-    },
-    {
-      name: "MSME",
-      image: "/lovable-uploads/msme-badge.png",
-      alt: "MSME Registered",
-      category: "Government"
-    },
-    {
-      name: "NASSCOM",
-      image: "/lovable-uploads/nasscom-badge.gif",
-      alt: "NASSCOM Partner",
-      category: "Industry"
-    },
-    {
-      name: "NSDC",
-      image: "/lovable-uploads/nsdc-badge.png",
-      alt: "NSDC Partner",
-      category: "Government"
-    },
-    {
-      name: "APSCHE",
-      image: "/lovable-uploads/apsche-badge.png",
-      alt: "APSCHE Affiliated",
-      category: "Education"
-    }
-  ];
-
-  return (
-    <div className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 border-y border-gray-200 py-3 overflow-hidden">
-      <div className="flex items-center">
-        <div className="bg-blue-600 text-white px-4 py-2 flex-shrink-0 font-semibold">
-          Trusted & Recognized By:
-        </div>
-        <div 
-          ref={scrollerRef}
-          className="flex items-center space-x-8 overflow-x-auto scrollbar-hide"
-          style={{ scrollBehavior: 'smooth' }}
-        >
-          {/* Duplicate badges for seamless scrolling */}
-          {[...trustBadges, ...trustBadges].map((badge, index) => (
-            <div 
-              key={index} 
-              className="flex items-center space-x-3 px-4 flex-shrink-0"
-            >
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center p-1 shadow-sm">
-                <div className="w-8 h-8 flex items-center justify-center">
-                  {badge.image.endsWith('.gif') ? (
-                    <img 
-                      src={badge.image} 
-                      alt={badge.alt}
-                      className="w-8 h-8 object-contain"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 flex items-center justify-center bg-white">
-                      <span className="text-xs font-bold text-gray-800">
-                        {badge.name.split(' ')[0]}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-gray-900">{badge.name}</div>
-                <div className="text-xs text-gray-600">{badge.category}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -967,111 +844,6 @@ const StudentDashboard = () => {
                   </Card>
                 );
               })}
-            </div>
-
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Jump back into your learning</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Button className="flex items-center justify-center space-x-2 h-12">
-                    <Play className="h-4 w-4" />
-                    <span>Resume Last Course</span>
-                  </Button>
-                  <Button variant="outline" className="flex items-center justify-center space-x-2 h-12">
-                    <BookOpen className="h-4 w-4" />
-                    <span>Browse New Courses</span>
-                  </Button>
-                  <Button variant="outline" className="flex items-center justify-center space-x-2 h-12">
-                    <Award className="h-4 w-4" />
-                    <span>View Certificates</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Finance Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Finance</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                    <span className="text-gray-700">Total Payable</span>
-                    <span className="font-bold">$ 10,000</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                    <span className="text-gray-700">Total Paid</span>
-                    <span className="font-bold">$ 5,000</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                    <span className="text-gray-700">Others</span>
-                    <span className="font-bold">$ 300</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Enrolled Courses */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Enrolled Courses</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {myEnrollments.length > 0 ? (
-                    myEnrollments.slice(0, 2).map((enrollment, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <span className="text-gray-700">{enrollment.courseName}</span>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleContinueLearning(enrollment)}
-                        >
-                          View
-                        </Button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4">
-                      <BookOpen className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-500">No enrolled courses</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Recent Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {enrolledCourses.slice(0, 3).map((course, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <BookOpen className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{course.courseName || 'Course Name'}</p>
-                            <p className="text-sm text-gray-600">Last accessed 2 days ago</p>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline">
-                          Continue
-                        </Button>
-                      </div>
-                    ))}
-                    {enrolledCourses.length === 0 && (
-                      <p className="text-center text-gray-500 py-4">No recent activity. Start learning today!</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2040,9 +1812,6 @@ const StudentDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
-      {/* Trust Badges Scrolling Bar */}
-      <TrustBadgesScroller />
-      
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
@@ -2075,17 +1844,6 @@ const StudentDashboard = () => {
           </div>
         </div>
       </div>
-      
-      {/* Add style tag for scrollbar hiding */}
-      <style>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
     </div>
   );
 };
