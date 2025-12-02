@@ -98,33 +98,24 @@ interface APInternship {
 // Trust badges data
 const trustBadges = [
   {
-    name: "Skill India",
-    image: "/pack365.png",
-    alt: "Skill India - Government of India",
-    category: "Government"
+    name: "Pack365",
+    image: "/pack365.png"
   },
   {
-    name: "Startup India",
-    image: "/AP.png",
-    alt: "Startup India - Government of India",
-    category: "Government"
+    name: "AP Exclusive Internships",
+    image: "/AP.png"
   },
   {
-    name: "AICTE",
-    image: "/LC.png",
-    alt: "AICTE Approved",
-    category: "Education"
+    name: "Live Courses",
+    image: "/LC.png"
   },
   {
-    name: "APSSDC",
-    image: "/RC.png",
-    alt: "APSSDC Partner",
-    category: "Government"
+    name: "Recorded Course",
+    image: "/RC.png"
   },
   {
-    name: "ISO 9001:2015",
-    image: "/j&i.png",
-    alt: "ISO 9001:2015 Certified",
+    name: "jobs & internships",
+    image: "/j&i.png"
   }
 ];
 
