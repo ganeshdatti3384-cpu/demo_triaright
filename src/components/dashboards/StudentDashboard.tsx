@@ -1,4 +1,3 @@
-contents:
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -728,7 +727,10 @@ const StudentDashboard = () => {
     }
   };
 
-  
+  // Updated handleContinueLearning to robustly extract a MongoDB ObjectId for the course.
+  // If the enrollment contains only a course code like CRS_014, we lookup all courses and map the code to the mongo _id,
+  // then navigate to /learning/:mongoId. If we cannot resolve an ObjectId, fall back to course-enrollment page
+  // to avoid causing a GET /courses/CRS_014 request that the backend treats as an invalid ObjectId (500).
   const extractObjectId = (s?: string | null) => {
     if (!s) return null;
     return /^[a-fA-F0-9]{24}$/.test(s) ? s : null;
