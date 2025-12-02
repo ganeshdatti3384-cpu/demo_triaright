@@ -95,6 +95,64 @@ interface APInternship {
   createdAt: string;
 }
 
+// Trust badges data
+const trustBadges = [
+  {
+    name: "Skill India",
+    image: "/lovable-uploads/skill-india-badge.png",
+    alt: "Skill India - Government of India",
+    category: "Government"
+  },
+  {
+    name: "Startup India",
+    image: "/lovable-uploads/startup-india-badge.png",
+    alt: "Startup India - Government of India",
+    category: "Government"
+  },
+  {
+    name: "AICTE",
+    image: "/lovable-uploads/aicte-badge.png",
+    alt: "AICTE Approved",
+    category: "Education"
+  },
+  {
+    name: "APSSDC",
+    image: "/lovable-uploads/apssdc-badge.png",
+    alt: "APSSDC Partner",
+    category: "Government"
+  },
+  {
+    name: "ISO 9001:2015",
+    image: "/lovable-uploads/iso-badge.png",
+    alt: "ISO 9001:2015 Certified",
+    category: "Quality"
+  },
+  {
+    name: "MSME",
+    image: "/lovable-uploads/msme-badge.png",
+    alt: "MSME Registered",
+    category: "Government"
+  },
+  {
+    name: "NASSCOM",
+    image: "/lovable-uploads/nasscom-badge.gif",
+    alt: "NASSCOM Partner",
+    category: "Industry"
+  },
+  {
+    name: "NSDC",
+    image: "/lovable-uploads/nsdc-badge.png",
+    alt: "NSDC Partner",
+    category: "Government"
+  },
+  {
+    name: "APSCHE",
+    image: "/lovable-uploads/apsche-badge.png",
+    alt: "APSCHE Affiliated",
+    category: "Education"
+  }
+];
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -774,37 +832,6 @@ const StudentDashboard = () => {
     completedExams: pack365Enrollments.filter(enrollment => enrollment.isExamCompleted).length
   };
 
-  const stats = [
-    {
-      title: 'Enrolled Courses',
-      value: myEnrollments.length.toString(),
-      icon: BookOpen,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
-    },
-    {
-      title: 'Completed Courses',
-      value: completedCourses.length.toString(),
-      icon: Award,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
-    },
-    {
-      title: 'Study Hours',
-      value: '48',
-      icon: Clock,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    },
-    {
-      title: 'Certificates',
-      value: completedCourses.length.toString(),
-      icon: Star,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50'
-    }
-  ];
-
   // Updated menu items without Exams
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: User },
@@ -824,149 +851,46 @@ const StudentDashboard = () => {
       case 'dashboard':
         return (
           <div className="space-y-6">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat) => {
-                const IconComponent = stat.icon;
-                return (
-                  <Card key={stat.title}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                          <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                        </div>
-                        <div className={`${stat.bgColor} p-3 rounded-full`}>
-                          <IconComponent className={`h-6 w-6 ${stat.color}`} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {/* Quick Actions */}
+            {/* Trust Badges Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Jump back into your learning</CardDescription>
+                <CardTitle>Our Trusted Partnerships & Certifications</CardTitle>
+                <CardDescription>Recognized by leading organizations and government bodies</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Button className="flex items-center justify-center space-x-2 h-12">
-                    <Play className="h-4 w-4" />
-                    <span>Resume Last Course</span>
-                  </Button>
-                  <Button variant="outline" className="flex items-center justify-center space-x-2 h-12">
-                    <BookOpen className="h-4 w-4" />
-                    <span>Browse New Courses</span>
-                  </Button>
-                  <Button variant="outline" className="flex items-center justify-center space-x-2 h-12">
-                    <Award className="h-4 w-4" />
-                    <span>View Certificates</span>
-                  </Button>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                  {trustBadges.map((badge, index) => (
+                    <div key={index} className="flex flex-col items-center justify-center p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-300">
+                      <div className="w-20 h-20 flex items-center justify-center mb-3">
+                        <img 
+                          src={badge.image} 
+                          alt={badge.alt}
+                          className="max-w-full max-h-full object-contain"
+                          onError={(e) => {
+                            // Fallback if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement!.innerHTML = `
+                              <div class="w-full h-full flex items-center justify-center bg-gray-100 rounded-full">
+                                <span class="text-xs font-semibold text-gray-600 text-center px-2">${badge.name}</span>
+                              </div>
+                            `;
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-gray-700 text-center">{badge.name}</span>
+                      <span className="text-xs text-gray-500 mt-1 text-center">{badge.category}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Finance Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Finance</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                    <span className="text-gray-700">Total Payable</span>
-                    <span className="font-bold">$ 10,000</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                    <span className="text-gray-700">Total Paid</span>
-                    <span className="font-bold">$ 5,000</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                    <span className="text-gray-700">Others</span>
-                    <span className="font-bold">$ 300</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Enrolled Courses */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Enrolled Courses</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {myEnrollments.length > 0 ? (
-                    myEnrollments.slice(0, 2).map((enrollment, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <span className="text-gray-700">{enrollment.courseName}</span>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleContinueLearning(enrollment)}
-                        >
-                          View
-                        </Button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4">
-                      <BookOpen className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-500">No enrolled courses</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Recent Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {enrolledCourses.slice(0, 3).map((course, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <BookOpen className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{course.courseName || 'Course Name'}</p>
-                            <p className="text-sm text-gray-600">Last accessed 2 days ago</p>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline">
-                          Continue
-                        </Button>
-                      </div>
-                    ))}
-                    {enrolledCourses.length === 0 && (
-                      <p className="text-center text-gray-500 py-4">No recent activity. Start learning today!</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Daily Notice with Badges */}
+              {/* Daily Notice */}
               <Card>
                 <CardHeader>
                   <CardTitle>Daily Notice</CardTitle>
-                  <div className="flex gap-2 mt-2">
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                      AP
-                    </Badge>
-                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                      Exclusive Internships
-                    </Badge>
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      Jobs & Internships
-                    </Badge>
-                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -984,21 +908,10 @@ const StudentDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Exam Schedule with Badges */}
+              {/* Exam Schedule */}
               <Card>
                 <CardHeader>
                   <CardTitle>Exam Schedule</CardTitle>
-                  <div className="flex gap-2 mt-2">
-                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                      Recorded
-                    </Badge>
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                      Courses
-                    </Badge>
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                      Academic
-                    </Badge>
-                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
