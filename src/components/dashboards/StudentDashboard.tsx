@@ -774,37 +774,6 @@ const StudentDashboard = () => {
     completedExams: pack365Enrollments.filter(enrollment => enrollment.isExamCompleted).length
   };
 
-  const stats = [
-    {
-      title: 'Enrolled Courses',
-      value: myEnrollments.length.toString(),
-      icon: BookOpen,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
-    },
-    {
-      title: 'Completed Courses',
-      value: completedCourses.length.toString(),
-      icon: Award,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
-    },
-    {
-      title: 'Study Hours',
-      value: '48',
-      icon: Clock,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    },
-    {
-      title: 'Certificates',
-      value: completedCourses.length.toString(),
-      icon: Star,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50'
-    }
-  ];
-
   // Updated menu items without Exams
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: User },
@@ -824,28 +793,6 @@ const StudentDashboard = () => {
       case 'dashboard':
         return (
           <div className="space-y-6">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat) => {
-                const IconComponent = stat.icon;
-                return (
-                  <Card key={stat.title}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                          <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                        </div>
-                        <div className={`${stat.bgColor} p-3 rounded-full`}>
-                          <IconComponent className={`h-6 w-6 ${stat.color}`} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Daily Notice */}
               <Card>
