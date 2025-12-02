@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -727,133 +728,31 @@ const StudentDashboard = () => {
     }
   };
 
-  // Updated handleContinueLearning to robustly extract a MongoDB ObjectId for the course.
-  // If the enrollment contains only a course code like CRS_014, we lookup all courses and map the code to the mongo _id,
-  // then navigate to /learning/:mongoId. If we cannot resolve an ObjectId, fall back to course-enrollment page
-  // to avoid causing a GET /courses/CRS_014 request that the backend treats as an invalid ObjectId (500).
-  const extractObjectId = (s?: string | null) => {
-    if (!s) return null;
-    return /^[a-fA-F0-9]{24}$/.test(s) ? s : null;
-  };
-
-  const findObjectIdFromEnrollment = async (enrollment: any): Promise<string | null> => {
-    if (!enrollment) return null;
-
-    // 1) If enrollment.courseId is a string, check if it's an ObjectId
-    const maybe = enrollment.courseId;
-    if (typeof maybe === 'string') {
-      const obj = extractObjectId(maybe);
-      if (obj) return obj;
-
-      // If it's a course code like CRS_014, attempt to map to Mongo _id by fetching all courses and finding the matching courseId
-      if (maybe.startsWith && maybe.startsWith('CRS_')) {
-        try {
-          const all = await courseApi.getAllCourses();
-          const courses = all.courses || [];
-          const found = courses.find((c: any) => (c.courseId === maybe || c.courseId === String(maybe)));
-          if (found && (found._id || found.id)) {
-            return found._id || found.id;
-          }
-        } catch (err) {
-          console.error('Failed to map course code to objectId', err);
-          return null;
-        }
-      }
-
-      return null;
-    }
-
-    // 2) If enrollment.courseId is an object, check common fields
-    if (typeof maybe === 'object' && maybe !== null) {
-      if (maybe._id && extractObjectId(maybe._id)) return maybe._id;
-      if (maybe.id && extractObjectId(maybe.id)) return maybe.id;
-      if (maybe.courseId && typeof maybe.courseId === 'string') {
-        const obj = extractObjectId(maybe.courseId);
-        if (obj) return obj;
-        if (maybe.courseId.startsWith && maybe.courseId.startsWith('CRS_')) {
-          // lookup via all courses
-          try {
-            const all = await courseApi.getAllCourses();
-            const courses = all.courses || [];
-            const found = courses.find((c: any) => (c.courseId === maybe.courseId || c.courseId === String(maybe.courseId)));
-            if (found && (found._id || found.id)) {
-              return found._id || found.id;
-            }
-          } catch (err) {
-            console.error('Failed to map nested course code to objectId', err);
-          }
-        }
-      }
-
-      // Try to find any 24-hex string inside the object
-      try {
-        const flat = JSON.stringify(maybe);
-        const match = flat.match(/[a-fA-F0-9]{24}/);
-        if (match) return match[0];
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    // 3) Sometimes enrollment itself contains course id fields in other shapes
-    if (enrollment.course && typeof enrollment.course === 'object') {
-      const cand = enrollment.course._id || enrollment.course.id || enrollment.course.courseId;
-      if (typeof cand === 'string') {
-        const obj = extractObjectId(cand);
-        if (obj) return obj;
-      }
-    }
-
-    return null;
-  };
-
-  const handleContinueLearning = async (enrollment: EnhancedPack365Enrollment) => {
+  const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
     console.log('🚀 Continue Learning clicked, enrollment:', enrollment);
+    
+    let courseId: string;
+    
+    if (typeof enrollment.courseId === 'string') {
+      courseId = enrollment.courseId;
+    } else if (enrollment.courseId && typeof enrollment.courseId === 'object' && 'courseId' in enrollment.courseId) {
+      courseId = (enrollment.courseId as any)._id;
+    } else {
+      courseId = enrollment._id || '';
+    }
+    
+    console.log('📋 Course ID extracted:', courseId);
+    console.log('🎯 Navigation path:', `/learning/${courseId}`);
 
-    try {
-      const resolvedId = await findObjectIdFromEnrollment(enrollment);
-
-      if (resolvedId) {
-        console.log('📋 Resolved course ObjectId:', resolvedId);
-        navigate(`/learning/${resolvedId}`);
-        return;
-      }
-
-      // Fallbacks: if enrollment.courseId is a string (CRS_... or other), open course-enrollment page instead
-      let fallback = '';
-      if (enrollment) {
-        if (typeof enrollment.courseId === 'string') {
-          fallback = enrollment.courseId;
-        } else if (typeof enrollment.courseId === 'object' && enrollment.courseId !== null) {
-          fallback = enrollment.courseId._id || enrollment.courseId.id || enrollment.courseId.courseId || '';
-        } else if (enrollment._id) {
-          // Last resort - but this is likely enrollment id, not course id
-          fallback = enrollment._id;
-        }
-      }
-
-      if (fallback) {
-        console.warn('Could not resolve Mongo ObjectId for course, navigating to enrollment page with fallback id:', fallback);
-        toast({
-          title: "Opening enrollment",
-          description: "Could not directly open the learning interface. Opening enrollment page instead.",
-          variant: "default"
-        });
-        navigate(`/course-enrollment/${fallback}`);
-        return;
-      }
-
+    if (courseId) {
+      console.log('✅ Navigating to course learning page...');
+      navigate(`/learning/${courseId}`);
+    } else {
+      console.error('❌ No valid course ID found in enrollment:', enrollment);
       toast({
-        title: "Unable to open course",
-        description: "Course ID not recognized. Open the course from Course Detail page or contact support.",
-        variant: "destructive"
-      });
-    } catch (err) {
-      console.error('Error in handleContinueLearning', err);
-      toast({
-        title: "Error",
-        description: "Failed to open course. Please try again.",
-        variant: "destructive"
+        title: "Navigation Error",
+        description: "Course ID not found. Please try again or contact support.",
+        variant: "destructive",
       });
     }
   };
