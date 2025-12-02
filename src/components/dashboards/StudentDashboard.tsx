@@ -805,7 +805,7 @@ const StudentDashboard = () => {
     }
   ];
 
-  // Updated menu items with Resume Builder
+  // Updated menu items without Exams
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: User },
     { id: 'courses', label: 'Courses', icon: BookOpen },
@@ -813,9 +813,7 @@ const StudentDashboard = () => {
     { id: 'jobs', label: 'Jobs', icon: Briefcase },
     { id: 'internships', label: 'Internships', icon: Building },
     { id: 'trainings', label: 'AP Exclusive Internships', icon: GraduationCap },
-    { id: 'exams', label: 'Exams', icon: FileText },
     { id: 'compiler', label: 'Compiler', icon: Code },
-    { id: 'projects', label: 'Projects', icon: FolderOpen },
     { id: 'resume', label: 'Resume Builder', icon: FileText },
     { id: 'profile', label: 'Profile', icon: User },
   ];
@@ -1892,158 +1890,8 @@ const StudentDashboard = () => {
       case 'trainings':
         return <APStudentDashboard />;
 
-      case 'exams':
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Exams & Assessments</CardTitle>
-                <CardDescription>Test your knowledge and track your progress</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Weekly Quiz</CardTitle>
-                      <CardDescription>Test your weekly learning</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Questions:</span>
-                          <span>20</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Duration:</span>
-                          <span>30 mins</span>
-                        </div>
-                        <Button className="w-full mt-4">Start Quiz</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Mid-term Exam</CardTitle>
-                      <CardDescription>Comprehensive assessment</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Questions:</span>
-                          <span>50</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Duration:</span>
-                          <span>2 hours</span>
-                        </div>
-                        <Button className="w-full mt-4">Start Exam</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Final Assessment</CardTitle>
-                      <CardDescription>Course completion test</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Questions:</span>
-                          <span>100</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Duration:</span>
-                          <span>3 hours</span>
-                        </div>
-                        <Button className="w-full mt-4">Start Assessment</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
       case 'compiler':
         return <CodeCompiler />;
-
-      case 'projects':
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Projects & Assignments</CardTitle>
-                <CardDescription>Hands-on learning through real projects</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="text-lg">E-commerce Website</CardTitle>
-                      <CardDescription>Full-stack development project</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Difficulty:</span>
-                          <span>Advanced</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Duration:</span>
-                          <span>4 weeks</span>
-                        </div>
-                        <Button className="w-full mt-4">Start Project</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Data Analysis</CardTitle>
-                      <CardDescription>Real-world data processing</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Difficulty:</span>
-                          <span>Intermediate</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Duration:</span>
-                          <span>2 weeks</span>
-                        </div>
-                        <Button className="w-full mt-4">Start Project</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Mobile App</CardTitle>
-                      <CardDescription>React Native development</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Difficulty:</span>
-                          <span>Advanced</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Duration:</span>
-                          <span>6 weeks</span>
-                        </div>
-                        <Button className="w-full mt-4">Start Project</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
 
       case 'resume':
         return <ResumeBuilder />;
