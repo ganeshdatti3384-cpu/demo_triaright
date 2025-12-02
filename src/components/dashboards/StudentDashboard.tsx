@@ -125,31 +125,6 @@ const trustBadges = [
     name: "ISO 9001:2015",
     image: "/lovable-uploads/iso-badge.png",
     alt: "ISO 9001:2015 Certified",
-    category: "Quality"
-  },
-  {
-    name: "MSME",
-    image: "/lovable-uploads/msme-badge.png",
-    alt: "MSME Registered",
-    category: "Government"
-  },
-  {
-    name: "NASSCOM",
-    image: "/lovable-uploads/nasscom-badge.gif",
-    alt: "NASSCOM Partner",
-    category: "Industry"
-  },
-  {
-    name: "NSDC",
-    image: "/lovable-uploads/nsdc-badge.png",
-    alt: "NSDC Partner",
-    category: "Government"
-  },
-  {
-    name: "APSCHE",
-    image: "/lovable-uploads/apsche-badge.png",
-    alt: "APSCHE Affiliated",
-    category: "Education"
   }
 ];
 
