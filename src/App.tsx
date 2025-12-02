@@ -65,6 +65,7 @@ import APFinalExamPage from './components/student/APFinalExamPage';
 import APCertificatePage from './components/student/APCertificatePage';
 import StreamLearningInterface from '@/components/pack365/StreamLearningInterface';
 import Pack365CertificatePage from '@/components/pack365/Pack365CertificatePage';
+import CourseLearningInterface from '@/components/CourseLearningInterface'; // Add this import
 
 const queryClient = new QueryClient();
 
@@ -135,7 +136,7 @@ const App = () => {
             }
           />
           
-          {/* Pack365 Certificate Routes - FIXED: Use optional parameter */}
+          {/* Pack365 Certificate Routes */}
           <Route
             path="/pack365-certificate/:enrollmentId?"
             element={
@@ -197,6 +198,26 @@ const App = () => {
                 <Pack365Dashboard />
               </ProtectedRoute>
             } 
+          />
+          
+          {/* Regular Course Learning Route - UPDATED to use CourseLearningInterface */}
+          <Route
+            path="/learning/:id"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <CourseLearningInterface />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Keep old route for backward compatibility */}
+          <Route
+            path="/course-learning/:id"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+                <CourseLearning />
+              </ProtectedRoute>
+            }
           />
           
           {/* Exam Routes */}
@@ -337,24 +358,6 @@ const App = () => {
             element={
               <ProtectedRoute allowedRoles={['employee']}>
                 <EnhancedProfile />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Course Learning Routes */}
-          <Route
-            path="/course-learning/:id"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <CourseLearning />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/learning/:id"
-            element={
-              <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
-                <Learning />
               </ProtectedRoute>
             }
           />
