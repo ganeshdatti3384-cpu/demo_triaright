@@ -882,74 +882,20 @@ const StudentDashboard = () => {
       case 'dashboard':
         return (
           <div className="space-y-6">
-            {/* Trusted & Recognized Scrolling Badges */}
-            <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
-                <CardTitle className="text-center text-gray-800">Trusted & Recognized By</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="relative overflow-hidden">
-                  <div className="flex animate-scroll space-x-8 py-4">
-                    {/* Duplicate badges for seamless scrolling */}
-                    {[...trustBadges, ...trustBadges].map((badge, index) => (
-                      <div
-                        key={index}
-                        className="flex-shrink-0 w-48 h-32 bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-300 flex flex-col items-center justify-center p-4"
-                      >
-                        <div className="w-16 h-16 mb-3 flex items-center justify-center">
-                          <img
-                            src={badge.image}
-                            alt={badge.alt}
-                            className="max-w-full max-h-full object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = `https://via.placeholder.com/64/3B82F6/FFFFFF?text=${badge.name.charAt(0)}`;
-                            }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium text-gray-700 text-center">{badge.name}</span>
-                        <span className="text-xs text-gray-500 mt-1">{badge.category}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <style jsx>{`
-                    @keyframes scroll {
-                      0% {
-                        transform: translateX(0);
-                      }
-                      100% {
-                        transform: translateX(-50%);
-                      }
-                    }
-                    .animate-scroll {
-                      animation: scroll 30s linear infinite;
-                    }
-                    .animate-scroll:hover {
-                      animation-play-state: paused;
-                    }
-                  `}</style>
-                </div>
-                <div className="text-center mt-6">
-                  <p className="text-gray-600 text-sm">
-                    Triaright Education is recognized and partnered with leading government bodies and industry organizations
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Compact Stats Grid - 4 columns */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {stats.map((stat) => {
                 const IconComponent = stat.icon;
                 return (
-                  <Card key={stat.title}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                          <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <Card key={stat.title} className="overflow-hidden">
+                    <CardContent className="p-4">
+                      <div className="flex items-center">
+                        <div className={`${stat.bgColor} p-2 rounded-lg mr-3`}>
+                          <IconComponent className={`h-5 w-5 ${stat.color}`} />
                         </div>
-                        <div className={`${stat.bgColor} p-3 rounded-full`}>
-                          <IconComponent className={`h-6 w-6 ${stat.color}`} />
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">{stat.title}</p>
+                          <p className="text-xl font-bold text-gray-900">{stat.value}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -958,154 +904,198 @@ const StudentDashboard = () => {
               })}
             </div>
 
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Jump back into your learning</CardDescription>
+            {/* Trusted & Recognized Section - Compact */}
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Trusted & Recognized By</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Button className="flex items-center justify-center space-x-2 h-12">
-                    <Play className="h-4 w-4" />
-                    <span>Resume Last Course</span>
-                  </Button>
-                  <Button variant="outline" className="flex items-center justify-center space-x-2 h-12">
-                    <BookOpen className="h-4 w-4" />
-                    <span>Browse New Courses</span>
-                  </Button>
-                  <Button variant="outline" className="flex items-center justify-center space-x-2 h-12">
-                    <Award className="h-4 w-4" />
-                    <span>View Certificates</span>
-                  </Button>
+                <div className="relative overflow-hidden">
+                  <div className="flex animate-scroll-slow space-x-4 py-2">
+                    {/* Single set of badges for compact display */}
+                    {trustBadges.map((badge, index) => (
+                      <div
+                        key={index}
+                        className="flex-shrink-0 w-32 h-20 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors flex flex-col items-center justify-center p-2"
+                      >
+                        <div className="w-10 h-10 mb-1 flex items-center justify-center">
+                          <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                            <span className="text-xs font-bold text-gray-600">
+                              {badge.name.split(' ').map(word => word[0]).join('')}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-medium text-gray-700 text-center truncate w-full px-1">
+                          {badge.name}
+                        </span>
+                        <span className="text-xs text-gray-500">{badge.category}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+                <p className="text-xs text-gray-600 text-center mt-3">
+                  Triaright Education is recognized and partnered with leading government bodies and industry organizations
+                </p>
               </CardContent>
             </Card>
 
+            {/* Main Dashboard Layout - 2 columns */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Finance Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Finance</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                    <span className="text-gray-700">Total Payable</span>
-                    <span className="font-bold">$ 10,000</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                    <span className="text-gray-700">Total Paid</span>
-                    <span className="font-bold">$ 5,000</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                    <span className="text-gray-700">Others</span>
-                    <span className="font-bold">$ 300</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Enrolled Courses */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Enrolled Courses</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {myEnrollments.length > 0 ? (
-                    myEnrollments.slice(0, 2).map((enrollment, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <span className="text-gray-700">{enrollment.courseName}</span>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleContinueLearning(enrollment)}
-                        >
-                          View
-                        </Button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4">
-                      <BookOpen className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-500">No enrolled courses</p>
+              {/* Left Column - Quick Actions, Finance, Enrolled Courses */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Quick Actions - Compact */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Quick Actions</CardTitle>
+                    <CardDescription>Jump back into your learning</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <Button className="flex items-center justify-center space-x-2 h-11 text-sm">
+                        <Play className="h-3.5 w-3.5" />
+                        <span>Resume Last Course</span>
+                      </Button>
+                      <Button variant="outline" className="flex items-center justify-center space-x-2 h-11 text-sm">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        <span>Browse New Courses</span>
+                      </Button>
+                      <Button variant="outline" className="flex items-center justify-center space-x-2 h-11 text-sm">
+                        <Award className="h-3.5 w-3.5" />
+                        <span>View Certificates</span>
+                      </Button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Recent Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {enrolledCourses.slice(0, 3).map((course, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <BookOpen className="h-5 w-5 text-blue-600" />
+                {/* Recent Activity - Compact */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle>Recent Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {enrolledCourses.slice(0, 3).map((course, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <BookOpen className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">{course.courseName || 'Course Name'}</p>
+                              <p className="text-xs text-gray-600">Last accessed 2 days ago</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{course.courseName || 'Course Name'}</p>
-                            <p className="text-sm text-gray-600">Last accessed 2 days ago</p>
-                          </div>
+                          <Button size="sm" variant="outline" className="text-xs">
+                            Continue
+                          </Button>
                         </div>
-                        <Button size="sm" variant="outline">
-                          Continue
-                        </Button>
+                      ))}
+                      {enrolledCourses.length === 0 && (
+                        <p className="text-center text-gray-500 py-4 text-sm">No recent activity. Start learning today!</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Daily Notice and Exam Schedule in a 2-column grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Daily Notice */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Daily Notice</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <div className="flex items-center mb-2">
+                            <Bell className="h-4 w-4 text-blue-600 mr-2" />
+                            <span className="font-medium text-blue-800 text-sm">Prelim payment due</span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Sorem ipsum dolor sit amet, consectetur adipiscing elit.
+                          </p>
+                        </div>
+                        <Button variant="link" className="p-0 text-blue-600 text-sm">See more</Button>
                       </div>
-                    ))}
-                    {enrolledCourses.length === 0 && (
-                      <p className="text-center text-gray-500 py-4">No recent activity. Start learning today!</p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Exam Schedule */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Exam Schedule</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="p-3 bg-green-50 rounded-lg">
+                          <p className="text-sm text-gray-600">
+                            Norem ipsum dolor sit amet, consectetur adipiscing elit.
+                          </p>
+                        </div>
+                        <div className="p-3 bg-green-50 rounded-lg">
+                          <p className="text-sm text-gray-600">
+                            Nine vulputate libero et velit interdum, ac aliquet odio mattis.
+                          </p>
+                        </div>
+                        <Button variant="link" className="p-0 text-blue-600 text-sm">See more</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Right Column - Finance and Enrolled Courses */}
+              <div className="space-y-6">
+                {/* Finance Section - Compact */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Finance</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="text-gray-700 text-sm">Total Payable</span>
+                      <span className="font-bold text-sm">$ 10,000</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                      <span className="text-gray-700 text-sm">Total Paid</span>
+                      <span className="font-bold text-sm">$ 5,000</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                      <span className="text-gray-700 text-sm">Others</span>
+                      <span className="font-bold text-sm">$ 300</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Enrolled Courses - Compact */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Enrolled Courses</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {myEnrollments.length > 0 ? (
+                      myEnrollments.slice(0, 3).map((enrollment, index) => (
+                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                          <span className="text-gray-700 text-sm truncate mr-2">{enrollment.courseName}</span>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleContinueLearning(enrollment)}
+                            className="text-xs px-2 py-1 h-7"
+                          >
+                            View
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4">
+                        <BookOpen className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-500 text-sm">No enrolled courses</p>
+                      </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Daily Notice */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Daily Notice</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <div className="flex items-center mb-2">
-                        <Bell className="h-4 w-4 text-blue-600 mr-2" />
-                        <span className="font-medium text-blue-800">Prelim payment due</span>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Sorem ipsum dolor sit amet, consectetur adipiscing elit.
-                      </p>
-                    </div>
-                    <Button variant="link" className="p-0 text-blue-600">See more</Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Exam Schedule */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Exam Schedule</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="p-3 bg-green-50 rounded-lg">
-                      <p className="text-sm text-gray-600">
-                        Norem ipsum dolor sit amet, consectetur adipiscing elit.
-                      </p>
-                    </div>
-                    <div className="p-3 bg-green-50 rounded-lg">
-                      <p className="text-sm text-gray-600">
-                        Nine vulputate libero et velit interdum, ac aliquet odio mattis.
-                      </p>
-                    </div>
-                    <Button variant="link" className="p-0 text-blue-600">See more</Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         );
@@ -2029,23 +2019,23 @@ const StudentDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar */}
-          <div className="lg:w-64 flex-shrink-0">
-            <Card className="sticky top-24">
-              <CardContent className="p-4">
-                <div className="space-y-2">
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Sidebar - Compact */}
+          <div className="lg:w-56 flex-shrink-0">
+            <Card className="sticky top-20">
+              <CardContent className="p-3">
+                <div className="space-y-1">
                   {menuItems.map((item) => {
                     const IconComponent = item.icon;
                     return (
                       <Button
                         key={item.id}
                         variant={activeTab === item.id ? "default" : "ghost"}
-                        className="w-full justify-start"
+                        className="w-full justify-start py-2 h-9 text-sm"
                         onClick={() => setActiveTab(item.id)}
                       >
-                        <IconComponent className="h-4 w-4 mr-3" />
+                        <IconComponent className="h-3.5 w-3.5 mr-2.5" />
                         {item.label}
                       </Button>
                     );
