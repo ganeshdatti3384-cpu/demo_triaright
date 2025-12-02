@@ -95,6 +95,64 @@ interface APInternship {
   createdAt: string;
 }
 
+// Trust Badges Data
+const trustBadges = [
+  {
+    name: "Skill India",
+    image: "/lovable-uploads/skill-india-badge.png",
+    alt: "Skill India - Government of India",
+    category: "Government"
+  },
+  {
+    name: "Startup India",
+    image: "/lovable-uploads/startup-india-badge.png",
+    alt: "Startup India - Government of India",
+    category: "Government"
+  },
+  {
+    name: "AICTE",
+    image: "/lovable-uploads/aicte-badge.png",
+    alt: "AICTE Approved",
+    category: "Education"
+  },
+  {
+    name: "APSSDC",
+    image: "/lovable-uploads/apssdc-badge.png",
+    alt: "APSSDC Partner",
+    category: "Government"
+  },
+  {
+    name: "ISO 9001:2015",
+    image: "/lovable-uploads/iso-badge.png",
+    alt: "ISO 9001:2015 Certified",
+    category: "Quality"
+  },
+  {
+    name: "MSME",
+    image: "/lovable-uploads/msme-badge.png",
+    alt: "MSME Registered",
+    category: "Government"
+  },
+  {
+    name: "NASSCOM",
+    image: "/lovable-uploads/nasscom-badge.gif",
+    alt: "NASSCOM Partner",
+    category: "Industry"
+  },
+  {
+    name: "NSDC",
+    image: "/lovable-uploads/nsdc-badge.png",
+    alt: "NSDC Partner",
+    category: "Government"
+  },
+  {
+    name: "APSCHE",
+    image: "/lovable-uploads/apsche-badge.png",
+    alt: "APSCHE Affiliated",
+    category: "Education"
+  }
+];
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -824,6 +882,60 @@ const StudentDashboard = () => {
       case 'dashboard':
         return (
           <div className="space-y-6">
+            {/* Trusted & Recognized Scrolling Badges */}
+            <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+                <CardTitle className="text-center text-gray-800">Trusted & Recognized By</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="relative overflow-hidden">
+                  <div className="flex animate-scroll space-x-8 py-4">
+                    {/* Duplicate badges for seamless scrolling */}
+                    {[...trustBadges, ...trustBadges].map((badge, index) => (
+                      <div
+                        key={index}
+                        className="flex-shrink-0 w-48 h-32 bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-300 flex flex-col items-center justify-center p-4"
+                      >
+                        <div className="w-16 h-16 mb-3 flex items-center justify-center">
+                          <img
+                            src={badge.image}
+                            alt={badge.alt}
+                            className="max-w-full max-h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = `https://via.placeholder.com/64/3B82F6/FFFFFF?text=${badge.name.charAt(0)}`;
+                            }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 text-center">{badge.name}</span>
+                        <span className="text-xs text-gray-500 mt-1">{badge.category}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <style jsx>{`
+                    @keyframes scroll {
+                      0% {
+                        transform: translateX(0);
+                      }
+                      100% {
+                        transform: translateX(-50%);
+                      }
+                    }
+                    .animate-scroll {
+                      animation: scroll 30s linear infinite;
+                    }
+                    .animate-scroll:hover {
+                      animation-play-state: paused;
+                    }
+                  `}</style>
+                </div>
+                <div className="text-center mt-6">
+                  <p className="text-gray-600 text-sm">
+                    Triaright Education is recognized and partnered with leading government bodies and industry organizations
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {stats.map((stat) => {
