@@ -1,468 +1,780 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-import React, { useState, useEffect } from 'react';
-import YouTube from 'react-youtube';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
+import { courseApi } from "@/services/api";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import {
-  Play,
-  Pause,
-  Square,
-  CheckCircle2,
-  Clock,
-  BookOpen,
-  Award,
-  ArrowLeft,
-} from 'lucide-react';
-import { pack365Api } from '@/services/api';
-import { Pack365Course, EnhancedPack365Enrollment, TopicProgress } from '@/types/api';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-interface CourseLearningInterfaceProps {
-  courseId: string;
-  course: Pack365Course;
-  enrollment: EnhancedPack365Enrollment;
-}
 
-const CourseLearningInterface = ({ courseId, course, enrollment }: CourseLearningInterfaceProps) => {
-  const [currentTopic, setCurrentTopic] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [watchedDuration, setWatchedDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [topicProgress, setTopicProgress] = useState<TopicProgress[]>(enrollment?.topicProgress || []);
-  const [videoProgress, setVideoProgress] = useState(enrollment?.totalWatchedPercentage || 0);
-  const [player, setPlayer] = useState<any>(null);
-  const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
-  const [videoDuration, setVideoDuration] = useState(0);
-  const { toast } = useToast();
+type Subtopic = {
+  name: string;
+  link?: string;
+  duration?: number; // minutes
+};
+
+type Topic = {
+  topicName: string;
+  topicCount?: number;
+  subtopics: Subtopic[];
+  directLink?: string;
+  examExcelLink?: string;
+};
+
+type CourseModel = {
+  _id: string;
+  courseName: string;
+  courseDescription?: string;
+  curriculum: Topic[];
+  demoVideoLink?: string;
+  totalDuration?: number;
+  courseImageLink?: string;
+  price?: number;
+  courseType?: string;
+};
+
+type EnrollmentProgressSubtopic = {
+  subTopicName: string;
+  subTopicLink?: string;
+  watchedDuration: number;
+  totalDuration: number;
+};
+
+type EnrollmentProgressTopic = {
+  topicName: string;
+  subtopics: EnrollmentProgressSubtopic[];
+  topicWatchedDuration: number;
+  topicTotalDuration: number;
+  examAttempted: boolean;
+  examScore: number;
+  passed: boolean;
+  completed?: boolean;
+};
+
+type EnrollmentModel = {
+  _id?: string;
+  courseId: string | { _id?: string };
+  userId?: string;
+  isPaid?: boolean;
+  amountPaid?: number;
+  progress: EnrollmentProgressTopic[];
+  totalWatchedDuration: number;
+  totalVideoDuration: number;
+  finalExamEligible?: boolean;
+  finalExamAttempted?: boolean;
+  courseCompleted?: boolean;
+  completedAt?: string;
+  enrollmentDate?: string;
+  accessExpiresAt?: string;
+  // Any other fields from backend...
+};
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000/api";
+
+const CourseLearningInterface: React.FC = () => {
+  const { id: courseIdParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const {user}= useAuth()
-  // Calculate total course duration and watched duration
-  const calculateProgressMetrics = () => {
-    const totalCourseDurationSeconds = course.topics.reduce((sum, topic) => sum + (topic.duration * 60), 0);
-    const totalWatchedSeconds = topicProgress.reduce((sum, tp) => sum + tp.watchedDuration, 0);
-    const totalWatchedPercentage = totalCourseDurationSeconds > 0 ? Math.round((totalWatchedSeconds / totalCourseDurationSeconds) * 100) : 0;
-    
-    return {
-      totalCourseDurationSeconds,
-      totalWatchedSeconds,
-      totalWatchedPercentage
+  const { user, token } = useAuth();
+  const { toast } = useToast();
+
+  const [course, setCourse] = useState<CourseModel | null>(null);
+  const [enrollment, setEnrollment] = useState<EnrollmentModel | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [playingSubtopic, setPlayingSubtopic] = useState<{ topicIndex: number; subIndex: number } | null>(null);
+  const [playerUrl, setPlayerUrl] = useState<string | null>(null);
+  const [showTopicExamModal, setShowTopicExamModal] = useState(false);
+  const [currentExam, setCurrentExam] = useState<any | null>(null); // exam object returned from backend
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [examResult, setExamResult] = useState<any | null>(null);
+  const [showFinalExamModal, setShowFinalExamModal] = useState(false);
+  const [finalExam, setFinalExam] = useState<any | null>(null);
+  const [submittingExam, setSubmittingExam] = useState(false);
+
+  const courseId = courseIdParam;
+
+  // fetch course details + enrollment
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        if (!courseId) {
+          toast({ title: "Error", description: "Course not specified", variant: "destructive" });
+          return;
+        }
+
+        // 1) fetch course
+        const courseResp = await courseApi.getCourseById(courseId);
+        const fetchedCourse = courseResp.course || courseResp;
+        setCourse(fetchedCourse);
+
+        // 2) fetch enrollment for logged-in user
+        if (token) {
+          try {
+            const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/${encodeURIComponent(courseId)}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (enrollResp.data && enrollResp.data.enrollment) {
+              setEnrollment(enrollResp.data.enrollment);
+            } else if (enrollResp.data) {
+              // some backends return enrollment directly
+              setEnrollment(enrollResp.data);
+            }
+          } catch (err: any) {
+            // Not enrolled or API returned 404
+            if (err.response && err.response.status !== 404) {
+              console.error("Error fetching enrollment", err);
+            }
+            setEnrollment(null);
+          }
+        } else {
+          setEnrollment(null);
+        }
+      } catch (err: any) {
+        console.error("Failed to load course", err);
+        toast({ title: "Error", description: "Failed to load course details", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
     };
+
+    load();
+  }, [courseId, token]);
+
+  // helper: compute overall video progress percent
+  const videoProgressPercent = useMemo(() => {
+    if (!enrollment) return 0;
+    if (!enrollment.totalVideoDuration || enrollment.totalVideoDuration === 0) return 0;
+    return Math.floor((enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100);
+  }, [enrollment]);
+
+  // Open learning: if not enrolled navigate to enrollment page, else expand UI to show content
+  const handleStartLearning = () => {
+    if (!token) {
+      toast({ title: "Login required", description: "Please login to start learning", variant: "destructive" });
+      navigate("/login");
+      return;
+    }
+    if (!enrollment) {
+      // navigate to course enrollment page (frontend has /course-enrollment/:id)
+      navigate(`/course-enrollment/${courseId}`);
+      return;
+    }
+    // scroll to content or expand - we set playingSubtopic to first available subtopic
+    if (course && course.curriculum && course.curriculum.length > 0) {
+      setPlayingSubtopic({ topicIndex: 0, subIndex: 0 });
+      const first = course.curriculum[0].subtopics?.[0];
+      if (first?.link) {
+        setPlayerUrl(first.link);
+      }
+    }
   };
-  useEffect(() => {
-    if (topicProgress.length === 0) {
-      const initialProgress = course.topics.map(topic => ({
-        topicName: topic.name,
-        watched: false,
-        watchedDuration: 0,
-      }));
-      setTopicProgress(initialProgress);
-    } else {
-      // Update video progress based on current topic progress
-      const { totalWatchedPercentage } = calculateProgressMetrics();
-      setVideoProgress(totalWatchedPercentage);
-    }
-  }, [course.topics, topicProgress.length]);
 
-  useEffect(() => {
-    // Set initial watched duration from topic progress when switching topics
-    const currentTopicData = course.topics[currentTopic];
-    const progress = topicProgress.find(tp => tp.topicName === currentTopicData?.name);
-    if (progress) {
-      setWatchedDuration(progress.watchedDuration);
-      setCurrentTime(progress.watchedDuration);
-    }
-  }, [currentTopic, course.topics, topicProgress]);
+  const openSubtopic = (tIndex: number, sIndex: number) => {
+    if (!course) return;
+    const sub = course.curriculum[tIndex].subtopics[sIndex];
+    setPlayingSubtopic({ topicIndex: tIndex, subIndex: sIndex });
+    setPlayerUrl(sub.link || null);
+  };
 
-  useEffect(() => {
-    // Start progress tracking when playing
-    if (isPlaying && player) {
-      const interval = setInterval(() => {
-        const youtubeCurrentTime = player.getCurrentTime();
-        setCurrentTime(youtubeCurrentTime);
-        setWatchedDuration(Math.max(watchedDuration, youtubeCurrentTime));
-      }, 1000);
-      setProgressInterval(interval);
-    } else {
-      if (progressInterval) {
-        clearInterval(progressInterval);
-        setProgressInterval(null);
-      }
+  // mark subtopic as watched (set watchedDuration to totalDuration of subtopic)
+  const markSubtopicWatched = async (tIndex: number, sIndex: number) => {
+    if (!enrollment || !course || !token) {
+      toast({ title: "Error", description: "You must be enrolled to update progress", variant: "destructive" });
+      return;
     }
 
-    return () => {
-      if (progressInterval) {
-        clearInterval(progressInterval);
-      }
+    const topicProgress = enrollment.progress.find((t) => t.topicName === course.curriculum[tIndex].topicName);
+    if (!topicProgress) {
+      toast({ title: "Error", description: "Progress not found for this topic", variant: "destructive" });
+      return;
+    }
+
+    const sub = topicProgress.subtopics[sIndex];
+    if (!sub) {
+      toast({ title: "Error", description: "Subtopic not found in progress", variant: "destructive" });
+      return;
+    }
+
+    // if already marked fully watched, do nothing
+    if (sub.watchedDuration >= sub.totalDuration) {
+      toast({ title: "Info", description: "Subtopic already marked as watched", variant: "default" });
+      return;
+    }
+
+    // prepare payload used by backend updateTopicProgress (controller expects courseId, topicName, subTopicName, watchedDuration)
+    const payload = {
+      courseId,
+      topicName: course.curriculum[tIndex].topicName,
+      subTopicName: sub.subTopicName,
+      watchedDuration: sub.totalDuration,
     };
-  }, [isPlaying, player, watchedDuration]);
-
-  const updateProgress = async (
-    topicName: string,
-    duration: number
-  ) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
 
     try {
-      // Calculate metrics before API call
-      const { totalCourseDurationSeconds } = calculateProgressMetrics();
-      
-      // Update local topic progress first
-      const updatedTopicProgress = topicProgress.map(tp => 
-        tp.topicName === topicName 
-          ? { ...tp, watchedDuration: Math.floor(duration) }
-          : tp
-      );
-      
-      // Calculate new total watched duration and percentage
-      const newTotalWatchedSeconds = updatedTopicProgress.reduce((sum, tp) => sum + tp.watchedDuration, 0);
-      const newTotalWatchedPercentage = totalCourseDurationSeconds > 0 ? Math.round((newTotalWatchedSeconds / totalCourseDurationSeconds) * 100) : 0;
+      const resp = await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      const response = await pack365Api.updateTopicProgress(token, {
+      // optimistic behaviour: refresh enrollment details from backend after update
+      const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/${encodeURIComponent(courseId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setEnrollment(enrollResp.data.enrollment || enrollResp.data);
+      toast({ title: "Progress updated", description: "Subtopic marked as watched", variant: "success" });
+    } catch (err: any) {
+      console.error("Failed to update progress", err);
+      toast({ title: "Error", description: err?.response?.data?.message || "Failed to update progress", variant: "destructive" });
+    }
+  };
+
+  // Topic Exam flow: fetch and open
+  const handleOpenTopicExam = async (topicName: string) => {
+    if (!token) {
+      toast({ title: "Login required", description: "Please login to attempt exams", variant: "destructive" });
+      navigate("/login");
+      return;
+    }
+    try {
+      setShowTopicExamModal(true);
+      setCurrentExam(null);
+      setAnswers({});
+      setExamResult(null);
+
+      const encodedTopic = encodeURIComponent(topicName);
+      const resp = await axios.get(`${API_BASE_URL}/courses/exams/topic/${encodeURIComponent(courseId)}/${encodedTopic}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (resp.data && resp.data.exam) {
+        setCurrentExam(resp.data.exam);
+      } else {
+        // Some backends return exam directly
+        setCurrentExam(resp.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch topic exam", err);
+      toast({ title: "Error", description: err?.response?.data?.message || "Failed to fetch topic exam", variant: "destructive" });
+      setShowTopicExamModal(false);
+    }
+  };
+
+  const handleTopicAnswerChange = (questionId: string, option: string) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: option }));
+  };
+
+  const submitTopicExam = async () => {
+    if (!currentExam || !token) return;
+    setSubmittingExam(true);
+    try {
+      const payload = {
         courseId,
-        topicName,
-        watchedDuration: Math.floor(duration),
-        totalCourseDuration: totalCourseDurationSeconds,
-        totalWatchedPercentage: newTotalWatchedPercentage
+        topicName: currentExam.topicName,
+        answers,
+      };
+      const resp = await axios.post(`${API_BASE_URL}/courses/exams/topic/validate`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.success) {
-        // Update progress based on response
-        const updatedPercentage = response.totalWatchedPercentage || newTotalWatchedPercentage;
-        setVideoProgress(updatedPercentage);
-
-        // Update local topic progress to mark as watched
-        const updatedTopicProgress = topicProgress.map(tp => 
-          tp.topicName === topicName 
-            ? { ...tp, watched: true, watchedDuration: Math.floor(duration) }
-            : tp
-        );
-        setTopicProgress(updatedTopicProgress);
-
-        // Show completion toast if topic duration is fully watched
-        const currentTopicData = course.topics.find(t => t.name === topicName);
-        const topicDurationSeconds = currentTopicData ? currentTopicData.duration * 60 : 0;
-        if (Math.floor(duration) >= topicDurationSeconds * 0.9) { // 90% completion threshold
-          toast({
-            title: 'Topic Completed!',
-            description: `You've successfully completed: ${topicName}`,
-          });
-        }
+      if (resp.data) {
+        setExamResult(resp.data.result || resp.data);
+        // refresh enrollment
+        const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/${encodeURIComponent(courseId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setEnrollment(enrollResp.data.enrollment || enrollResp.data);
+        toast({ title: "Exam submitted", description: "Topic exam submitted successfully", variant: "success" });
       }
-    } catch (error) {
-      console.error('Error updating progress:', error);
+    } catch (err: any) {
+      console.error("Topic exam submit failed", err);
+      toast({ title: "Error", description: err?.response?.data?.message || "Failed to submit exam", variant: "destructive" });
+    } finally {
+      setSubmittingExam(false);
     }
   };
 
-  const handleTopicSelect = (index: number) => {
-    // Save current progress before switching
-    if (player && watchedDuration > 0) {
-      const currentTopicData = course.topics[currentTopic];
-      updateProgress(currentTopicData.name, watchedDuration);
+  // Final exam flow
+  const handleOpenFinalExam = async () => {
+    if (!token) {
+      toast({ title: "Login required", description: "Please login to attempt exams", variant: "destructive" });
+      navigate("/login");
+      return;
     }
+    try {
+      setShowFinalExamModal(true);
+      setFinalExam(null);
+      setAnswers({});
+      setExamResult(null);
 
-    setCurrentTopic(index);
-    setWatchedDuration(0);
-    setCurrentTime(0);
-    setIsPlaying(false);
-    if (player) player.stopVideo();
-  };
-
-  const handlePlayPause = () => {
-    if (!player) return;
-
-    if (isPlaying) {
-      player.pauseVideo();
-    } else {
-      // Seek to the last watched position when playing
-      if (watchedDuration > 0) {
-        player.seekTo(watchedDuration, true);
-      }
-      player.playVideo();
-    }
-
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleStop = () => {
-    if (!player) return;
-
-    player.stopVideo();
-    setIsPlaying(false);
-
-    // Get current YouTube time and update progress
-    const youtubeCurrentTime = player.getCurrentTime();
-    const currentTopicData = course.topics[currentTopic];
-    
-    if (youtubeCurrentTime > 0) {
-      updateProgress(currentTopicData.name, youtubeCurrentTime);
-      toast({
-        title: 'Progress Saved',
-        description: `Your progress has been saved at ${Math.floor(youtubeCurrentTime / 60)}:${(Math.floor(youtubeCurrentTime) % 60).toString().padStart(2, '0')}`,
+      const resp = await axios.get(`${API_BASE_URL}/courses/exams/final/${encodeURIComponent(courseId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (resp.data && resp.data.exam) {
+        setFinalExam(resp.data.exam);
+      } else {
+        setFinalExam(resp.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch final exam", err);
+      toast({ title: "Error", description: err?.response?.data?.message || "Failed to fetch final exam", variant: "destructive" });
+      setShowFinalExamModal(false);
     }
   };
 
-  const onReady = (event: any) => {
-    const playerInstance = event.target;
-    setPlayer(playerInstance);
-    
-    // Get video duration from YouTube
-    const duration = playerInstance.getDuration();
-    setVideoDuration(duration);
-    
-    // Seek to last watched position on ready
-    const currentTopicData = course.topics[currentTopic];
-    const progress = topicProgress.find(tp => tp.topicName === currentTopicData?.name);
-    if (progress && progress.watchedDuration > 0) {
-      playerInstance.seekTo(progress.watchedDuration, true);
+  const submitFinalExam = async () => {
+    if (!finalExam || !token) return;
+    setSubmittingExam(true);
+    try {
+      const payload = {
+        courseId,
+        answers,
+      };
+      const resp = await axios.post(`${API_BASE_URL}/courses/exams/validate/final`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (resp.data) {
+        setExamResult(resp.data.result || resp.data);
+        // refresh enrollment
+        const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/${encodeURIComponent(courseId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setEnrollment(enrollResp.data.enrollment || enrollResp.data);
+        toast({ title: "Final exam submitted", description: "Final exam submitted successfully", variant: "success" });
+      }
+    } catch (err: any) {
+      console.error("Final exam submit failed", err);
+      toast({ title: "Error", description: err?.response?.data?.message || "Failed to submit final exam", variant: "destructive" });
+    } finally {
+      setSubmittingExam(false);
     }
   };
 
-  const onStateChange = (event: any) => {
-    const playerState = event.data;
-    // YouTube player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
-    setIsPlaying(playerState === 1);
-  };
+  // Render a single subtopic: name, play button, mark watched
+  const SubtopicRow: React.FC<{ tIndex: number; sIndex: number; sub: Subtopic }> = ({ tIndex, sIndex, sub }) => {
+    const progressTopic = enrollment?.progress?.find((pt) => pt.topicName === course?.curriculum[tIndex].topicName);
+    const watched = progressTopic ? progressTopic.subtopics[sIndex]?.watchedDuration || 0 : 0;
+    const total = progressTopic ? progressTopic.subtopics[sIndex]?.totalDuration || sub.duration || 0 : sub.duration || 0;
 
-  const onEnd = () => {
-    const currentTopicData = course.topics[currentTopic];
-    const totalDuration = videoDuration || currentTopicData.duration * 60; // Use YouTube duration or fallback
-    updateProgress(currentTopicData.name, totalDuration);
-    setIsPlaying(false);
-  };
+    const isPlaying = playingSubtopic && playingSubtopic.topicIndex === tIndex && playingSubtopic.subIndex === sIndex;
 
-  const getYouTubeId = (url: string): string | null => {
-    const match = url.match(
-      /(?:youtu\.be\/|youtube\.com\/(?:embed\/|watch\?v=|v\/|shorts\/))([\w-]{11})/
-    );
-    return match ? match[1] : null;
-  };
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const currentTopicData = course.topics[currentTopic];
-  const currentTopicProgress = topicProgress.find(tp => tp.topicName === currentTopicData?.name);
-  const completedTopics = topicProgress.filter(tp => tp.watched).length;
-  
-  // Use YouTube duration if available, otherwise fallback to database duration
-  const actualVideoDuration = videoDuration || (currentTopicData ? currentTopicData.duration * 60 : 0);
-  const topicWatchPercentage = actualVideoDuration > 0 ? (Math.max(watchedDuration, currentTopicProgress?.watchedDuration || 0) / actualVideoDuration) * 100 : 0;
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="mb-6">
-          <Button variant="outline" onClick={() => navigate(`/${user.role}`)}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Courses
+    return (
+      <div className="flex items-center justify-between gap-4 border-b py-3">
+        <div>
+          <div className="font-medium">{sub.name}</div>
+          <div className="text-xs text-gray-500">
+            Duration: {total} min • Watched: {Math.min(watched, total)} min
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant={isPlaying ? "secondary" : "outline"} onClick={() => openSubtopic(tIndex, sIndex)}>
+            {isPlaying ? "Playing" : "Play"}
+          </Button>
+          <Button size="sm" onClick={() => markSubtopicWatched(tIndex, sIndex)} variant="ghost">
+            Mark Watched
           </Button>
         </div>
+      </div>
+    );
+  };
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Video Player Section */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{currentTopicData?.name}</span>
-                  <Badge variant={currentTopicProgress?.watched ? 'default' : 'outline'}>
-                    {topicWatchPercentage === 100 ? 'Completed' : 'In Progress'}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {currentTopicData?.link && getYouTubeId(currentTopicData.link) ? (
-                  <div
-                    className="aspect-video mb-4 rounded-lg overflow-hidden relative"
-                    id="video-container"
-                  >
-                    <YouTube
-                      videoId={getYouTubeId(currentTopicData.link)}
-                      onReady={onReady}
-                      onEnd={onEnd}
-                      onStateChange={onStateChange}
-                      opts={{
-                        width: '100%',
-                        height: '100%',
-                        playerVars: {
-                          rel: 0,
-                          modestbranding: 1,
-                          showinfo: 0,
-                        },
-                        host: "https://www.youtube-nocookie.com",
-                      }}
-                      className="w-full h-full"
-                    />
-                  </div>
-                ) : (
-                  <div className="bg-black rounded-lg aspect-video flex items-center justify-center mb-4 text-white text-lg">
-                    Video not available
-                  </div>
-                )}
-
-                {/* Video Controls */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex space-x-2">
-                    <Button onClick={handlePlayPause} className="flex items-center space-x-2">
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      <span>{isPlaying ? 'Pause' : 'Play'}</span>
-                    </Button>
-
-                    <Button onClick={handleStop} variant="outline" className="flex items-center space-x-2">
-                      <Square className="h-4 w-4" />
-                      <span>Stop</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const container = document.getElementById('video-container');
-                        if (container) {
-                          if (document.fullscreenElement) {
-                            document.exitFullscreen();
-                          } else {
-                            container.requestFullscreen().catch(err => {
-                              console.error('Fullscreen error:', err);
-                            });
-                          }
-                        }
-                      }}
-                    >
-                      Fullscreen
-                    </Button>
-                  </div>
-
-                  <div className="text-sm text-gray-600">
-                    {formatTime(currentTime)} / {formatTime(actualVideoDuration)}
-                  </div>
-                </div>
-                {/* Topic Navigation */}
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => currentTopic > 0 && handleTopicSelect(currentTopic - 1)}
-                    disabled={currentTopic === 0}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => currentTopic < course.topics.length - 1 && handleTopicSelect(currentTopic + 1)}
-                    disabled={currentTopic === course.topics.length - 1}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Course Progress */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Award className="h-5 w-5 mr-2" />
-                  Course Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center mb-4">
-                  <div className="text-3xl font-bold text-blue-600">{Math.round(videoProgress)}%</div>
-                  <p className="text-sm text-gray-600">Complete</p>
-                </div>
-                <Progress value={Math.round(videoProgress)} className="mb-4" />
-                <div className="text-sm text-gray-600">
-                  {completedTopics} of {course.topics.length} topics completed
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Topic List */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BookOpen className="h-5 w-5 mr-2" />
-                  Course Topics
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {course.topics.map((topic, index) => {
-                  const progress = topicProgress.find(tp => tp.topicName === topic.name);
-                  const topicVideoDuration = index === currentTopic ? actualVideoDuration : (topic.duration * 60);
-                  const progressPercentage = progress && topicVideoDuration > 0 ? (progress.watchedDuration / topicVideoDuration) * 100 : 0;
-                  
-                  return (
-                    <div
-                      key={index}
-                      onClick={() => handleTopicSelect(index)}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                        currentTopic === index
-                          ? 'bg-blue-50 border-2 border-blue-200'
-                          : 'bg-gray-50 hover:bg-gray-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          {progress?.watched ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
-                          )}
-                          <span className="text-sm font-medium">{topic.name}</span>
-                        </div>
-                        <div className="flex items-center space-x-1 text-xs text-gray-500">
-                          <Clock className="h-3 w-3" />
-                          <span>{topic.duration}m</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Progress value={Math.min(progressPercentage, 100)} className="h-2" />
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>{Math.round(Math.min(progressPercentage, 100))}% watched</span>
-                          <span>{formatTime(progress?.watchedDuration || 0)} / {formatTime(topicVideoDuration)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-
-            {/* Exam Section */}
-            {videoProgress >= 80 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Award className="h-5 w-5 mr-2" />
-                    Final Exam
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Complete the final exam to get your certificate!
-                  </p>
-                  <Button className="w-full" onClick={() => navigate(`/exam/${courseId}`)}>
-                    Take Exam
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+  if (loading) {
+    return (
+      <div className="container mx-auto py-10">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full mx-auto" />
+          <p className="mt-4 text-gray-600">Loading course...</p>
         </div>
       </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="container mx-auto py-10">
+        <Card>
+          <CardHeader>
+            <CardTitle>Course not found</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>This course could not be found. It may have been removed.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Player + basic info */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{course.courseName}</CardTitle>
+              <CardDescription>{course.courseDescription}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2">
+                  {playerUrl ? (
+                    // If youtube link - use iframe, otherwise show anchor and video tag fallback
+                    /(youtube|youtu\.be)/i.test(playerUrl) ? (
+                      <div className="w-full aspect-video bg-black">
+                        <iframe
+                          title="Course player"
+                          src={playerUrl.includes("embed") ? playerUrl : `https://www.youtube.com/embed/${playerUrl.split("v=")[1] || playerUrl}`}
+                          className="w-full h-full"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <video className="w-full" controls src={playerUrl}>
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+                    )
+                  ) : (
+                    <div className="w-full aspect-video bg-gray-100 flex items-center justify-center text-gray-500">
+                      Select a lesson to start learning
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-xs text-gray-500">Progress</div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-36">
+                        <Progress value={videoProgressPercent} />
+                      </div>
+                      <div className="text-sm font-medium">{videoProgressPercent}%</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-gray-500">Total Duration</div>
+                    <div className="text-sm font-medium">{course.totalDuration || 0} min</div>
+                  </div>
+
+                  <div>
+                    {!enrollment ? (
+                      <Button onClick={handleStartLearning} className="w-full">
+                        Start Learning
+                      </Button>
+                    ) : (
+                      <Button onClick={() => toast({ title: "Resume", description: "Use the curriculum to pick a lesson" })} className="w-full">
+                        Resume Learning
+                      </Button>
+                    )}
+                  </div>
+
+                  <div>
+                    {enrollment?.finalExamEligible && !enrollment?.courseCompleted && (
+                      <Button onClick={handleOpenFinalExam} variant="secondary" className="w-full">
+                        Attempt Final Exam
+                      </Button>
+                    )}
+
+                    {enrollment?.courseCompleted && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-green-700">Course completed</div>
+                        <div className="text-xs text-gray-600">Completed on {new Date(enrollment.completedAt || "").toLocaleDateString()}</div>
+                        <Button onClick={() => {
+                          // If backend provides certificate link in enrollment, open it; otherwise show message
+                          const certLink = (enrollment as any).certificateLink;
+                          if (certLink) {
+                            window.open(certLink, "_blank");
+                            return;
+                          }
+                          toast({ title: "Certificate", description: "Certificate is generated by admin. Contact support if not available.", variant: "default" });
+                        }} className="w-full">
+                          View / Download Certificate
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Curriculum */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Curriculum</CardTitle>
+              <CardDescription>Topics and lessons</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {course.curriculum && course.curriculum.length > 0 ? (
+                <div className="space-y-6">
+                  {course.curriculum.map((topic, tIndex) => {
+                    const topicProgress = enrollment?.progress?.find((p) => p.topicName === topic.topicName);
+                    const topicWatched = topicProgress?.topicWatchedDuration || 0;
+                    const topicTotal = topicProgress?.topicTotalDuration || topic.subtopics.reduce((s, st) => s + (st.duration || 0), 0);
+
+                    const canAttemptExam = !!topicProgress && topicWatched >= topicTotal;
+
+                    return (
+                      <div key={topic.topicName} className="border p-4 rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <div className="font-semibold">{topic.topicName}</div>
+                            <div className="text-xs text-gray-500">Lessons: {topic.subtopics.length} • Duration: {topicTotal} min</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-medium">{Math.round((topicWatched / (topicTotal || 1)) * 100)}%</div>
+                            <div className="w-40">
+                              <Progress value={Math.round((topicWatched / (topicTotal || 1)) * 100)} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          {topic.subtopics.map((sub, sIndex) => (
+                            <SubtopicRow key={sub.name + sIndex} tIndex={tIndex} sIndex={sIndex} sub={sub} />
+                          ))}
+                        </div>
+
+                        <div className="mt-4 flex gap-2">
+                          <Button onClick={() => {
+                            // If user not enrolled -> prompt enrollment
+                            if (!enrollment) {
+                              navigate(`/course-enrollment/${courseId}`);
+                              return;
+                            }
+                            // Open first subtopic of this topic
+                            if (topic.subtopics && topic.subtopics.length > 0) {
+                              openSubtopic(tIndex, 0);
+                            } else {
+                              toast({ title: "No lessons", description: "This topic has no lessons", variant: "default" });
+                            }
+                          }}>
+                            Start Topic
+                          </Button>
+
+                          <Button disabled={!canAttemptExam || !!topicProgress?.examAttempted} variant={canAttemptExam ? "secondary" : "outline"} onClick={() => handleOpenTopicExam(topic.topicName)}>
+                            {topicProgress?.examAttempted ? "Exam Attempted" : "Attempt Topic Exam"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">No curriculum available for this course.</div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right: Sidebar / Enrollment summary / Exams history */}
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Enrollment</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!enrollment ? (
+                <>
+                  <div className="text-sm text-gray-600 mb-4">You are not enrolled in this course.</div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => navigate(`/course-enrollment/${courseId}`)}>Enroll</Button>
+                    <Button variant="outline" onClick={() => navigate(-1)}>Back</Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm text-gray-600 mb-2">Enrolled on {new Date(enrollment.enrollmentDate || "").toLocaleDateString()}</div>
+                  <div className="mb-3">
+                    <div className="text-xs text-gray-500">Course Progress</div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="w-full">
+                        <Progress value={videoProgressPercent} />
+                      </div>
+                      <div className="text-sm font-medium">{videoProgressPercent}%</div>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-gray-500 mb-2">Exam Eligibility</div>
+                  <div className="mb-4">
+                    <div>Topic exams passed: {enrollment.progress.filter(p => p.passed).length} / {enrollment.progress.length}</div>
+                    <div>Final exam eligible: {enrollment.finalExamEligible ? "Yes" : "No"}</div>
+                    <div>Final exam attempted: {enrollment.finalExamAttempted ? "Yes" : "No"}</div>
+                    <div>Course completed: {enrollment.courseCompleted ? "Yes" : "No"}</div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button onClick={() => {
+                      // open final exam if eligible
+                      if (!enrollment.finalExamEligible) {
+                        toast({ title: "Not eligible", description: "Complete all topic exams to be eligible for final exam", variant: "default" });
+                        return;
+                      }
+                      handleOpenFinalExam();
+                    }}>
+                      Attempt Final Exam
+                    </Button>
+                    <Button variant="outline" onClick={async () => {
+                      // quick refresh enrollment
+                      try {
+                        const resp = await axios.get(`${API_BASE_URL}/courses/enrollment/${encodeURIComponent(courseId)}`, {
+                          headers: { Authorization: `Bearer ${token}` },
+                        });
+                        setEnrollment(resp.data.enrollment || resp.data);
+                        toast({ title: "Refreshed", description: "Enrollment refreshed", variant: "success" });
+                      } catch (err: any) {
+                        toast({ title: "Error", description: "Failed to refresh enrollment", variant: "destructive" });
+                      }
+                    }}>
+                      Refresh
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Exam Result / History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-gray-600">
+                Use the exam modal to take exams. After submission, results will appear here after refresh.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Topic Exam Modal */}
+      <Dialog open={showTopicExamModal} onOpenChange={setShowTopicExamModal}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Topic Exam</DialogTitle>
+            <div className="text-sm text-gray-500">{currentExam?.topicName || currentExam?.examId}</div>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {!currentExam ? (
+              <div className="text-center py-8">Loading exam...</div>
+            ) : examResult ? (
+              <div className="p-4">
+                <div className="font-semibold text-lg">Result</div>
+                <div className="mt-2">Score: {examResult.score}%</div>
+                <div>Passed: {examResult.passed ? "Yes" : "No"}</div>
+                <div className="mt-3 text-sm text-gray-600">You can close this modal now.</div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-sm text-gray-500">Time limit: {currentExam?.timeLimit} minutes • Passing score: {currentExam?.passingScore}%</div>
+
+                <div className="space-y-6">
+                  {currentExam.questions.map((q: any, idx: number) => (
+                    <div key={q.questionId || q._id || idx} className="border rounded p-3">
+                      <div className="font-medium">{idx + 1}. {q.questionText}</div>
+                      <div className="space-y-2 mt-2">
+                        {(q.options || []).map((opt: string, oi: number) => {
+                          const qid = (q._id || q.questionId).toString();
+                          const checked = answers[qid] === opt;
+                          return (
+                            <label key={oi} className="flex items-center gap-3 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={qid}
+                                checked={checked}
+                                onChange={() => handleTopicAnswerChange(qid, opt)}
+                                className="form-radio"
+                              />
+                              <span>{opt}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" onClick={() => setShowTopicExamModal(false)}>Cancel</Button>
+                  <Button onClick={submitTopicExam} disabled={submittingExam}>{submittingExam ? "Submitting..." : "Submit Exam"}</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Final Exam Modal */}
+      <Dialog open={showFinalExamModal} onOpenChange={setShowFinalExamModal}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Final Exam</DialogTitle>
+            <div className="text-sm text-gray-500">Final exam for this course</div>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {!finalExam ? (
+              <div className="text-center py-8">Loading final exam...</div>
+            ) : examResult ? (
+              <div className="p-4">
+                <div className="font-semibold text-lg">Final Exam Result</div>
+                <div className="mt-2">Score: {examResult.score}%</div>
+                <div>Passed: {examResult.passed ? "Yes" : "No"}</div>
+                <div className="mt-3 text-sm text-gray-600">If you've passed and the backend supports certificates, your enrollment will be marked as completed and certificate will be available.</div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-sm text-gray-500">Time limit: {finalExam?.timeLimit} minutes • Passing score: {finalExam?.passingScore}%</div>
+
+                <div className="space-y-6">
+                  {finalExam.questions.map((q: any, idx: number) => (
+                    <div key={q.questionId || q._id || idx} className="border rounded p-3">
+                      <div className="font-medium">{idx + 1}. {q.questionText}</div>
+                      <div className="space-y-2 mt-2">
+                        {(q.options || []).map((opt: string, oi: number) => {
+                          const qid = (q._id || q.questionId).toString();
+                          const checked = answers[qid] === opt;
+                          return (
+                            <label key={oi} className="flex items-center gap-3 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={qid}
+                                checked={checked}
+                                onChange={() => setAnswers(prev => ({ ...prev, [qid]: opt }))}
+                                className="form-radio"
+                              />
+                              <span>{opt}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" onClick={() => setShowFinalExamModal(false)}>Cancel</Button>
+                  <Button onClick={submitFinalExam} disabled={submittingExam}>{submittingExam ? "Submitting..." : "Submit Final Exam"}</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
