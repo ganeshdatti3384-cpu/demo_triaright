@@ -820,8 +820,8 @@ const StudentDashboard = () => {
             {/* Trust Badges Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Our Trusted Partnerships & Certifications</CardTitle>
-                <CardDescription>Recognized by leading organizations and government bodies</CardDescription>
+                <CardTitle>Triaright - All in One Platform.</CardTitle>
+                <CardDescription>Your Journey to Skills, Careers & Success Starts Here.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
