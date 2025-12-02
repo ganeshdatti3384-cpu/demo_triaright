@@ -97,16 +97,6 @@ const trustBadges: TrustBadge[] = [
     impact: "10K+ Institutions"
   },
   {
-    name: "APSSDC",
-    image: "/lovable-uploads/apssdc-badge.png",
-    alt: "APSSDC Partner",
-    category: "Government",
-    description: "Official Skill Development Partner for Andhra Pradesh",
-    verified: true,
-    year: "2016",
-    impact: "2M+ Youth Trained"
-  },
-  {
     name: "ISO 9001:2015",
     image: "/lovable-uploads/iso-badge.png",
     alt: "ISO 9001:2015 Certified",
@@ -706,5 +696,6 @@ const CommunityPage = () => {
     </>
   );
 };
+
 
 export default CommunityPage;
