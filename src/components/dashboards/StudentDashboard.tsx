@@ -99,31 +99,31 @@ interface APInternship {
 const trustBadges = [
   {
     name: "Skill India",
-    image: "/lovable-uploads/skill-india-badge.png",
+    image: "/pack365.png",
     alt: "Skill India - Government of India",
     category: "Government"
   },
   {
     name: "Startup India",
-    image: "/lovable-uploads/startup-india-badge.png",
+    image: "/AP.png",
     alt: "Startup India - Government of India",
     category: "Government"
   },
   {
     name: "AICTE",
-    image: "/lovable-uploads/aicte-badge.png",
+    image: "/LC.png",
     alt: "AICTE Approved",
     category: "Education"
   },
   {
     name: "APSSDC",
-    image: "/lovable-uploads/apssdc-badge.png",
+    image: "/RC.png",
     alt: "APSSDC Partner",
     category: "Government"
   },
   {
     name: "ISO 9001:2015",
-    image: "/lovable-uploads/iso-badge.png",
+    image: "/j&i.png",
     alt: "ISO 9001:2015 Certified",
   }
 ];
