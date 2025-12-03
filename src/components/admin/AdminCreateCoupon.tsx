@@ -10,27 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Clock } from "lucide-react";
 
-/**
- * AdminCreateCoupon
- *
- * A form component for admins to create course coupons.
- *
- * Fields supported (per backend createCourseCoupon):
- * - code (string, required)
- * - discountType ("flat" | "percentage", required)
- * - discountAmount (number, required)
- * - maxDiscount (number, optional — only meaningful for percentage)
- * - minCoursePrice (number, optional)
- * - applicableCourse (courseId, optional)
- * - usageLimit (number, optional)
- * - expiresAt (ISO date string, optional)
- * - description (string, optional)
- *
- * Notes:
- * - This component fetches courses (paid) to allow selecting an applicableCourse.
- * - Uses `useAuth()` for token and `useToast()` for notifications (same pattern as other UI files).
- * - Expects API base at import.meta.env.VITE_BACKEND_URL or defaults to https://dev.triaright.com/api
- */
+
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://dev.triaright.com/api";
 
