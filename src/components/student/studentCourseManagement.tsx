@@ -44,31 +44,51 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
   useEffect(() => {
     loadMyEnrollments();
     loadAllCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadAllCourses = async () => {
     try {
       setLoadingCourses(true);
       console.log('🔄 Loading all courses...');
-      
-      // Load all courses directly
+
+      // 1) Always fetch public all-courses (this route is public in backend)
       const allCoursesResp = await axios.get(`${API_BASE_URL}/courses`);
-      const freeCoursesResp = await axios.get(`${API_BASE_URL}/courses/free`);
-      const paidCoursesResp = await axios.get(`${API_BASE_URL}/courses/paid`);
-      
-      console.log('📊 All courses data:', allCoursesResp.data);
-      console.log('🆓 Free courses data:', freeCoursesResp.data);
-      console.log('💰 Paid courses data:', paidCoursesResp.data);
-      
-      setAllCourses(allCoursesResp.data.courses || []);
-      setFreeCourses(freeCoursesResp.data.courses || []);
-      setPaidCourses(paidCoursesResp.data.courses || []);
+      const fetchedAllCourses = allCoursesResp.data?.courses || [];
+      console.log('📊 All courses data:', fetchedAllCourses);
+      setAllCourses(fetchedAllCourses);
+
+      // 2) If we have a token, try to fetch protected free/paid endpoints in parallel with Authorization header
+      if (token) {
+        try {
+          const headers = { headers: { Authorization: `Bearer ${token}` } };
+          const [freeCoursesResp, paidCoursesResp] = await Promise.all([
+            axios.get(`${API_BASE_URL}/courses/free`, headers),
+            axios.get(`${API_BASE_URL}/courses/paid`, headers),
+          ]);
+
+          console.log('🆓 Free courses data (auth):', freeCoursesResp.data);
+          console.log('💰 Paid courses data (auth):', paidCoursesResp.data);
+
+          setFreeCourses(freeCoursesResp.data?.courses || []);
+          setPaidCourses(paidCoursesResp.data?.courses || []);
+        } catch (authErr: any) {
+          console.warn('⚠️ Failed to fetch auth-protected free/paid endpoints, falling back to filtering all courses:', authErr?.message || authErr);
+          // Fallback: derive free/paid from the public allCourses response
+          setFreeCourses(fetchedAllCourses.filter((c: any) => c.courseType === 'unpaid' || c.courseType === 'free' ));
+          setPaidCourses(fetchedAllCourses.filter((c: any) => c.courseType === 'paid'));
+        }
+      } else {
+        // No token - derive free/paid from public all courses
+        setFreeCourses(fetchedAllCourses.filter((c: any) => c.courseType === 'unpaid' || c.courseType === 'free' ));
+        setPaidCourses(fetchedAllCourses.filter((c: any) => c.courseType === 'paid'));
+      }
       
       console.log('✅ Courses loaded successfully');
     } catch (error: any) {
       console.error('❌ Error loading courses:', error);
       
-      // Set empty arrays to avoid infinite loading
+      // Set empty arrays to avoid infinite loading/UI break
       setAllCourses([]);
       setFreeCourses([]);
       setPaidCourses([]);
@@ -163,8 +183,8 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
     navigate(`/course-enrollment/${courseId}`);
   };
 
-  // Get unique streams for filter options from all courses
-  const streams = ['all', ...Array.from(new Set(allCourses.map(course => course.stream)))];
+  // Get unique streams for filter options from all courses (filter out falsy)
+  const streams = ['all', ...Array.from(new Set(allCourses.map((course) => course.stream).filter(Boolean)))];
 
   // Course Management Tabs
   const courseTabs = [
