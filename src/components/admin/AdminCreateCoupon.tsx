@@ -10,8 +10,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Clock } from "lucide-react";
 
-
-
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://dev.triaright.com/api";
 
 type DiscountType = "flat" | "percentage";
@@ -19,6 +17,26 @@ type DiscountType = "flat" | "percentage";
 const AdminCreateCoupon: React.FC = () => {
   const { token } = useAuth();
   const { toast } = useToast();
+
+  // Safe wrapper so calling toast won't crash the component if toast is undefined
+  const safeToast = (opts: { title?: string; description?: string; variant?: string }) => {
+    try {
+      if (typeof toast === "function") {
+        // some useToast implementations return a function directly
+        (toast as any)(opts);
+      } else if (toast && typeof (toast as any).toast === "function") {
+        // some return an object like { toast }
+        (toast as any).toast(opts);
+      } else {
+        // If we just have a callable toast from the hook
+        toast?.(opts as any);
+      }
+    } catch (err) {
+      // swallow toast errors to avoid UI crash; log for debugging
+      // eslint-disable-next-line no-console
+      console.warn("Toast failed:", err);
+    }
+  };
 
   const [code, setCode] = useState("");
   const [discountType, setDiscountType] = useState<DiscountType>("flat");
@@ -36,23 +54,45 @@ const AdminCreateCoupon: React.FC = () => {
 
   useEffect(() => {
     fetchPaidCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPaidCourses = async () => {
+    // If we don't have a token, avoid calling the protected endpoint.
+    // This prevents a 401 from the server which would trigger the catch and call toast,
+    // and possibly crash if toast isn't ready.
+    if (!token) {
+      setCourses([]);
+      return;
+    }
+
     try {
       setLoadingCourses(true);
       const resp = await axios.get(`${API_BASE_URL}/courses/paid`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const list = resp.data?.courses || [];
+
+      // backend shape: { courses: [...] } — handle both that and a raw array with safety
+      let list: any[] = [];
+      if (resp?.data?.courses && Array.isArray(resp.data.courses)) {
+        list = resp.data.courses;
+      } else if (Array.isArray(resp.data)) {
+        list = resp.data;
+      } else if (resp?.data?.courses === undefined && resp?.data?.length) {
+        // fallback
+        list = Array.isArray(resp.data) ? resp.data : [];
+      }
       setCourses(list);
     } catch (err: any) {
+      // log and show a safe toast
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch courses:", err);
-      toast({
+      safeToast({
         title: "Error",
         description: "Unable to load courses for coupon applicability",
         variant: "destructive",
       });
+      setCourses([]);
     } finally {
       setLoadingCourses(false);
     }
@@ -60,42 +100,42 @@ const AdminCreateCoupon: React.FC = () => {
 
   const validateForm = () => {
     if (!code || code.trim().length === 0) {
-      toast({ title: "Validation", description: "Coupon code is required", variant: "destructive" });
+      safeToast({ title: "Validation", description: "Coupon code is required", variant: "destructive" });
       return false;
     }
 
     if (discountAmount === "" || discountAmount === null) {
-      toast({ title: "Validation", description: "Discount amount is required", variant: "destructive" });
+      safeToast({ title: "Validation", description: "Discount amount is required", variant: "destructive" });
       return false;
     }
 
     if (typeof discountAmount === "number" && discountAmount < 0) {
-      toast({ title: "Validation", description: "Discount amount cannot be negative", variant: "destructive" });
+      safeToast({ title: "Validation", description: "Discount amount cannot be negative", variant: "destructive" });
       return false;
     }
 
     if (discountType === "percentage" && typeof discountAmount === "number" && discountAmount > 100) {
-      toast({ title: "Validation", description: "Percentage discount cannot exceed 100%", variant: "destructive" });
+      safeToast({ title: "Validation", description: "Percentage discount cannot exceed 100%", variant: "destructive" });
       return false;
     }
 
     if (discountType === "percentage" && maxDiscount !== "" && typeof maxDiscount === "number" && maxDiscount < 0) {
-      toast({ title: "Validation", description: "Max discount cannot be negative", variant: "destructive" });
+      safeToast({ title: "Validation", description: "Max discount cannot be negative", variant: "destructive" });
       return false;
     }
 
     if (minCoursePrice !== "" && typeof minCoursePrice === "number" && minCoursePrice < 0) {
-      toast({ title: "Validation", description: "Minimum course price cannot be negative", variant: "destructive" });
+      safeToast({ title: "Validation", description: "Minimum course price cannot be negative", variant: "destructive" });
       return false;
     }
 
     if (usageLimit !== "" && typeof usageLimit === "number" && usageLimit < 1) {
-      toast({ title: "Validation", description: "Usage limit must be at least 1", variant: "destructive" });
+      safeToast({ title: "Validation", description: "Usage limit must be at least 1", variant: "destructive" });
       return false;
     }
 
     if (expiresAt && new Date(expiresAt) < new Date()) {
-      toast({ title: "Validation", description: "Expiry date cannot be in the past", variant: "destructive" });
+      safeToast({ title: "Validation", description: "Expiry date cannot be in the past", variant: "destructive" });
       return false;
     }
 
@@ -133,7 +173,6 @@ const AdminCreateCoupon: React.FC = () => {
     if (applicableCourse) payload.applicableCourse = applicableCourse;
     if (usageLimit !== "") payload.usageLimit = Number(usageLimit);
     if (expiresAt) {
-      // server expects a date; send ISO string
       const iso = new Date(expiresAt);
       payload.expiresAt = iso.toISOString();
     }
@@ -141,27 +180,23 @@ const AdminCreateCoupon: React.FC = () => {
 
     try {
       setSubmitting(true);
-      const resp = await axios.post(
-        `${API_BASE_URL}/courses/admin/coupons`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+
+      const headers: any = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const resp = await axios.post(`${API_BASE_URL}/courses/admin/coupons`, payload, { headers });
 
       if (resp.data && resp.data.success) {
-        toast({ title: "Success", description: "Coupon created successfully", variant: "success" });
+        safeToast({ title: "Success", description: "Coupon created successfully", variant: "success" });
         resetForm();
       } else {
-        toast({ title: "Error", description: resp.data?.message || "Failed to create coupon", variant: "destructive" });
+        safeToast({ title: "Error", description: resp.data?.message || "Failed to create coupon", variant: "destructive" });
       }
     } catch (err: any) {
+      // eslint-disable-next-line no-console
       console.error("Create coupon error:", err);
-      const msg = err.response?.data?.message || err.message || "Failed to create coupon";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      const msg = err?.response?.data?.message || err?.message || "Failed to create coupon";
+      safeToast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -296,7 +331,7 @@ const AdminCreateCoupon: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <Button type="submit" className="flex items-center gap-2" disabled={submitting}>
-              {submitting ? <><Clock className="h-4 w-4 animate-spin"/> Creating...</> : "Create Coupon"}
+              {submitting ? <><Clock className="h-4 w-4 animate-spin" /> Creating...</> : "Create Coupon"}
             </Button>
             <Button
               variant="outline"
