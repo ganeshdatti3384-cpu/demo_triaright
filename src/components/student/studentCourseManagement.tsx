@@ -1,40 +1,39 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookOpen, Trophy, Clock, Star, Play, Award, CheckCircle, GraduationCap, IndianRupee, Calendar, PlayCircle, Filter, Search, Users } from 'lucide-react';
+import { BookOpen, Play, CheckCircle, Clock, Award, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
-import { courseApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import { EnhancedCourse } from '@/types/api';
+import axios from 'axios';
 
 interface StudentCourseManagementProps {
   initialTab?: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://dev.triaright.com/api";
+
 const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initialTab = 'my-courses' }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { toast } = useToast();
   
   // State for courses and enrollments
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
-  const [allCourses, setAllCourses] = useState<EnhancedCourse[]>([]);
-  const [freeCourses, setFreeCourses] = useState<EnhancedCourse[]>([]);
-  const [paidCourses, setPaidCourses] = useState<EnhancedCourse[]>([]);
+  const [allCourses, setAllCourses] = useState<any[]>([]);
+  const [freeCourses, setFreeCourses] = useState<any[]>([]);
+  const [paidCourses, setPaidCourses] = useState<any[]>([]);
   const [myEnrollments, setMyEnrollments] = useState<any[]>([]);
   
   // Loading states
-  const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+  const [loadingEnrollments, setLoadingEnrollments] = useState(true);
   const [loadingCourses, setLoadingCourses] = useState(false);
   
   // Filter states
@@ -43,8 +42,8 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
   const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
-    loadAllCourses();
     loadMyEnrollments();
+    loadAllCourses();
   }, []);
 
   const loadAllCourses = async () => {
@@ -52,19 +51,18 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
       setLoadingCourses(true);
       console.log('🔄 Loading all courses...');
       
-      const [allCoursesData, freeCoursesData, paidCoursesData] = await Promise.all([
-        courseApi.getAllCourses(),
-        courseApi.getFreeCourses(),
-        courseApi.getPaidCourses()
-      ]);
+      // Load all courses directly
+      const allCoursesResp = await axios.get(`${API_BASE_URL}/courses`);
+      const freeCoursesResp = await axios.get(`${API_BASE_URL}/courses/free`);
+      const paidCoursesResp = await axios.get(`${API_BASE_URL}/courses/paid`);
       
-      console.log('📊 All courses data:', allCoursesData);
-      console.log('🆓 Free courses data:', freeCoursesData);
-      console.log('💰 Paid courses data:', paidCoursesData);
+      console.log('📊 All courses data:', allCoursesResp.data);
+      console.log('🆓 Free courses data:', freeCoursesResp.data);
+      console.log('💰 Paid courses data:', paidCoursesResp.data);
       
-      setAllCourses(allCoursesData.courses || []);
-      setFreeCourses(freeCoursesData || []);
-      setPaidCourses(paidCoursesData || []);
+      setAllCourses(allCoursesResp.data.courses || []);
+      setFreeCourses(freeCoursesResp.data.courses || []);
+      setPaidCourses(paidCoursesResp.data.courses || []);
       
       console.log('✅ Courses loaded successfully');
     } catch (error: any) {
@@ -87,19 +85,34 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
   };
 
   const loadMyEnrollments = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      setLoadingEnrollments(false);
+      return;
+    }
 
     try {
+      setLoadingEnrollments(true);
       console.log('Loading regular course enrollments...');
-      const response = await courseApi.getMyEnrollments(token);
-      console.log('Regular Course Enrollments Response:', response);
       
-      if (response.success && response.enrollments) {
-        console.log('Setting myEnrollments:', response.enrollments);
-        setMyEnrollments(response.enrollments);
-        setEnrolledCourses(response.enrollments.filter((e: any) => e.status === 'enrolled'));
-        setCompletedCourses(response.enrollments.filter((e: any) => e.status === 'completed'));
+      const response = await axios.get(
+        `${API_BASE_URL}/courses/enrollment/allcourses`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      console.log('Regular Course Enrollments Response:', response.data);
+      
+      if (response.data && response.data.success && response.data.enrollments) {
+        console.log('Setting myEnrollments:', response.data.enrollments);
+        setMyEnrollments(response.data.enrollments);
+        
+        // Separate enrolled vs completed
+        const enrolled = response.data.enrollments.filter((e: any) => !e.courseCompleted);
+        const completed = response.data.enrollments.filter((e: any) => e.courseCompleted);
+        
+        setEnrolledCourses(enrolled);
+        setCompletedCourses(completed);
       } else {
         console.log('No regular course enrollments found');
         setMyEnrollments([]);
@@ -111,6 +124,13 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
       setMyEnrollments([]);
       setEnrolledCourses([]);
       setCompletedCourses([]);
+      toast({
+        title: "Error",
+        description: "Failed to load your enrollments",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingEnrollments(false);
     }
   };
 
@@ -122,25 +142,29 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
     });
   };
 
-  // Filter courses based on stream and search term
-  const filteredFreeCourses = freeCourses.filter(course => {
-    const matchesFilter = courseFilter === 'all' || course.stream.toLowerCase() === courseFilter.toLowerCase();
-    const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
-
-  const filteredPaidCourses = paidCourses.filter(course => {
-    const matchesFilter = courseFilter === 'all' || course.stream.toLowerCase() === courseFilter.toLowerCase();
-    const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
-
-  // Get unique streams for filter options from all courses
-  const streams = ['all', ...Array.from(new Set(allCourses.map(course => course.stream)))];
+  const handleContinueLearning = (enrollment: any) => {
+    // Get the correct course ID from enrollment
+    const courseId = enrollment.courseId?._id || enrollment.courseId;
+    
+    if (!courseId) {
+      toast({
+        title: "Error",
+        description: "Course ID not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log('Navigating to course:', courseId);
+    navigate(`/learning/${courseId}`);
+  };
 
   const handleEnrollInCourse = (courseId: string) => {
     navigate(`/course-enrollment/${courseId}`);
   };
+
+  // Get unique streams for filter options from all courses
+  const streams = ['all', ...Array.from(new Set(allCourses.map(course => course.stream)))];
 
   // Course Management Tabs
   const courseTabs = [
@@ -159,7 +183,12 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                 <CardDescription>Continue your learning journey</CardDescription>
               </CardHeader>
               <CardContent>
-                {myEnrollments.length > 0 ? (
+                {loadingEnrollments ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Loading your courses...</p>
+                  </div>
+                ) : myEnrollments.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {myEnrollments.map((enrollment, index) => (
                       <Card key={index} className="hover:shadow-md transition-shadow border-blue-200">
@@ -170,10 +199,10 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                                 {enrollment.isPaid ? 'Paid' : 'Free'}
                               </Badge>
                               <span className="text-sm text-gray-500">
-                                {new Date(enrollment.enrollmentDate).toLocaleDateString()}
+                                {formatDate(enrollment.enrollmentDate)}
                               </span>
                             </div>
-                            <h3 className="font-semibold">{enrollment.courseName}</h3>
+                            <h3 className="font-semibold text-lg">{enrollment.courseName || 'Course'}</h3>
                             <div className="space-y-2">
                               <div className="flex justify-between text-sm">
                                 <span>Progress</span>
@@ -181,12 +210,20 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                               </div>
                               <Progress value={enrollment.videoProgressPercent || 0} className="h-2" />
                             </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                {enrollment.finalExamAttempted ? 'Final Exam Attempted' : 'Final Exam Pending'}
+                              </span>
+                              <Badge variant={enrollment.courseCompleted ? "default" : "outline"}>
+                                {enrollment.courseCompleted ? 'Completed' : 'In Progress'}
+                              </Badge>
+                            </div>
                             <Button 
                               className="w-full bg-blue-600 hover:bg-blue-700"
-                              onClick={() => navigate(`/learning/${enrollment.courseId}`)}
+                              onClick={() => handleContinueLearning(enrollment)}
                             >
                               <Play className="h-4 w-4 mr-2" />
-                              Continue Learning
+                              {enrollment.courseCompleted ? 'Review Course' : 'Continue Learning'}
                             </Button>
                           </div>
                         </CardContent>
@@ -197,7 +234,10 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                   <div className="text-center py-8">
                     <BookOpen className="h-12 w-12 text-blue-400 mx-auto mb-4" />
                     <p className="text-gray-500 mb-4">You haven't enrolled in any courses yet.</p>
-                    <Button onClick={() => navigate('/courses/recorded')} className="bg-blue-600 hover:bg-blue-700">
+                    <Button 
+                      onClick={() => setActiveTab('browse-courses')} 
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
                       Browse Courses
                     </Button>
                   </div>
@@ -213,7 +253,7 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {completedCourses.map((course, index) => (
+                    {completedCourses.map((enrollment, index) => (
                       <Card key={index} className="hover:shadow-md transition-shadow border-green-200">
                         <CardContent className="p-6">
                           <div className="space-y-4">
@@ -224,11 +264,33 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                               </Badge>
                               <Award className="h-5 w-5 text-yellow-500" />
                             </div>
-                            <h3 className="font-semibold">{course.courseName}</h3>
-                            <p className="text-sm text-gray-600">Completed on {course.completionDate}</p>
-                            <Button variant="outline" className="w-full border-green-500 text-green-600 hover:bg-green-50">
-                              View Certificate
-                            </Button>
+                            <h3 className="font-semibold">{enrollment.courseName || 'Course'}</h3>
+                            <p className="text-sm text-gray-600">
+                              Completed on {formatDate(enrollment.completedAt || enrollment.enrollmentDate)}
+                            </p>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                className="flex-1 border-green-500 text-green-600 hover:bg-green-50"
+                                onClick={() => handleContinueLearning(enrollment)}
+                              >
+                                <Play className="h-4 w-4 mr-2" />
+                                Review
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+                                onClick={() => {
+                                  toast({
+                                    title: "Certificate",
+                                    description: "Certificate download will be available soon",
+                                    variant: "default",
+                                  });
+                                }}
+                              >
+                                Certificate
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -247,7 +309,7 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1">
                 <Input
-                  placeholder="Search courses..."
+                  placeholder="Search courses by name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full"
@@ -271,23 +333,48 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
               <TabsList className="bg-white">
                 <TabsTrigger value="free">Free Courses</TabsTrigger>
                 <TabsTrigger value="paid">Paid Courses</TabsTrigger>
+                <TabsTrigger value="all">All Courses</TabsTrigger>
               </TabsList>
 
               <TabsContent value="free" className="space-y-6">
                 {loadingCourses ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600">Loading courses...</p>
-                    <Button 
-                      variant="outline" 
-                      onClick={loadAllCourses}
-                      className="mt-4"
-                    >
-                      Retry Loading
-                    </Button>
+                    <p className="mt-2 text-gray-600">Loading free courses...</p>
                   </div>
-                ) : filteredFreeCourses.length > 0 ? (
-                  <CourseCards courses={filteredFreeCourses as any} type="recorded" />
+                ) : freeCourses.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {freeCourses.map((course) => (
+                      <Card key={course._id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Badge className="bg-green-500 text-white">Free</Badge>
+                              <Badge variant="outline">{course.stream}</Badge>
+                            </div>
+                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {course.courseDescription || 'No description available'}
+                            </p>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                <Clock className="h-4 w-4 inline mr-1" />
+                                {course.totalDuration || 0} min
+                              </span>
+                              <span className="font-medium">{course.instructorName}</span>
+                            </div>
+                            <Button 
+                              className="w-full bg-blue-600 hover:bg-blue-700"
+                              onClick={() => handleEnrollInCourse(course._id)}
+                            >
+                              <BookOpen className="h-4 w-4 mr-2" />
+                              Enroll Now
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-center py-8">
                     <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -303,21 +390,97 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                 {loadingCourses ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600">Loading courses...</p>
-                    <Button 
-                      variant="outline" 
-                      onClick={loadAllCourses}
-                      className="mt-4"
-                    >
-                      Retry Loading
-                    </Button>
+                    <p className="mt-2 text-gray-600">Loading paid courses...</p>
                   </div>
-                ) : filteredPaidCourses.length > 0 ? (
-                  <CourseCards courses={filteredPaidCourses as any} type="recorded" />
+                ) : paidCourses.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {paidCourses.map((course) => (
+                      <Card key={course._id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Badge className="bg-purple-500 text-white">₹{course.price}</Badge>
+                              <Badge variant="outline">{course.stream}</Badge>
+                            </div>
+                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {course.courseDescription || 'No description available'}
+                            </p>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                <Clock className="h-4 w-4 inline mr-1" />
+                                {course.totalDuration || 0} min
+                              </span>
+                              <span className="font-medium">{course.instructorName}</span>
+                            </div>
+                            <Button 
+                              className="w-full bg-blue-600 hover:bg-blue-700"
+                              onClick={() => handleEnrollInCourse(course._id)}
+                            >
+                              <BookOpen className="h-4 w-4 mr-2" />
+                              Enroll Now
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-center py-8">
                     <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600 mb-4">No paid courses available at the moment.</p>
+                    <Button onClick={loadAllCourses} variant="outline">
+                      Refresh Courses
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="all" className="space-y-6">
+                {loadingCourses ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Loading all courses...</p>
+                  </div>
+                ) : allCourses.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {allCourses.map((course) => (
+                      <Card key={course._id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Badge className={course.courseType === 'paid' ? 'bg-purple-500' : 'bg-green-500'} >
+                                {course.courseType === 'paid' ? `₹${course.price}` : 'Free'}
+                              </Badge>
+                              <Badge variant="outline">{course.stream}</Badge>
+                            </div>
+                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {course.courseDescription || 'No description available'}
+                            </p>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                <Clock className="h-4 w-4 inline mr-1" />
+                                {course.totalDuration || 0} min
+                              </span>
+                              <span className="font-medium">{course.instructorName}</span>
+                            </div>
+                            <Button 
+                              className="w-full bg-blue-600 hover:bg-blue-700"
+                              onClick={() => handleEnrollInCourse(course._id)}
+                            >
+                              <BookOpen className="h-4 w-4 mr-2" />
+                              {course.courseType === 'paid' ? 'Buy Now' : 'Enroll Free'}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">No courses available at the moment.</p>
                     <Button onClick={loadAllCourses} variant="outline">
                       Refresh Courses
                     </Button>
