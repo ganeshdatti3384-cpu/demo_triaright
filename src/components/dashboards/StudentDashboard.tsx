@@ -28,7 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import APStudentDashboard from '@/components/student/APStudentDashboard';
 import ApplyInternshipDialog from '@/components/internships/ApplyInternshipDialog';
-import StudentCourseManagement from '@/components/student/StudentCourseManagement'; 
+import StudentCourseManagement from '@/components/student/StudentCourseManagement';
 
 interface Job {
   _id: string;
