@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import APStudentDashboard from '@/components/student/APStudentDashboard';
 import ApplyInternshipDialog from '@/components/internships/ApplyInternshipDialog';
+import StudentCourseManagement from './StudentCourseManagement'; // Import the new component
 
 interface Job {
   _id: string;
@@ -196,9 +197,7 @@ const StudentDashboard = () => {
       }
     };
 
-    loadPack365Enrollments();
-    loadAllCourses();
-    loadMyEnrollments();
+    fetchEnrollments();
     fetchJobs();
     fetchInternships();
     fetchAPInternships();
@@ -627,107 +626,6 @@ const StudentDashboard = () => {
     );
   };
 
-  const loadAllCourses = async () => {
-    try {
-      setLoadingCourses(true);
-      console.log('🔄 Loading all courses...');
-      
-      const [allCoursesData, freeCoursesData, paidCoursesData] = await Promise.all([
-        courseApi.getAllCourses(),
-        courseApi.getFreeCourses(),
-        courseApi.getPaidCourses()
-      ]);
-      
-      console.log('📊 All courses data:', allCoursesData);
-      console.log('🆓 Free courses data:', freeCoursesData);
-      console.log('💰 Paid courses data:', paidCoursesData);
-      
-      setAllCourses(allCoursesData.courses || []);
-      setFreeCourses(freeCoursesData || []);
-      setPaidCourses(paidCoursesData || []);
-      
-      console.log('✅ Courses loaded successfully');
-    } catch (error: any) {
-      console.error('❌ Error loading courses:', error);
-      
-      // Set empty arrays to avoid infinite loading
-      setAllCourses([]);
-      setFreeCourses([]);
-      setPaidCourses([]);
-      
-      toast({
-        title: "Error",
-        description: `Failed to load courses: ${error.message || 'Unknown error'}`,
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingCourses(false);
-      console.log('🏁 Course loading completed');
-    }
-  };
-
-  const loadMyEnrollments = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      console.log('Loading regular course enrollments...');
-      const response = await courseApi.getMyEnrollments(token);
-      console.log('Regular Course Enrollments Response:', response);
-      
-      if (response.success && response.enrollments) {
-        console.log('Setting myEnrollments:', response.enrollments);
-        setMyEnrollments(response.enrollments);
-      } else {
-        console.log('No regular course enrollments found');
-        setMyEnrollments([]);
-      }
-    } catch (error: any) {
-      console.error('Error loading regular course enrollments:', error);
-      setMyEnrollments([]);
-    }
-  };
-  
-  const loadPack365Enrollments = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast({
-        title: "Login Required",
-        description: "Please login to view your enrollments.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setLoadingEnrollments(true);
-      console.log('Loading Pack365 enrollments...');
-      const response = await pack365Api.getMyEnrollments(token);
-      console.log('Pack365 Enrollments Response:', response);
-      
-      if (response.success || response.enrollments) {
-        setPack365Enrollments(response.enrollments);
-        console.log('Pack365 Enrollments set:', response.enrollments);
-      } else {
-        console.log('No enrollments found or failed response');
-        toast({
-          title: "Info", 
-          description: "No enrollments found or failed to load enrollments",
-          variant: "default",
-        });
-      }
-    } catch (error: any) {
-      console.error('Error loading Pack365 enrollments:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load your enrollments. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingEnrollments(false);
-    }
-  };
-
   const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
     console.log('🚀 Continue Learning clicked, enrollment:', enrollment);
     
@@ -769,35 +667,6 @@ const StudentDashboard = () => {
     navigate(`/pack365-stream/${stream}`);
   };
 
-  // Filter courses based on stream and search term
-  const filteredFreeCourses = freeCourses.filter(course => {
-    const matchesFilter = courseFilter === 'all' || course.stream.toLowerCase() === courseFilter.toLowerCase();
-    const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
-
-  const filteredPaidCourses = paidCourses.filter(course => {
-    const matchesFilter = courseFilter === 'all' || course.stream.toLowerCase() === courseFilter.toLowerCase();
-    const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
-
-  // Get unique streams for filter options from all courses
-  const streams = ['all', ...Array.from(new Set(allCourses.map(course => course.stream)))];
-
-  const handleEnrollInCourse = (courseId: string) => {
-    navigate(`/course-enrollment/${courseId}`);
-  };
-  
-  const pack365Stats = {
-    totalStreams: pack365Enrollments.length,
-    totalCourses: pack365Enrollments.length,
-    averageProgress: pack365Enrollments.length > 0 
-      ? Math.round(pack365Enrollments.reduce((sum, enrollment) => sum + enrollment.totalWatchedPercentage, 0) / pack365Enrollments.length)
-      : 0,
-    completedExams: pack365Enrollments.filter(enrollment => enrollment.isExamCompleted).length
-  };
-
   // Updated menu items without Exams
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: User },
@@ -830,7 +699,7 @@ const StudentDashboard = () => {
                       <div className="w-20 h-20 flex items-center justify-center mb-3">
                         <img 
                           src={badge.image} 
-                          alt={badge.alt}
+                          alt={badge.name}
                           className="max-w-full max-h-full object-contain"
                           onError={(e) => {
                             // Fallback if image fails to load
@@ -845,7 +714,6 @@ const StudentDashboard = () => {
                         />
                       </div>
                       <span className="text-sm font-medium text-gray-700 text-center">{badge.name}</span>
-                      <span className="text-xs text-gray-500 mt-1 text-center">{badge.category}</span>
                     </div>
                   ))}
                 </div>
@@ -900,188 +768,7 @@ const StudentDashboard = () => {
         );
       
       case 'courses':
-        return (
-          <div className="space-y-6">
-            <Tabs defaultValue="my-courses" className="space-y-4">
-              <TabsList className="bg-white">
-                <TabsTrigger value="my-courses">My Courses</TabsTrigger>
-                <TabsTrigger value="browse-courses">Browse Courses</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="my-courses" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>My Enrolled Courses</CardTitle>
-                    <CardDescription>Continue your learning journey</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {myEnrollments.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                         {myEnrollments.map((enrollment, index) => (
-                           <Card key={index} className="hover:shadow-md transition-shadow border-blue-200">
-                             <CardContent className="p-6">
-                               <div className="space-y-4">
-                                 <div className="flex items-center justify-between">
-                                   <Badge className="bg-blue-500 text-white">
-                                     {enrollment.isPaid ? 'Paid' : 'Free'}
-                                   </Badge>
-                                   <span className="text-sm text-gray-500">
-                                     {new Date(enrollment.enrollmentDate).toLocaleDateString()}
-                                   </span>
-                                 </div>
-                                 <h3 className="font-semibold">{enrollment.courseName}</h3>
-                                 <div className="space-y-2">
-                                   <div className="flex justify-between text-sm">
-                                     <span>Progress</span>
-                                     <span>{enrollment.videoProgressPercent || 0}%</span>
-                                   </div>
-                                   <Progress value={enrollment.videoProgressPercent || 0} className="h-2" />
-                                 </div>
-                                  <Button 
-                                    className="w-full bg-blue-600 hover:bg-blue-700"
-                                    onClick={() => navigate(`/learning/${enrollment.courseId}`)}
-                                  >
-                                   <Play className="h-4 w-4 mr-2" />
-                                   Continue Learning
-                                 </Button>
-                               </div>
-                             </CardContent>
-                           </Card>
-                         ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <BookOpen className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                        <p className="text-gray-500 mb-4">You haven't enrolled in any courses yet.</p>
-                        <Button onClick={() => navigate('/courses/recorded')} className="bg-blue-600 hover:bg-blue-700">
-                          Browse Courses
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {completedCourses.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Completed Courses</CardTitle>
-                      <CardDescription>Your learning achievements</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {completedCourses.map((course, index) => (
-                          <Card key={index} className="hover:shadow-md transition-shadow border-green-200">
-                            <CardContent className="p-6">
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <Badge className="bg-green-500 text-white">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Completed
-                                  </Badge>
-                                  <Award className="h-5 w-5 text-yellow-500" />
-                                </div>
-                                <h3 className="font-semibold">{course.courseName}</h3>
-                                <p className="text-sm text-gray-600">Completed on {course.completionDate}</p>
-                                <Button variant="outline" className="w-full border-green-500 text-green-600 hover:bg-green-50">
-                                  View Certificate
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="browse-courses" className="space-y-6">
-                {/* Course Filters */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Search courses..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                  <Select value={courseFilter} onValueChange={setCourseFilter}>
-                    <SelectTrigger className="w-full sm:w-48">
-                      <SelectValue placeholder="Filter by stream" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {streams.map((stream) => (
-                        <SelectItem key={stream} value={stream}>
-                          {stream === 'all' ? 'All Streams' : stream.toUpperCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Tabs defaultValue="free" className="space-y-4">
-                  <TabsList className="bg-white">
-                    <TabsTrigger value="free">Free Courses</TabsTrigger>
-                    <TabsTrigger value="paid">Paid Courses</TabsTrigger>
-                  </TabsList>
-
-                   <TabsContent value="free" className="space-y-6">
-                     {loadingCourses ? (
-                       <div className="text-center py-8">
-                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                         <p className="mt-2 text-gray-600">Loading courses...</p>
-                         <Button 
-                           variant="outline" 
-                           onClick={loadAllCourses}
-                           className="mt-4"
-                         >
-                           Retry Loading
-                         </Button>
-                       </div>
-                     ) : filteredFreeCourses.length > 0 ? (
-                       <CourseCards courses={filteredFreeCourses as any} type="recorded" />
-                     ) : (
-                       <div className="text-center py-8">
-                         <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                         <p className="text-gray-600 mb-4">No free courses available at the moment.</p>
-                         <Button onClick={loadAllCourses} variant="outline">
-                           Refresh Courses
-                         </Button>
-                       </div>
-                     )}
-                   </TabsContent>
-
-                   <TabsContent value="paid" className="space-y-6">
-                     {loadingCourses ? (
-                       <div className="text-center py-8">
-                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                         <p className="mt-2 text-gray-600">Loading courses...</p>
-                         <Button 
-                           variant="outline" 
-                           onClick={loadAllCourses}
-                           className="mt-4"
-                         >
-                           Retry Loading
-                         </Button>
-                       </div>
-                     ) : filteredPaidCourses.length > 0 ? (
-                       <CourseCards courses={filteredPaidCourses as any} type="recorded" />
-                     ) : (
-                       <div className="text-center py-8">
-                         <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                         <p className="text-gray-600 mb-4">No paid courses available at the moment.</p>
-                         <Button onClick={loadAllCourses} variant="outline">
-                           Refresh Courses
-                         </Button>
-                       </div>
-                     )}
-                   </TabsContent>
-                </Tabs>
-              </TabsContent>
-            </Tabs>
-          </div>
-        );
+        return <StudentCourseManagement />;
 
       case 'pack365':
         return (
@@ -1096,7 +783,7 @@ const StudentDashboard = () => {
                 <Tabs defaultValue="browse" className="w-full">
                   <TabsList className="mb-4">
                     <TabsTrigger value="browse">Browse Courses</TabsTrigger>
-                    <TabsTrigger value="enrollments" onClick={loadPack365Enrollments}>My Enrollments</TabsTrigger>
+                    <TabsTrigger value="enrollments">My Enrollments</TabsTrigger>
                   </TabsList>
 
                   {/* ---------------- Browse Tab ---------------- */}
@@ -1116,7 +803,7 @@ const StudentDashboard = () => {
                               <Award className="h-8 w-8 text-purple-600" />
                               <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600">Total Streams</p>
-                                <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalStreams}</p>
+                                <p className="text-2xl font-bold text-gray-900">{pack365Enrollments.length}</p>
                               </div>
                             </div>
                           </CardContent>
@@ -1129,7 +816,7 @@ const StudentDashboard = () => {
                               <BookOpen className="h-8 w-8 text-blue-600" />
                               <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600">Total Courses</p>
-                                <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalCourses}</p>
+                                <p className="text-2xl font-bold text-gray-900">{pack365Enrollments.length}</p>
                               </div>
                             </div>
                           </CardContent>
@@ -1142,7 +829,11 @@ const StudentDashboard = () => {
                               <Target className="h-8 w-8 text-green-600" />
                               <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600">Average Progress</p>
-                                <p className="text-2xl font-bold text-gray-900">{pack365Stats.averageProgress}%</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                  {pack365Enrollments.length > 0 
+                                    ? Math.round(pack365Enrollments.reduce((sum, enrollment) => sum + enrollment.totalWatchedPercentage, 0) / pack365Enrollments.length)
+                                    : 0}%
+                                </p>
                               </div>
                             </div>
                           </CardContent>
@@ -1155,7 +846,9 @@ const StudentDashboard = () => {
                               <Trophy className="h-8 w-8 text-yellow-600" />
                               <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600">Completed Exams</p>
-                                <p className="text-2xl font-bold text-gray-900">{pack365Stats.completedExams}</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                  {pack365Enrollments.filter(enrollment => enrollment.isExamCompleted).length}
+                                </p>
                               </div>
                             </div>
                           </CardContent>
