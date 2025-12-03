@@ -18,8 +18,6 @@ interface StudentCourseManagementProps {
 }
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://dev.triaright.com/api";
-const DEFAULT_IMAGE = "https://via.placeholder.com/800x360?text=Course+Image";
-const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
 
 const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initialTab = 'my-courses' }) => {
   const navigate = useNavigate();
@@ -37,61 +35,47 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
   // Loading states
   const [loadingEnrollments, setLoadingEnrollments] = useState(true);
   const [loadingCourses, setLoadingCourses] = useState(false);
-  const [processingPayment, setProcessingPayment] = useState(false);
   
   // Filter states
   const [courseFilter, setCourseFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState(initialTab);
 
+  // Enrollment with coupon states
+  const [selectedCourseForEnroll, setSelectedCourseForEnroll] = useState<any>(null);
+  const [couponCode, setCouponCode] = useState<string>('');
+  const [couponPreview, setCouponPreview] = useState<any>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [creatingOrder, setCreatingOrder] = useState(false);
+
   useEffect(() => {
     loadMyEnrollments();
     loadAllCourses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadAllCourses = async () => {
     try {
       setLoadingCourses(true);
       console.log('🔄 Loading all courses...');
-
-      // 1) Always fetch public all-courses (this route is public in backend)
+      
+      // Load all courses directly
       const allCoursesResp = await axios.get(`${API_BASE_URL}/courses`);
-      const fetchedAllCourses = allCoursesResp.data?.courses || [];
-      console.log('📊 All courses data:', fetchedAllCourses);
-      setAllCourses(fetchedAllCourses);
-
-      // 2) If we have a token, try to fetch protected free/paid endpoints in parallel with Authorization header
-      if (token) {
-        try {
-          const headers = { headers: { Authorization: `Bearer ${token}` } };
-          const [freeCoursesResp, paidCoursesResp] = await Promise.all([
-            axios.get(`${API_BASE_URL}/courses/free`, headers),
-            axios.get(`${API_BASE_URL}/courses/paid`, headers),
-          ]);
-
-          console.log('🆓 Free courses data (auth):', freeCoursesResp.data);
-          console.log('💰 Paid courses data (auth):', paidCoursesResp.data);
-
-          setFreeCourses(freeCoursesResp.data?.courses || []);
-          setPaidCourses(paidCoursesResp.data?.courses || []);
-        } catch (authErr: any) {
-          console.warn('⚠️ Failed to fetch auth-protected free/paid endpoints, falling back to filtering all courses:', authErr?.message || authErr);
-          // Fallback: derive free/paid from the public allCourses response
-          setFreeCourses(fetchedAllCourses.filter((c: any) => c.courseType === 'unpaid' || c.courseType === 'free' ));
-          setPaidCourses(fetchedAllCourses.filter((c: any) => c.courseType === 'paid'));
-        }
-      } else {
-        // No token - derive free/paid from public all courses
-        setFreeCourses(fetchedAllCourses.filter((c: any) => c.courseType === 'unpaid' || c.courseType === 'free' ));
-        setPaidCourses(fetchedAllCourses.filter((c: any) => c.courseType === 'paid'));
-      }
+      const freeCoursesResp = await axios.get(`${API_BASE_URL}/courses/free`);
+      const paidCoursesResp = await axios.get(`${API_BASE_URL}/courses/paid`);
+      
+      console.log('📊 All courses data:', allCoursesResp.data);
+      console.log('🆓 Free courses data:', freeCoursesResp.data);
+      console.log('💰 Paid courses data:', paidCoursesResp.data);
+      
+      setAllCourses(allCoursesResp.data.courses || []);
+      setFreeCourses(freeCoursesResp.data.courses || []);
+      setPaidCourses(paidCoursesResp.data.courses || []);
       
       console.log('✅ Courses loaded successfully');
     } catch (error: any) {
       console.error('❌ Error loading courses:', error);
       
-      // Set empty arrays to avoid infinite loading/UI break
+      // Set empty arrays to avoid infinite loading
       setAllCourses([]);
       setFreeCourses([]);
       setPaidCourses([]);
@@ -182,218 +166,179 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
     navigate(`/learning/${courseId}`);
   };
 
-  // Helper: get image src with fallbacks
-  const getCourseImage = (course: any) => {
-    return course?.courseImageLink || course?.courseImage || course?.courseImageUrl || DEFAULT_IMAGE;
+  // New: show coupon UI for paid enrollments
+  const handleEnrollInCourse = (course: any) => {
+    if (!course) return;
+
+    // If course is paid, open the coupon/order panel inline
+    if (course.courseType === 'paid' || course.price) {
+      setSelectedCourseForEnroll(course);
+      setCouponCode('');
+      setCouponPreview(null);
+      return;
+    }
+
+    // For unpaid/free, navigate to enrollment page (existing behavior)
+    navigate(`/course-enrollment/${course._id}`);
   };
 
-  // Load Razorpay script dynamically
-  const loadRazorpayScript = () => {
-    return new Promise<boolean>((resolve) => {
-      if (typeof window === 'undefined') return resolve(false);
-      const existing = document.getElementById('razorpay-script');
-      if (existing) return resolve(true);
-      const script = document.createElement('script');
-      script.id = 'razorpay-script';
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  // Handle paid course purchase (create order -> open Razorpay -> verify)
-  const handleBuyCourse = async (course: any) => {
+  const applyCoupon = async (courseId: string) => {
     if (!token) {
       toast({
-        title: "Login Required",
-        description: "Please login to purchase courses",
-        variant: "default",
+        title: "Authentication required",
+        description: "Please login to apply coupons",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+
+    if (!couponCode || couponCode.trim().length === 0) {
+      toast({
+        title: "Invalid coupon",
+        description: "Please enter a coupon code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setApplyingCoupon(true);
+      console.log(`Applying coupon ${couponCode} for course ${courseId}...`);
+
+      const resp = await axios.post(
+        `${API_BASE_URL}/courses/coupons/validate`,
+        {
+          couponCode: couponCode.trim(),
+          courseId
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      console.log('Coupon validate response:', resp.data);
+
+      if (resp.data && resp.data.success) {
+        setCouponPreview(resp.data.priceDetails || resp.data);
+        toast({
+          title: "Coupon applied",
+          description: `Coupon valid. Final price: ₹${resp.data.priceDetails?.finalPrice ?? resp.data.finalPrice}`,
+          variant: "success",
+        });
+      } else {
+        setCouponPreview(null);
+        toast({
+          title: "Coupon",
+          description: resp.data.message || "Could not apply coupon",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Coupon apply error:', error);
+      setCouponPreview(null);
+      toast({
+        title: "Coupon error",
+        description: error.response?.data?.message || error.message || "Failed to validate coupon",
+        variant: "destructive",
+      });
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const createOrder = async (courseId: string) => {
+    if (!token) {
+      toast({
+        title: "Authentication required",
+        description: "Please login to enroll in courses",
+        variant: "destructive",
       });
       navigate('/login');
       return;
     }
 
     try {
-      setProcessingPayment(true);
-      // Create order on backend
+      setCreatingOrder(true);
+      console.log(`Creating order for course ${courseId} with coupon ${couponCode}...`);
+
       const resp = await axios.post(
         `${API_BASE_URL}/courses/enrollments/order`,
-        { courseId: course._id || course.courseId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          courseId,
+          couponCode: couponCode?.trim() || undefined
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
       );
 
-      // If backend returns 201 for free after coupon => enrollment done
+      console.log('Create order response:', resp);
+
+      // If backend enrols directly (100% discount) it returns 201 with enrollment
       if (resp.status === 201 || (resp.data && resp.data.enrollment)) {
         toast({
           title: "Enrolled",
-          description: "You have been enrolled successfully",
-          variant: "default",
+          description: resp.data.message || "You have been enrolled",
+          variant: "success",
         });
+
+        // Refresh enrollments and close panel
         await loadMyEnrollments();
+        setSelectedCourseForEnroll(null);
+        setCouponCode('');
+        setCouponPreview(null);
         return;
       }
 
-      // Otherwise backend should return an order object
-      const order = resp.data?.order;
-      if (!order || !order.id) {
-        throw new Error('Invalid order returned from server');
+      // If order created and payment required (status 200)
+      if (resp.status === 200 && resp.data && resp.data.order) {
+        const order = resp.data.order;
+        toast({
+          title: "Order created",
+          description: `Order created for ₹${order.finalPrice}. Proceed to payment.`,
+          variant: "default",
+        });
+
+        // Optionally navigate to a payment page (your app may have a checkout component)
+        // Here we navigate to an assumed payment route; adjust as per your app routes.
+        // If you don't have a payment route, keep user informed and refresh enrollments after payment completes on server webhook.
+        navigate(`/payment/${order.id}`, { state: { order, courseId } });
+
+        // Close the coupon panel
+        setSelectedCourseForEnroll(null);
+        setCouponCode('');
+        setCouponPreview(null);
+        return;
       }
 
-      // Load Razorpay script
-      const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        throw new Error('Failed to load Razorpay script');
-      }
-
-      if (!RAZORPAY_KEY) {
-        console.warn('RAZORPAY_KEY not set in env; using order key fallback if provided by backend (not common).');
-      }
-
-      const options: any = {
-        key: RAZORPAY_KEY || (order.key || ''), // prefer env key
-        amount: order.amount || Math.round((order.finalPrice || 0) * 100), // amount in paise
-        currency: order.currency || 'INR',
-        name: order.courseName || course.courseName || 'Course Purchase',
-        description: `Payment for ${order.courseName || course.courseName}`,
-        order_id: order.id,
-        prefill: {
-          name: user?.name || '',
-          email: user?.email || '',
-          contact: (user as any)?.phone || ''
-        },
-        handler: async function (paymentResp: any) {
-          try {
-            // Verify payment at backend
-            const verifyResp = await axios.post(
-              `${API_BASE_URL}/courses/enrollments/verify-payment`,
-              {
-                razorpay_order_id: paymentResp.razorpay_order_id,
-                razorpay_payment_id: paymentResp.razorpay_payment_id,
-                razorpay_signature: paymentResp.razorpay_signature
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            if (verifyResp.data && verifyResp.data.success) {
-              toast({
-                title: "Payment Successful",
-                description: "Enrollment completed successfully",
-                variant: "default",
-              });
-              await loadMyEnrollments();
-            } else {
-              toast({
-                title: "Verification Failed",
-                description: verifyResp.data?.message || 'Payment verification failed',
-                variant: "destructive",
-              });
-            }
-          } catch (err: any) {
-            console.error('Payment verification error:', err);
-            toast({
-              title: "Verification Error",
-              description: err?.response?.data?.message || err.message || 'Failed to verify payment',
-              variant: "destructive",
-            });
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            console.log('Razorpay modal dismissed');
-          }
-        },
-        theme: {
-          color: '#2563eb'
-        }
-      };
-
-      // Open Razorpay
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
-    } catch (error: any) {
-      console.error('Purchase error:', error);
+      // Fallback
       toast({
-        title: "Purchase Error",
-        description: error?.response?.data?.message || error.message || 'Failed to initiate payment',
+        title: "Unexpected response",
+        description: "Received unexpected response from server.",
+        variant: "destructive",
+      });
+
+    } catch (error: any) {
+      console.error('Create order error:', error);
+      toast({
+        title: "Order error",
+        description: error.response?.data?.message || error.message || "Failed to create order",
         variant: "destructive",
       });
     } finally {
-      setProcessingPayment(false);
+      setCreatingOrder(false);
     }
   };
 
-  // Unified handler: free => navigate to enrollment page; paid => start purchase
-  const handleEnrollInCourse = (courseId: string, course?: any) => {
-    const resolvedCourse = course || allCourses.find(c => (c._id || c.courseId) === courseId) || freeCourses.find(c => (c._id || c.courseId) === courseId) || paidCourses.find(c => (c._id || c.courseId) === courseId);
-
-    const isPaid = resolvedCourse?.courseType === 'paid' || resolvedCourse?.price;
-    if (isPaid) {
-      handleBuyCourse(resolvedCourse);
-    } else {
-      // For free courses, navigate to enrollment page (or call enrollFree API elsewhere)
-      navigate(`/course-enrollment/${courseId}`);
-    }
-  };
-
-  // Get unique streams for filter options from all courses (filter out falsy)
-  const streams = ['all', ...Array.from(new Set(allCourses.map((course) => course.stream).filter(Boolean)))];
+  // Get unique streams for filter options from all courses
+  const streams = ['all', ...Array.from(new Set(allCourses.map(course => course.stream)))];
 
   // Course Management Tabs
   const courseTabs = [
     { id: 'my-courses', label: 'My Courses', icon: BookOpen },
     { id: 'browse-courses', label: 'Browse Courses', icon: GraduationCap },
   ];
-
-  const renderCourseCard = (course: any) => {
-    const imgSrc = getCourseImage(course);
-
-    return (
-      <Card key={course._id || course.courseId || Math.random()} className="hover:shadow-md transition-shadow">
-        <div className="overflow-hidden rounded-t-md">
-          <img
-            src={imgSrc}
-            alt={course.courseName || 'Course image'}
-            onError={(e) => {
-              const target = e.currentTarget as HTMLImageElement;
-              if (target.src !== DEFAULT_IMAGE) target.src = DEFAULT_IMAGE;
-            }}
-            className="w-full h-40 object-cover"
-          />
-        </div>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Badge className={course.courseType === 'paid' ? 'bg-purple-500 text-white' : 'bg-green-500 text-white'}>
-                {course.courseType === 'paid' ? `₹${course.price}` : 'Free'}
-              </Badge>
-              <Badge variant="outline">{course.stream}</Badge>
-            </div>
-            <h3 className="font-semibold text-lg">{course.courseName}</h3>
-            <p className="text-sm text-gray-600 line-clamp-2">
-              {course.courseDescription || 'No description available'}
-            </p>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">
-                <Clock className="h-4 w-4 inline mr-1" />
-                {course.totalDuration || 0} min
-              </span>
-              <span className="font-medium">{course.instructorName}</span>
-            </div>
-            <Button 
-              className="w-full bg-blue-600 hover:bg-blue-700"
-              onClick={() => handleEnrollInCourse(course._id || course.courseId, course)}
-              disabled={processingPayment}
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              {course.courseType === 'paid' ? 'Buy Now' : 'Enroll Free'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -429,7 +374,7 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                             <div className="space-y-2">
                               <div className="flex justify-between text-sm">
                                 <span>Progress</span>
-                                <span>{enrollment.videoProgressPercent || 0}%</span>
+                                <span>{enrollment.videoProgressPercent || enrollment.videoProgressPercent === 0 ? enrollment.videoProgressPercent : 0}%</span>
                               </div>
                               <Progress value={enrollment.videoProgressPercent || 0} className="h-2" />
                             </div>
@@ -567,7 +512,36 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                   </div>
                 ) : freeCourses.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {freeCourses.map((course) => renderCourseCard(course))}
+                    {freeCourses.map((course) => (
+                      <Card key={course._id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Badge className="bg-green-500 text-white">Free</Badge>
+                              <Badge variant="outline">{course.stream}</Badge>
+                            </div>
+                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {course.courseDescription || 'No description available'}
+                            </p>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                <Clock className="h-4 w-4 inline mr-1" />
+                                {course.totalDuration || 0} min
+                              </span>
+                              <span className="font-medium">{course.instructorName}</span>
+                            </div>
+                            <Button 
+                              className="w-full bg-blue-600 hover:bg-blue-700"
+                              onClick={() => handleEnrollInCourse(course)}
+                            >
+                              <BookOpen className="h-4 w-4 mr-2" />
+                              Enroll Now
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -588,7 +562,90 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                   </div>
                 ) : paidCourses.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paidCourses.map((course) => renderCourseCard(course))}
+                    {paidCourses.map((course) => (
+                      <Card key={course._id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Badge className="bg-purple-500 text-white">₹{course.price}</Badge>
+                              <Badge variant="outline">{course.stream}</Badge>
+                            </div>
+                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {course.courseDescription || 'No description available'}
+                            </p>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                <Clock className="h-4 w-4 inline mr-1" />
+                                {course.totalDuration || 0} min
+                              </span>
+                              <span className="font-medium">{course.instructorName}</span>
+                            </div>
+                            <div className="space-y-2">
+                              <Button 
+                                className="w-full bg-blue-600 hover:bg-blue-700"
+                                onClick={() => handleEnrollInCourse(course)}
+                              >
+                                <BookOpen className="h-4 w-4 mr-2" />
+                                Enroll Now
+                              </Button>
+
+                              {/* Inline coupon / order panel */}
+                              {selectedCourseForEnroll && selectedCourseForEnroll._id === course._id && (
+                                <div className="mt-3 p-4 border rounded bg-gray-50">
+                                  <h4 className="text-sm font-medium mb-2">Apply Coupon / Proceed to Payment</h4>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      placeholder="Enter coupon code (optional)"
+                                      value={couponCode}
+                                      onChange={(e) => setCouponCode(e.target.value)}
+                                    />
+                                    <Button
+                                      onClick={() => applyCoupon(course._id)}
+                                      disabled={applyingCoupon}
+                                    >
+                                      {applyingCoupon ? 'Applying...' : 'Apply'}
+                                    </Button>
+                                  </div>
+
+                                  {couponPreview && (
+                                    <div className="mt-3 text-sm">
+                                      <p>Original Price: ₹{couponPreview.originalPrice ?? course.price}</p>
+                                      <p>Discount: ₹{couponPreview.discount}</p>
+                                      <p className="font-semibold">Final Price: ₹{couponPreview.finalPrice}</p>
+                                      {couponPreview.isFree && (
+                                        <p className="text-green-600">This coupon makes the course free. You will be enrolled automatically.</p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <div className="mt-3 flex gap-2">
+                                    <Button
+                                      className="flex-1 bg-green-600 hover:bg-green-700"
+                                      onClick={() => createOrder(course._id)}
+                                      disabled={creatingOrder}
+                                    >
+                                      {creatingOrder ? 'Processing...' : 'Confirm & Pay'}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      className="flex-1"
+                                      onClick={() => {
+                                        setSelectedCourseForEnroll(null);
+                                        setCouponCode('');
+                                        setCouponPreview(null);
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -609,7 +666,92 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                   </div>
                 ) : allCourses.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {allCourses.map((course) => renderCourseCard(course))}
+                    {allCourses.map((course) => (
+                      <Card key={course._id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Badge className={course.courseType === 'paid' ? 'bg-purple-500' : 'bg-green-500'} >
+                                {course.courseType === 'paid' ? `₹${course.price}` : 'Free'}
+                              </Badge>
+                              <Badge variant="outline">{course.stream}</Badge>
+                            </div>
+                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {course.courseDescription || 'No description available'}
+                            </p>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                <Clock className="h-4 w-4 inline mr-1" />
+                                {course.totalDuration || 0} min
+                              </span>
+                              <span className="font-medium">{course.instructorName}</span>
+                            </div>
+                            <div>
+                              <Button 
+                                className="w-full bg-blue-600 hover:bg-blue-700"
+                                onClick={() => handleEnrollInCourse(course)}
+                              >
+                                <BookOpen className="h-4 w-4 mr-2" />
+                                {course.courseType === 'paid' ? 'Buy Now' : 'Enroll Free'}
+                              </Button>
+
+                              {/* Inline coupon / order panel for 'all' tab when a paid course is selected */}
+                              {selectedCourseForEnroll && selectedCourseForEnroll._id === course._id && course.courseType === 'paid' && (
+                                <div className="mt-3 p-4 border rounded bg-gray-50">
+                                  <h4 className="text-sm font-medium mb-2">Apply Coupon / Proceed to Payment</h4>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      placeholder="Enter coupon code (optional)"
+                                      value={couponCode}
+                                      onChange={(e) => setCouponCode(e.target.value)}
+                                    />
+                                    <Button
+                                      onClick={() => applyCoupon(course._id)}
+                                      disabled={applyingCoupon}
+                                    >
+                                      {applyingCoupon ? 'Applying...' : 'Apply'}
+                                    </Button>
+                                  </div>
+
+                                  {couponPreview && (
+                                    <div className="mt-3 text-sm">
+                                      <p>Original Price: ₹{couponPreview.originalPrice ?? course.price}</p>
+                                      <p>Discount: ₹{couponPreview.discount}</p>
+                                      <p className="font-semibold">Final Price: ₹{couponPreview.finalPrice}</p>
+                                      {couponPreview.isFree && (
+                                        <p className="text-green-600">This coupon makes the course free. You will be enrolled automatically.</p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <div className="mt-3 flex gap-2">
+                                    <Button
+                                      className="flex-1 bg-green-600 hover:bg-green-700"
+                                      onClick={() => createOrder(course._id)}
+                                      disabled={creatingOrder}
+                                    >
+                                      {creatingOrder ? 'Processing...' : 'Confirm & Pay'}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      className="flex-1"
+                                      onClick={() => {
+                                        setSelectedCourseForEnroll(null);
+                                        setCouponCode('');
+                                        setCouponPreview(null);
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-8">
