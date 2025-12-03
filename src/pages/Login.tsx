@@ -41,7 +41,8 @@ const Login = () => {
           navigate('/student');
           break;
         case 'jobseeker':
-          navigate('/jobseeker');
+          // FIX: use the route defined in App.tsx (has a hyphen)
+          navigate('/job-seeker');
           break;
         case 'employer':
           navigate('/employer');
