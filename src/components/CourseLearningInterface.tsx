@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { courseApi } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -15,15 +14,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Play, CheckCircle, Clock, Award, FileText, GraduationCap, ArrowLeft, Home } from "lucide-react";
 
 type Subtopic = {
   name: string;
   link?: string;
-  duration?: number; // minutes
+  duration?: number;
 };
 
 type Topic = {
@@ -46,6 +43,7 @@ type CourseModel = {
   price?: number;
   courseType?: string;
   stream?: string;
+  hasFinalExam?: boolean;
 };
 
 type EnrollmentProgressSubtopic = {
@@ -121,17 +119,17 @@ const CourseLearningInterface: React.FC = () => {
 
         console.log("🔍 Loading course data for ID:", courseId);
 
-        // 1) fetch course using courseApi
+        // 1) fetch course directly
         try {
-          const courseResp = await courseApi.getCourseById(courseId);
-          console.log('Course API response:', courseResp);
+          const courseResp = await axios.get(
+            `${API_BASE_URL}/courses/${courseId}`
+          );
           
-          if (courseResp.success && courseResp.course) {
-            console.log('✅ Course found:', courseResp.course.courseName);
-            setCourse(courseResp.course);
-          } else if (courseResp.course) {
-            console.log('✅ Course found (alternative structure):', courseResp.course.courseName);
-            setCourse(courseResp.course);
+          console.log('Course API response:', courseResp.data);
+          
+          if (courseResp.data && courseResp.data.course) {
+            console.log('✅ Course found:', courseResp.data.course.courseName);
+            setCourse(courseResp.data.course);
           } else {
             console.error('❌ Course not found in response');
             toast({ 
@@ -177,7 +175,7 @@ const CourseLearningInterface: React.FC = () => {
                   return (
                     enrCourseId === courseId || 
                     enrCourseId?._id === courseId ||
-                    (typeof enrCourseId === 'object' && enrCourseId?._id === courseId)
+                    enrCourseId?._id?.toString() === courseId
                   );
                 }
               );
