@@ -19,6 +19,7 @@ interface StudentCourseManagementProps {
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://dev.triaright.com/api";
 const DEFAULT_IMAGE = "https://via.placeholder.com/800x360?text=Course+Image";
+const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
 
 const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initialTab = 'my-courses' }) => {
   const navigate = useNavigate();
@@ -36,6 +37,7 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
   // Loading states
   const [loadingEnrollments, setLoadingEnrollments] = useState(true);
   const [loadingCourses, setLoadingCourses] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
   
   // Filter states
   const [courseFilter, setCourseFilter] = useState('all');
@@ -180,13 +182,159 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
     navigate(`/learning/${courseId}`);
   };
 
-  const handleEnrollInCourse = (courseId: string) => {
-    navigate(`/course-enrollment/${courseId}`);
-  };
-
   // Helper: get image src with fallbacks
   const getCourseImage = (course: any) => {
     return course?.courseImageLink || course?.courseImage || course?.courseImageUrl || DEFAULT_IMAGE;
+  };
+
+  // Load Razorpay script dynamically
+  const loadRazorpayScript = () => {
+    return new Promise<boolean>((resolve) => {
+      if (typeof window === 'undefined') return resolve(false);
+      const existing = document.getElementById('razorpay-script');
+      if (existing) return resolve(true);
+      const script = document.createElement('script');
+      script.id = 'razorpay-script';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Handle paid course purchase (create order -> open Razorpay -> verify)
+  const handleBuyCourse = async (course: any) => {
+    if (!token) {
+      toast({
+        title: "Login Required",
+        description: "Please login to purchase courses",
+        variant: "default",
+      });
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setProcessingPayment(true);
+      // Create order on backend
+      const resp = await axios.post(
+        `${API_BASE_URL}/courses/enrollments/order`,
+        { courseId: course._id || course.courseId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // If backend returns 201 for free after coupon => enrollment done
+      if (resp.status === 201 || (resp.data && resp.data.enrollment)) {
+        toast({
+          title: "Enrolled",
+          description: "You have been enrolled successfully",
+          variant: "default",
+        });
+        await loadMyEnrollments();
+        return;
+      }
+
+      // Otherwise backend should return an order object
+      const order = resp.data?.order;
+      if (!order || !order.id) {
+        throw new Error('Invalid order returned from server');
+      }
+
+      // Load Razorpay script
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        throw new Error('Failed to load Razorpay script');
+      }
+
+      if (!RAZORPAY_KEY) {
+        console.warn('RAZORPAY_KEY not set in env; using order key fallback if provided by backend (not common).');
+      }
+
+      const options: any = {
+        key: RAZORPAY_KEY || (order.key || ''), // prefer env key
+        amount: order.amount || Math.round((order.finalPrice || 0) * 100), // amount in paise
+        currency: order.currency || 'INR',
+        name: order.courseName || course.courseName || 'Course Purchase',
+        description: `Payment for ${order.courseName || course.courseName}`,
+        order_id: order.id,
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: (user as any)?.phone || ''
+        },
+        handler: async function (paymentResp: any) {
+          try {
+            // Verify payment at backend
+            const verifyResp = await axios.post(
+              `${API_BASE_URL}/courses/enrollments/verify-payment`,
+              {
+                razorpay_order_id: paymentResp.razorpay_order_id,
+                razorpay_payment_id: paymentResp.razorpay_payment_id,
+                razorpay_signature: paymentResp.razorpay_signature
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (verifyResp.data && verifyResp.data.success) {
+              toast({
+                title: "Payment Successful",
+                description: "Enrollment completed successfully",
+                variant: "default",
+              });
+              await loadMyEnrollments();
+            } else {
+              toast({
+                title: "Verification Failed",
+                description: verifyResp.data?.message || 'Payment verification failed',
+                variant: "destructive",
+              });
+            }
+          } catch (err: any) {
+            console.error('Payment verification error:', err);
+            toast({
+              title: "Verification Error",
+              description: err?.response?.data?.message || err.message || 'Failed to verify payment',
+              variant: "destructive",
+            });
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            console.log('Razorpay modal dismissed');
+          }
+        },
+        theme: {
+          color: '#2563eb'
+        }
+      };
+
+      // Open Razorpay
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (error: any) {
+      console.error('Purchase error:', error);
+      toast({
+        title: "Purchase Error",
+        description: error?.response?.data?.message || error.message || 'Failed to initiate payment',
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
+  // Unified handler: free => navigate to enrollment page; paid => start purchase
+  const handleEnrollInCourse = (courseId: string, course?: any) => {
+    const resolvedCourse = course || allCourses.find(c => (c._id || c.courseId) === courseId) || freeCourses.find(c => (c._id || c.courseId) === courseId) || paidCourses.find(c => (c._id || c.courseId) === courseId);
+
+    const isPaid = resolvedCourse?.courseType === 'paid' || resolvedCourse?.price;
+    if (isPaid) {
+      handleBuyCourse(resolvedCourse);
+    } else {
+      // For free courses, navigate to enrollment page (or call enrollFree API elsewhere)
+      navigate(`/course-enrollment/${courseId}`);
+    }
   };
 
   // Get unique streams for filter options from all courses (filter out falsy)
@@ -235,7 +383,8 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
             </div>
             <Button 
               className="w-full bg-blue-600 hover:bg-blue-700"
-              onClick={() => handleEnrollInCourse(course._id || course.courseId)}
+              onClick={() => handleEnrollInCourse(course._id || course.courseId, course)}
+              disabled={processingPayment}
             >
               <BookOpen className="h-4 w-4 mr-2" />
               {course.courseType === 'paid' ? 'Buy Now' : 'Enroll Free'}
