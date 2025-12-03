@@ -18,6 +18,7 @@ interface StudentCourseManagementProps {
 }
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://dev.triaright.com/api";
+const DEFAULT_IMAGE = "https://via.placeholder.com/800x360?text=Course+Image";
 
 const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initialTab = 'my-courses' }) => {
   const navigate = useNavigate();
@@ -183,6 +184,11 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
     navigate(`/course-enrollment/${courseId}`);
   };
 
+  // Helper: get image src with fallbacks
+  const getCourseImage = (course: any) => {
+    return course?.courseImageLink || course?.courseImage || course?.courseImageUrl || DEFAULT_IMAGE;
+  };
+
   // Get unique streams for filter options from all courses (filter out falsy)
   const streams = ['all', ...Array.from(new Set(allCourses.map((course) => course.stream).filter(Boolean)))];
 
@@ -191,6 +197,54 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
     { id: 'my-courses', label: 'My Courses', icon: BookOpen },
     { id: 'browse-courses', label: 'Browse Courses', icon: GraduationCap },
   ];
+
+  const renderCourseCard = (course: any) => {
+    const imgSrc = getCourseImage(course);
+
+    return (
+      <Card key={course._id || course.courseId || Math.random()} className="hover:shadow-md transition-shadow">
+        <div className="overflow-hidden rounded-t-md">
+          <img
+            src={imgSrc}
+            alt={course.courseName || 'Course image'}
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement;
+              if (target.src !== DEFAULT_IMAGE) target.src = DEFAULT_IMAGE;
+            }}
+            className="w-full h-40 object-cover"
+          />
+        </div>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Badge className={course.courseType === 'paid' ? 'bg-purple-500 text-white' : 'bg-green-500 text-white'}>
+                {course.courseType === 'paid' ? `₹${course.price}` : 'Free'}
+              </Badge>
+              <Badge variant="outline">{course.stream}</Badge>
+            </div>
+            <h3 className="font-semibold text-lg">{course.courseName}</h3>
+            <p className="text-sm text-gray-600 line-clamp-2">
+              {course.courseDescription || 'No description available'}
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">
+                <Clock className="h-4 w-4 inline mr-1" />
+                {course.totalDuration || 0} min
+              </span>
+              <span className="font-medium">{course.instructorName}</span>
+            </div>
+            <Button 
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              onClick={() => handleEnrollInCourse(course._id || course.courseId)}
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              {course.courseType === 'paid' ? 'Buy Now' : 'Enroll Free'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -364,36 +418,7 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                   </div>
                 ) : freeCourses.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {freeCourses.map((course) => (
-                      <Card key={course._id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <Badge className="bg-green-500 text-white">Free</Badge>
-                              <Badge variant="outline">{course.stream}</Badge>
-                            </div>
-                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
-                            <p className="text-sm text-gray-600 line-clamp-2">
-                              {course.courseDescription || 'No description available'}
-                            </p>
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">
-                                <Clock className="h-4 w-4 inline mr-1" />
-                                {course.totalDuration || 0} min
-                              </span>
-                              <span className="font-medium">{course.instructorName}</span>
-                            </div>
-                            <Button 
-                              className="w-full bg-blue-600 hover:bg-blue-700"
-                              onClick={() => handleEnrollInCourse(course._id)}
-                            >
-                              <BookOpen className="h-4 w-4 mr-2" />
-                              Enroll Now
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    {freeCourses.map((course) => renderCourseCard(course))}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -414,36 +439,7 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                   </div>
                 ) : paidCourses.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paidCourses.map((course) => (
-                      <Card key={course._id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <Badge className="bg-purple-500 text-white">₹{course.price}</Badge>
-                              <Badge variant="outline">{course.stream}</Badge>
-                            </div>
-                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
-                            <p className="text-sm text-gray-600 line-clamp-2">
-                              {course.courseDescription || 'No description available'}
-                            </p>
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">
-                                <Clock className="h-4 w-4 inline mr-1" />
-                                {course.totalDuration || 0} min
-                              </span>
-                              <span className="font-medium">{course.instructorName}</span>
-                            </div>
-                            <Button 
-                              className="w-full bg-blue-600 hover:bg-blue-700"
-                              onClick={() => handleEnrollInCourse(course._id)}
-                            >
-                              <BookOpen className="h-4 w-4 mr-2" />
-                              Enroll Now
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    {paidCourses.map((course) => renderCourseCard(course))}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -464,38 +460,7 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                   </div>
                 ) : allCourses.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {allCourses.map((course) => (
-                      <Card key={course._id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <Badge className={course.courseType === 'paid' ? 'bg-purple-500' : 'bg-green-500'} >
-                                {course.courseType === 'paid' ? `₹${course.price}` : 'Free'}
-                              </Badge>
-                              <Badge variant="outline">{course.stream}</Badge>
-                            </div>
-                            <h3 className="font-semibold text-lg">{course.courseName}</h3>
-                            <p className="text-sm text-gray-600 line-clamp-2">
-                              {course.courseDescription || 'No description available'}
-                            </p>
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">
-                                <Clock className="h-4 w-4 inline mr-1" />
-                                {course.totalDuration || 0} min
-                              </span>
-                              <span className="font-medium">{course.instructorName}</span>
-                            </div>
-                            <Button 
-                              className="w-full bg-blue-600 hover:bg-blue-700"
-                              onClick={() => handleEnrollInCourse(course._id)}
-                            >
-                              <BookOpen className="h-4 w-4 mr-2" />
-                              {course.courseType === 'paid' ? 'Buy Now' : 'Enroll Free'}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    {allCourses.map((course) => renderCourseCard(course))}
                   </div>
                 ) : (
                   <div className="text-center py-8">
