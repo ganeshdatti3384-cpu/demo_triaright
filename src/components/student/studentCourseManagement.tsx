@@ -12,7 +12,7 @@ import { BookOpen, Trophy, Clock, Star, Play, Award, CheckCircle, GraduationCap,
 import { useNavigate } from 'react-router-dom';
 import CourseCards from '../CourseCards';
 import { useAuth } from '../../hooks/useAuth';
-import { pack365Api, Pack365Course, EnhancedPack365Enrollment, courseApi } from '@/services/api';
+import { courseApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { EnhancedCourse } from '@/types/api';
 
@@ -28,15 +28,12 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
   // State for courses and enrollments
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
-  const [pack365Courses, setPack365Courses] = useState<Pack365Course[]>([]);
-  const [pack365Enrollments, setPack365Enrollments] = useState<EnhancedPack365Enrollment[]>([]);
   const [allCourses, setAllCourses] = useState<EnhancedCourse[]>([]);
   const [freeCourses, setFreeCourses] = useState<EnhancedCourse[]>([]);
   const [paidCourses, setPaidCourses] = useState<EnhancedCourse[]>([]);
   const [myEnrollments, setMyEnrollments] = useState<any[]>([]);
   
   // Loading states
-  const [loadingPack365, setLoadingPack365] = useState(false);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
   
@@ -48,26 +45,7 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
   useEffect(() => {
     loadAllCourses();
     loadMyEnrollments();
-    loadPack365Enrollments();
-    fetchEnrollments();
   }, []);
-
-  const fetchEnrollments = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await pack365Api.getMyEnrollments(token);
-      if (response.success || response.enrollments) {
-        console.log('Pack365 Enrollments fetched:', response.enrollments);
-        setPack365Enrollments(response.enrollments);
-        setEnrolledCourses(response.enrollments.filter((e: any) => e.paymentStatus === 'completed' || e.paymentStatus === 'enrolled'));
-        setCompletedCourses(response.enrollments.filter((e: any) => e.status === 'completed'));
-      }
-    } catch (error) {
-      console.error('Failed to fetch enrollments:', error);
-    }
-  };
 
   const loadAllCourses = async () => {
     try {
@@ -120,82 +98,19 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
       if (response.success && response.enrollments) {
         console.log('Setting myEnrollments:', response.enrollments);
         setMyEnrollments(response.enrollments);
+        setEnrolledCourses(response.enrollments.filter((e: any) => e.status === 'enrolled'));
+        setCompletedCourses(response.enrollments.filter((e: any) => e.status === 'completed'));
       } else {
         console.log('No regular course enrollments found');
         setMyEnrollments([]);
+        setEnrolledCourses([]);
+        setCompletedCourses([]);
       }
     } catch (error: any) {
       console.error('Error loading regular course enrollments:', error);
       setMyEnrollments([]);
-    }
-  };
-  
-  const loadPack365Enrollments = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast({
-        title: "Login Required",
-        description: "Please login to view your enrollments.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setLoadingEnrollments(true);
-      console.log('Loading Pack365 enrollments...');
-      const response = await pack365Api.getMyEnrollments(token);
-      console.log('Pack365 Enrollments Response:', response);
-      
-      if (response.success || response.enrollments) {
-        setPack365Enrollments(response.enrollments);
-        console.log('Pack365 Enrollments set:', response.enrollments);
-      } else {
-        console.log('No enrollments found or failed response');
-        toast({
-          title: "Info", 
-          description: "No enrollments found or failed to load enrollments",
-          variant: "default",
-        });
-      }
-    } catch (error: any) {
-      console.error('Error loading Pack365 enrollments:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load your enrollments. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingEnrollments(false);
-    }
-  };
-
-  const handleContinueLearning = (enrollment: EnhancedPack365Enrollment) => {
-    console.log('🚀 Continue Learning clicked, enrollment:', enrollment);
-    
-    let courseId: string;
-    
-    if (typeof enrollment.courseId === 'string') {
-      courseId = enrollment.courseId;
-    } else if (enrollment.courseId && typeof enrollment.courseId === 'object' && 'courseId' in enrollment.courseId) {
-      courseId = (enrollment.courseId as any)._id;
-    } else {
-      courseId = enrollment._id || '';
-    }
-    
-    console.log('📋 Course ID extracted:', courseId);
-    console.log('🎯 Navigation path:', `/learning/${courseId}`);
-
-    if (courseId) {
-      console.log('✅ Navigating to course learning page...');
-      navigate(`/learning/${courseId}`);
-    } else {
-      console.error('❌ No valid course ID found in enrollment:', enrollment);
-      toast({
-        title: "Navigation Error",
-        description: "Course ID not found. Please try again or contact support.",
-        variant: "destructive",
-      });
+      setEnrolledCourses([]);
+      setCompletedCourses([]);
     }
   };
 
@@ -205,10 +120,6 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
       month: 'short',
       day: 'numeric'
     });
-  };
-
-  const handleStreamLearning = (stream: string) => {
-    navigate(`/pack365-stream/${stream}`);
   };
 
   // Filter courses based on stream and search term
@@ -230,21 +141,11 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
   const handleEnrollInCourse = (courseId: string) => {
     navigate(`/course-enrollment/${courseId}`);
   };
-  
-  const pack365Stats = {
-    totalStreams: pack365Enrollments.length,
-    totalCourses: pack365Enrollments.length,
-    averageProgress: pack365Enrollments.length > 0 
-      ? Math.round(pack365Enrollments.reduce((sum, enrollment) => sum + enrollment.totalWatchedPercentage, 0) / pack365Enrollments.length)
-      : 0,
-    completedExams: pack365Enrollments.filter(enrollment => enrollment.isExamCompleted).length
-  };
 
   // Course Management Tabs
   const courseTabs = [
     { id: 'my-courses', label: 'My Courses', icon: BookOpen },
     { id: 'browse-courses', label: 'Browse Courses', icon: GraduationCap },
-    { id: 'pack365-courses', label: 'Pack365', icon: Star },
   ];
 
   const renderTabContent = () => {
@@ -427,196 +328,12 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
           </div>
         );
 
-      case 'pack365-courses':
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pack365 Courses</CardTitle>
-                <CardDescription>All-in-One Learning Packages for an entire year</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="enrollments" className="w-full">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="enrollments" onClick={loadPack365Enrollments}>My Enrollments</TabsTrigger>
-                    <TabsTrigger value="browse">Browse Courses</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="enrollments" className="space-y-6">
-                    {/* Pack365 Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                      {/* Total Streams */}
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="flex items-center">
-                            <Award className="h-8 w-8 text-purple-600" />
-                            <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-600">Total Streams</p>
-                              <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalStreams}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Total Courses */}
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="flex items-center">
-                            <BookOpen className="h-8 w-8 text-blue-600" />
-                            <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-600">Total Courses</p>
-                              <p className="text-2xl font-bold text-gray-900">{pack365Stats.totalCourses}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Average Progress */}
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="flex items-center">
-                            <Target className="h-8 w-8 text-green-600" />
-                            <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-600">Average Progress</p>
-                              <p className="text-2xl font-bold text-gray-900">{pack365Stats.averageProgress}%</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Completed Exams */}
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="flex items-center">
-                            <Trophy className="h-8 w-8 text-yellow-600" />
-                            <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-600">Completed Exams</p>
-                              <p className="text-2xl font-bold text-gray-900">{pack365Stats.completedExams}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* My Enrollments */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center">
-                          <GraduationCap className="h-6 w-6 mr-2" />
-                          My Pack365 Enrollments
-                        </CardTitle>
-                      </CardHeader>
-
-                      <CardContent>
-                        {loadingEnrollments ? (
-                          <div className="text-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                            <p>Loading your enrollments...</p>
-                          </div>
-                        ) : pack365Enrollments.length === 0 ? (
-                          <div className="text-center py-8">
-                            <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-gray-600 mb-2">No Pack365 Enrollments</h3>
-                            <p className="text-gray-500 mb-6">You haven't enrolled in any Pack365 streams yet.</p>
-                            <Button onClick={() => navigate('/pack365')}>
-                              Browse Pack365 Streams
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {pack365Enrollments.map((enrollment, index) => (
-                              <Card key={index} className="border-2 hover:border-blue-200 transition-colors">
-                                <CardHeader>
-                                  <div className="flex items-center justify-between">
-                                    <CardTitle className="text-lg capitalize">{enrollment.stream} Stream</CardTitle>
-                                    <Badge 
-                                      variant={enrollment.paymentStatus === 'completed' ? 'default' : 'secondary'}
-                                      className={enrollment.paymentStatus === 'completed' ? 'bg-green-500' : ''}
-                                    >
-                                      {enrollment.paymentStatus}
-                                    </Badge>
-                                  </div>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                      <div className="flex items-center text-gray-500 mb-1">
-                                        <IndianRupee className="h-3 w-3 mr-1" />
-                                        <span>Amount Paid</span>
-                                      </div>
-                                      <p className="font-semibold">₹{enrollment.amountPaid || 0}</p>
-                                    </div>
-                                    <div>
-                                      <div className="flex items-center text-gray-500 mb-1">
-                                        <Calendar className="h-3 w-3 mr-1" />
-                                        <span>Status</span>
-                                      </div>
-                                      <p className="font-semibold text-xs capitalize">{enrollment.status || 'Active'}</p>
-                                    </div>
-                                  </div>
-
-                                  <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                      <span className="text-sm font-medium">Progress</span>
-                                      <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage || 0)}%</span>
-                                    </div>
-                                    <Progress value={enrollment.totalWatchedPercentage || 0} className="h-2" />
-                                  </div>
-
-                                  <div className="flex items-center justify-between text-xs text-gray-500">
-                                    <div className="flex items-center">
-                                      <Calendar className="h-3 w-3 mr-1" />
-                                      <span>Enrolled: {formatDate(enrollment.enrollmentDate)}</span>
-                                    </div>
-                                  </div>
-
-                                  <Button 
-                                    onClick={() => handleStreamLearning(enrollment.stream)}
-                                    className="w-full"
-                                    size="sm"
-                                  >
-                                    <PlayCircle className="h-4 w-4 mr-2" />
-                                    Continue Learning
-                                  </Button>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  <TabsContent value="browse" className="space-y-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Browse Pack365 Streams</CardTitle>
-                        <CardDescription>Select a learning package for an entire year</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-center py-8">
-                          <Star className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold text-gray-600 mb-2">Browse Pack365 Courses</h3>
-                          <p className="text-gray-500 mb-6">Visit the Pack365 section to explore available streams.</p>
-                          <Button onClick={() => navigate('/pack365')} className="bg-yellow-500 hover:bg-yellow-600">
-                            Go to Pack365
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
       default:
         return (
           <div className="text-center py-12">
             <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-600 mb-2">Select a tab to view courses</h3>
-            <p className="text-gray-500">Choose from My Courses, Browse Courses, or Pack365</p>
+            <p className="text-gray-500">Choose from My Courses or Browse Courses</p>
           </div>
         );
     }
@@ -655,7 +372,7 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
             <div className="flex items-center">
               <BookOpen className="h-8 w-8 text-blue-600 mr-4" />
               <div>
-                <p className="text-2xl font-bold">{myEnrollments.length + pack365Enrollments.length}</p>
+                <p className="text-2xl font-bold">{myEnrollments.length}</p>
                 <p className="text-sm text-gray-600">Total Enrollments</p>
               </div>
             </div>
@@ -679,7 +396,11 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
             <div className="flex items-center">
               <Clock className="h-8 w-8 text-purple-600 mr-4" />
               <div>
-                <p className="text-2xl font-bold">{pack365Stats.averageProgress}%</p>
+                <p className="text-2xl font-bold">
+                  {myEnrollments.length > 0 
+                    ? Math.round(myEnrollments.reduce((sum, enrollment) => sum + (enrollment.videoProgressPercent || 0), 0) / myEnrollments.length)
+                    : 0}%
+                </p>
                 <p className="text-sm text-gray-600">Average Progress</p>
               </div>
             </div>
