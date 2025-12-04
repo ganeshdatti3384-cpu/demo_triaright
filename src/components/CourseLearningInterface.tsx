@@ -26,19 +26,6 @@ import {
   Home,
 } from "lucide-react";
 
-/**
- * Updated frontend CourseLearningInterface:
- * - Rewritten to align with backend endpoints and behaviors.
- * - Uses YouTube Iframe API to play YouTube videos (extracts videoId).
- * - Tracks watch time per subtopic while video plays and sends updateTopicProgress to backend.
- * - Uses `/courses/enrollment/my-course-progress/:courseId` to fetch enrollment for this course.
- * - Handles exam endpoints responses including already-attempted behavior (returns existing result).
- *
- * Notes:
- * - Backend expects watchedDuration in minutes; the YouTube player gives seconds so we convert.
- * - updateTopicProgress endpoint: POST { courseId, topicName, subTopicName, watchedDuration }
- */
-
 type Subtopic = {
   name: string;
   link?: string;
@@ -68,50 +55,28 @@ type CourseModel = {
   hasFinalExam?: boolean;
 };
 
-type EnrollmentProgressSubtopic = {
-  subTopicName: string;
-  subTopicLink?: string;
-  watchedDuration: number; // minutes
-  totalDuration: number; // minutes
-};
-
-type EnrollmentProgressTopic = {
-  topicName: string;
-  subtopics: EnrollmentProgressSubtopic[];
-  topicWatchedDuration: number;
-  topicTotalDuration: number;
-  examAttempted: boolean;
-  examScore: number;
-  passed: boolean;
-  completed?: boolean;
-};
-
 type EnrollmentModel = {
   _id?: string;
   courseId: string | { _id?: string };
-  userId?: string;
-  isPaid?: boolean;
-  amountPaid?: number;
-  progress: EnrollmentProgressTopic[];
+  progress: any[];
   totalWatchedDuration: number;
   totalVideoDuration: number;
+  videoProgressPercent?: number;
   finalExamEligible?: boolean;
   finalExamAttempted?: boolean;
   courseCompleted?: boolean;
   completedAt?: string;
   enrollmentDate?: string;
   accessExpiresAt?: string;
-  videoProgressPercent?: number;
   courseName?: string;
   courseImageLink?: string;
-  certificateLink?: string;
 };
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://dev.triaright.com/api";
+const HEARTBEAT_INTERVAL_MS = 10000; // 10 seconds
 
 const extractYouTubeId = (url?: string) => {
   if (!url) return null;
-  // support many youtube url forms
   const reg =
     /(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/))([a-zA-Z0-9_-]{10,})/;
   const m = url.match(reg);
@@ -135,18 +100,18 @@ const CourseLearningInterface: React.FC = () => {
   const ytPlayerRef = useRef<any | null>(null);
   const ytContainerRef = useRef<HTMLDivElement | null>(null);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
-  const watchingSecondsRef = useRef<number>(0); // accumulated seconds for current subtopic session
-  const pollIntervalRef = useRef<number | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const heartbeatRef = useRef<number | null>(null);
 
-  // exam states
+  // exams
   const [showTopicExamModal, setShowTopicExamModal] = useState(false);
   const [currentExam, setCurrentExam] = useState<any | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [examResult, setExamResult] = useState<any | null>(null);
   const [submittingExam, setSubmittingExam] = useState(false);
+  const [showFinalExamModal, setShowFinalExamModal] = useState(false);
+  const [finalExam, setFinalExam] = useState<any | null>(null);
 
-  // helper to fetch course and enrollment (per-backend)
+  // fetch course and enrollment (canonical) from backend
   const fetchCourseAndEnrollment = async () => {
     setLoading(true);
     try {
@@ -156,7 +121,6 @@ const CourseLearningInterface: React.FC = () => {
         return;
       }
 
-      // fetch course
       const courseResp = await axios.get(`${API_BASE_URL}/courses/${courseId}`);
       if (courseResp.data && courseResp.data.course) {
         setCourse(courseResp.data.course);
@@ -166,47 +130,35 @@ const CourseLearningInterface: React.FC = () => {
         return;
       }
 
-      // fetch enrollment for this user & course using my-course-progress endpoint
       if (token) {
         try {
-          const enrollResp = await axios.get(
-            `${API_BASE_URL}/courses/enrollment/my-course-progress/${courseId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
+          const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/my-course-progress/${courseId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
           if (enrollResp.data && enrollResp.data.data) {
             const d = enrollResp.data.data;
-            // Map to EnrollmentModel-ish structure expected by UI
-            const mapped: EnrollmentModel = {
+            setEnrollment({
               _id: "",
               courseId: d.courseId,
-              userId: user?._id,
-              isPaid: d.isPaid,
-              amountPaid: d.amountPaid,
               progress: d.progress || [],
               totalWatchedDuration: d.totalWatchedDuration || 0,
               totalVideoDuration: d.totalVideoDuration || 0,
+              videoProgressPercent: d.videoProgressPercent,
               finalExamEligible: d.finalExamEligible,
               finalExamAttempted: d.finalExamAttempted,
-              accessExpiresAt: d.accessExpiresAt,
-              enrollmentDate: d.enrollmentDate,
               courseCompleted: d.courseCompleted,
               completedAt: d.completedAt,
-              videoProgressPercent: d.videoProgressPercent,
+              enrollmentDate: d.enrollmentDate,
+              accessExpiresAt: d.accessExpiresAt,
               courseName: courseResp.data.course?.courseName,
               courseImageLink: courseResp.data.course?.courseImageLink,
-            };
-            setEnrollment(mapped);
+            });
           } else {
             setEnrollment(null);
           }
         } catch (err: any) {
-          // If not found (404) or not enrolled, set null
-          if (err.response?.status === 404) {
-            setEnrollment(null);
-          } else {
-            console.error("Failed to fetch enrollment:", err);
-            setEnrollment(null);
-          }
+          // if not enrolled or error, set null but keep showing course
+          setEnrollment(null);
         }
       } else {
         setEnrollment(null);
@@ -222,15 +174,14 @@ const CourseLearningInterface: React.FC = () => {
 
   useEffect(() => {
     fetchCourseAndEnrollment();
-    // cleanup on unmount
     return () => {
-      stopPolling();
+      stopHeartbeat();
       destroyYTPlayer();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, token]);
 
-  // Use memoized percent from enrollment returned by my-course-progress (videoProgressPercent)
+  // rely on backend's canonical percent if provided
   const videoProgressPercent = useMemo(() => {
     if (!enrollment) return 0;
     if (typeof enrollment.videoProgressPercent === "number") return Math.round(enrollment.videoProgressPercent);
@@ -238,7 +189,7 @@ const CourseLearningInterface: React.FC = () => {
     return Math.floor((enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100);
   }, [enrollment]);
 
-  // YT player utilities
+  // YT player lifecycle
   const loadYouTubeIframeAPI = (): Promise<void> => {
     return new Promise((resolve) => {
       if ((window as any).YT && (window as any).YT.Player) {
@@ -247,19 +198,14 @@ const CourseLearningInterface: React.FC = () => {
       }
       const existing = document.getElementById("youtube-iframe-api");
       if (existing) {
-        // script already added but YT not ready yet
-        (window as any).onYouTubeIframeAPIReady = () => {
-          resolve();
-        };
+        (window as any).onYouTubeIframeAPIReady = () => resolve();
         return;
       }
       const tag = document.createElement("script");
       tag.id = "youtube-iframe-api";
       tag.src = "https://www.youtube.com/iframe_api";
       document.body.appendChild(tag);
-      (window as any).onYouTubeIframeAPIReady = () => {
-        resolve();
-      };
+      (window as any).onYouTubeIframeAPIReady = () => resolve();
     });
   };
 
@@ -269,22 +215,17 @@ const CourseLearningInterface: React.FC = () => {
 
     if (!ytContainerRef.current) return;
 
-    // create player
     ytPlayerRef.current = new (window as any).YT.Player(ytContainerRef.current, {
       height: "390",
       width: "100%",
       videoId,
       playerVars: {
-        // prevent related videos and modestbranding
         rel: 0,
         modestbranding: 1,
         origin: window.location.origin,
       },
       events: {
-        onReady: () => {
-          // nothing for now
-        },
-        onStateChange: onYTStateChange,
+        onStateChange: (e: any) => onYTStateChange(e),
       },
     });
   };
@@ -298,115 +239,66 @@ const CourseLearningInterface: React.FC = () => {
       // ignore
     } finally {
       ytPlayerRef.current = null;
-      setIsPlaying(false);
-      watchingSecondsRef.current = 0;
-      stopPolling();
+      stopHeartbeat();
+      setCurrentVideoId(null);
     }
   };
 
-  const onYTStateChange = (event: any) => {
-    const YT = (window as any).YT;
-    if (!YT) return;
-    // YT.PlayerState
-    if (event.data === YT.PlayerState.PLAYING) {
-      setIsPlaying(true);
-      startPolling();
-    } else if (event.data === YT.PlayerState.PAUSED) {
-      setIsPlaying(false);
-      stopPolling();
-      // send partial progress update
-      sendAccumulatedWatchProgress();
-    } else if (event.data === YT.PlayerState.ENDED) {
-      setIsPlaying(false);
-      stopPolling();
-      // mark watched fully
-      sendAccumulatedWatchProgress(true); // indicate ended -> send full duration
-    } else {
-      // other states
+  // Heartbeat: read current time and send absolute watched minutes to backend
+  const startHeartbeat = (topicName: string, subName: string, subDurationMinutes?: number) => {
+    stopHeartbeat();
+    // immediate send once
+    sendProgressToBackend(topicName, subName, getCurrentWatchedMinutes(subDurationMinutes));
+    heartbeatRef.current = window.setInterval(() => {
+      sendProgressToBackend(topicName, subName, getCurrentWatchedMinutes(subDurationMinutes));
+    }, HEARTBEAT_INTERVAL_MS) as unknown as number;
+  };
+
+  const stopHeartbeat = () => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
     }
   };
 
-  const startPolling = () => {
-    stopPolling();
-    // poll every 8 seconds to accumulate watch time
-    pollIntervalRef.current = window.setInterval(() => {
-      try {
-        if (ytPlayerRef.current && ytPlayerRef.current.getCurrentTime) {
-          const currentTime = ytPlayerRef.current.getCurrentTime();
-          // we accumulate seconds roughly by reading currentTime - previousPosition? Simpler: increment by 8s
-          watchingSecondsRef.current += 8;
-        } else {
-          watchingSecondsRef.current += 8;
+  const getCurrentWatchedMinutes = (subDurationMinutes?: number) => {
+    try {
+      if (ytPlayerRef.current && ytPlayerRef.current.getCurrentTime) {
+        const secs = Math.floor(ytPlayerRef.current.getCurrentTime());
+        let minutes = Math.ceil(secs / 60);
+        if (subDurationMinutes !== undefined && subDurationMinutes !== null) {
+          minutes = Math.min(minutes, Math.ceil(subDurationMinutes));
         }
-      } catch (e) {
-        watchingSecondsRef.current += 8;
+        return Math.max(0, minutes);
       }
-    }, 8000) as unknown as number;
+    } catch (e) {
+      // fallback
+    }
+    return 0;
   };
 
-  const stopPolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-  };
+  // Sends absolute watchedDuration (minutes) to backend. Backend treats it as the subtopic's watchedDuration value.
+  const sendProgressToBackend = async (topicName: string, subTopicName: string, watchedMinutes: number) => {
+    if (!token || !courseId) return;
+    // Don't send zeros repeatedly
+    if (!watchedMinutes || watchedMinutes <= 0) return;
 
-  const sendAccumulatedWatchProgress = async (forceMarkFull = false) => {
-    // called when paused/ended to persist watched duration
-    if (!playingSubtopic || !course || !enrollment || !token) {
-      watchingSecondsRef.current = 0;
-      return;
-    }
-    const tIndex = playingSubtopic.topicIndex;
-    const sIndex = playingSubtopic.subIndex;
-    const topic = course.curriculum[tIndex];
-    const sub = topic?.subtopics?.[sIndex];
-    if (!topic || !sub) {
-      watchingSecondsRef.current = 0;
-      return;
-    }
-
-    // If forcing full (video ended), we can mark watchedDuration = sub.duration
-    let watchedMinutes = 0;
-    if (forceMarkFull) {
-      watchedMinutes = sub.duration || 0;
-    } else {
-      watchedMinutes = Math.ceil(watchingSecondsRef.current / 60);
-      // ensure not exceeding sub.duration
-      if (sub.duration) watchedMinutes = Math.min(watchedMinutes, sub.duration);
-    }
-
-    if (watchedMinutes <= 0) {
-      watchingSecondsRef.current = 0;
-      return;
-    }
-
-    // POST to backend updateTopicProgress
     const payload = {
       courseId,
-      topicName: topic.topicName,
-      subTopicName: sub.name,
+      topicName,
+      subTopicName,
       watchedDuration: watchedMinutes,
     };
 
     try {
-      const resp = await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, payload, {
+      await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (resp.data && resp.data.success) {
-        // Refresh enrollment for accurate state
-        await refreshEnrollment();
-        toast({ title: "Progress updated", description: `${sub.name} progress saved`, variant: "default" });
-      } else {
-        // backend returned success:false
-        toast({ title: "Error", description: resp.data?.message || "Failed to update progress", variant: "destructive" });
-      }
+      // refresh enrollment canonical state after update
+      await refreshEnrollment();
     } catch (err: any) {
-      console.error("Failed to update progress:", err);
-      toast({ title: "Error", description: err?.response?.data?.message || "Failed to update progress", variant: "destructive" });
-    } finally {
-      watchingSecondsRef.current = 0;
+      // log but do not spam user
+      console.error("Progress heartbeat failed:", err?.response?.data || err.message || err);
     }
   };
 
@@ -418,33 +310,60 @@ const CourseLearningInterface: React.FC = () => {
       });
       if (enrollResp.data && enrollResp.data.data) {
         const d = enrollResp.data.data;
-        const mapped: EnrollmentModel = {
+        setEnrollment((prev) => ({
           _id: "",
           courseId: d.courseId,
-          userId: user?._id,
-          isPaid: d.isPaid,
-          amountPaid: d.amountPaid,
           progress: d.progress || [],
           totalWatchedDuration: d.totalWatchedDuration || 0,
           totalVideoDuration: d.totalVideoDuration || 0,
+          videoProgressPercent: d.videoProgressPercent,
           finalExamEligible: d.finalExamEligible,
           finalExamAttempted: d.finalExamAttempted,
-          accessExpiresAt: d.accessExpiresAt,
-          enrollmentDate: d.enrollmentDate,
           courseCompleted: d.courseCompleted,
           completedAt: d.completedAt,
-          videoProgressPercent: d.videoProgressPercent,
+          enrollmentDate: d.enrollmentDate,
+          accessExpiresAt: d.accessExpiresAt,
           courseName: course?.courseName,
           courseImageLink: course?.courseImageLink,
-        };
-        setEnrollment(mapped);
+        }));
       }
     } catch (err) {
-      console.error("Failed to refresh enrollment:", err);
+      // ignore refresh errors
     }
   };
 
-  // Open a subtopic: set playingSubtopic, instantiate player if it's a YouTube url
+  // When YT state changes: PLAY -> start heartbeat; PAUSE/ENDED -> stop heartbeat and send final update (on ENDED send full duration if available)
+  const onYTStateChange = async (event: any) => {
+    const YT = (window as any).YT;
+    if (!YT) return;
+    if (!playingSubtopic || !course) return;
+
+    const tIndex = playingSubtopic.topicIndex;
+    const sIndex = playingSubtopic.subIndex;
+    const topic = course.curriculum?.[tIndex];
+    const sub = topic?.subtopics?.[sIndex];
+
+    if (!topic || !sub) return;
+
+    if (event.data === YT.PlayerState.PLAYING) {
+      // start heartbeat
+      startHeartbeat(topic.topicName, sub.name, sub.duration);
+    } else if (event.data === YT.PlayerState.PAUSED) {
+      // stop heartbeat and send one immediate update
+      stopHeartbeat();
+      const minutes = getCurrentWatchedMinutes(sub.duration);
+      if (minutes > 0) await sendProgressToBackend(topic.topicName, sub.name, minutes);
+    } else if (event.data === YT.PlayerState.ENDED) {
+      // send final (mark full) - use sub.duration if present else compute
+      stopHeartbeat();
+      const finalMinutes = sub.duration || Math.max(1, getCurrentWatchedMinutes(sub.duration));
+      await sendProgressToBackend(topic.topicName, sub.name, finalMinutes);
+    } else {
+      // other states: do nothing
+    }
+  };
+
+  // Open subtopic: create YT player for YouTube links, else destroy player (non-playable)
   const openSubtopic = (tIndex: number, sIndex: number) => {
     if (!course) return;
     const topic = course.curriculum[tIndex];
@@ -457,25 +376,18 @@ const CourseLearningInterface: React.FC = () => {
     const videoId = extractYouTubeId(sub.link);
     if (videoId) {
       setCurrentVideoId(videoId);
-      // create player
       createYTPlayer(videoId).catch((e) => {
         console.error("YT player create error:", e);
       });
-    } else if (sub.link) {
-      // Not a youtube link: destroy YT player and set container to show message
-      destroyYTPlayer();
-      setCurrentVideoId(null);
     } else {
+      // no YT - destroy any existing YT player and stop heartbeats
       destroyYTPlayer();
-      setCurrentVideoId(null);
     }
-    // reset accumulated seconds
-    watchingSecondsRef.current = 0;
   };
 
-  // Mark subtopic as watched explicitly (fallback button)
+  // Explicit "Mark Watched" button will call backend to set watchedDuration = sub.duration (full)
   const markSubtopicWatched = async (tIndex: number, sIndex: number) => {
-    if (!enrollment || !course || !token) {
+    if (!token || !course || !enrollment) {
       toast({ title: "Error", description: "You must be enrolled to update progress", variant: "destructive" });
       return;
     }
@@ -489,7 +401,7 @@ const CourseLearningInterface: React.FC = () => {
       courseId,
       topicName: topic.topicName,
       subTopicName: sub.name,
-      watchedDuration: sub.duration || 30,
+      watchedDuration: sub.duration || 1,
     };
     try {
       const resp = await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, payload, {
@@ -507,7 +419,7 @@ const CourseLearningInterface: React.FC = () => {
     }
   };
 
-  // Topic Exam: fetch and open. Backend returns 400 if already attempted and includes result.
+  // Exam flows remain similar but rely on backend behavior
   const handleOpenTopicExam = async (topicName: string) => {
     if (!token || !courseId) {
       toast({ title: "Login required", description: "Please login to attempt exams", variant: "destructive" });
@@ -532,12 +444,10 @@ const CourseLearningInterface: React.FC = () => {
         setShowTopicExamModal(false);
       }
     } catch (err: any) {
-      // backend may return 400 with existing result when already attempted
       if (err.response?.status === 400 && err.response.data?.result) {
         setExamResult(err.response.data.result);
-        setCurrentExam(null);
         setShowTopicExamModal(true);
-        toast({ title: "Exam already attempted", description: "You have already attempted this topic exam. Showing result.", variant: "default" });
+        toast({ title: "Exam already attempted", description: "Showing result", variant: "default" });
       } else {
         console.error("Failed to fetch topic exam", err);
         toast({ title: "Error", description: err?.response?.data?.message || "Failed to fetch topic exam", variant: "destructive" });
@@ -564,7 +474,6 @@ const CourseLearningInterface: React.FC = () => {
       });
       if (resp.data) {
         setExamResult(resp.data.result || resp.data);
-        // refresh enrollment
         await refreshEnrollment();
         toast({ title: "Exam submitted", description: "Topic exam submitted successfully", variant: "default" });
       }
@@ -575,10 +484,6 @@ const CourseLearningInterface: React.FC = () => {
       setSubmittingExam(false);
     }
   };
-
-  // Final exam open & submit similar to topic flow
-  const [showFinalExamModal, setShowFinalExamModal] = useState(false);
-  const [finalExam, setFinalExam] = useState<any | null>(null);
 
   const handleOpenFinalExam = async () => {
     if (!token || !courseId) {
@@ -603,12 +508,7 @@ const CourseLearningInterface: React.FC = () => {
         setShowFinalExamModal(false);
       }
     } catch (err: any) {
-      // backend may return 400 if not eligible or attempts exceeded
-      if (err.response?.status === 400) {
-        toast({ title: "Cannot open final exam", description: err.response.data?.message || "Not eligible or max attempts exceeded", variant: "destructive" });
-      } else {
-        toast({ title: "Error", description: err?.response?.data?.message || "Failed to fetch final exam", variant: "destructive" });
-      }
+      toast({ title: "Error", description: err?.response?.data?.message || "Failed to fetch final exam", variant: "destructive" });
       setShowFinalExamModal(false);
     }
   };
@@ -634,12 +534,12 @@ const CourseLearningInterface: React.FC = () => {
     }
   };
 
-  // Small UI component: SubtopicRow
+  // UI Subtopic row - shows backend progress (read-only)
   const SubtopicRow: React.FC<{ tIndex: number; sIndex: number; sub: Subtopic }> = ({ tIndex, sIndex, sub }) => {
     const topic = course?.curriculum?.[tIndex];
-    const progressTopic = enrollment?.progress?.find((pt) => pt.topicName === topic?.topicName);
-    const watched = progressTopic ? progressTopic.subtopics[sIndex]?.watchedDuration || 0 : 0;
-    const total = progressTopic ? progressTopic.subtopics[sIndex]?.totalDuration || sub.duration || 0 : sub.duration || 0;
+    const progressTopic = enrollment?.progress?.find((pt: any) => pt.topicName === topic?.topicName);
+    const watched = progressTopic ? progressTopic.subtopics?.[sIndex]?.watchedDuration || 0 : 0;
+    const total = progressTopic ? progressTopic.subtopics?.[sIndex]?.totalDuration || sub.duration || 0 : sub.duration || 0;
 
     const isThisPlaying = playingSubtopic && playingSubtopic.topicIndex === tIndex && playingSubtopic.subIndex === sIndex;
 
@@ -763,11 +663,9 @@ const CourseLearningInterface: React.FC = () => {
                   <div className="lg:col-span-2">
                     {currentVideoId ? (
                       <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
-                        {/* YouTube player container */}
                         <div ref={ytContainerRef} id="yt-player" className="w-full h-full" />
                       </div>
                     ) : playingSubtopic ? (
-                      // Non-YouTube or no link
                       <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
                         <div className="text-center">
                           <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
@@ -824,17 +722,8 @@ const CourseLearningInterface: React.FC = () => {
                             ) : (
                               <Button
                                 onClick={() => {
-                                  // continue to first uncompleted lesson if any
                                   if (!course.curriculum) return;
-                                  // find first topic with progress < total
-                                  const firstTopicIndex = course.curriculum.findIndex((t, i) => {
-                                    const p = enrollment.progress?.find(pp => pp.topicName === t.topicName);
-                                    if (!p) return true;
-                                    return p.topicWatchedDuration < (p.topicTotalDuration || t.subtopics.reduce((s, st) => s + (st.duration || 0), 0));
-                                  });
-                                  const topicIdx = firstTopicIndex === -1 ? 0 : firstTopicIndex;
-                                  const subIdx = 0;
-                                  openSubtopic(topicIdx, subIdx);
+                                  openSubtopic(0, 0);
                                 }}
                                 className="w-full"
                                 size="lg"
@@ -867,11 +756,7 @@ const CourseLearningInterface: React.FC = () => {
                                     window.open(certLink, "_blank");
                                     return;
                                   }
-                                  toast({
-                                    title: "Certificate",
-                                    description: "Certificate is generated by admin. Contact support if not available.",
-                                    variant: "default",
-                                  });
+                                  toast({ title: "Certificate", description: "Certificate is generated by admin. Contact support if not available.", variant: "default" });
                                 }}
                                 variant="outline"
                                 className="w-full border-green-200 text-green-700 hover:bg-green-100"
@@ -899,7 +784,7 @@ const CourseLearningInterface: React.FC = () => {
                 {course.curriculum && course.curriculum.length > 0 ? (
                   <div className="space-y-6">
                     {course.curriculum.map((topic, tIndex) => {
-                      const topicProgress = enrollment?.progress?.find((p) => p.topicName === topic.topicName);
+                      const topicProgress = enrollment?.progress?.find((p: any) => p.topicName === topic.topicName);
                       const topicWatched = topicProgress?.topicWatchedDuration || 0;
                       const topicTotal =
                         topicProgress?.topicTotalDuration ||
@@ -1033,7 +918,7 @@ const CourseLearningInterface: React.FC = () => {
                         <div>
                           <div className="text-xs text-gray-500">Topics Passed</div>
                           <div className="text-lg font-medium">
-                            {enrollment.progress.filter((p) => p.passed).length} / {enrollment.progress.length}
+                            {enrollment.progress.filter((p: any) => p.passed).length} / {enrollment.progress.length}
                           </div>
                         </div>
                         <div>
@@ -1156,9 +1041,7 @@ const CourseLearningInterface: React.FC = () => {
                   {examResult.correctAnswers !== undefined && (
                     <div className="flex justify-between">
                       <span>Correct Answers:</span>
-                      <span>
-                        {examResult.correctAnswers} / {examResult.totalQuestions}
-                      </span>
+                      <span>{examResult.correctAnswers} / {examResult.totalQuestions}</span>
                     </div>
                   )}
                 </div>
@@ -1166,16 +1049,12 @@ const CourseLearningInterface: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="text-sm text-gray-500">
-                  Time limit: {currentExam?.timeLimit} minutes • Passing score: {currentExam?.passingScore}%
-                </div>
+                <div className="text-sm text-gray-500">Time limit: {currentExam?.timeLimit} minutes • Passing score: {currentExam?.passingScore}%</div>
 
                 <div className="space-y-6">
                   {currentExam.questions?.map((q: any, idx: number) => (
                     <div key={q._id || idx} className="border rounded p-4 bg-white">
-                      <div className="font-medium mb-3">
-                        {idx + 1}. {q.questionText}
-                      </div>
+                      <div className="font-medium mb-3">{idx + 1}. {q.questionText}</div>
                       <div className="space-y-2">
                         {(q.options || []).map((opt: string, oi: number) => {
                           const qid = q._id?.toString() || `q${idx}`;
@@ -1235,9 +1114,7 @@ const CourseLearningInterface: React.FC = () => {
                   {examResult.correctAnswers !== undefined && (
                     <div className="flex justify-between">
                       <span>Correct Answers:</span>
-                      <span>
-                        {examResult.correctAnswers} / {examResult.totalQuestions}
-                      </span>
+                      <span>{examResult.correctAnswers} / {examResult.totalQuestions}</span>
                     </div>
                   )}
                   {examResult.attemptNumber && (
@@ -1248,9 +1125,7 @@ const CourseLearningInterface: React.FC = () => {
                   )}
                 </div>
                 <div className="mt-4 text-sm text-gray-600">
-                  {examResult.passed
-                    ? "Congratulations! You have passed the final exam. The course is now marked as completed."
-                    : "You did not pass this attempt. You can try again if you have remaining attempts."}
+                  {examResult.passed ? "Congratulations! You passed the final exam." : "You did not pass this attempt."}
                 </div>
               </div>
             ) : (
