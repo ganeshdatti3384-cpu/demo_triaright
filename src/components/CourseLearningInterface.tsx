@@ -1,4 +1,9 @@
 // Triaright_EduCareer/src/components/CourseLearningInterface.tsx
+// Updated: 2025-12-04
+// Purpose: Improve progress tracking to follow backend behavior (send cumulative minutes, avoid duplicate heartbeats,
+// handle seeks, flush remaining seconds on pause/ended). Ensures frontend progression logic matches the enrollmentController
+// updateTopicProgress expectations.
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
@@ -141,6 +146,11 @@ const CourseLearningInterface: React.FC = () => {
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
   const heartbeatRef = useRef<number | null>(null);
 
+  // Local tracking of seconds to properly compute minute increments
+  const lastPlayerSecondsRef = useRef<number>(0); // last known player time
+  const accumulatedSecondsRef = useRef<number>(0); // seconds accumulated since last minute sent
+  const isUpdatingRef = useRef<boolean>(false); // avoid concurrent requests
+
   // exams
   const [showTopicExamModal, setShowTopicExamModal] = useState(false);
   const [currentExam, setCurrentExam] = useState<ExamData | null>(null);
@@ -277,6 +287,7 @@ const CourseLearningInterface: React.FC = () => {
 
     if (!ytContainerRef.current) return;
 
+    // Do NOT start heartbeat onReady. We'll start heartbeat only when player actually starts PLAYING to avoid duplicates.
     ytPlayerRef.current = new (window as any).YT.Player(ytContainerRef.current, {
       height: "390",
       width: "100%",
@@ -288,7 +299,9 @@ const CourseLearningInterface: React.FC = () => {
       },
       events: {
         onReady: () => {
-          startHeartbeat();
+          // initialize lastPlayerSeconds to 0
+          lastPlayerSecondsRef.current = 0;
+          accumulatedSecondsRef.current = 0;
         },
         onStateChange: (e: any) => onYTStateChange(e),
       },
@@ -306,6 +319,8 @@ const CourseLearningInterface: React.FC = () => {
       ytPlayerRef.current = null;
       stopHeartbeat();
       setCurrentVideoId(null);
+      lastPlayerSecondsRef.current = 0;
+      accumulatedSecondsRef.current = 0;
     }
   };
 
@@ -313,7 +328,10 @@ const CourseLearningInterface: React.FC = () => {
   const startHeartbeat = () => {
     stopHeartbeat();
     heartbeatRef.current = window.setInterval(() => {
-      updateProgressInBackend();
+      // Regular heartbeat: send minute increments when accumulatedSeconds >= 60
+      updateProgressInBackend(false).catch(err => {
+        // handled inside function
+      });
     }, HEARTBEAT_INTERVAL_MS) as unknown as number;
   };
 
@@ -322,9 +340,10 @@ const CourseLearningInterface: React.FC = () => {
       clearInterval(heartbeatRef.current);
       heartbeatRef.current = null;
     }
+    // keep accumulatedSecondsRef as is until we flush on pause/ended
   };
 
-  const getCurrentWatchedSeconds = () => {
+  const getCurrentPlayerSeconds = () => {
     try {
       if (ytPlayerRef.current && ytPlayerRef.current.getCurrentTime) {
         return Math.floor(ytPlayerRef.current.getCurrentTime());
@@ -335,38 +354,89 @@ const CourseLearningInterface: React.FC = () => {
     return 0;
   };
 
-  const updateProgressInBackend = async () => {
-    if (!token || !courseId || !playingSubtopic || !course) return;
-    
-    const tIndex = playingSubtopic.topicIndex;
-    const sIndex = playingSubtopic.subIndex;
-    const topic = course.curriculum?.[tIndex];
-    const sub = topic?.subtopics?.[sIndex];
-    
-    if (!topic || !sub) return;
+  /**
+   * updateProgressInBackend
+   * - If forceFlush === true: flush any remaining accumulated seconds as minutes (ceil)
+   * - Otherwise: accumulate delta seconds and send only full minutes (floor)
+   *
+   * Backend expects watchedDuration in minutes (integer) and treats it as cumulative absolute minutes.
+   * So we read previous watched minutes from enrollment and add minutesToSend to it.
+   */
+  const updateProgressInBackend = async (forceFlush = false) => {
+    if (!token || !courseId || !playingSubtopic || !course || !enrollment) return;
 
-    const watchedSeconds = getCurrentWatchedSeconds();
-    const watchedMinutes = Math.ceil(watchedSeconds / 60);
-    const totalMinutes = sub.duration || 1;
+    // Prevent concurrent updates
+    if (isUpdatingRef.current) return;
+    isUpdatingRef.current = true;
 
     try {
+      const tIndex = playingSubtopic.topicIndex;
+      const sIndex = playingSubtopic.subIndex;
+      const topic = course.curriculum?.[tIndex];
+      const sub = topic?.subtopics?.[sIndex];
+      if (!topic || !sub) return;
+
+      const playerSeconds = getCurrentPlayerSeconds();
+
+      // If first time, initialize lastPlayerSecondsRef
+      if (lastPlayerSecondsRef.current === 0) {
+        lastPlayerSecondsRef.current = playerSeconds;
+      }
+
+      // Ignore negative deltas (seek backwards) but update lastPlayerSecondsRef to current
+      const deltaSeconds = Math.max(0, playerSeconds - lastPlayerSecondsRef.current);
+      lastPlayerSecondsRef.current = playerSeconds;
+
+      // accumulate only forward-played seconds
+      accumulatedSecondsRef.current += deltaSeconds;
+
+      // Determine how many minutes to send
+      let minutesToSend = 0;
+      if (forceFlush) {
+        // On pause/ended we want to flush remaining seconds as minutes (ceil)
+        minutesToSend = Math.ceil(accumulatedSecondsRef.current / 60);
+      } else {
+        minutesToSend = Math.floor(accumulatedSecondsRef.current / 60);
+      }
+
+      if (minutesToSend <= 0) {
+        // nothing meaningful to send at this moment
+        return;
+      }
+
+      // Read previous watched minutes from enrollment state (safe default 0)
+      const progressTopic = enrollment.progress.find((p: any) => p.topicName === topic.topicName);
+      const previousWatched = progressTopic?.subtopics?.[sIndex]?.watchedDuration || 0;
+      const totalMinutes = progressTopic?.subtopics?.[sIndex]?.totalDuration || sub.duration || 0;
+
+      let newWatchedMinutes = previousWatched + minutesToSend;
+      if (totalMinutes && newWatchedMinutes > totalMinutes) {
+        newWatchedMinutes = totalMinutes;
+      }
+
+      // Send update to backend with cumulative minutes (what backend expects)
       await axios.post(
         `${API_BASE_URL}/courses/enrollment/update-progress`,
         {
           courseId,
           topicName: topic.topicName,
           subTopicName: sub.name,
-          watchedDuration: Math.min(watchedMinutes, totalMinutes),
+          watchedDuration: newWatchedMinutes
         },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      
-      // Refresh enrollment data
+
+      // After successful send, subtract sent seconds from accumulator
+      accumulatedSecondsRef.current = Math.max(0, accumulatedSecondsRef.current - minutesToSend * 60);
+
+      // Refresh local enrollment state so subsequent calculations use latest value
       await refreshEnrollment();
     } catch (err: any) {
       console.error("Progress update failed:", err.response?.data || err.message);
+    } finally {
+      isUpdatingRef.current = false;
     }
   };
 
@@ -408,23 +478,28 @@ const CourseLearningInterface: React.FC = () => {
     const YT = (window as any).YT;
     if (!YT || !playingSubtopic || !course) return;
 
-    const tIndex = playingSubtopic.topicIndex;
-    const sIndex = playingSubtopic.subIndex;
-    const topic = course.curriculum?.[tIndex];
-    const sub = topic?.subtopics?.[sIndex];
-
-    if (!topic || !sub) return;
-
-    if (event.data === YT.PlayerState.PLAYING) {
-      // Start heartbeat for progress tracking
+    const state = event.data;
+    // PLAYING: start heartbeat and initialize refs
+    if (state === YT.PlayerState.PLAYING) {
+      // initialize lastPlayerSeconds to current player time to avoid huge deltas
+      lastPlayerSecondsRef.current = getCurrentPlayerSeconds();
+      // do not reset accumulatedSecondsRef here (we want to keep any unflushed seconds)
       startHeartbeat();
-    } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-      // Send final update when paused or ended
-      stopHeartbeat();
-      await updateProgressInBackend();
-      
-      // If video ended, mark as complete
-      if (event.data === YT.PlayerState.ENDED) {
+    } else if (state === YT.PlayerState.PAUSED || state === YT.PlayerState.ENDED) {
+      // On pause or ended, flush any remaining seconds (ceil) and stop heartbeat
+      try {
+        // update once more and force flush remaining seconds
+        await updateProgressInBackend(true);
+      } catch (err) {
+        // handled inside
+      } finally {
+        stopHeartbeat();
+      }
+
+      if (state === YT.PlayerState.ENDED) {
+        // Mark subtopic as watched (calls backend to set watchedDuration to full duration)
+        const tIndex = playingSubtopic.topicIndex;
+        const sIndex = playingSubtopic.subIndex;
         await markSubtopicWatched(tIndex, sIndex);
       }
     }
@@ -437,6 +512,9 @@ const CourseLearningInterface: React.FC = () => {
     const sub = topic.subtopics[sIndex];
     if (!sub) return;
 
+    // Reset local accumulators for this new subtopic
+    lastPlayerSecondsRef.current = 0;
+    accumulatedSecondsRef.current = 0;
     setPlayingSubtopic({ topicIndex: tIndex, subIndex: sIndex });
 
     const videoId = extractYouTubeId(sub.link);
@@ -482,6 +560,7 @@ const CourseLearningInterface: React.FC = () => {
     }
 
     try {
+      // When a user marks complete we send full sub.topic duration to backend (backend will clamp to totalDuration)
       const resp = await axios.post(
         `${API_BASE_URL}/courses/enrollment/update-progress`,
         {
@@ -496,6 +575,9 @@ const CourseLearningInterface: React.FC = () => {
       );
       
       if (resp.data?.success) {
+        // reset local accumulators after explicit full-mark
+        accumulatedSecondsRef.current = 0;
+        lastPlayerSecondsRef.current = 0;
         await refreshEnrollment();
         toast({ 
           title: "Progress Updated", 
@@ -513,7 +595,7 @@ const CourseLearningInterface: React.FC = () => {
     }
   };
 
-  // Exam Functions
+  // Exam Functions (unchanged)
   const startExamTimer = (minutes: number) => {
     setExamTimer(minutes * 60); // Convert to seconds
     if (examTimerRef.current) clearInterval(examTimerRef.current);
@@ -726,7 +808,7 @@ const CourseLearningInterface: React.FC = () => {
     }
   };
 
-  // Certificate Functions
+  // Certificate Functions (unchanged)
   const generateCertificate = async () => {
     if (!token || !courseId || !enrollment?.courseCompleted) return;
     
@@ -819,7 +901,7 @@ const CourseLearningInterface: React.FC = () => {
     win?.print();
   };
 
-  // UI Components
+  // UI Components (unchanged except internals rely on improved tracking)
   const SubtopicRow: React.FC<{ tIndex: number; sIndex: number; sub: Subtopic }> = ({ tIndex, sIndex, sub }) => {
     const topic = course?.curriculum?.[tIndex];
     const progressTopic = enrollment?.progress?.find((pt: any) => pt.topicName === topic?.topicName);
