@@ -205,7 +205,7 @@ const CourseLearningInterface: React.FC = () => {
       // If user logged in, fetch enrollment using backendCourseId (Mongo _id)
       if (token) {
         try {
-          const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/my-course-progress/${fetchedCourse._id}`, {
+          const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollments/my-course-progress/${fetchedCourse._id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
@@ -373,7 +373,7 @@ const CourseLearningInterface: React.FC = () => {
 
     try {
       await axios.post(
-        `${API_BASE_URL}/courses/enrollment/update-progress`,
+        `${API_BASE_URL}/courses/enrollments/update-topic-progress`,
         {
           courseId: backendCourseId,
           topicName: topic.topicName,
@@ -393,7 +393,7 @@ const CourseLearningInterface: React.FC = () => {
   const refreshEnrollment = async () => {
     if (!token || !backendCourseId) return;
     try {
-      const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/my-course-progress/${backendCourseId}`, {
+      const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollments/my-course-progress/${backendCourseId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -486,7 +486,7 @@ const CourseLearningInterface: React.FC = () => {
 
     try {
       const resp = await axios.post(
-        `${API_BASE_URL}/courses/enrollment/update-progress`,
+        `${API_BASE_URL}/courses/enrollments/update-topic-progress`,
         {
           courseId: backendCourseId,
           topicName: topic.topicName,
