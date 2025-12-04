@@ -9,16 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote, Tag } from 'lucide-react';
+import { Shield, Database, Settings, Users, CreditCard, LogOut, Eye, Lock, Package, Plus, Ticket, Calendar, Building2, Monitor, Pill, TrendingUp, UserCheck, Banknote, Tag, AlertCircle, X, Clock } from 'lucide-react';
 import { pack365Api, collegeApi } from '@/services/api';
 import Pack365Management from '../admin/Pack365Management';
 import SuperUserManagement from '../admin/SuperUserManagement';
-import AdminCreateCoupon from '../admin/AdminCreateCoupon'; // Import the new component
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
 import type { Pack365Course } from '@/types/api';
 import Navbar from '../Navbar';
 import Footer from '../Footer';
+import axios from 'axios';
+import { Textarea } from '@/components/ui/textarea';
 
 interface SuperAdminDashboardProps {
   user: { role: string; name: string };
@@ -36,7 +37,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const [selectedStream, setSelectedStream] = useState('');
   const [description, setDescription] = useState('');
   const [usageLimit, setUsageLimit] = useState('');
-  const { toast: useToastHook } = useToast();
+  const { toast: showToast } = useToast();
   const [filteredCourses, setFilteredCourses] = useState<Pack365Course[]>([]);
   const [enrollmentCode, setEnrollmentCode] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
@@ -48,6 +49,22 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [collegeRequests, setCollegeRequests] = useState<any[]>([]);
   
+  // State for Course Coupons (separate from Pack365)
+  const [courseCoupons, setCourseCoupons] = useState<any[]>([]);
+  const [courseCouponCode, setCourseCouponCode] = useState('');
+  const [courseDiscountType, setCourseDiscountType] = useState<'flat' | 'percentage'>('flat');
+  const [courseDiscountAmount, setCourseDiscountAmount] = useState<string>('');
+  const [courseMaxDiscount, setCourseMaxDiscount] = useState<string>('');
+  const [courseMinPrice, setCourseMinPrice] = useState<string>('');
+  const [courseApplicableCourse, setCourseApplicableCourse] = useState<string>('');
+  const [courseUsageLimit, setCourseUsageLimit] = useState<string>('');
+  const [courseExpiryDate, setCourseExpiryDate] = useState('');
+  const [courseDescription, setCourseDescription] = useState('');
+  
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [submittingCourseCoupon, setSubmittingCourseCoupon] = useState(false);
+
   const streamData = [
     { name: 'IT', icon: Monitor, color: 'bg-blue-500', description: 'Information Technology Courses' },
     { name: 'PHARMA', icon: Pill, color: 'bg-green-500', description: 'Pharmaceutical Courses' },
@@ -61,6 +78,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     fetchCourses();
     fetchCoupons();
     fetchCollegeRequests();
+    fetchAvailableCourses();
   }, []);
 
   useEffect(() => {
@@ -105,7 +123,11 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       }
     } catch (error) {
       console.error('Error fetching coupons:', error);
-      toast.error('Failed to fetch coupons');
+      showToast({
+        title: 'Error',
+        description: 'Failed to fetch coupons',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -121,13 +143,38 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       }
     } catch (error) {
       console.error('Error fetching college requests:', error);
-      useToastHook({
+      showToast({
         title: 'Error',
         description: 'Failed to load college requests',
         variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAvailableCourses = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      setLoadingCourses(true);
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/courses/paid`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data && Array.isArray(response.data.courses)) {
+        setAvailableCourses(response.data.courses);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      showToast({
+        title: 'Error',
+        description: 'Failed to load courses',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingCourses(false);
     }
   };
 
@@ -138,7 +185,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     try {
       const response = await collegeApi.acceptServiceRequest(token, requestId);
       if (response.success) {
-        useToastHook({
+        showToast({
           title: 'Success',
           description: 'Request accepted successfully',
         });
@@ -146,7 +193,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       }
     } catch (error) {
       console.error('Error accepting request:', error);
-      useToastHook({
+      showToast({
         title: 'Error',
         description: 'Failed to accept request',
         variant: 'destructive'
@@ -161,7 +208,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     try {
       const response = await collegeApi.rejectServiceRequest(token, requestId);
       if (response.success) {
-        useToastHook({
+        showToast({
           title: 'Success',
           description: 'Request rejected successfully',
         });
@@ -169,7 +216,7 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       }
     } catch (error) {
       console.error('Error rejecting request:', error);
-      useToastHook({
+      showToast({
         title: 'Error',
         description: 'Failed to reject request',
         variant: 'destructive'
@@ -183,7 +230,11 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       if (!token) return;
 
       if (!enrollmentCode || !selectedStream || !usageLimit) {
-        toast.error('Please fill all required fields');
+        showToast({
+          title: 'Error',
+          description: 'Please fill all required fields',
+          variant: 'destructive'
+        });
         return;
       }
 
@@ -196,7 +247,10 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       });
 
       if (response.success) {
-        toast.success('Enrollment code created successfully!');
+        showToast({
+          title: 'Success',
+          description: 'Enrollment code created successfully!',
+        });
         fetchCoupons();
         setEnrollmentCode('');
         setSelectedStream('');
@@ -206,7 +260,11 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
         setCreateEnrollmentOpen(false);
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create enrollment code');
+      showToast({
+        title: 'Error',
+        description: error.message || 'Failed to create enrollment code',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -216,7 +274,11 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       if (!token) return;
 
       if (!couponCode || !selectedStream || !discount || !usageLimit) {
-        toast.error('Please fill all required fields');
+        showToast({
+          title: 'Error',
+          description: 'Please fill all required fields',
+          variant: 'destructive'
+        });
         return;
       }
 
@@ -230,7 +292,10 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
       });
 
       if (response.success) {
-        toast.success('Coupon created successfully!');
+        showToast({
+          title: 'Success',
+          description: 'Coupon created successfully!',
+        });
         fetchCoupons();
         setCouponCode('');
         setSelectedStream('');
@@ -241,7 +306,11 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
         setCreateCouponOpen(false);
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create coupon');
+      showToast({
+        title: 'Error',
+        description: error.message || 'Failed to create coupon',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -249,18 +318,195 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        toast.error('No authentication token found');
+        showToast({
+          title: 'Error',
+          description: 'No authentication token found',
+          variant: 'destructive'
+        });
         return;
       }
 
       await pack365Api.deactivateEnrollmentCode(token, couponId);
-      toast.success(`Coupon ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+      showToast({
+        title: 'Success',
+        description: `Coupon ${!currentStatus ? 'activated' : 'deactivated'} successfully!`,
+      });
       
       // Refresh coupons list
       fetchCoupons();
     } catch (error) {
       console.error('Error updating coupon status:', error);
-      toast.error('Failed to update coupon status');
+      showToast({
+        title: 'Error',
+        description: 'Failed to update coupon status',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleCreateCourseCoupon = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        showToast({
+          title: 'Error',
+          description: 'No authentication token found',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate required fields
+      if (!courseCouponCode || !courseDiscountAmount) {
+        showToast({
+          title: 'Error',
+          description: 'Coupon code and discount amount are required',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (courseDiscountType === 'percentage' && parseFloat(courseDiscountAmount) > 100) {
+        showToast({
+          title: 'Error',
+          description: 'Percentage discount cannot exceed 100%',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      setSubmittingCourseCoupon(true);
+
+      const payload: any = {
+        code: courseCouponCode.toUpperCase().trim(),
+        discountType: courseDiscountType,
+        discountAmount: parseFloat(courseDiscountAmount),
+      };
+
+      if (courseDiscountType === 'percentage' && courseMaxDiscount) {
+        payload.maxDiscount = parseFloat(courseMaxDiscount);
+      }
+
+      if (courseMinPrice) {
+        payload.minCoursePrice = parseFloat(courseMinPrice);
+      }
+
+      if (courseApplicableCourse) {
+        payload.applicableCourse = courseApplicableCourse;
+      }
+
+      if (courseUsageLimit) {
+        payload.usageLimit = parseInt(courseUsageLimit);
+      }
+
+      if (courseExpiryDate) {
+        payload.expiresAt = courseExpiryDate;
+      }
+
+      if (courseDescription) {
+        payload.description = courseDescription;
+      }
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/courses/admin/coupons`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.success) {
+        showToast({
+          title: 'Success',
+          description: 'Course coupon created successfully!',
+        });
+        
+        // Reset form
+        setCourseCouponCode('');
+        setCourseDiscountType('flat');
+        setCourseDiscountAmount('');
+        setCourseMaxDiscount('');
+        setCourseMinPrice('');
+        setCourseApplicableCourse('');
+        setCourseUsageLimit('');
+        setCourseExpiryDate('');
+        setCourseDescription('');
+        
+        // Refresh course coupons list
+        fetchCourseCoupons();
+      } else {
+        showToast({
+          title: 'Error',
+          description: response.data.message || 'Failed to create coupon',
+          variant: 'destructive'
+        });
+      }
+    } catch (error: any) {
+      console.error('Error creating course coupon:', error);
+      showToast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to create coupon',
+        variant: 'destructive'
+      });
+    } finally {
+      setSubmittingCourseCoupon(false);
+    }
+  };
+
+  const fetchCourseCoupons = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/courses/admin/coupons`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setCourseCoupons(response.data.coupons || []);
+      }
+    } catch (error) {
+      console.error('Error fetching course coupons:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'course-coupon') {
+      fetchCourseCoupons();
+    }
+  }, [activeTab]);
+
+  const handleToggleCourseCouponStatus = async (couponId: string, currentStatus: boolean) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const endpoint = currentStatus ? 'deactivate' : 'activate';
+      const response = await axios.patch(
+        `${import.meta.env.VITE_BACKEND_URL || 'https://dev.triaright.com/api'}/courses/admin/coupons/${couponId}/${endpoint}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        showToast({
+          title: 'Success',
+          description: `Coupon ${!currentStatus ? 'activated' : 'deactivated'} successfully!`,
+        });
+        fetchCourseCoupons();
+      }
+    } catch (error) {
+      console.error('Error updating course coupon status:', error);
+      showToast({
+        title: 'Error',
+        description: 'Failed to update coupon status',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -766,7 +1012,282 @@ const SuperAdminDashboard = ({ user, onLogout }: SuperAdminDashboardProps) => {
           </TabsContent>
 
           <TabsContent value="course-coupon" className="space-y-6">
-            <AdminCreateCoupon />
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <AlertCircle className="h-6 w-6 text-blue-600" />
+                Course Coupon Management
+              </h2>
+              <p className="text-sm text-gray-500">Separate from Pack365 coupons - for individual paid courses</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Create Course Coupon Form */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create Course Coupon</CardTitle>
+                  <CardDescription>Create coupons for individual paid courses</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={(e) => { e.preventDefault(); handleCreateCourseCoupon(); }} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="course-coupon-code">Coupon Code *</Label>
+                        <Input
+                          id="course-coupon-code"
+                          value={courseCouponCode}
+                          onChange={(e) => setCourseCouponCode(e.target.value)}
+                          placeholder="e.g., NEW50 or FREE100"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="discount-type">Discount Type *</Label>
+                        <Select value={courseDiscountType} onValueChange={(v: 'flat' | 'percentage') => setCourseDiscountType(v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="flat">Flat (₹)</SelectItem>
+                            <SelectItem value="percentage">Percentage (%)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="discount-amount">Discount Amount *</Label>
+                        <Input
+                          id="discount-amount"
+                          type="number"
+                          value={courseDiscountAmount}
+                          onChange={(e) => setCourseDiscountAmount(e.target.value)}
+                          placeholder={courseDiscountType === 'percentage' ? 'e.g., 20 (for 20%)' : 'e.g., 500'}
+                          min="0"
+                          required
+                        />
+                      </div>
+
+                      {courseDiscountType === 'percentage' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="max-discount">Max Discount (optional)</Label>
+                          <Input
+                            id="max-discount"
+                            type="number"
+                            value={courseMaxDiscount}
+                            onChange={(e) => setCourseMaxDiscount(e.target.value)}
+                            placeholder="Maximum ₹ discount"
+                            min="0"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="min-price">Min Course Price (optional)</Label>
+                        <Input
+                          id="min-price"
+                          type="number"
+                          value={courseMinPrice}
+                          onChange={(e) => setCourseMinPrice(e.target.value)}
+                          placeholder="e.g., 500"
+                          min="0"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="applicable-course">Applicable Course (optional)</Label>
+                        <Select 
+                          value={courseApplicableCourse} 
+                          onValueChange={setCourseApplicableCourse}
+                          disabled={loadingCourses}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={loadingCourses ? "Loading courses..." : "All paid courses"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">All Paid Courses</SelectItem>
+                            {availableCourses.map((course) => (
+                              <SelectItem key={course._id} value={course._id}>
+                                {course.courseName} — ₹{course.price}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="usage-limit">Usage Limit (optional)</Label>
+                        <Input
+                          id="usage-limit"
+                          type="number"
+                          value={courseUsageLimit}
+                          onChange={(e) => setCourseUsageLimit(e.target.value)}
+                          placeholder="Total uses allowed"
+                          min="1"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="expiry-date">Expiry Date (optional)</Label>
+                        <Input
+                          id="expiry-date"
+                          type="date"
+                          value={courseExpiryDate}
+                          onChange={(e) => setCourseExpiryDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description (optional)</Label>
+                      <Textarea
+                        id="description"
+                        value={courseDescription}
+                        onChange={(e) => setCourseDescription(e.target.value)}
+                        placeholder="Optional description about the coupon"
+                        rows={2}
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button 
+                        type="submit" 
+                        className="flex items-center gap-2" 
+                        disabled={submittingCourseCoupon}
+                      >
+                        {submittingCourseCoupon ? (
+                          <>
+                            <Clock className="h-4 w-4 animate-spin" />
+                            Creating...
+                          </>
+                        ) : 'Create Coupon'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setCourseCouponCode('');
+                          setCourseDiscountType('flat');
+                          setCourseDiscountAmount('');
+                          setCourseMaxDiscount('');
+                          setCourseMinPrice('');
+                          setCourseApplicableCourse('');
+                          setCourseUsageLimit('');
+                          setCourseExpiryDate('');
+                          setCourseDescription('');
+                        }}
+                      >
+                        Reset
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Course Coupons List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Existing Course Coupons</CardTitle>
+                  <CardDescription>Manage existing course coupons</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {courseCoupons.length > 0 ? (
+                      courseCoupons.slice(0, 5).map((coupon) => (
+                        <div key={coupon._id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center space-x-4">
+                            <Tag className="h-5 w-5 text-purple-600" />
+                            <div>
+                              <p className="font-medium">{coupon.code}</p>
+                              <p className="text-sm text-gray-500">
+                                {coupon.discountType === 'flat' ? `₹${coupon.discountAmount} off` : `${coupon.discountAmount}% off`}
+                              </p>
+                              {coupon.applicableCourse && (
+                                <p className="text-xs text-gray-400">
+                                  Course: {coupon.applicableCourse?.courseName || 'Specific Course'}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                              <p className="text-sm text-gray-500">
+                                Used: {coupon.usedCount || 0}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ''}
+                              </p>
+                              {coupon.expiresAt && (
+                                <p className="text-xs text-gray-400 flex items-center">
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  Expires: {new Date(coupon.expiresAt).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                            <Badge variant={coupon.isActive ? 'default' : 'secondary'}>
+                              {coupon.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                            <div className="flex space-x-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleCourseCouponStatus(coupon._id, coupon.isActive)}
+                              >
+                                {coupon.isActive ? 'Deactivate' : 'Activate'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <Tag className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500">No course coupons created yet</p>
+                        <p className="text-sm text-gray-400 mt-1">Create your first course coupon using the form</p>
+                      </div>
+                    )}
+                    
+                    {courseCoupons.length > 5 && (
+                      <div className="text-center pt-2">
+                        <Button variant="outline" size="sm">
+                          View All {courseCoupons.length} Coupons
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quick Stats */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Course Coupon Statistics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{courseCoupons.length}</div>
+                    <p className="text-sm text-gray-500">Total Coupons</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {courseCoupons.filter(c => c.isActive).length}
+                    </div>
+                    <p className="text-sm text-gray-500">Active Coupons</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {courseCoupons.reduce((sum, c) => sum + (c.usedCount || 0), 0)}
+                    </div>
+                    <p className="text-sm text-gray-500">Total Uses</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {courseCoupons.filter(c => c.discountType === 'percentage').length}
+                    </div>
+                    <p className="text-sm text-gray-500">Percentage Coupons</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="college-approvals" className="space-y-6">
