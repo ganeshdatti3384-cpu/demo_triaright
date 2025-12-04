@@ -12,17 +12,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   BookOpen,
   Play,
-  CheckCircle,
   Clock,
-  Award,
-  FileText,
-  GraduationCap,
-  ArrowLeft,
   Home,
 } from "lucide-react";
 
@@ -58,22 +52,11 @@ type CourseModel = {
 type EnrollmentModel = {
   _id?: string;
   courseId: string | { _id?: string };
-  progress: any[];
-  totalWatchedDuration: number;
-  totalVideoDuration: number;
-  videoProgressPercent?: number;
-  finalExamEligible?: boolean;
-  finalExamAttempted?: boolean;
-  courseCompleted?: boolean;
-  completedAt?: string;
-  enrollmentDate?: string;
-  accessExpiresAt?: string;
   courseName?: string;
   courseImageLink?: string;
 };
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://dev.triaright.com/api";
-const HEARTBEAT_INTERVAL_MS = 10000; // 10 seconds
 
 const extractYouTubeId = (url?: string) => {
   if (!url) return null;
@@ -100,18 +83,8 @@ const CourseLearningInterface: React.FC = () => {
   const ytPlayerRef = useRef<any | null>(null);
   const ytContainerRef = useRef<HTMLDivElement | null>(null);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
-  const heartbeatRef = useRef<number | null>(null);
 
-  // exams
-  const [showTopicExamModal, setShowTopicExamModal] = useState(false);
-  const [currentExam, setCurrentExam] = useState<any | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [examResult, setExamResult] = useState<any | null>(null);
-  const [submittingExam, setSubmittingExam] = useState(false);
-  const [showFinalExamModal, setShowFinalExamModal] = useState(false);
-  const [finalExam, setFinalExam] = useState<any | null>(null);
-
-  // fetch course and enrollment (canonical) from backend
+  // fetch course and enrollment from backend
   const fetchCourseAndEnrollment = async () => {
     setLoading(true);
     try {
@@ -132,24 +105,13 @@ const CourseLearningInterface: React.FC = () => {
 
       if (token) {
         try {
-          const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/my-course-progress/${courseId}`, {
+          const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/check/${courseId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          if (enrollResp.data && enrollResp.data.data) {
-            const d = enrollResp.data.data;
+          if (enrollResp.data && enrollResp.data.enrolled) {
             setEnrollment({
-              _id: "",
-              courseId: d.courseId,
-              progress: d.progress || [],
-              totalWatchedDuration: d.totalWatchedDuration || 0,
-              totalVideoDuration: d.totalVideoDuration || 0,
-              videoProgressPercent: d.videoProgressPercent,
-              finalExamEligible: d.finalExamEligible,
-              finalExamAttempted: d.finalExamAttempted,
-              courseCompleted: d.courseCompleted,
-              completedAt: d.completedAt,
-              enrollmentDate: d.enrollmentDate,
-              accessExpiresAt: d.accessExpiresAt,
+              _id: enrollResp.data.enrollmentId,
+              courseId: courseId,
               courseName: courseResp.data.course?.courseName,
               courseImageLink: courseResp.data.course?.courseImageLink,
             });
@@ -175,19 +137,10 @@ const CourseLearningInterface: React.FC = () => {
   useEffect(() => {
     fetchCourseAndEnrollment();
     return () => {
-      stopHeartbeat();
       destroyYTPlayer();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, token]);
-
-  // rely on backend's canonical percent if provided
-  const videoProgressPercent = useMemo(() => {
-    if (!enrollment) return 0;
-    if (typeof enrollment.videoProgressPercent === "number") return Math.round(enrollment.videoProgressPercent);
-    if (!enrollment.totalVideoDuration || enrollment.totalVideoDuration === 0) return 0;
-    return Math.floor((enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100);
-  }, [enrollment]);
 
   // YT player lifecycle
   const loadYouTubeIframeAPI = (): Promise<void> => {
@@ -224,9 +177,6 @@ const CourseLearningInterface: React.FC = () => {
         modestbranding: 1,
         origin: window.location.origin,
       },
-      events: {
-        onStateChange: (e: any) => onYTStateChange(e),
-      },
     });
   };
 
@@ -239,127 +189,7 @@ const CourseLearningInterface: React.FC = () => {
       // ignore
     } finally {
       ytPlayerRef.current = null;
-      stopHeartbeat();
       setCurrentVideoId(null);
-    }
-  };
-
-  // Heartbeat: read current time and send absolute watched minutes to backend
-  const startHeartbeat = (topicName: string, subName: string, subDurationMinutes?: number) => {
-    stopHeartbeat();
-    // immediate send once
-    sendProgressToBackend(topicName, subName, getCurrentWatchedMinutes(subDurationMinutes));
-    heartbeatRef.current = window.setInterval(() => {
-      sendProgressToBackend(topicName, subName, getCurrentWatchedMinutes(subDurationMinutes));
-    }, HEARTBEAT_INTERVAL_MS) as unknown as number;
-  };
-
-  const stopHeartbeat = () => {
-    if (heartbeatRef.current) {
-      clearInterval(heartbeatRef.current);
-      heartbeatRef.current = null;
-    }
-  };
-
-  const getCurrentWatchedMinutes = (subDurationMinutes?: number) => {
-    try {
-      if (ytPlayerRef.current && ytPlayerRef.current.getCurrentTime) {
-        const secs = Math.floor(ytPlayerRef.current.getCurrentTime());
-        let minutes = Math.ceil(secs / 60);
-        if (subDurationMinutes !== undefined && subDurationMinutes !== null) {
-          minutes = Math.min(minutes, Math.ceil(subDurationMinutes));
-        }
-        return Math.max(0, minutes);
-      }
-    } catch (e) {
-      // fallback
-    }
-    return 0;
-  };
-
-  // Sends absolute watchedDuration (minutes) to backend. Backend treats it as the subtopic's watchedDuration value.
-  const sendProgressToBackend = async (topicName: string, subTopicName: string, watchedMinutes: number) => {
-    if (!token || !courseId) return;
-    // Don't send zeros repeatedly
-    if (!watchedMinutes || watchedMinutes <= 0) return;
-
-    const payload = {
-      courseId,
-      topicName,
-      subTopicName,
-      watchedDuration: watchedMinutes,
-    };
-
-    try {
-      await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      // refresh enrollment canonical state after update
-      await refreshEnrollment();
-    } catch (err: any) {
-      // log but do not spam user
-      console.error("Progress heartbeat failed:", err?.response?.data || err.message || err);
-    }
-  };
-
-  const refreshEnrollment = async () => {
-    if (!token || !courseId) return;
-    try {
-      const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/my-course-progress/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (enrollResp.data && enrollResp.data.data) {
-        const d = enrollResp.data.data;
-        setEnrollment((prev) => ({
-          _id: "",
-          courseId: d.courseId,
-          progress: d.progress || [],
-          totalWatchedDuration: d.totalWatchedDuration || 0,
-          totalVideoDuration: d.totalVideoDuration || 0,
-          videoProgressPercent: d.videoProgressPercent,
-          finalExamEligible: d.finalExamEligible,
-          finalExamAttempted: d.finalExamAttempted,
-          courseCompleted: d.courseCompleted,
-          completedAt: d.completedAt,
-          enrollmentDate: d.enrollmentDate,
-          accessExpiresAt: d.accessExpiresAt,
-          courseName: course?.courseName,
-          courseImageLink: course?.courseImageLink,
-        }));
-      }
-    } catch (err) {
-      // ignore refresh errors
-    }
-  };
-
-  // When YT state changes: PLAY -> start heartbeat; PAUSE/ENDED -> stop heartbeat and send final update (on ENDED send full duration if available)
-  const onYTStateChange = async (event: any) => {
-    const YT = (window as any).YT;
-    if (!YT) return;
-    if (!playingSubtopic || !course) return;
-
-    const tIndex = playingSubtopic.topicIndex;
-    const sIndex = playingSubtopic.subIndex;
-    const topic = course.curriculum?.[tIndex];
-    const sub = topic?.subtopics?.[sIndex];
-
-    if (!topic || !sub) return;
-
-    if (event.data === YT.PlayerState.PLAYING) {
-      // start heartbeat
-      startHeartbeat(topic.topicName, sub.name, sub.duration);
-    } else if (event.data === YT.PlayerState.PAUSED) {
-      // stop heartbeat and send one immediate update
-      stopHeartbeat();
-      const minutes = getCurrentWatchedMinutes(sub.duration);
-      if (minutes > 0) await sendProgressToBackend(topic.topicName, sub.name, minutes);
-    } else if (event.data === YT.PlayerState.ENDED) {
-      // send final (mark full) - use sub.duration if present else compute
-      stopHeartbeat();
-      const finalMinutes = sub.duration || Math.max(1, getCurrentWatchedMinutes(sub.duration));
-      await sendProgressToBackend(topic.topicName, sub.name, finalMinutes);
-    } else {
-      // other states: do nothing
     }
   };
 
@@ -380,167 +210,13 @@ const CourseLearningInterface: React.FC = () => {
         console.error("YT player create error:", e);
       });
     } else {
-      // no YT - destroy any existing YT player and stop heartbeats
+      // no YT - destroy any existing YT player
       destroyYTPlayer();
     }
   };
 
-  // Explicit "Mark Watched" button will call backend to set watchedDuration = sub.duration (full)
-  const markSubtopicWatched = async (tIndex: number, sIndex: number) => {
-    if (!token || !course || !enrollment) {
-      toast({ title: "Error", description: "You must be enrolled to update progress", variant: "destructive" });
-      return;
-    }
-    const topic = course.curriculum[tIndex];
-    const sub = topic?.subtopics[sIndex];
-    if (!topic || !sub) {
-      toast({ title: "Error", description: "Subtopic not found", variant: "destructive" });
-      return;
-    }
-    const payload = {
-      courseId,
-      topicName: topic.topicName,
-      subTopicName: sub.name,
-      watchedDuration: sub.duration || 1,
-    };
-    try {
-      const resp = await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.data && resp.data.success) {
-        await refreshEnrollment();
-        toast({ title: "Progress updated", description: "Subtopic marked as watched", variant: "default" });
-      } else {
-        toast({ title: "Error", description: resp.data?.message || "Failed to update progress", variant: "destructive" });
-      }
-    } catch (err: any) {
-      console.error("Failed to update progress", err);
-      toast({ title: "Error", description: err?.response?.data?.message || "Failed to update progress", variant: "destructive" });
-    }
-  };
-
-  // Exam flows remain similar but rely on backend behavior
-  const handleOpenTopicExam = async (topicName: string) => {
-    if (!token || !courseId) {
-      toast({ title: "Login required", description: "Please login to attempt exams", variant: "destructive" });
-      navigate("/login");
-      return;
-    }
-    setShowTopicExamModal(true);
-    setCurrentExam(null);
-    setAnswers({});
-    setExamResult(null);
-    try {
-      const encodedTopic = encodeURIComponent(topicName);
-      const resp = await axios.get(`${API_BASE_URL}/courses/exams/topic/${courseId}/${encodedTopic}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.data && resp.data.exam) {
-        setCurrentExam(resp.data.exam);
-      } else if (resp.data) {
-        setCurrentExam(resp.data);
-      } else {
-        toast({ title: "No exam", description: "No exam found for this topic", variant: "default" });
-        setShowTopicExamModal(false);
-      }
-    } catch (err: any) {
-      if (err.response?.status === 400 && err.response.data?.result) {
-        setExamResult(err.response.data.result);
-        setShowTopicExamModal(true);
-        toast({ title: "Exam already attempted", description: "Showing result", variant: "default" });
-      } else {
-        console.error("Failed to fetch topic exam", err);
-        toast({ title: "Error", description: err?.response?.data?.message || "Failed to fetch topic exam", variant: "destructive" });
-        setShowTopicExamModal(false);
-      }
-    }
-  };
-
-  const handleTopicAnswerChange = (questionId: string, option: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: option }));
-  };
-
-  const submitTopicExam = async () => {
-    if (!currentExam || !token || !courseId) return;
-    setSubmittingExam(true);
-    try {
-      const payload = {
-        courseId,
-        topicName: currentExam.topicName,
-        answers,
-      };
-      const resp = await axios.post(`${API_BASE_URL}/courses/exams/topic/validate`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.data) {
-        setExamResult(resp.data.result || resp.data);
-        await refreshEnrollment();
-        toast({ title: "Exam submitted", description: "Topic exam submitted successfully", variant: "default" });
-      }
-    } catch (err: any) {
-      console.error("Topic exam submit failed", err);
-      toast({ title: "Error", description: err?.response?.data?.message || "Failed to submit exam", variant: "destructive" });
-    } finally {
-      setSubmittingExam(false);
-    }
-  };
-
-  const handleOpenFinalExam = async () => {
-    if (!token || !courseId) {
-      toast({ title: "Login required", description: "Please login to attempt exams", variant: "destructive" });
-      navigate("/login");
-      return;
-    }
-    setShowFinalExamModal(true);
-    setFinalExam(null);
-    setAnswers({});
-    setExamResult(null);
-    try {
-      const resp = await axios.get(`${API_BASE_URL}/courses/exams/final/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.data && resp.data.exam) {
-        setFinalExam(resp.data.exam);
-      } else if (resp.data) {
-        setFinalExam(resp.data);
-      } else {
-        toast({ title: "No exam", description: "No final exam found for this course", variant: "default" });
-        setShowFinalExamModal(false);
-      }
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.response?.data?.message || "Failed to fetch final exam", variant: "destructive" });
-      setShowFinalExamModal(false);
-    }
-  };
-
-  const submitFinalExam = async () => {
-    if (!finalExam || !token || !courseId) return;
-    setSubmittingExam(true);
-    try {
-      const payload = { courseId, answers };
-      const resp = await axios.post(`${API_BASE_URL}/courses/exams/validate/final`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.data) {
-        setExamResult(resp.data.result || resp.data);
-        await refreshEnrollment();
-        toast({ title: "Final exam submitted", description: "Final exam submitted successfully", variant: "default" });
-      }
-    } catch (err: any) {
-      console.error("Final exam submit failed", err);
-      toast({ title: "Error", description: err?.response?.data?.message || "Failed to submit final exam", variant: "destructive" });
-    } finally {
-      setSubmittingExam(false);
-    }
-  };
-
-  // UI Subtopic row - shows backend progress (read-only)
+  // UI Subtopic row
   const SubtopicRow: React.FC<{ tIndex: number; sIndex: number; sub: Subtopic }> = ({ tIndex, sIndex, sub }) => {
-    const topic = course?.curriculum?.[tIndex];
-    const progressTopic = enrollment?.progress?.find((pt: any) => pt.topicName === topic?.topicName);
-    const watched = progressTopic ? progressTopic.subtopics?.[sIndex]?.watchedDuration || 0 : 0;
-    const total = progressTopic ? progressTopic.subtopics?.[sIndex]?.totalDuration || sub.duration || 0 : sub.duration || 0;
-
     const isThisPlaying = playingSubtopic && playingSubtopic.topicIndex === tIndex && playingSubtopic.subIndex === sIndex;
 
     return (
@@ -549,7 +225,7 @@ const CourseLearningInterface: React.FC = () => {
           <div className="font-medium">{sub.name}</div>
           <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
             <Clock className="h-3 w-3" />
-            <span>Duration: {total} min • Watched: {Math.min(watched, total)} min</span>
+            <span>Duration: {sub.duration || 0} min</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -561,15 +237,6 @@ const CourseLearningInterface: React.FC = () => {
           >
             <Play className="h-3 w-3" />
             {isThisPlaying ? "Playing" : "Play"}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => markSubtopicWatched(tIndex, sIndex)}
-            variant="ghost"
-            className="flex items-center gap-1"
-          >
-            <CheckCircle className="h-3 w-3" />
-            Mark Watched
           </Button>
         </div>
       </div>
@@ -626,17 +293,12 @@ const CourseLearningInterface: React.FC = () => {
                 onClick={() => navigate("/student")}
                 className="flex items-center gap-2"
               >
-                <ArrowLeft className="h-4 w-4" />
                 Back to Dashboard
               </Button>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">{course.courseName}</h1>
                 <p className="text-sm text-gray-600">Course Learning Interface</p>
               </div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Overall Progress</div>
-              <div className="text-xl font-bold text-blue-600">{videoProgressPercent}%</div>
             </div>
           </div>
         </div>
@@ -689,16 +351,6 @@ const CourseLearningInterface: React.FC = () => {
                       <CardContent className="pt-4">
                         <div className="space-y-4">
                           <div>
-                            <div className="text-sm font-medium text-gray-500 mb-1">Your Progress</div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1">
-                                <Progress value={videoProgressPercent} />
-                              </div>
-                              <div className="text-sm font-medium">{videoProgressPercent}%</div>
-                            </div>
-                          </div>
-
-                          <div>
                             <div className="text-sm font-medium text-gray-500 mb-1">Total Duration</div>
                             <div className="text-lg font-medium">{course.totalDuration || 0} minutes</div>
                           </div>
@@ -732,40 +384,6 @@ const CourseLearningInterface: React.FC = () => {
                               </Button>
                             )}
                           </div>
-
-                          {enrollment?.finalExamEligible && !enrollment?.courseCompleted && (
-                            <Button onClick={handleOpenFinalExam} variant="secondary" className="w-full">
-                              <GraduationCap className="h-4 w-4 mr-2" />
-                              Attempt Final Exam
-                            </Button>
-                          )}
-
-                          {enrollment?.courseCompleted && (
-                            <div className="space-y-2 p-3 bg-green-50 rounded-lg">
-                              <div className="flex items-center gap-2">
-                                <Award className="h-5 w-5 text-green-600" />
-                                <div className="text-sm font-medium text-green-700">Course completed</div>
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                Completed on {new Date(enrollment.completedAt || "").toLocaleDateString()}
-                              </div>
-                              <Button
-                                onClick={() => {
-                                  const certLink = (enrollment as any).certificateLink;
-                                  if (certLink) {
-                                    window.open(certLink, "_blank");
-                                    return;
-                                  }
-                                  toast({ title: "Certificate", description: "Certificate is generated by admin. Contact support if not available.", variant: "default" });
-                                }}
-                                variant="outline"
-                                className="w-full border-green-200 text-green-700 hover:bg-green-100"
-                              >
-                                <FileText className="h-4 w-4 mr-2" />
-                                View Certificate
-                              </Button>
-                            </div>
-                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -784,14 +402,7 @@ const CourseLearningInterface: React.FC = () => {
                 {course.curriculum && course.curriculum.length > 0 ? (
                   <div className="space-y-6">
                     {course.curriculum.map((topic, tIndex) => {
-                      const topicProgress = enrollment?.progress?.find((p: any) => p.topicName === topic.topicName);
-                      const topicWatched = topicProgress?.topicWatchedDuration || 0;
-                      const topicTotal =
-                        topicProgress?.topicTotalDuration ||
-                        topic.subtopics.reduce((s, st) => s + (st.duration || 0), 0);
-
-                      const canAttemptExam = !!topicProgress && topicWatched >= topicTotal;
-                      const topicProgressPercent = topicTotal > 0 ? Math.round((topicWatched / topicTotal) * 100) : 0;
+                      const topicTotal = topic.subtopics.reduce((s, st) => s + (st.duration || 0), 0);
 
                       return (
                         <div key={topic.topicName} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
@@ -800,12 +411,6 @@ const CourseLearningInterface: React.FC = () => {
                               <div className="font-semibold text-lg">{topic.topicName}</div>
                               <div className="text-sm text-gray-500 mt-1">
                                 {topic.subtopics.length} lessons • {topicTotal} minutes
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-sm font-medium">{topicProgressPercent}%</div>
-                              <div className="w-32">
-                                <Progress value={topicProgressPercent} />
                               </div>
                             </div>
                           </div>
@@ -831,22 +436,6 @@ const CourseLearningInterface: React.FC = () => {
                             >
                               <Play className="h-4 w-4 mr-2" />
                               Start Topic
-                            </Button>
-
-                            <Button
-                              disabled={!canAttemptExam || !!topicProgress?.examAttempted}
-                              variant={canAttemptExam ? "secondary" : "outline"}
-                              onClick={() => handleOpenTopicExam(topic.topicName)}
-                              className="flex-1"
-                            >
-                              {topicProgress?.examAttempted ? (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Exam Completed
-                                </>
-                              ) : (
-                                "Attempt Topic Exam"
-                              )}
                             </Button>
                           </div>
                         </div>
@@ -898,73 +487,19 @@ const CourseLearningInterface: React.FC = () => {
                   <>
                     <div className="space-y-4">
                       <div>
-                        <div className="text-xs text-gray-500 mb-1">Enrolled On</div>
-                        <div className="font-medium">
-                          {new Date(enrollment.enrollmentDate || Date.now()).toLocaleDateString()}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">Course Progress</div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <Progress value={videoProgressPercent} />
-                          </div>
-                          <div className="text-sm font-medium">{videoProgressPercent}%</div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-xs text-gray-500">Topics Passed</div>
-                          <div className="text-lg font-medium">
-                            {enrollment.progress.filter((p: any) => p.passed).length} / {enrollment.progress.length}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500">Final Exam</div>
-                          <div className="text-lg font-medium">
-                            {enrollment.finalExamEligible ? "Eligible" : "Not Eligible"}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="text-xs text-gray-500">Status Summary</div>
-                        <div className="text-sm space-y-1">
-                          <div className="flex justify-between">
-                            <span>Final Exam Attempted:</span>
-                            <span className={enrollment.finalExamAttempted ? "text-green-600 font-medium" : ""}>
-                              {enrollment.finalExamAttempted ? "Yes" : "No"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Course Completed:</span>
-                            <span className={enrollment.courseCompleted ? "text-green-600 font-medium" : ""}>
-                              {enrollment.courseCompleted ? "Yes" : "No"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Access Expires:</span>
-                            <span>
-                              {enrollment.accessExpiresAt ? new Date(enrollment.accessExpiresAt).toLocaleDateString() : "Never"}
-                            </span>
-                          </div>
-                        </div>
+                        <div className="text-xs text-gray-500 mb-1">Course Status</div>
+                        <div className="font-medium">Enrolled</div>
                       </div>
 
                       <div className="flex gap-2">
-                        <Button onClick={handleOpenFinalExam} disabled={!enrollment.finalExamEligible || enrollment.courseCompleted} className="flex-1">
-                          {enrollment.courseCompleted ? "Course Completed" : "Take Final Exam"}
-                        </Button>
                         <Button
-                          variant="outline"
-                          onClick={async () => {
-                            await refreshEnrollment();
-                            toast({ title: "Refreshed", description: "Enrollment data refreshed", variant: "default" });
+                          onClick={() => {
+                            if (!course.curriculum) return;
+                            openSubtopic(0, 0);
                           }}
+                          className="flex-1"
                         >
-                          Refresh
+                          Start Learning
                         </Button>
                       </div>
                     </div>
@@ -1009,163 +544,6 @@ const CourseLearningInterface: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Topic Exam Modal */}
-      <Dialog open={showTopicExamModal} onOpenChange={setShowTopicExamModal}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Topic Exam</DialogTitle>
-            <div className="text-sm text-gray-500">{currentExam?.topicName || currentExam?.examId}</div>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {!currentExam && !examResult ? (
-              <div className="text-center py-8">
-                <div className="animate-spin h-6 w-6 border-b-2 border-blue-600 rounded-full mx-auto"></div>
-                <p className="mt-2">Loading exam...</p>
-              </div>
-            ) : examResult ? (
-              <div className="p-4 border rounded-lg bg-gray-50">
-                <div className="font-semibold text-lg mb-2">Exam Result</div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Score:</span>
-                    <span className="font-semibold">{examResult.score || 0}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Passed:</span>
-                    <span className={`font-semibold ${examResult.passed ? "text-green-600" : "text-red-600"}`}>
-                      {examResult.passed ? "Yes" : "No"}
-                    </span>
-                  </div>
-                  {examResult.correctAnswers !== undefined && (
-                    <div className="flex justify-between">
-                      <span>Correct Answers:</span>
-                      <span>{examResult.correctAnswers} / {examResult.totalQuestions}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 text-sm text-gray-600">You can close this modal now. The results have been saved.</div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-sm text-gray-500">Time limit: {currentExam?.timeLimit} minutes • Passing score: {currentExam?.passingScore}%</div>
-
-                <div className="space-y-6">
-                  {currentExam.questions?.map((q: any, idx: number) => (
-                    <div key={q._id || idx} className="border rounded p-4 bg-white">
-                      <div className="font-medium mb-3">{idx + 1}. {q.questionText}</div>
-                      <div className="space-y-2">
-                        {(q.options || []).map((opt: string, oi: number) => {
-                          const qid = q._id?.toString() || `q${idx}`;
-                          const checked = answers[qid] === opt;
-                          return (
-                            <label key={oi} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded">
-                              <input type="radio" name={qid} checked={checked} onChange={() => handleTopicAnswerChange(qid, opt)} className="form-radio h-4 w-4 text-blue-600" />
-                              <span className="flex-1">{opt}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2 justify-end pt-4 border-t">
-                  <Button variant="ghost" onClick={() => setShowTopicExamModal(false)}>Cancel</Button>
-                  <Button onClick={submitTopicExam} disabled={submittingExam || Object.keys(answers).length === 0}>
-                    {submittingExam ? "Submitting..." : "Submit Exam"}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Final Exam Modal */}
-      <Dialog open={showFinalExamModal} onOpenChange={setShowFinalExamModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Final Exam</DialogTitle>
-            <div className="text-sm text-gray-500">Final assessment for this course</div>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {!finalExam && !examResult ? (
-              <div className="text-center py-8">
-                <div className="animate-spin h-6 w-6 border-b-2 border-blue-600 rounded-full mx-auto"></div>
-                <p className="mt-2">Loading final exam...</p>
-              </div>
-            ) : examResult ? (
-              <div className="p-4 border rounded-lg bg-gray-50">
-                <div className="font-semibold text-lg mb-2">Final Exam Result</div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Score:</span>
-                    <span className="font-semibold">{examResult.score || 0}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Passed:</span>
-                    <span className={`font-semibold ${examResult.passed ? "text-green-600" : "text-red-600"}`}>
-                      {examResult.passed ? "Yes" : "No"}
-                    </span>
-                  </div>
-                  {examResult.correctAnswers !== undefined && (
-                    <div className="flex justify-between">
-                      <span>Correct Answers:</span>
-                      <span>{examResult.correctAnswers} / {examResult.totalQuestions}</span>
-                    </div>
-                  )}
-                  {examResult.attemptNumber && (
-                    <div className="flex justify-between">
-                      <span>Attempt Number:</span>
-                      <span>{examResult.attemptNumber}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 text-sm text-gray-600">
-                  {examResult.passed ? "Congratulations! You passed the final exam." : "You did not pass this attempt."}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-sm text-gray-500">
-                  Time limit: {finalExam?.timeLimit} minutes • Passing score: {finalExam?.passingScore}%
-                  {finalExam?.currentAttempt && <span> • Attempt: {finalExam.currentAttempt} of {finalExam.maxAttempts}</span>}
-                </div>
-
-                <div className="space-y-6">
-                  {finalExam.questions?.map((q: any, idx: number) => (
-                    <div key={q._id || idx} className="border rounded p-4 bg-white">
-                      <div className="font-medium mb-3">{idx + 1}. {q.questionText}</div>
-                      <div className="space-y-2">
-                        {(q.options || []).map((opt: string, oi: number) => {
-                          const qid = q._id?.toString() || `q${idx}`;
-                          const checked = answers[qid] === opt;
-                          return (
-                            <label key={oi} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded">
-                              <input type="radio" name={qid} checked={checked} onChange={() => setAnswers(prev => ({ ...prev, [qid]: opt }))} className="form-radio h-4 w-4 text-blue-600" />
-                              <span className="flex-1">{opt}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2 justify-end pt-4 border-t">
-                  <Button variant="ghost" onClick={() => setShowFinalExamModal(false)}>Cancel</Button>
-                  <Button onClick={submitFinalExam} disabled={submittingExam || Object.keys(answers).length === 0}>
-                    {submittingExam ? "Submitting..." : "Submit Final Exam"}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
