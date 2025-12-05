@@ -174,12 +174,6 @@ const ServicesOverview = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
-                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:shadow-lg text-white px-8 py-3 rounded-xl font-semibold"
-                onClick={() => navigate('/register')}
-              >
-                Start Free Trial
-              </Button>
-              <Button 
                 variant="outline"
                 className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-3 rounded-xl font-semibold"
                 onClick={() => navigate('/contact')}
