@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, BookOpen, Users, Briefcase, GraduationCap } from 'lucide-react';
 
@@ -8,6 +8,12 @@ interface HeroProps {
 }
 
 const Hero = ({ onOpenAuth }: HeroProps) => {
+  const navigate = useNavigate();
+
+  const handleJoinCommunity = () => {
+    navigate('/community');
+  };
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50 pt-20 pb-16">
       <div className="absolute inset-0 bg-white/40"></div>
@@ -35,11 +41,12 @@ const Hero = ({ onOpenAuth }: HeroProps) => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Button 
-              onClick={() => onOpenAuth('login', 'student')}
+              onClick={handleJoinCommunity}
               size="lg" 
-              className="bg-brand-primary hover:bg-blue-700 text-white px-8 py-3"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
             >
-              Get Started
+              <Users className="mr-2 h-5 w-5" />
+              Join Our Community
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
