@@ -136,7 +136,7 @@ const App = () => {
             }
           />
           
-          {/* Pack365 Certificate Routes */}
+          {/* Pack365 Certificate Route */}
           <Route
             path="/pack365-certificate/:enrollmentId?"
             element={
