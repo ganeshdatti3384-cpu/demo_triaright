@@ -199,25 +199,6 @@ const CareerServices = () => {
               Choose your path: <span className="font-semibold text-white">flexible guidance</span> or 
               <span className="font-semibold text-white"> guaranteed placement</span> with 100% refund assurance
             </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-12">
-              <Button 
-                onClick={handleGetStarted}
-                size="lg"
-                className="bg-white text-blue-600 hover:bg-gray-50 font-bold px-8 py-4 text-lg rounded-full shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300"
-              >
-                <Rocket className="w-5 h-5 mr-2" />
-                Start Free Trial
-              </Button>
-              <Button 
-                onClick={handleBookAppointment}
-                size="lg"
-                className="bg-amber-500 text-white hover:bg-amber-600 font-bold px-8 py-4 text-lg rounded-full shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300 border-0"
-              >
-                <Lightbulb className="w-5 h-5 mr-2" />
-                Book Expert Consultation
-              </Button>
-            </div>
           </div>
         </div>
         
@@ -549,26 +530,6 @@ const CareerServices = () => {
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
             Join thousands who've already launched successful careers with our proven programs
           </p>
-
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-            <Button 
-              onClick={handleGetStarted}
-              size="lg"
-              className="bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white font-bold px-12 py-6 text-lg rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300"
-            >
-              <Zap className="w-5 h-5 mr-3" />
-              Start with Job Assistance
-            </Button>
-            
-            <Button 
-              onClick={handleBookAppointment}
-              size="lg"
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold px-12 py-6 text-lg rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300"
-            >
-              <Lightbulb className="w-5 h-5 mr-3" />
-              Book Expert Consultation
-            </Button>
-          </div>
           
           <p className="text-gray-400 mt-8 text-sm">
             ⚡ 7-day money-back guarantee • 🤝 24/7 support • 🎯 Proven results
