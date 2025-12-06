@@ -25,9 +25,7 @@ import {
   Bookmark,
   ArrowLeft,
   Loader2,
-  AlertCircle,
-  Download,
-  RefreshCw
+  AlertCircle
 } from 'lucide-react';
 
 interface Subtopic {
@@ -80,7 +78,15 @@ interface TopicProgress {
 
 interface APEnrollment {
   _id: string;
-  internshipId: string;
+  internshipId: {
+    _id: string;
+    title: string;
+    companyName: string;
+    duration: string;
+    mode: string;
+    stream: string;
+    internshipType: string;
+  };
   courseId: APCourse;
   userId: string;
   enrollmentDate: string;
@@ -120,142 +126,6 @@ interface ExamStatus {
   };
 }
 
-// YouTube Embed Component with proper progress tracking
-const YouTubeEmbed: React.FC<{
-  url: string;
-  onTimeUpdate: (currentTime: number) => void;
-  onEnd: () => void;
-  onProgressUpdate: (watchedDuration: number) => void;
-}> = ({ url, onTimeUpdate, onEnd, onProgressUpdate }) => {
-  const videoId = getYouTubeVideoId(url);
-  const playerRef = useRef<any>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout>();
-  
-  useEffect(() => {
-    // Initialize YouTube player and progress tracking
-    if (videoId) {
-      // For YouTube, we'll simulate progress tracking since we can't access the actual player time
-      // In a real implementation, you'd use YouTube Iframe API
-      console.log('YouTube video loaded:', videoId);
-    }
-
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-      }
-    };
-  }, [videoId]);
-
-  const handlePlay = () => {
-    // Start progress tracking for YouTube
-    progressIntervalRef.current = setInterval(() => {
-      // Simulate progress update - in real implementation, get current time from YouTube API
-      const simulatedProgress = 10; // This would be actual current time from YouTube player
-      onTimeUpdate(simulatedProgress);
-      onProgressUpdate(simulatedProgress);
-    }, 10000); // Update every 10 seconds
-  };
-
-  const handlePause = () => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-    }
-  };
-
-  if (!videoId) {
-    return (
-      <div className="h-64 flex items-center justify-center text-white bg-gray-800">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-lg font-medium">Invalid YouTube URL</p>
-          <p className="text-sm text-gray-300 mt-2">Please check the video link</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative pb-[56.25%] h-0">
-      <iframe
-        src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0`}
-        className="absolute top-0 left-0 w-full h-full rounded-lg"
-        frameBorder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        title="YouTube video player"
-        onLoad={handlePlay}
-      />
-      {/* YouTube progress simulation controls */}
-      <div className="absolute bottom-4 left-4 right-4 bg-black bg-opacity-50 p-2 rounded">
-        <div className="flex items-center justify-between text-white text-sm">
-          <span>YouTube Video - Progress tracking enabled</span>
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handlePlay}
-              className="text-white border-white hover:bg-white hover:text-black"
-            >
-              <Play className="h-3 w-3 mr-1" />
-              Simulate Progress
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handlePause}
-              className="text-white border-white hover:bg-white hover:text-black"
-            >
-              <Pause className="h-3 w-3 mr-1" />
-              Pause
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Check if URL is YouTube
-const isYouTubeUrl = (url: string): boolean => {
-  return url.includes('youtube.com') || url.includes('youtu.be');
-};
-
-// Extract YouTube video ID
-const getYouTubeVideoId = (url: string): string | null => {
-  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-  const match = url.match(regex);
-  return match ? match[1] : null;
-};
-
-// Validate video URL
-const validateVideoUrl = (url: string): { isValid: boolean; type: string; message: string } => {
-  if (!url) {
-    return { isValid: false, type: 'invalid', message: 'URL is required' };
-  }
-
-  if (url.includes('youtube.com') || url.includes('youtu.be')) {
-    return { 
-      isValid: true, 
-      type: 'youtube', 
-      message: 'YouTube URL detected - using embedded player' 
-    };
-  }
-
-  if (url.match(/\.(mp4|webm|ogg|mov|avi|mkv)$/i)) {
-    return { 
-      isValid: true, 
-      type: 'direct', 
-      message: 'Direct video URL detected' 
-    };
-  }
-
-  return { 
-    isValid: false, 
-    type: 'unknown', 
-    message: 'Unsupported video URL format' 
-  };
-};
-
 const APInternshipLearningPage = () => {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
   const navigate = useNavigate();
@@ -268,8 +138,6 @@ const APInternshipLearningPage = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [updatingProgress, setUpdatingProgress] = useState(false);
-  const [isCertificateAvailable, setIsCertificateAvailable] = useState(false);
-  const [checkingCertificate, setCheckingCertificate] = useState(false);
   const [error, setError] = useState<string>('');
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -297,44 +165,6 @@ const APInternshipLearningPage = () => {
       }
     };
   }, []);
-
-  // Check certificate eligibility when exam status changes
-  useEffect(() => {
-    const checkCertificateAvailability = async () => {
-      if (examStatus?.courseProgress.courseCompleted) {
-        console.log('Course marked as completed, checking certificate eligibility...');
-        const available = await checkCertificateEligibility();
-        setIsCertificateAvailable(available);
-      } else {
-        console.log('Course not marked as completed, certificate not available');
-        setIsCertificateAvailable(false);
-      }
-    };
-
-    if (examStatus) {
-      checkCertificateAvailability();
-    }
-  }, [examStatus, enrollmentId]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Current Certificate Status:', {
-      isCertificateAvailable,
-      examStatus: examStatus?.courseProgress,
-      overallProgress,
-      topicExamsPassed: examStatus?.topicExams.passedCount,
-      totalTopics: enrollment?.courseId?.curriculum?.length,
-      finalExamPassed: examStatus?.finalExam.passed,
-      enrollmentId
-    });
-  }, [isCertificateAvailable, examStatus, overallProgress, enrollment]);
-
-  // Initialize progress when enrollment data loads
-  useEffect(() => {
-    if (enrollment && enrollment.progress && activeTopic && activeSubtopic) {
-      initializeProgressForSubtopic(activeTopic, activeSubtopic);
-    }
-  }, [enrollment, activeTopic, activeSubtopic]);
 
   const fetchEnrollmentData = async () => {
     const token = localStorage.getItem('token');
@@ -365,28 +195,28 @@ const APInternshipLearningPage = () => {
         const foundEnrollment = data.enrollments.find((e: any) => e._id === enrollmentId);
         
         if (foundEnrollment) {
-          // Fetch complete course details
-          const courseResponse = await fetch(`/api/internships/apcourses/${foundEnrollment.courseId._id}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
+          console.log('Found enrollment:', foundEnrollment);
+          setEnrollment(foundEnrollment);
           
-          const courseData = await courseResponse.json();
-          
-          if (courseData.success) {
-            const completeEnrollment = {
-              ...foundEnrollment,
-              courseId: courseData.course
-            };
+          // Initialize active content from the enrollment data
+          if (foundEnrollment.courseId?.curriculum?.length > 0) {
+            const firstTopic = foundEnrollment.courseId.curriculum[0];
+            const firstSubtopic = firstTopic.subtopics[0];
             
-            setEnrollment(completeEnrollment);
-            initializeActiveContent(completeEnrollment);
-          } else {
-            throw new Error('Failed to fetch course details');
+            setActiveTopic(firstTopic.topicName);
+            setActiveSubtopic(firstSubtopic);
+
+            // Set initial progress for the first subtopic
+            const topicProgress = foundEnrollment.progress?.find(t => t.topicName === firstTopic.topicName);
+            const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === firstSubtopic.name);
+            
+            if (subtopicProgress && subtopicProgress.totalDuration > 0) {
+              const progressPercent = (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100;
+              setVideoProgress(progressPercent);
+            }
           }
         } else {
-          throw new Error('Enrollment not found');
+          throw new Error('Enrollment not found in your enrollments list');
         }
       } else {
         throw new Error(data.message || 'Failed to fetch enrollments');
@@ -404,34 +234,6 @@ const APInternshipLearningPage = () => {
     }
   };
 
-  const initializeActiveContent = (enrollmentData: APEnrollment) => {
-    if (enrollmentData.courseId?.curriculum?.length > 0) {
-      const firstTopic = enrollmentData.courseId.curriculum[0];
-      const firstSubtopic = firstTopic.subtopics[0];
-      
-      setActiveTopic(firstTopic.topicName);
-      setActiveSubtopic(firstSubtopic);
-    }
-  };
-
-  const initializeProgressForSubtopic = (topicName: string, subtopic: Subtopic) => {
-    if (!enrollment?.progress) return;
-
-    const topicProgress = enrollment.progress.find(t => t.topicName === topicName);
-    const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === subtopic.name);
-    
-    if (subtopicProgress) {
-      const progressPercent = subtopicProgress.totalDuration > 0 
-        ? (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100 
-        : 0;
-      setVideoProgress(progressPercent);
-      setCurrentTime(subtopicProgress.watchedDuration);
-    } else {
-      setVideoProgress(0);
-      setCurrentTime(0);
-    }
-  };
-
   const fetchExamStatus = async () => {
     if (!enrollmentId || !enrollment?.courseId?._id) return;
     
@@ -444,142 +246,21 @@ const APInternshipLearningPage = () => {
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      if (response.status === 304) {
+        // Not modified - use cached data
+        console.log('Exam status not modified');
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setExamStatus(data.examStatus);
-        
-        // Check certificate eligibility when exam status is loaded
-        if (data.examStatus.courseProgress.courseCompleted) {
-          console.log('Course completed in exam status, checking certificate...');
-          const certificateAvailable = await checkCertificateEligibility();
-          setIsCertificateAvailable(certificateAvailable);
-        }
       }
     } catch (error) {
       console.error('Error fetching exam status:', error);
     }
-  };
-
-  const checkCertificateEligibility = async (): Promise<boolean> => {
-    if (!enrollmentId) return false;
-
-    const token = localStorage.getItem('token');
-    if (!token) return false;
-
-    try {
-      setCheckingCertificate(true);
-      const response = await fetch(`/api/internships/apinternshipcertificate/${enrollmentId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        console.log('✅ Certificate is available:', data.certificateData);
-        return true;
-      } else {
-        console.log('❌ Certificate not available:', data.message);
-        return false;
-      }
-    } catch (error) {
-      console.error('Error checking certificate eligibility:', error);
-      return false;
-    } finally {
-      setCheckingCertificate(false);
-    }
-  };
-
-  const getCertificateEligibilityMessage = (): string => {
-    if (!examStatus || !enrollment) return "Loading requirements...";
-    
-    const requirements = [];
-    
-    // Check video completion (80% threshold from backend)
-    if (overallProgress < 80) {
-      requirements.push(`Complete videos (${overallProgress.toFixed(1)}%/80%)`);
-    }
-    
-    // Check topic exams
-    if (examStatus.topicExams.passedCount !== enrollment.courseId?.curriculum?.length) {
-      requirements.push(`Pass all topic exams (${examStatus.topicExams.passedCount}/${enrollment.courseId?.curriculum?.length})`);
-    }
-    
-    // Check final exam
-    if (!examStatus.finalExam.passed) {
-      requirements.push("Pass final exam");
-    }
-    
-    return requirements.length > 0 
-      ? `Complete: ${requirements.join(', ')}`
-      : "All requirements met - refreshing certificate status...";
-  };
-
-  const handleDownloadCertificate = async () => {
-    if (!enrollmentId) return;
-
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      // First check if certificate is available
-      const response = await fetch(`/api/internships/apinternshipcertificate/${enrollmentId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        // Certificate is available, navigate to certificate page
-        navigate(`/ap-internship-certificate/${enrollmentId}`);
-      } else {
-        // Certificate not available, show why
-        toast({
-          title: 'Certificate Not Available',
-          description: data.message || 'Complete all course requirements to unlock your certificate',
-          variant: 'destructive'
-        });
-        
-        // Update local state based on backend response
-        if (data.progress) {
-          setEnrollment(prev => prev ? {
-            ...prev,
-            totalWatchedDuration: data.progress.totalWatched,
-            totalVideoDuration: data.progress.totalDuration
-          } : prev);
-        }
-      }
-    } catch (error: any) {
-      console.error('Error checking certificate:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to check certificate eligibility',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleForceRefresh = async () => {
-    toast({
-      title: 'Refreshing Status',
-      description: 'Checking certificate eligibility...',
-      variant: 'default'
-    });
-    
-    await fetchEnrollmentData();
-    await fetchExamStatus();
-    const available = await checkCertificateEligibility();
-    setIsCertificateAvailable(available);
-    
-    toast({
-      title: 'Status Updated',
-      description: available ? 'Certificate is now available!' : 'Certificate requirements not yet met',
-      variant: available ? 'default' : 'destructive'
-    });
   };
 
   const updateProgress = async (watchedDuration: number) => {
@@ -607,127 +288,17 @@ const APInternshipLearningPage = () => {
 
       const data = await response.json();
       
-      if (data.success) {
-        // Update local state with new progress data
-        setEnrollment(prev => {
-          if (!prev) return prev;
-          
-          const updatedProgress = prev.progress.map(topic => {
-            if (topic.topicName === activeTopic) {
-              const updatedSubtopics = topic.subtopics.map(subtopic => {
-                if (subtopic.subTopicName === activeSubtopic.name) {
-                  return {
-                    ...subtopic,
-                    watchedDuration: Math.floor(watchedDuration)
-                  };
-                }
-                return subtopic;
-              });
-              
-              const topicWatchedDuration = updatedSubtopics.reduce(
-                (sum, st) => sum + st.watchedDuration, 0
-              );
-              
-              return {
-                ...topic,
-                subtopics: updatedSubtopics,
-                topicWatchedDuration
-              };
-            }
-            return topic;
-          });
-          
-          const totalWatchedDuration = updatedProgress.reduce(
-            (sum, topic) => sum + topic.topicWatchedDuration, 0
-          );
-          
-          return {
-            ...prev,
-            progress: updatedProgress,
-            totalWatchedDuration,
-            finalExamEligible: totalWatchedDuration >= (prev.totalVideoDuration * 0.8)
-          };
-        });
-        
-        // Re-check certificate eligibility if we just crossed the 80% threshold
-        if (overallProgress < 80 && (totalWatchedDuration / enrollment.totalVideoDuration * 100) >= 80) {
-          setTimeout(() => checkCertificateEligibility(), 1000);
-        }
-        
-        toast({
-          title: 'Progress Saved',
-          description: 'Your learning progress has been updated',
-          variant: 'default'
-        });
-      } else {
+      if (!data.success) {
         console.error('Progress update failed:', data.message);
-        toast({
-          title: 'Update Failed',
-          description: 'Failed to save progress',
-          variant: 'destructive'
-        });
+      } else {
+        // Update local state immediately for better UX
+        fetchEnrollmentData(); // Refresh data
       }
     } catch (error) {
       console.error('Error updating progress:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update progress',
-        variant: 'destructive'
-      });
     } finally {
       setUpdatingProgress(false);
     }
-  };
-
-  const handleVideoLoaded = () => {
-    if (videoRef.current && activeSubtopic) {
-      console.log('Video loaded successfully');
-      // Set initial time based on progress
-      const topicProgress = enrollment?.progress?.find(t => t.topicName === activeTopic);
-      const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === activeSubtopic.name);
-      
-      if (subtopicProgress && subtopicProgress.watchedDuration > 0) {
-        videoRef.current.currentTime = subtopicProgress.watchedDuration;
-        setCurrentTime(subtopicProgress.watchedDuration);
-        
-        const progressPercent = subtopicProgress.totalDuration > 0 
-          ? (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100 
-          : 0;
-        setVideoProgress(progressPercent);
-      }
-    }
-  };
-
-  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.error('Video loading error:', e);
-    const video = e.currentTarget;
-    const error = video.error;
-    
-    let errorMessage = 'Failed to load video';
-    if (error) {
-      switch (error.code) {
-        case error.MEDIA_ERR_ABORTED:
-          errorMessage = 'Video playback was aborted';
-          break;
-        case error.MEDIA_ERR_NETWORK:
-          errorMessage = 'Network error occurred while loading video';
-          break;
-        case error.MEDIA_ERR_DECODE:
-          errorMessage = 'Video format not supported or corrupted';
-          break;
-        case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-          errorMessage = 'Video format not supported by your browser';
-          break;
-        default:
-          errorMessage = 'Unknown video error occurred';
-      }
-    }
-    
-    toast({
-      title: 'Video Error',
-      description: errorMessage,
-      variant: 'destructive'
-    });
   };
 
   const handleVideoPlay = () => {
@@ -738,29 +309,17 @@ const APInternshipLearningPage = () => {
           clearInterval(progressIntervalRef.current);
         }
       } else {
-        // Use promise-based play to handle autoplay restrictions
-        videoRef.current.play().then(() => {
-          setIsPlaying(true);
-          
-          // Start progress tracking interval only after successful play
-          progressIntervalRef.current = setInterval(() => {
-            if (videoRef.current && activeSubtopic && !videoRef.current.paused) {
-              const currentTime = videoRef.current.currentTime;
-              updateProgress(currentTime);
-            }
-          }, 10000); // Update every 10 seconds
-        }).catch((error) => {
-          console.error('Video play failed:', error);
-          setIsPlaying(false);
-          
-          // Show user-friendly error message
-          toast({
-            title: 'Video Playback Error',
-            description: 'Please click the play button to start the video',
-            variant: 'destructive'
-          });
-        });
+        videoRef.current.play();
+        
+        // Start progress tracking interval
+        progressIntervalRef.current = setInterval(() => {
+          if (videoRef.current && activeSubtopic) {
+            const currentTime = videoRef.current.currentTime;
+            updateProgress(currentTime);
+          }
+        }, 10000); // Update every 10 seconds
       }
+      setIsPlaying(!isPlaying);
     }
   };
 
@@ -778,45 +337,16 @@ const APInternshipLearningPage = () => {
   const handleVideoEnd = () => {
     if (activeSubtopic) {
       // Mark as fully watched
-      const finalDuration = activeSubtopic.duration;
-      updateProgress(finalDuration);
+      updateProgress(activeSubtopic.duration);
       setIsPlaying(false);
       
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
       }
-      
-      setVideoProgress(100);
-      setCurrentTime(finalDuration);
     }
   };
 
-  // YouTube progress tracking
-  const handleYouTubeTimeUpdate = (currentTime: number) => {
-    setCurrentTime(currentTime);
-    // Update progress based on estimated duration
-    if (activeSubtopic) {
-      const progress = (currentTime / activeSubtopic.duration) * 100;
-      setVideoProgress(progress);
-    }
-  };
-
-  const handleYouTubeProgressUpdate = (watchedDuration: number) => {
-    // Update backend progress for YouTube videos
-    updateProgress(watchedDuration);
-  };
-
-  const handleYouTubeEnd = () => {
-    if (activeSubtopic) {
-      // Mark YouTube video as fully watched
-      updateProgress(activeSubtopic.duration);
-      setIsPlaying(false);
-      setVideoProgress(100);
-      setCurrentTime(activeSubtopic.duration);
-    }
-  };
-
-  const handleSubtopicSelect = async (topicName: string, subtopic: Subtopic) => {
+  const handleSubtopicSelect = (topicName: string, subtopic: Subtopic) => {
     setActiveTopic(topicName);
     setActiveSubtopic(subtopic);
     setVideoProgress(0);
@@ -828,14 +358,14 @@ const APInternshipLearningPage = () => {
       clearInterval(progressIntervalRef.current);
     }
 
-    // Reset video element if it exists and it's not a YouTube URL
-    if (videoRef.current && !isYouTubeUrl(subtopic.link)) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
+    // Find existing progress for this subtopic
+    const topicProgress = enrollment?.progress?.find(t => t.topicName === topicName);
+    const subtopicProgress = topicProgress?.subtopics.find(s => s.subTopicName === subtopic.name);
+    
+    if (subtopicProgress && subtopicProgress.totalDuration > 0) {
+      const progressPercent = (subtopicProgress.watchedDuration / subtopicProgress.totalDuration) * 100;
+      setVideoProgress(progressPercent);
     }
-
-    // Initialize progress for the selected subtopic
-    initializeProgressForSubtopic(topicName, subtopic);
   };
 
   const getTopicProgress = (topicName: string) => {
@@ -893,11 +423,6 @@ const APInternshipLearningPage = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Calculate overall progress
-  const overallProgress = enrollment?.totalVideoDuration > 0 
-    ? ((enrollment.totalWatchedDuration || 0) / enrollment.totalVideoDuration) * 100 
-    : 0;
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
@@ -926,16 +451,26 @@ const APInternshipLearningPage = () => {
               <p className="text-gray-600 text-lg mb-6 max-w-md mx-auto">
                 {error || 'The requested course could not be found or you don\'t have access to it.'}
               </p>
-              <Button onClick={() => navigate('/student-dashboard')}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Student Dashboard
-              </Button>
+              <div className="space-y-3">
+                <Button onClick={() => navigate('/student-dashboard')} className="w-full">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+                <Button variant="outline" onClick={fetchEnrollmentData} className="w-full">
+                  <Loader2 className="h-4 w-4 mr-2" />
+                  Retry Loading Course
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
     );
   }
+
+  const overallProgress = enrollment.totalVideoDuration > 0 
+    ? (enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100 
+    : 0;
 
   const course = enrollment.courseId;
 
@@ -953,21 +488,27 @@ const APInternshipLearningPage = () => {
                 className="flex items-center"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Student Dashboard
+                Back to Dashboard
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
                   {course?.title || 'Course Content'}
                 </h1>
                 <p className="text-gray-600">
-                  {course?.providerName} • {course?.stream}
+                  {enrollment.internshipId?.companyName} • {course?.stream}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <Badge variant={enrollment.courseCompleted ? "default" : "secondary"}>
-                {enrollment.courseCompleted ? 'Completed' : 'In Progress'}
-              </Badge>
+              <div className="flex items-center space-x-4">
+                <div className="text-sm text-gray-600">
+                  Overall Progress: {overallProgress.toFixed(1)}%
+                </div>
+                <Badge variant={enrollment.courseCompleted ? "default" : "secondary"}>
+                  {enrollment.courseCompleted ? 'Completed' : 'In Progress'}
+                </Badge>
+              </div>
+              <Progress value={overallProgress} className="w-48 mt-2" />
             </div>
           </div>
         </div>
@@ -1021,7 +562,6 @@ const APInternshipLearningPage = () => {
                             const subtopicProgress = getSubtopicProgress(topic.topicName, subtopic.name);
                             const isCompleted = isSubtopicCompleted(topic.topicName, subtopic.name);
                             const isActive = activeSubtopic?.name === subtopic.name && activeTopic === topic.topicName;
-                            const isYouTube = isYouTubeUrl(subtopic.link);
                             
                             return (
                               <div
@@ -1037,11 +577,6 @@ const APInternshipLearningPage = () => {
                                   <div className="flex-shrink-0">
                                     {isCompleted ? (
                                       <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
-                                    ) : isYouTube ? (
-                                      <div className="relative">
-                                        <Video className="h-4 w-4 text-red-600 mt-0.5" />
-                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full"></div>
-                                      </div>
                                     ) : (
                                       <Video className="h-4 w-4 text-gray-400 mt-0.5" />
                                     )}
@@ -1051,11 +586,6 @@ const APInternshipLearningPage = () => {
                                       isActive ? 'text-blue-700' : 'text-gray-900'
                                     }`}>
                                       {subtopic.name}
-                                      {isYouTube && (
-                                        <span className="ml-2 text-xs text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
-                                          YouTube
-                                        </span>
-                                      )}
                                     </p>
                                     <div className="flex items-center justify-between mt-1">
                                       <span className="text-xs text-gray-500 flex items-center">
@@ -1150,32 +680,11 @@ const APInternshipLearningPage = () => {
                       <Award className="h-6 w-6 text-green-600 mr-3" />
                       <div>
                         <p className="font-medium text-green-800">Course Completed!</p>
-                        <p className="text-sm text-green-600">
-                          {isCertificateAvailable 
-                            ? 'You can now download your certificate' 
-                            : 'Checking certificate eligibility...'
-                          }
-                        </p>
+                        <p className="text-sm text-green-600">You can now download your certificate</p>
                       </div>
                     </div>
                   </div>
                 )}
-
-                {/* Refresh Button */}
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={handleForceRefresh}
-                  disabled={checkingCertificate}
-                  className="w-full"
-                >
-                  {checkingCertificate ? (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                  )}
-                  Refresh Status
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -1191,9 +700,6 @@ const APInternshipLearningPage = () => {
                     </CardTitle>
                     <CardDescription>
                       {activeTopic} • {activeSubtopic ? formatTime(activeSubtopic.duration) : '0:00'}
-                      {activeSubtopic && isYouTubeUrl(activeSubtopic.link) && (
-                        <span className="ml-2 text-red-600">• YouTube Video</span>
-                      )}
                     </CardDescription>
                   </div>
                   {activeSubtopic && (
@@ -1211,37 +717,18 @@ const APInternshipLearningPage = () => {
                 {/* Video Player */}
                 {activeSubtopic ? (
                   <div className="bg-black rounded-lg overflow-hidden">
-                    {isYouTubeUrl(activeSubtopic.link) ? (
-                      <YouTubeEmbed 
-                        url={activeSubtopic.link} 
-                        onTimeUpdate={handleYouTubeTimeUpdate}
-                        onEnd={handleYouTubeEnd}
-                        onProgressUpdate={handleYouTubeProgressUpdate}
-                      />
-                    ) : (
-                      <video
-                        ref={videoRef}
-                        className="w-full h-auto max-h-[480px]"
-                        controls
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                        onTimeUpdate={handleTimeUpdate}
-                        onEnded={handleVideoEnd}
-                        onError={handleVideoError}
-                        onLoadedMetadata={handleVideoLoaded}
-                        preload="metadata"
-                        playsInline
-                      >
-                        <source src={activeSubtopic.link} type="video/mp4" />
-                        <source src={activeSubtopic.link} type="video/webm" />
-                        <source src={activeSubtopic.link} type="video/ogg" />
-                        Your browser does not support the video tag.
-                        <p>
-                          If you're having trouble playing the video, please{' '}
-                          <a href={activeSubtopic.link} download className="text-blue-400 underline">download it</a> instead.
-                        </p>
-                      </video>
-                    )}
+                    <video
+                      ref={videoRef}
+                      className="w-full h-auto max-h-[480px]"
+                      controls
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      onTimeUpdate={handleTimeUpdate}
+                      onEnded={handleVideoEnd}
+                      src={activeSubtopic.link}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
                   </div>
                 ) : (
                   <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center">
@@ -1252,8 +739,8 @@ const APInternshipLearningPage = () => {
                   </div>
                 )}
 
-                {/* Video Controls - Only show for direct videos */}
-                {activeSubtopic && !isYouTubeUrl(activeSubtopic.link) && (
+                {/* Video Controls */}
+                {activeSubtopic && (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <Button
@@ -1295,7 +782,7 @@ const APInternshipLearningPage = () => {
                         {overallProgress.toFixed(1)}%
                       </div>
                       <div className="text-sm text-blue-600">
-                        {Math.floor((enrollment.totalWatchedDuration || 0) / 60)}min / {Math.floor(enrollment.totalVideoDuration / 60)}min
+                        {Math.floor(enrollment.totalWatchedDuration / 60)}min / {Math.floor(enrollment.totalVideoDuration / 60)}min
                       </div>
                     </div>
                   </div>
@@ -1354,81 +841,22 @@ const APInternshipLearningPage = () => {
                     </div>
                   </div>
 
-                  {/* Updated Certificate Section */}
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center mb-2">
-                      <Download className="h-5 w-5 text-green-600 mr-2" />
+                      <Bookmark className="h-5 w-5 text-orange-600 mr-2" />
                       <h3 className="font-semibold">Certificate</h3>
                     </div>
                     <p className="text-sm text-gray-600 mb-3">
-                      {isCertificateAvailable 
-                        ? 'Download your completion certificate' 
-                        : 'Complete the course and final exam to unlock your certificate'
-                      }
+                      Download your completion certificate
                     </p>
-                    
-                    {/* Certificate Status Check */}
-                    {isCertificateAvailable ? (
-                      <Button 
-                        size="sm" 
-                        className="w-full bg-green-600 hover:bg-green-700"
-                        onClick={handleDownloadCertificate}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Certificate
-                      </Button>
-                    ) : (
-                      <div className="space-y-3">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="w-full cursor-not-allowed"
-                          disabled
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Complete Course
-                        </Button>
-                        
-                        {/* Progress Requirements */}
-                        <div className="text-xs text-gray-600 space-y-1">
-                          <div className="flex justify-between">
-                            <span>Course Videos:</span>
-                            <span className={overallProgress >= 80 ? "text-green-600 font-medium" : "text-orange-600"}>
-                              {overallProgress >= 80 ? "✓ Completed" : `${overallProgress.toFixed(1)}% / 80%`}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Topic Exams:</span>
-                            <span className={examStatus?.topicExams.passedCount === course?.curriculum?.length ? "text-green-600 font-medium" : "text-orange-600"}>
-                              {examStatus?.topicExams.passedCount === course?.curriculum?.length 
-                                ? "✓ All Passed" 
-                                : `${examStatus?.topicExams.passedCount || 0} / ${course?.curriculum?.length || 0} Passed`}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Final Exam:</span>
-                            <span className={examStatus?.finalExam.passed ? "text-green-600 font-medium" : "text-orange-600"}>
-                              {examStatus?.finalExam.passed ? "✓ Passed" : "Not Passed"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Certificate Status Badge */}
-                    <div className="mt-2 flex items-center text-xs">
-                      {isCertificateAvailable ? (
-                        <div className="flex items-center text-green-600">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Certificate Ready - Click to Download
-                        </div>
-                      ) : (
-                        <div className="flex items-center text-orange-600">
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                          {getCertificateEligibilityMessage()}
-                        </div>
-                      )}
-                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      disabled={!examStatus?.courseProgress.courseCompleted}
+                      onClick={() => navigate(`/ap-internship-certificate/${enrollmentId}`)}
+                    >
+                      Download Certificate
+                    </Button>
                   </div>
                 </div>
               </CardContent>
