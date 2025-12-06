@@ -25,7 +25,6 @@ import {
   Clock,
   AlertCircle,
   Loader2,
-  Youtube,
 } from "lucide-react";
 
 type SubtopicFromCourse = {
@@ -118,7 +117,6 @@ const CourseLearningInterface: React.FC = () => {
   const ytPlayerRef = useRef<any | null>(null);
   const ytContainerRef = useRef<HTMLDivElement | null>(null);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
-  const [isPlayerReady, setIsPlayerReady] = useState(false);
 
   // Fetch course from backend
   const fetchCourse = async () => {
@@ -359,18 +357,39 @@ const CourseLearningInterface: React.FC = () => {
     }
   };
 
+  // Effect for initial course load
+  useEffect(() => {
+    if (courseId) {
+      fetchCourse();
+    }
+    return () => {
+      destroyYTPlayer();
+    };
+  }, [courseId]);
+
+  // Effect to fetch enrollment when course and token are available
+  useEffect(() => {
+    if (course && token && initialLoad) {
+      // Delay slightly to ensure all auth state is settled
+      const timer = setTimeout(() => {
+        fetchEnrollmentProgress(course._id);
+        setInitialLoad(false);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [course, token, initialLoad]);
+
   // YouTube Player Management
   const loadYouTubeIframeAPI = (): Promise<void> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if ((window as any).YT && (window as any).YT.Player) {
         resolve();
         return;
       }
       
-      // Check if script is already loading
       const existingScript = document.getElementById("youtube-iframe-api");
       if (existingScript) {
-        // If script exists but YT is not loaded yet, wait for it
         (window as any).onYouTubeIframeAPIReady = () => resolve();
         return;
       }
@@ -380,16 +399,9 @@ const CourseLearningInterface: React.FC = () => {
       tag.src = "https://www.youtube.com/iframe_api";
       tag.async = true;
       
-      tag.onload = () => {
-        // The API will call onYouTubeIframeAPIReady when ready
-        (window as any).onYouTubeIframeAPIReady = () => {
-          console.log("YouTube API ready");
-          resolve();
-        };
-      };
-      
-      tag.onerror = () => {
-        reject(new Error("Failed to load YouTube API"));
+      (window as any).onYouTubeIframeAPIReady = () => {
+        console.log("YouTube API ready");
+        resolve();
       };
       
       document.body.appendChild(tag);
@@ -406,12 +418,10 @@ const CourseLearningInterface: React.FC = () => {
         return;
       }
 
-      // Clear any existing content
+      // Clear container
       if (ytContainerRef.current) {
         ytContainerRef.current.innerHTML = "";
       }
-
-      setIsPlayerReady(false);
 
       ytPlayerRef.current = new (window as any).YT.Player(ytContainerRef.current, {
         height: "100%",
@@ -421,37 +431,21 @@ const CourseLearningInterface: React.FC = () => {
           rel: 0,
           modestbranding: 1,
           autoplay: 1,
+          playsinline: 1,
           origin: window.location.origin,
         },
         events: {
           onReady: (event: any) => {
             console.log("YouTube Player Ready");
-            setIsPlayerReady(true);
             event.target.playVideo();
           },
           onError: (event: any) => {
             console.error("YouTube Player Error:", event.data);
-            toast({
-              title: "Video Error",
-              description: "Failed to play video. Please try again.",
-              variant: "destructive",
-            });
-          },
-          onStateChange: (event: any) => {
-            // Handle player state changes if needed
-            if (event.data === (window as any).YT.PlayerState.PLAYING) {
-              console.log("Video is playing");
-            }
           }
         }
       });
     } catch (error) {
       console.error("Failed to create YouTube player:", error);
-      toast({
-        title: "Player Error",
-        description: "Failed to initialize video player",
-        variant: "destructive",
-      });
     }
   };
 
@@ -464,7 +458,6 @@ const CourseLearningInterface: React.FC = () => {
       console.error("Error destroying YT player:", e);
     } finally {
       ytPlayerRef.current = null;
-      setIsPlayerReady(false);
     }
   };
 
@@ -503,11 +496,6 @@ const CourseLearningInterface: React.FC = () => {
       setCurrentVideoId(videoId);
       createYTPlayer(videoId).catch((e) => {
         console.error("YT player create error:", e);
-        toast({
-          title: "Video Error",
-          description: "Failed to load video player",
-          variant: "destructive",
-        });
       });
     } else {
       destroyYTPlayer();
@@ -520,7 +508,7 @@ const CourseLearningInterface: React.FC = () => {
     }
   };
 
-  // Auto-play first video when enrolled and course is loaded
+  // Auto-play first video when enrolled
   useEffect(() => {
     if (isEnrolled && course && course.curriculum && course.curriculum.length > 0 && !currentVideoId) {
       const firstTopic = course.curriculum[0];
@@ -544,29 +532,6 @@ const CourseLearningInterface: React.FC = () => {
       }
     }
   }, [isEnrolled, course, currentVideoId]);
-
-  // Effect for initial course load
-  useEffect(() => {
-    if (courseId) {
-      fetchCourse();
-    }
-    return () => {
-      destroyYTPlayer();
-    };
-  }, [courseId]);
-
-  // Effect to fetch enrollment when course and token are available
-  useEffect(() => {
-    if (course && token && initialLoad) {
-      // Delay slightly to ensure all auth state is settled
-      const timer = setTimeout(() => {
-        fetchEnrollmentProgress(course._id);
-        setInitialLoad(false);
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [course, token, initialLoad]);
 
   // UI SubtopicRow Component
   const SubtopicRow: React.FC<{ 
@@ -677,11 +642,6 @@ const CourseLearningInterface: React.FC = () => {
   const finalExamAttempted = enrollment?.finalExamAttempted || false;
   const certificateEligible = enrollment?.certificateEligible || false;
 
-  // Simple fallback if YouTube player fails
-  const getYouTubeEmbedUrl = (videoId: string) => {
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -782,15 +742,6 @@ const CourseLearningInterface: React.FC = () => {
                     {currentVideoId ? (
                       <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
                         <div ref={ytContainerRef} id="yt-player" className="w-full h-full" />
-                        {!isPlayerReady && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-                            <div className="text-center text-white">
-                              <Youtube className="h-12 w-12 mx-auto mb-4 animate-pulse" />
-                              <p className="text-lg">Loading video player...</p>
-                              <p className="text-sm text-gray-300 mt-2">Please wait</p>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     ) : playingSubtopic ? (
                       <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
