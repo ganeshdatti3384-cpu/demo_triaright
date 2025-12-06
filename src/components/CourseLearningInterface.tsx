@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   BookOpen,
   Play,
@@ -27,6 +28,12 @@ import {
   Loader2,
   ChevronRight,
   Share2,
+  X,
+  Maximize2,
+  Volume2,
+  Settings,
+  SkipBack,
+  SkipForward,
 } from "lucide-react";
 
 type SubtopicFromCourse = {
@@ -119,6 +126,9 @@ const CourseLearningInterface: React.FC = () => {
   const ytPlayerRef = useRef<any | null>(null);
   const ytContainerRef = useRef<HTMLDivElement | null>(null);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Fetch course from backend
   const fetchCourse = async () => {
@@ -437,13 +447,42 @@ const CourseLearningInterface: React.FC = () => {
     if (!ytContainerRef.current) return;
 
     ytPlayerRef.current = new (window as any).YT.Player(ytContainerRef.current, {
-      height: "390",
+      height: "100%",
       width: "100%",
       videoId,
       playerVars: {
         rel: 0,
         modestbranding: 1,
         origin: window.location.origin,
+        controls: 1,
+        showinfo: 0,
+        fs: 1,
+        playsinline: 1,
+      },
+      events: {
+        onReady: (event: any) => {
+          console.log("YouTube player ready");
+          event.target.playVideo();
+          setIsPlaying(true);
+        },
+        onStateChange: (event: any) => {
+          // 0 = ended, 1 = playing, 2 = paused, 3 = buffering
+          if (event.data === 1) {
+            setIsPlaying(true);
+          } else if (event.data === 2 || event.data === 0) {
+            setIsPlaying(false);
+            if (event.data === 0) {
+              // Video ended, mark as completed if enrolled
+              if (isEnrolled && playingSubtopic) {
+                const topic = course?.curriculum[playingSubtopic.topicIndex];
+                const subtopic = topic?.subtopics[playingSubtopic.subIndex];
+                if (topic && subtopic) {
+                  markSubtopicComplete(topic.topicName, subtopic.name, true);
+                }
+              }
+            }
+          }
+        },
       },
     });
   };
@@ -458,6 +497,7 @@ const CourseLearningInterface: React.FC = () => {
     } finally {
       ytPlayerRef.current = null;
       setCurrentVideoId(null);
+      setIsPlaying(false);
     }
   };
 
@@ -524,7 +564,7 @@ const CourseLearningInterface: React.FC = () => {
     const isCompleted = getSubtopicStatus(topicName, sub.name);
 
     return (
-      <div className={`flex items-center justify-between gap-4 py-3 hover:bg-gray-50 px-2 rounded ${isCompleted ? 'bg-green-50' : ''} ${sIndex !== 0 ? 'border-t' : ''}`}>
+      <div className={`flex items-center justify-between gap-4 py-3 px-4 hover:bg-gray-50 rounded ${isThisPlaying ? 'bg-blue-50 border-l-4 border-blue-500' : ''} ${isCompleted ? 'bg-green-50' : ''}`}>
         <div className="flex-1 flex items-start gap-3">
           {isEnrolled && (
             <button
@@ -620,6 +660,17 @@ const CourseLearningInterface: React.FC = () => {
   const finalExamAttempted = enrollment?.finalExamAttempted || false;
   const certificateEligible = enrollment?.certificateEligible || false;
 
+  // Get current playing subtopic info
+  const getCurrentSubtopicInfo = () => {
+    if (!playingSubtopic || !course?.curriculum) return null;
+    const topic = course.curriculum[playingSubtopic.topicIndex];
+    if (!topic) return null;
+    const subtopic = topic.subtopics[playingSubtopic.subIndex];
+    return { topic, subtopic };
+  };
+
+  const currentSubtopic = getCurrentSubtopicInfo();
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -672,7 +723,7 @@ const CourseLearningInterface: React.FC = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Player + curriculum */}
+          {/* Left: Video Player + curriculum */}
           <div className="lg:col-span-2 space-y-6">
             {!isEnrolled && (
               <Card className="bg-yellow-50 border-yellow-200">
@@ -704,29 +755,166 @@ const CourseLearningInterface: React.FC = () => {
               </Card>
             )}
 
-            {/* Course Title Section */}
-            <div className="bg-white rounded-lg p-6 shadow-sm border">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{course.courseName}</h1>
-                  <div className="flex items-center gap-3 mt-2">
-                    <Badge variant={course.courseType === "paid" ? "default" : "secondary"}>
-                      {course.courseType === "paid" ? "Paid Course" : "Free Course"}
-                    </Badge>
-                    {isEnrolled && isCourseCompleted && (
-                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Course Completed
-                      </Badge>
-                    )}
+            {/* Video Player Section */}
+            <div className="bg-black rounded-xl overflow-hidden shadow-lg">
+              <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                {currentVideoId ? (
+                  <div 
+                    ref={ytContainerRef}
+                    id="yt-player" 
+                    className="absolute inset-0 w-full h-full"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+                    <div className="text-center text-white p-8">
+                      <div className="text-4xl mb-4">📺</div>
+                      <h3 className="text-xl font-semibold mb-2">No Video Selected</h3>
+                      <p className="text-gray-300">Select a lesson from the course topics to start watching</p>
+                      <Button 
+                        onClick={() => {
+                          if (course.curriculum && course.curriculum.length > 0) {
+                            openSubtopic(0, 0);
+                          }
+                        }}
+                        className="mt-4 bg-blue-600 hover:bg-blue-700"
+                        disabled={!isEnrolled}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Start First Lesson
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Video Player Controls (Custom) */}
+              {currentVideoId && (
+                <div className="bg-gray-900 text-white px-4 py-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex-1">
+                      <h3 className="font-medium truncate">
+                        {currentSubtopic?.subtopic?.name || "Playing..."}
+                      </h3>
+                      <p className="text-sm text-gray-400 truncate">
+                        {currentSubtopic?.topic?.topicName || ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button className="p-2 hover:bg-gray-800 rounded-full">
+                        <Settings className="h-4 w-4" />
+                      </button>
+                      <button className="p-2 hover:bg-gray-800 rounded-full">
+                        <Maximize2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <button className="p-1 hover:bg-gray-800 rounded">
+                      <SkipBack className="h-5 w-5" />
+                    </button>
+                    <button 
+                      className="p-2 hover:bg-gray-800 rounded-full"
+                      onClick={() => {
+                        if (ytPlayerRef.current) {
+                          if (isPlaying) {
+                            ytPlayerRef.current.pauseVideo();
+                          } else {
+                            ytPlayerRef.current.playVideo();
+                          }
+                        }
+                      }}
+                    >
+                      {isPlaying ? (
+                        <div className="w-6 h-6 bg-white rounded-sm flex items-center justify-center">
+                          <div className="w-1 h-4 bg-black mx-0.5"></div>
+                          <div className="w-1 h-4 bg-black mx-0.5"></div>
+                        </div>
+                      ) : (
+                        <Play className="h-6 w-6 ml-0.5 fill-current" />
+                      )}
+                    </button>
+                    <button className="p-1 hover:bg-gray-800 rounded">
+                      <SkipForward className="h-5 w-5" />
+                    </button>
+                    
+                    <div className="flex-1 flex items-center gap-2">
+                      <span className="text-xs text-gray-400">0:00</span>
+                      <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-red-600" style={{ width: `${videoProgress}%` }}></div>
+                      </div>
+                      <span className="text-xs text-gray-400">10:00</span>
+                    </div>
+                    
+                    <button className="p-2 hover:bg-gray-800 rounded-full">
+                      <Volume2 className="h-5 w-5" />
+                    </button>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-600">
-                  <BookOpen className="h-4 w-4" />
-                  <span>Watch Later</span>
-                </Button>
-              </div>
+              )}
             </div>
+
+            {/* Video Info Section */}
+            {currentSubtopic && (
+              <div className="bg-white rounded-lg p-6 shadow-sm border">
+                <h2 className="text-2xl font-bold mb-2">{currentSubtopic.subtopic.name}</h2>
+                <div className="flex items-center gap-4 text-gray-600 mb-4">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    {currentSubtopic.subtopic.duration || 0} min
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <BookOpen className="h-4 w-4" />
+                    Lesson {playingSubtopic!.subIndex + 1} of {currentSubtopic.topic.subtopics.length}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Button 
+                    variant="default" 
+                    className="flex items-center gap-2"
+                    onClick={() => {
+                      if (ytPlayerRef.current) {
+                        ytPlayerRef.current.playVideo();
+                      }
+                    }}
+                  >
+                    <Play className="h-4 w-4" />
+                    {isPlaying ? "Playing" : "Play"}
+                  </Button>
+                  {isEnrolled && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        const isCompleted = getSubtopicStatus(
+                          currentSubtopic.topic.topicName, 
+                          currentSubtopic.subtopic.name
+                        );
+                        markSubtopicComplete(
+                          currentSubtopic.topic.topicName, 
+                          currentSubtopic.subtopic.name, 
+                          !isCompleted
+                        );
+                      }}
+                      disabled={progressLoading}
+                    >
+                      {progressLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : getSubtopicStatus(currentSubtopic.topic.topicName, currentSubtopic.subtopic.name) ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Mark as Incomplete
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Mark as Complete
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Course Topics Section */}
             <Card className="shadow-sm">
@@ -785,7 +973,7 @@ const CourseLearningInterface: React.FC = () => {
                               <ChevronRight className="h-5 w-5 text-gray-400" />
                             </div>
                             
-                            {/* Subtopic list - initially collapsed, could be expanded with state */}
+                            {/* Subtopic list */}
                             <div className="ml-8 space-y-1">
                               {topic.subtopics.map((sub, sIndex) => (
                                 <SubtopicRow 
@@ -846,33 +1034,33 @@ const CourseLearningInterface: React.FC = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Total Topics:</span>
                     <span className="font-medium">{totalTopics}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Completed Topics:</span>
                     <span className="font-medium">{completedTopics}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Completion:</span>
                     <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                       {completionPercentage}%
                     </Badge>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Exam Available:</span>
                     <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
                       Available
                     </Badge>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Exam Passed:</span>
                     <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                       Passed
                     </Badge>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Certificate:</span>
                     <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                       Available
@@ -951,31 +1139,91 @@ const CourseLearningInterface: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* Course Info Card */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Course Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <BookOpen className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{course.courseName}</h3>
+                    <p className="text-sm text-gray-600">{course.instructorName || "No instructor"}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 pt-3 border-t">
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Type</div>
+                    <div className="font-medium">
+                      {course.courseType === 'paid' ? 'Paid' : 'Free'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Duration</div>
+                    <div className="font-medium">{course.totalDuration || 0} min</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Lessons</div>
+                    <div className="font-medium">{totalSubtopics}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Topics</div>
+                    <div className="font-medium">{totalTopics}</div>
+                  </div>
+                </div>
+                
+                {course.courseDescription && (
+                  <div className="pt-3 border-t">
+                    <div className="text-xs text-gray-500 mb-1">Description</div>
+                    <p className="text-sm">{course.courseDescription}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Progress Navigation */}
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <Button
                 variant="outline"
                 onClick={() => {
-                  // Navigate to previous topic if available
-                  const currentTopicIndex = playingSubtopic?.topicIndex || 0;
-                  if (currentTopicIndex > 0) {
-                    openSubtopic(currentTopicIndex - 1, 0);
+                  if (!playingSubtopic) return;
+                  const currentTopicIndex = playingSubtopic.topicIndex;
+                  const currentSubIndex = playingSubtopic.subIndex;
+                  
+                  if (currentSubIndex > 0) {
+                    openSubtopic(currentTopicIndex, currentSubIndex - 1);
+                  } else if (currentTopicIndex > 0) {
+                    const prevTopic = course.curriculum[currentTopicIndex - 1];
+                    openSubtopic(currentTopicIndex - 1, prevTopic.subtopics.length - 1);
                   }
                 }}
-                disabled={!playingSubtopic || (playingSubtopic?.topicIndex || 0) === 0}
+                disabled={!playingSubtopic || (!playingSubtopic.subIndex && !playingSubtopic.topicIndex)}
+                className="flex-1"
               >
                 Previous
               </Button>
               <Button
                 variant="outline"
                 onClick={() => {
-                  // Navigate to next topic if available
-                  const currentTopicIndex = playingSubtopic?.topicIndex || 0;
-                  if (course.curriculum && currentTopicIndex < course.curriculum.length - 1) {
+                  if (!playingSubtopic || !course.curriculum) return;
+                  const currentTopicIndex = playingSubtopic.topicIndex;
+                  const currentSubIndex = playingSubtopic.subIndex;
+                  const currentTopic = course.curriculum[currentTopicIndex];
+                  
+                  if (currentSubIndex < currentTopic.subtopics.length - 1) {
+                    openSubtopic(currentTopicIndex, currentSubIndex + 1);
+                  } else if (currentTopicIndex < course.curriculum.length - 1) {
                     openSubtopic(currentTopicIndex + 1, 0);
                   }
                 }}
-                disabled={!playingSubtopic || !course.curriculum || (playingSubtopic?.topicIndex || 0) >= course.curriculum.length - 1}
+                disabled={!playingSubtopic || !course.curriculum || 
+                  (playingSubtopic.subIndex >= course.curriculum[playingSubtopic.topicIndex].subtopics.length - 1 && 
+                   playingSubtopic.topicIndex >= course.curriculum.length - 1)}
+                className="flex-1"
               >
                 Next
               </Button>
