@@ -25,6 +25,8 @@ import {
   Clock,
   AlertCircle,
   Loader2,
+  ChevronRight,
+  Share2,
 } from "lucide-react";
 
 type SubtopicFromCourse = {
@@ -522,7 +524,7 @@ const CourseLearningInterface: React.FC = () => {
     const isCompleted = getSubtopicStatus(topicName, sub.name);
 
     return (
-      <div className={`flex items-center justify-between gap-4 border-b py-3 hover:bg-gray-50 px-2 rounded ${isCompleted ? 'bg-green-50' : ''}`}>
+      <div className={`flex items-center justify-between gap-4 py-3 hover:bg-gray-50 px-2 rounded ${isCompleted ? 'bg-green-50' : ''} ${sIndex !== 0 ? 'border-t' : ''}`}>
         <div className="flex-1 flex items-start gap-3">
           {isEnrolled && (
             <button
@@ -543,15 +545,15 @@ const CourseLearningInterface: React.FC = () => {
             <div className="font-medium flex items-center gap-2">
               <Play className="h-4 w-4 text-gray-400" />
               {sub.name}
-              {isCompleted && isEnrolled && (
-                <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-200">
-                  Completed
-                </Badge>
-              )}
             </div>
             <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
               <Clock className="h-3 w-3" />
               <span>Duration: {sub.duration || 0} min</span>
+              {isCompleted && isEnrolled && (
+                <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-200 ml-2">
+                  Completed
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -641,6 +643,10 @@ const CourseLearningInterface: React.FC = () => {
             </div>
             {isEnrolled && enrollment && (
               <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
                 <div className="text-right">
                   <div className="text-sm text-gray-600">Progress</div>
                   <div className="font-semibold">
@@ -698,14 +704,12 @@ const CourseLearningInterface: React.FC = () => {
               </Card>
             )}
 
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-2xl">{course.courseName}</CardTitle>
-                    <CardDescription className="mt-2">{course.courseDescription}</CardDescription>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
+            {/* Course Title Section */}
+            <div className="bg-white rounded-lg p-6 shadow-sm border">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">{course.courseName}</h1>
+                  <div className="flex items-center gap-3 mt-2">
                     <Badge variant={course.courseType === "paid" ? "default" : "secondary"}>
                       {course.courseType === "paid" ? "Paid Course" : "Free Course"}
                     </Badge>
@@ -717,113 +721,30 @@ const CourseLearningInterface: React.FC = () => {
                     )}
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="lg:col-span-2">
-                    {currentVideoId ? (
-                      <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
-                        <div ref={ytContainerRef} id="yt-player" className="w-full h-full" />
-                      </div>
-                    ) : playingSubtopic ? (
-                      <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
-                        <div className="text-center">
-                          <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                          <p>No playable video for this lesson</p>
-                          <p className="text-sm mt-2">This lesson may be a document or external link</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
-                        <div className="text-center">
-                          <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                          <p>{isEnrolled ? "Select a lesson to start learning" : "Enroll to start learning"}</p>
-                          <p className="text-sm mt-2">Click on any lesson below to begin</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-600">
+                  <BookOpen className="h-4 w-4" />
+                  <span>Watch Later</span>
+                </Button>
+              </div>
+            </div>
 
-                  <div className="space-y-4">
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="space-y-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-500 mb-1">Total Duration</div>
-                            <div className="text-lg font-medium">{course.totalDuration || 0} minutes</div>
-                          </div>
-
-                          {isEnrolled && (
-                            <>
-                              <div>
-                                <div className="text-sm font-medium text-gray-500 mb-1">Progress</div>
-                                <div className="text-lg font-medium">{completionPercentage}% Complete</div>
-                              </div>
-
-                              <div className="space-y-2">
-                                {/* Show Final Exam button only when all topics are completed */}
-                                {isCourseCompleted && finalExamEligible && !finalExamAttempted && (
-                                  <Button
-                                    onClick={navigateToFinalExam}
-                                    className="w-full"
-                                    size="lg"
-                                    variant="default"
-                                  >
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    Take Final Exam
-                                  </Button>
-                                )}
-
-                                {/* Show Certificate button when eligible */}
-                                {isCourseCompleted && finalExamAttempted && certificateEligible && (
-                                  <Button
-                                    onClick={navigateToCertificate}
-                                    className="w-full"
-                                    size="lg"
-                                    variant="outline"
-                                  >
-                                    <Award className="h-4 w-4 mr-2" />
-                                    Get Certificate
-                                  </Button>
-                                )}
-                              </div>
-                            </>
-                          )}
-
-                          <Button
-                            onClick={() => {
-                              if (!course.curriculum || course.curriculum.length === 0) return;
-                              openSubtopic(0, 0);
-                            }}
-                            className="w-full"
-                            size="lg"
-                            disabled={!isEnrolled}
-                          >
-                            {isEnrolled ? "Start Learning" : "Enroll to Start"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+            {/* Course Topics Section */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Course Topics</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                      {completedTopics} of {totalTopics} completed
+                    </Badge>
+                    <span className="text-sm text-gray-500">• 1 min</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Curriculum */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Curriculum</CardTitle>
-                <CardDescription>
-                  {isEnrolled 
-                    ? `${completedSubtopics} of ${totalSubtopics} lessons completed • ${completionPercentage}% complete`
-                    : "Enroll to track your progress"}
-                </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {course.curriculum && course.curriculum.length > 0 ? (
-                  <div className="space-y-6">
+                  <div>
                     {course.curriculum.map((topic, tIndex) => {
-                      const topicTotal = topic.subtopics.reduce((s, st) => s + (st.duration || 0), 0);
                       const isTopicCompleted = getTopicStatus(topic.topicName);
                       const topicProgress = getTopicProgressDetails(topic.topicName);
                       const completedSubtopicsInTopic = isEnrolled 
@@ -831,111 +752,84 @@ const CourseLearningInterface: React.FC = () => {
                         : 0;
 
                       return (
-                        <div 
-                          key={topic.topicName} 
-                          className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${isTopicCompleted && isEnrolled ? 'bg-green-50 border-green-200' : 'bg-white'}`}
-                        >
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <div className="font-semibold text-lg flex items-center gap-2">
-                                {topic.topicName}
-                                {isTopicCompleted && isEnrolled && (
-                                  <CheckCircle className="h-5 w-5 text-green-600" />
+                        <div key={topic.topicName} className="border-t first:border-t-0">
+                          <div className="p-4 hover:bg-gray-50">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                {isEnrolled ? (
+                                  <button
+                                    onClick={() => markTopicComplete(topic.topicName, !isTopicCompleted)}
+                                    disabled={progressLoading}
+                                    className="flex-shrink-0"
+                                  >
+                                    {progressLoading ? (
+                                      <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+                                    ) : isTopicCompleted ? (
+                                      <CheckCircle className="h-5 w-5 text-green-600" />
+                                    ) : (
+                                      <Circle className="h-5 w-5 text-gray-300 hover:text-gray-400" />
+                                    )}
+                                  </button>
+                                ) : (
+                                  <Circle className="h-5 w-5 text-gray-300" />
                                 )}
+                                <div>
+                                  <div className="font-medium">{topic.topicName}</div>
+                                  <div className="text-sm text-gray-500">
+                                    {isEnrolled 
+                                      ? `${completedSubtopicsInTopic} of ${topic.subtopics.length} lessons completed`
+                                      : `${topic.subtopics.length} lessons`}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-500 mt-1">
-                                {isEnrolled 
-                                  ? `${completedSubtopicsInTopic} of ${topic.subtopics.length} lessons completed • ${topicTotal} minutes`
-                                  : `${topic.subtopics.length} lessons • ${topicTotal} minutes`}
-                              </div>
+                              <ChevronRight className="h-5 w-5 text-gray-400" />
                             </div>
-                            {isEnrolled && (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => markTopicComplete(topic.topicName, !isTopicCompleted)}
-                                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                  disabled={progressLoading}
-                                >
-                                  {progressLoading ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : isTopicCompleted ? (
-                                    <>
-                                      <Circle className="h-4 w-4" />
-                                      Mark as Incomplete
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle className="h-4 w-4" />
-                                      Mark as Complete
-                                    </>
-                                  )}
-                                </button>
+                            
+                            {/* Subtopic list - initially collapsed, could be expanded with state */}
+                            <div className="ml-8 space-y-1">
+                              {topic.subtopics.map((sub, sIndex) => (
+                                <SubtopicRow 
+                                  key={`${sub.name}-${sIndex}`} 
+                                  tIndex={tIndex} 
+                                  sIndex={sIndex} 
+                                  sub={sub}
+                                  topicName={topic.topicName}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Topic Exam button */}
+                            {isEnrolled && isTopicCompleted && (
+                              <div className="mt-4 pt-4 border-t">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                      Topic Completed
+                                    </Badge>
+                                    {topicProgress?.examAttempted && (
+                                      <Badge variant="outline" className="ml-2 bg-green-100 text-green-800 border-green-200">
+                                        Exam Score: {topicProgress.examScore}/10
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <Button
+                                    onClick={() => navigateToTopicExam(topic.topicName)}
+                                    variant={topicProgress?.examAttempted ? "secondary" : "default"}
+                                    size="sm"
+                                  >
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    {topicProgress?.examAttempted ? 'Retake Topic Exam' : 'Take Topic Exam'}
+                                  </Button>
+                                </div>
                               </div>
                             )}
                           </div>
-
-                          <div className="space-y-2 mb-4">
-                            {topic.subtopics.map((sub, sIndex) => (
-                              <SubtopicRow 
-                                key={`${sub.name}-${sIndex}`} 
-                                tIndex={tIndex} 
-                                sIndex={sIndex} 
-                                sub={sub}
-                                topicName={topic.topicName}
-                              />
-                            ))}
-                          </div>
-
-                          {/* Show topic exam button only when topic is completed */}
-                          {isEnrolled && isTopicCompleted && (
-                            <div className="pt-3 border-t">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                    Topic Completed
-                                  </Badge>
-                                  {topicProgress?.examAttempted && (
-                                    <Badge variant="outline" className="ml-2 bg-green-100 text-green-800 border-green-200">
-                                      Exam Score: {topicProgress.examScore}/10
-                                    </Badge>
-                                  )}
-                                </div>
-                                <Button
-                                  onClick={() => navigateToTopicExam(topic.topicName)}
-                                  variant={topicProgress?.examAttempted ? "secondary" : "default"}
-                                  size="sm"
-                                >
-                                  <FileText className="h-4 w-4 mr-2" />
-                                  {topicProgress?.examAttempted ? 'Retake Topic Exam' : 'Take Topic Exam'}
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Start Topic button for non-completed topics */}
-                          {(!isTopicCompleted || !isEnrolled) && (
-                            <div className="flex gap-2 pt-3 border-t">
-                              <Button
-                                onClick={() => {
-                                  if (topic.subtopics && topic.subtopics.length > 0) {
-                                    openSubtopic(tIndex, 0);
-                                  }
-                                }}
-                                className="flex-1"
-                                variant="outline"
-                                disabled={!isEnrolled}
-                              >
-                                <Play className="h-4 w-4 mr-2" />
-                                Start Topic
-                              </Button>
-                            </div>
-                          )}
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
+                  <div className="p-8 text-center">
                     <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">No curriculum available for this course.</p>
                   </div>
@@ -944,149 +838,148 @@ const CourseLearningInterface: React.FC = () => {
             </Card>
           </div>
 
-          {/* Right: Course Information & Progress Stats */}
+          {/* Right: Course Summary */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Information</CardTitle>
+            <Card className="shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Course Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {course.stream && (
-                  <div>
-                    <div className="text-xs text-gray-500">Stream</div>
-                    <div className="font-medium capitalize">{course.stream}</div>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Total Topics:</span>
+                    <span className="font-medium">{totalTopics}</span>
                   </div>
-                )}
-                {course.courseType && (
-                  <div>
-                    <div className="text-xs text-gray-500">Type</div>
-                    <div className="font-medium">{course.courseType === "paid" ? "Paid" : "Free"}</div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Completed Topics:</span>
+                    <span className="font-medium">{completedTopics}</span>
                   </div>
-                )}
-                {course.price !== undefined && course.courseType === "paid" && (
-                  <div>
-                    <div className="text-xs text-gray-500">Price</div>
-                    <div className="font-medium">₹{course.price}</div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Completion:</span>
+                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                      {completionPercentage}%
+                    </Badge>
                   </div>
-                )}
-                <div>
-                  <div className="text-xs text-gray-500">Total Lessons</div>
-                  <div className="font-medium">{totalSubtopics}</div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Exam Available:</span>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                      Available
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Exam Passed:</span>
+                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                      Passed
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Certificate:</span>
+                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                      Available
+                    </Badge>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xs text-gray-500">Total Topics</div>
-                  <div className="font-medium">{totalTopics}</div>
-                </div>
-                {course.instructorName && (
-                  <div>
-                    <div className="text-xs text-gray-500">Instructor</div>
-                    <div className="font-medium">{course.instructorName}</div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
-            {/* Progress Stats - Only show if enrolled */}
-            {isEnrolled && enrollment && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Your Progress</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Topics Completed</span>
-                      <span className="font-medium">{completedTopics}/{totalTopics}</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-blue-600 transition-all duration-300"
-                        style={{ width: `${totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Lessons Completed</span>
-                      <span className="font-medium">{completedSubtopics}/{totalSubtopics}</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-green-600 transition-all duration-300"
-                        style={{ width: `${totalSubtopics > 0 ? (completedSubtopics / totalSubtopics) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Course Status</span>
-                        <Badge variant={isCourseCompleted ? "default" : "secondary"}>
-                          {isCourseCompleted ? "Completed" : "In Progress"}
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Final Exam</span>
-                        <div className="flex items-center gap-2">
-                          {finalExamEligible ? (
-                            finalExamAttempted ? (
-                              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                                Attempted
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-                                Eligible
-                              </Badge>
-                            )
-                          ) : (
-                            <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
-                              Not Eligible
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-
-                      {certificateEligible && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Certificate</span>
-                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                            <Award className="h-3 w-3 mr-1" />
-                            Available
-                          </Badge>
-                        </div>
-                      )}
-
-                      {/* Show Final Exam button when all topics completed */}
+                <div className="pt-4 space-y-3">
+                  {isEnrolled && (
+                    <>
                       {isCourseCompleted && finalExamEligible && !finalExamAttempted && (
                         <Button
                           onClick={navigateToFinalExam}
-                          className="w-full mt-2"
+                          className="w-full"
                           variant="default"
+                          size="lg"
                         >
                           <FileText className="h-4 w-4 mr-2" />
-                          Take Final Exam
+                          Take Course Exam
                         </Button>
                       )}
-
-                      {/* Show Certificate button when eligible */}
+                      
                       {certificateEligible && (
                         <Button
                           onClick={navigateToCertificate}
                           className="w-full"
                           variant="outline"
+                          size="lg"
                         >
                           <Award className="h-4 w-4 mr-2" />
-                          View Certificate
+                          Download Certificate
                         </Button>
                       )}
+
+                      {!isCourseCompleted && (
+                        <div className="text-center p-4 bg-blue-50 rounded-lg">
+                          <p className="text-sm text-blue-700 mb-2">
+                            Complete all topics to unlock the final exam
+                          </p>
+                          <div className="flex justify-between text-xs text-blue-600">
+                            <span>Progress: {completedTopics}/{totalTopics}</span>
+                            <span>{completionPercentage}%</span>
+                          </div>
+                          <div className="h-2 bg-blue-200 rounded-full overflow-hidden mt-1">
+                            <div 
+                              className="h-full bg-blue-600 transition-all duration-300"
+                              style={{ width: `${completionPercentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {!isEnrolled && (
+                    <Button
+                      onClick={enrollInCourse}
+                      className="w-full"
+                      variant="default"
+                      size="lg"
+                    >
+                      {course.courseType === 'unpaid' ? "Enroll for Free" : "Purchase Course"}
+                    </Button>
+                  )}
+                </div>
+
+                {isEnrolled && certificateEligible && (
+                  <div className="pt-4 border-t">
+                    <div className="text-center">
+                      <Award className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-green-700">Congratulations! You passed the exam.</p>
+                      <p className="text-xs text-gray-600 mt-1">Download your certificate</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Progress Navigation */}
+            <div className="flex justify-between">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Navigate to previous topic if available
+                  const currentTopicIndex = playingSubtopic?.topicIndex || 0;
+                  if (currentTopicIndex > 0) {
+                    openSubtopic(currentTopicIndex - 1, 0);
+                  }
+                }}
+                disabled={!playingSubtopic || (playingSubtopic?.topicIndex || 0) === 0}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Navigate to next topic if available
+                  const currentTopicIndex = playingSubtopic?.topicIndex || 0;
+                  if (course.curriculum && currentTopicIndex < course.curriculum.length - 1) {
+                    openSubtopic(currentTopicIndex + 1, 0);
+                  }
+                }}
+                disabled={!playingSubtopic || !course.curriculum || (playingSubtopic?.topicIndex || 0) >= course.curriculum.length - 1}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </div>
       </div>
