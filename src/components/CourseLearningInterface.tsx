@@ -196,13 +196,20 @@ const CourseLearningInterface: React.FC = () => {
         requestData.subTopicName = subTopicName;
       }
 
+      console.log("Sending update progress request:", requestData); // Debug log
+
       const response = await axios.post(
         `${API_BASE_URL}/courses/enrollment/update-progress`,
         requestData,
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
       );
+
+      console.log("Update progress response:", response.data); // Debug log
 
       if (response.data.success) {
         // Update local enrollment state with backend response
@@ -259,6 +266,8 @@ const CourseLearningInterface: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Failed to update progress:", err);
+      console.error("Error details:", err.response?.data); // Debug log
+      
       toast({
         title: "Error",
         description: err.response?.data?.message || "Failed to update progress",
