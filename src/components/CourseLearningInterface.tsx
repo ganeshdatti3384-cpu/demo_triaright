@@ -776,7 +776,7 @@ const CourseLearningInterface: React.FC = () => {
                     ? `${completedSubtopics} of ${totalSubtopics} lessons completed • ${completionPercentage}% complete`
                     : "Enroll to track your progress"}
                 </CardDescription>
-              </CardContent>
+              </CardHeader>
               <CardContent>
                 {course.curriculum && course.curriculum.length > 0 ? (
                   <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
