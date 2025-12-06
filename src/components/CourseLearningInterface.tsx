@@ -105,12 +105,10 @@ const CourseLearningInterface: React.FC = () => {
   const [course, setCourse] = useState<CourseModel | null>(null);
   const [enrollment, setEnrollment] = useState<EnrollmentProgress | null>(null);
   const [loading, setLoading] = useState(true);
-  const [progressLoading, setProgressLoading] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [fetchingEnrollment, setFetchingEnrollment] = useState(false);
   const [updatingSubtopic, setUpdatingSubtopic] = useState<string | null>(null);
-  const [updatingTopic, setUpdatingTopic] = useState<string | null>(null);
 
   // playing location (indexes)
   const [playingSubtopic, setPlayingSubtopic] = useState<{ topicIndex: number; subIndex: number } | null>(null);
@@ -196,7 +194,8 @@ const CourseLearningInterface: React.FC = () => {
   const markSubtopicComplete = async (topicName: string, subTopicName: string, isCompleted: boolean) => {
     if (!courseId || !enrollment || !token) return;
     
-    setUpdatingSubtopic(`${topicName}-${subTopicName}`);
+    const updateKey = `${topicName}-${subTopicName}`;
+    setUpdatingSubtopic(updateKey);
     try {
       const response = await axios.post(
         `${API_BASE_URL}/courses/enrollment/update-progress`,
@@ -242,6 +241,7 @@ const CourseLearningInterface: React.FC = () => {
           updatedEnrollment.completedTopics = response.data.completionStats.completedTopics;
           updatedEnrollment.courseCompletionPercentage = response.data.completionStats.courseCompletionPercentage;
           updatedEnrollment.isCourseCompleted = response.data.completionStats.isCourseCompleted;
+          updatedEnrollment.finalExamEligible = response.data.completionStats.isCourseCompleted;
         }
 
         setEnrollment(updatedEnrollment);
@@ -266,76 +266,6 @@ const CourseLearningInterface: React.FC = () => {
     }
   };
 
-  // Mark topic as complete/incomplete (marks all subtopics)
-  const markTopicComplete = async (topicName: string, isCompleted: boolean) => {
-    if (!courseId || !enrollment || !token) return;
-    
-    setUpdatingTopic(topicName);
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/courses/enrollment/update-progress`,
-        {
-          courseId,
-          topicName,
-          isCompleted,
-          updateType: "topic"
-        },
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      console.log("Update topic response:", response.data); // Debug log
-
-      if (response.data.success) {
-        // Update local enrollment state with backend response
-        const updatedEnrollment = { ...enrollment };
-        
-        // Find and update the entire topic
-        const topicIndex = updatedEnrollment.progress.findIndex(t => t.topicName === topicName);
-        if (topicIndex !== -1) {
-          // Mark topic as complete/incomplete
-          updatedEnrollment.progress[topicIndex].isCompleted = isCompleted;
-          
-          // Mark all subtopics in this topic as complete/incomplete
-          updatedEnrollment.progress[topicIndex].subtopics.forEach(subtopic => {
-            subtopic.isCompleted = isCompleted;
-          });
-        }
-
-        // Update completion stats from backend response
-        if (response.data.completionStats) {
-          updatedEnrollment.completedSubtopics = response.data.completionStats.completedSubtopics;
-          updatedEnrollment.completedTopics = response.data.completionStats.completedTopics;
-          updatedEnrollment.courseCompletionPercentage = response.data.completionStats.courseCompletionPercentage;
-          updatedEnrollment.isCourseCompleted = response.data.completionStats.isCourseCompleted;
-        }
-
-        setEnrollment(updatedEnrollment);
-        
-        toast({
-          title: "Success",
-          description: response.data.message,
-          variant: "default",
-        });
-      }
-    } catch (err: any) {
-      console.error("Failed to update topic progress:", err);
-      console.error("Error details:", err.response?.data); // Debug log
-      
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || "Failed to update progress",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingTopic(null);
-    }
-  };
-
   // Get completion status for a subtopic
   const getSubtopicStatus = (topicName: string, subtopicName: string): boolean => {
     if (!enrollment) return false;
@@ -345,13 +275,6 @@ const CourseLearningInterface: React.FC = () => {
     
     const subtopic = topic.subtopics.find(st => st.subTopicName === subtopicName);
     return subtopic?.isCompleted || false;
-  };
-
-  // Get completion status for a topic
-  const getTopicStatus = (topicName: string): boolean => {
-    if (!enrollment) return false;
-    const topic = enrollment.progress.find(t => t.topicName === topicName);
-    return topic?.isCompleted || false;
   };
 
   // Check if all subtopics in a topic are completed
@@ -401,7 +324,7 @@ const CourseLearningInterface: React.FC = () => {
     if (!courseId || !course) return;
     
     try {
-      setProgressLoading(true);
+      const progressLoading = true;
       if (course.courseType === 'unpaid') {
         // Enroll in free course
         const response = await axios.post(
@@ -430,7 +353,7 @@ const CourseLearningInterface: React.FC = () => {
         variant: "destructive",
       });
     } finally {
-      setProgressLoading(false);
+      // progressLoading will be reset by fetchEnrollmentProgress
     }
   };
 
@@ -560,7 +483,7 @@ const CourseLearningInterface: React.FC = () => {
     }
   };
 
-  // UI SubtopicRow
+  // UI SubtopicRow Component
   const SubtopicRow: React.FC<{ 
     tIndex: number; 
     sIndex: number; 
@@ -579,7 +502,7 @@ const CourseLearningInterface: React.FC = () => {
             <button
               onClick={() => markSubtopicComplete(topicName, sub.name, !isCompleted)}
               className="flex-shrink-0 mt-1"
-              disabled={isUpdating || progressLoading}
+              disabled={isUpdating}
             >
               {isUpdating ? (
                 <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
@@ -733,15 +656,9 @@ const CourseLearningInterface: React.FC = () => {
                       </p>
                       <Button 
                         onClick={enrollInCourse} 
-                        disabled={progressLoading}
                         className="bg-yellow-600 hover:bg-yellow-700 text-white"
                       >
-                        {progressLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : course.courseType === 'unpaid' ? "Enroll for Free" : "Purchase Course"}
+                        {course.courseType === 'unpaid' ? "Enroll for Free" : "Purchase Course"}
                       </Button>
                     </div>
                   </div>
@@ -875,55 +792,28 @@ const CourseLearningInterface: React.FC = () => {
                   <div className="space-y-6">
                     {course.curriculum.map((topic, tIndex) => {
                       const topicTotal = topic.subtopics.reduce((s, st) => s + (st.duration || 0), 0);
-                      const isTopicCompleted = getTopicStatus(topic.topicName);
-                      const allSubtopicsCompleted = areAllSubtopicsCompleted(topic.topicName);
+                      const isTopicCompleted = areAllSubtopicsCompleted(topic.topicName);
                       const completedSubtopicsCount = getCompletedSubtopicsCount(topic.topicName);
                       const topicProgress = getTopicProgressDetails(topic.topicName);
                       const totalSubtopicsInTopic = topic.subtopics.length;
-                      const isUpdatingTopic = updatingTopic === topic.topicName;
 
                       return (
                         <div 
                           key={topic.topicName} 
                           className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${isTopicCompleted && isEnrolled ? 'bg-green-50 border-green-200' : 'bg-white'}`}
                         >
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <div className="font-semibold text-lg flex items-center gap-2">
-                                {topic.topicName}
-                                {isTopicCompleted && isEnrolled && (
-                                  <CheckCircle className="h-5 w-5 text-green-600" />
-                                )}
-                              </div>
-                              <div className="text-sm text-gray-500 mt-1">
-                                {isEnrolled 
-                                  ? `${completedSubtopicsCount} of ${totalSubtopicsInTopic} lessons completed • ${topicTotal} minutes`
-                                  : `${topic.subtopics.length} lessons • ${topicTotal} minutes`}
-                              </div>
+                          <div className="mb-4">
+                            <div className="font-semibold text-lg flex items-center gap-2">
+                              {topic.topicName}
+                              {isTopicCompleted && isEnrolled && (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              )}
                             </div>
-                            {isEnrolled && (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => markTopicComplete(topic.topicName, !isTopicCompleted)}
-                                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                  disabled={isUpdatingTopic || progressLoading}
-                                >
-                                  {isUpdatingTopic ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : isTopicCompleted ? (
-                                    <>
-                                      <Circle className="h-4 w-4" />
-                                      Mark Topic Incomplete
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle className="h-4 w-4" />
-                                      Mark All Complete
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            )}
+                            <div className="text-sm text-gray-500 mt-1">
+                              {isEnrolled 
+                                ? `${completedSubtopicsCount} of ${totalSubtopicsInTopic} lessons completed • ${topicTotal} minutes`
+                                : `${topic.subtopics.length} lessons • ${topicTotal} minutes`}
+                            </div>
                           </div>
 
                           <div className="space-y-2 mb-4">
@@ -939,7 +829,7 @@ const CourseLearningInterface: React.FC = () => {
                           </div>
 
                           {/* Show topic exam button only when ALL subtopics are completed */}
-                          {isEnrolled && allSubtopicsCompleted && (
+                          {isEnrolled && isTopicCompleted && (
                             <div className="pt-3 border-t">
                               <div className="flex justify-between items-center">
                                 <div>
@@ -966,7 +856,7 @@ const CourseLearningInterface: React.FC = () => {
                           )}
 
                           {/* Start Topic button for non-completed topics */}
-                          {(!allSubtopicsCompleted || !isEnrolled) && (
+                          {(!isTopicCompleted || !isEnrolled) && (
                             <div className="flex gap-2 pt-3 border-t">
                               <Button
                                 onClick={() => {
