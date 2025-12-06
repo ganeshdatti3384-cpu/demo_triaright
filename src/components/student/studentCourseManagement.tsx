@@ -425,14 +425,6 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                               </span>
                             </div>
                             <h3 className="font-semibold text-lg">{enrollment.courseName || 'Course'}</h3>
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">
-                                {enrollment.finalExamAttempted ? 'Final Exam Attempted' : 'Final Exam Pending'}
-                              </span>
-                              <Badge variant={enrollment.courseCompleted ? "default" : "outline"}>
-                                {enrollment.courseCompleted ? 'Completed' : 'In Progress'}
-                              </Badge>
-                            </div>
                             <Button 
                               className="w-full bg-blue-600 hover:bg-blue-700"
                               onClick={() => handleContinueLearning(enrollment)}
