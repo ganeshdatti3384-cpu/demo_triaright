@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookOpen, Play, CheckCircle, Clock, Award, GraduationCap } from 'lucide-react';
@@ -426,13 +425,6 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
                               </span>
                             </div>
                             <h3 className="font-semibold text-lg">{enrollment.courseName || 'Course'}</h3>
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Progress</span>
-                                <span>{enrollment.videoProgressPercent || 0}%</span>
-                              </div>
-                              <Progress value={enrollment.videoProgressPercent || 0} className="h-2" />
-                            </div>
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-600">
                                 {enrollment.finalExamAttempted ? 'Final Exam Attempted' : 'Final Exam Pending'}
@@ -661,49 +653,6 @@ const StudentCourseManagement: React.FC<StudentCourseManagementProps> = ({ initi
           </Tabs>
         </CardContent>
       </Card>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <BookOpen className="h-8 w-8 text-blue-600 mr-4" />
-              <div>
-                <p className="text-2xl font-bold">{myEnrollments.length}</p>
-                <p className="text-sm text-gray-600">Total Enrollments</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <CheckCircle className="h-8 w-8 text-green-600 mr-4" />
-              <div>
-                <p className="text-2xl font-bold">{completedCourses.length}</p>
-                <p className="text-sm text-gray-600">Completed Courses</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <Clock className="h-8 w-8 text-purple-600 mr-4" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {myEnrollments.length > 0 
-                    ? Math.round(myEnrollments.reduce((sum, enrollment) => sum + (enrollment.videoProgressPercent || 0), 0) / myEnrollments.length)
-                    : 0}%
-                </p>
-                <p className="text-sm text-gray-600">Average Progress</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 };
