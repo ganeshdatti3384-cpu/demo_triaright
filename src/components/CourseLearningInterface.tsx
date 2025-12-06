@@ -107,6 +107,8 @@ const CourseLearningInterface: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [progressLoading, setProgressLoading] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [fetchingEnrollment, setFetchingEnrollment] = useState(false);
 
   // playing location (indexes)
   const [playingSubtopic, setPlayingSubtopic] = useState<{ topicIndex: number; subIndex: number } | null>(null);
@@ -129,7 +131,7 @@ const CourseLearningInterface: React.FC = () => {
       const courseResp = await axios.get(`${API_BASE_URL}/courses/${courseId}`);
       if (courseResp.data && courseResp.data.course) {
         setCourse(courseResp.data.course);
-        await fetchEnrollmentProgress(courseResp.data.course._id);
+        // Enrollment will be fetched separately after course is loaded
       } else {
         toast({ title: "Course not found", description: "This course doesn't exist", variant: "destructive" });
         navigate("/courses");
@@ -150,6 +152,12 @@ const CourseLearningInterface: React.FC = () => {
 
   // Fetch enrollment progress using existing endpoint
   const fetchEnrollmentProgress = async (courseId: string) => {
+    if (!token) {
+      setIsEnrolled(false);
+      return;
+    }
+    
+    setFetchingEnrollment(true);
     try {
       const response = await axios.get(`${API_BASE_URL}/courses/enrollment/my-course-progress/${courseId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -161,15 +169,24 @@ const CourseLearningInterface: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Failed to fetch enrollment progress:", err);
-      if (err.response?.status !== 404) {
+      // Handle specific error cases
+      if (err.response?.status === 401) {
+        // Token expired or invalid
         toast({
-          title: "Error",
-          description: "Failed to load your progress",
+          title: "Session Expired",
+          description: "Please login again",
           variant: "destructive",
         });
+      } else if (err.response?.status === 404) {
+        // Not enrolled - this is expected for non-enrolled users
+        setIsEnrolled(false);
+      } else {
+        // Other errors - show toast but don't redirect
+        console.log("Enrollment fetch error (non-critical):", err.response?.data?.message);
       }
-      // User is not enrolled yet, that's okay
       setIsEnrolled(false);
+    } finally {
+      setFetchingEnrollment(false);
     }
   };
 
@@ -368,6 +385,7 @@ const CourseLearningInterface: React.FC = () => {
     }
   };
 
+  // Effect for initial course load
   useEffect(() => {
     if (courseId) {
       fetchCourse();
@@ -376,6 +394,19 @@ const CourseLearningInterface: React.FC = () => {
       destroyYTPlayer();
     };
   }, [courseId]);
+
+  // Effect to fetch enrollment when course and token are available
+  useEffect(() => {
+    if (course && token && initialLoad) {
+      // Delay slightly to ensure all auth state is settled
+      const timer = setTimeout(() => {
+        fetchEnrollmentProgress(course._id);
+        setInitialLoad(false);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [course, token, initialLoad]);
 
   // YouTube Player Management
   const loadYouTubeIframeAPI = (): Promise<void> => {
@@ -540,7 +571,8 @@ const CourseLearningInterface: React.FC = () => {
     );
   };
 
-  if (loading) {
+  // Show loading state if course is loading or enrollment is being fetched
+  if (loading || fetchingEnrollment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
