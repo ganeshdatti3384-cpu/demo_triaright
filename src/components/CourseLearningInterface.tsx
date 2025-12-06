@@ -407,7 +407,7 @@ const CourseLearningInterface: React.FC = () => {
     if (!ytContainerRef.current) return;
 
     ytPlayerRef.current = new (window as any).YT.Player(ytContainerRef.current, {
-      height: "390",
+      height: "100%",
       width: "100%",
       videoId,
       playerVars: {
@@ -482,6 +482,29 @@ const CourseLearningInterface: React.FC = () => {
       });
     }
   };
+
+  // Auto-play first video when enrolled
+  useEffect(() => {
+    if (isEnrolled && course && course.curriculum && course.curriculum.length > 0) {
+      const firstTopic = course.curriculum[0];
+      if (firstTopic.subtopics && firstTopic.subtopics.length > 0) {
+        const firstSubtopic = firstTopic.subtopics[0];
+        const videoId = extractYouTubeId(firstSubtopic.link);
+        if (videoId && !currentVideoId) {
+          // Set playing state
+          setPlayingSubtopic({ topicIndex: 0, subIndex: 0 });
+          setCurrentVideoId(videoId);
+          
+          // Create player after a small delay to ensure DOM is ready
+          setTimeout(() => {
+            createYTPlayer(videoId).catch((e) => {
+              console.error("Failed to auto-create YT player:", e);
+            });
+          }, 300);
+        }
+      }
+    }
+  }, [isEnrolled, course, currentVideoId]);
 
   // UI SubtopicRow Component
   const SubtopicRow: React.FC<{ 
@@ -640,10 +663,10 @@ const CourseLearningInterface: React.FC = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Player + curriculum */}
-          <div className="lg:col-span-2 space-y-6">
+          {/* Left: Video Player - Now full width of left column */}
+          <div className="lg:col-span-2">
             {!isEnrolled && (
-              <Card className="bg-yellow-50 border-yellow-200">
+              <Card className="bg-yellow-50 border-yellow-200 mb-6">
                 <CardContent className="pt-6">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="h-6 w-6 text-yellow-600 mt-0.5" />
@@ -666,7 +689,7 @@ const CourseLearningInterface: React.FC = () => {
               </Card>
             )}
 
-            <Card>
+            <Card className="mb-6">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
@@ -687,8 +710,8 @@ const CourseLearningInterface: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="lg:col-span-2">
+                <div className="space-y-4">
+                  <div>
                     {currentVideoId ? (
                       <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
                         <div ref={ytContainerRef} id="yt-player" className="w-full h-full" />
@@ -712,72 +735,39 @@ const CourseLearningInterface: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="space-y-4">
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="space-y-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-500 mb-1">Total Duration</div>
-                            <div className="text-lg font-medium">{course.totalDuration || 0} minutes</div>
-                          </div>
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {isEnrolled && isCourseCompleted && finalExamEligible && !finalExamAttempted && (
+                      <Button
+                        onClick={navigateToFinalExam}
+                        className="flex-1 min-w-[200px]"
+                        size="lg"
+                        variant="default"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Take Final Exam
+                      </Button>
+                    )}
 
-                          {isEnrolled && (
-                            <>
-                              <div>
-                                <div className="text-sm font-medium text-gray-500 mb-1">Progress</div>
-                                <div className="text-lg font-medium">{completionPercentage}% Complete</div>
-                              </div>
-
-                              <div className="space-y-2">
-                                {/* Show Final Exam button only when all topics are completed */}
-                                {isCourseCompleted && finalExamEligible && !finalExamAttempted && (
-                                  <Button
-                                    onClick={navigateToFinalExam}
-                                    className="w-full"
-                                    size="lg"
-                                    variant="default"
-                                  >
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    Take Final Exam
-                                  </Button>
-                                )}
-
-                                {/* Show Certificate button when eligible */}
-                                {isCourseCompleted && finalExamAttempted && certificateEligible && (
-                                  <Button
-                                    onClick={navigateToCertificate}
-                                    className="w-full"
-                                    size="lg"
-                                    variant="outline"
-                                  >
-                                    <Award className="h-4 w-4 mr-2" />
-                                    Get Certificate
-                                  </Button>
-                                )}
-                              </div>
-                            </>
-                          )}
-
-                          <Button
-                            onClick={() => {
-                              if (!course.curriculum || course.curriculum.length === 0) return;
-                              openSubtopic(0, 0);
-                            }}
-                            className="w-full"
-                            size="lg"
-                            disabled={!isEnrolled}
-                          >
-                            {isEnrolled ? "Start Learning" : "Enroll to Start"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {isEnrolled && isCourseCompleted && finalExamAttempted && certificateEligible && (
+                      <Button
+                        onClick={navigateToCertificate}
+                        className="flex-1 min-w-[200px]"
+                        size="lg"
+                        variant="outline"
+                      >
+                        <Award className="h-4 w-4 mr-2" />
+                        Get Certificate
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Curriculum */}
+          {/* Right: Course Curriculum - Moved to side of video */}
+          <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Course Curriculum</CardTitle>
@@ -786,10 +776,10 @@ const CourseLearningInterface: React.FC = () => {
                     ? `${completedSubtopics} of ${totalSubtopics} lessons completed • ${completionPercentage}% complete`
                     : "Enroll to track your progress"}
                 </CardDescription>
-              </CardHeader>
+              </CardContent>
               <CardContent>
                 {course.curriculum && course.curriculum.length > 0 ? (
-                  <div className="space-y-6">
+                  <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
                     {course.curriculum.map((topic, tIndex) => {
                       const topicTotal = topic.subtopics.reduce((s, st) => s + (st.duration || 0), 0);
                       const isTopicCompleted = areAllSubtopicsCompleted(topic.topicName);
@@ -885,11 +875,6 @@ const CourseLearningInterface: React.FC = () => {
                 )}
               </CardContent>
             </Card>
-          </div>
-
-          {/* Right column is now empty since we removed Course Information and Your Progress sections */}
-          <div className="space-y-6">
-            {/* This column is intentionally left empty */}
           </div>
         </div>
       </div>
