@@ -136,13 +136,17 @@ const fetchTrainers = async () => {
  
     const data = await response.json();
  
-    // Normalize for dropdown
-   const formattedTrainers = data
-  .filter((trainer: any) => trainer.personalDetails) // ✅ guard
-  .map((trainer: any) => ({
-    id: trainer.userId,
-    name: `${trainer.personalDetails?.firstName ?? ""} ${trainer.personalDetails?.lastName ?? ""}`.trim(),
-  }));
+    // Filter and format trainers - the response structure matches Trainer interface
+    const formattedTrainers = data
+      .filter((trainer: any) => trainer.personalDetails && trainer.personalDetails.firstName)
+      .map((trainer: any) => ({
+        userId: trainer.userId,
+        personalDetails: {
+          firstName: trainer.personalDetails.firstName,
+          lastName: trainer.personalDetails.lastName,
+          email: trainer.personalDetails.email,
+        }
+      }));
  
     setTrainers(formattedTrainers);
   } catch (error) {
