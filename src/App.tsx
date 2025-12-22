@@ -376,10 +376,10 @@ const App = () => {
             }
           />
         <Route
-  path="login/trainer/dashboard"
+  path="/trainer/dashboard"
   element={
     <TrainerDashboard
-      user={{ name: "Trainer Name", role: "trainer" }}
+      user={{ name: "Trainer Name", role: "Trainer" }}
     />
   }
 />
