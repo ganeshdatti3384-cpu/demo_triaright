@@ -1,11 +1,55 @@
 // components/ServicesOverview.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Users, GraduationCap, Building, Star, Shield, Zap } from 'lucide-react';
 
 const ServicesOverview = () => {
   const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check login status on component mount and listen for changes
+  useEffect(() => {
+    // Initial check
+    checkLoginStatus();
+    
+    // Listen for storage changes (if login/logout happens in another tab/window)
+    const handleStorageChange = () => {
+      checkLoginStatus();
+    };
+    
+    // Listen for custom login/logout events (if you're using events)
+    const handleLoginEvent = () => {
+      checkLoginStatus();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('user-login', handleLoginEvent);
+    window.addEventListener('user-logout', handleLoginEvent);
+    
+    // Check periodically (optional, for better real-time updates)
+    const interval = setInterval(checkLoginStatus, 1000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('user-login', handleLoginEvent);
+      window.removeEventListener('user-logout', handleLoginEvent);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const checkLoginStatus = () => {
+    // Check multiple possible ways login might be stored
+    const loggedIn = 
+      localStorage.getItem('isLoggedIn') === 'true' ||
+      localStorage.getItem('token') !== null ||
+      sessionStorage.getItem('isLoggedIn') === 'true' ||
+      sessionStorage.getItem('token') !== null ||
+      document.cookie.includes('auth_token') ||
+      document.cookie.includes('isLoggedIn=true');
+    
+    setIsLoggedIn(loggedIn);
+  };
 
   const servicesData = [
     {
@@ -144,16 +188,18 @@ const ServicesOverview = () => {
                 </div>
               </div>
 
-              {/* CTA Button - Sticky at bottom */}
-              <div className="p-6 pt-0 mt-auto">
-                <Button 
-                  className={`w-full bg-gradient-to-r ${service.gradient} hover:shadow-lg hover:scale-105 transform transition-all duration-300 text-white font-semibold py-4 rounded-xl`}
-                  onClick={() => navigate('/register')}
-                >
-                  Get Started Now
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
-                </Button>
-              </div>
+              {/* CTA Button - Only show if user is NOT logged in */}
+              {!isLoggedIn && (
+                <div className="p-6 pt-0 mt-auto">
+                  <Button 
+                    className={`w-full bg-gradient-to-r ${service.gradient} hover:shadow-lg hover:scale-105 transform transition-all duration-300 text-white font-semibold py-4 rounded-xl`}
+                    onClick={() => navigate('/register')}
+                  >
+                    Get Started Now
+                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+                  </Button>
+                </div>
+              )}
 
               {/* Hover Effect Border */}
               <div className={`absolute inset-0 rounded-3xl border-2 border-transparent bg-gradient-to-r ${service.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10`}>
@@ -173,12 +219,6 @@ const ServicesOverview = () => {
               Join thousands of students, colleges, and companies already transforming their future with our platform.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:shadow-lg text-white px-8 py-3 rounded-xl font-semibold"
-                onClick={() => navigate('/register')}
-              >
-                Start Free Trial
-              </Button>
               <Button 
                 variant="outline"
                 className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-3 rounded-xl font-semibold"

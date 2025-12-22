@@ -298,18 +298,6 @@ const Index = () => {
                 <div className="text-sm text-gray-600">Success Rate</div>
               </div>
             </div>
-
-            {/* Community CTA Button */}
-            <div className="mt-8">
-              <Button 
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                onClick={() => navigate('/community')}
-              >
-                <Users className="mr-2 h-5 w-5" />
-                Join Our Community
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </div>
           </div>
         </div>
 
@@ -391,7 +379,7 @@ const Index = () => {
               </p>
               <Button 
                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-full font-semibold"
-                onClick={() => navigate('/courses')}
+                onClick={() => navigate('/recorded-courses')}
               >
                 Browse All Courses <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -414,7 +402,7 @@ const Index = () => {
               </p>
               <Button 
                 className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white px-8 py-3 rounded-full font-semibold"
-                onClick={() => navigate('/internships')}
+                onClick={() => navigate('/internships/ap-exclusive')}
               >
                 View Internships <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

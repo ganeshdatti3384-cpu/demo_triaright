@@ -80,7 +80,7 @@ const Footer = () => {
           {/* Company Info */}
           <div>
             <img
-              src="/lovable-uploads/8a53fb02-6194-4512-8c0c-ba7831af3ae8.png"
+              src="/lovable-uploads/LOGO.png"
               alt="TriaRight - The New Era Of Learning"
               className="h-12 mb-4"
             />
