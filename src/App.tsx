@@ -66,6 +66,10 @@ import APCertificatePage from './components/student/APCertificatePage';
 import StreamLearningInterface from '@/components/pack365/StreamLearningInterface';
 import Pack365CertificatePage from '@/components/pack365/Pack365CertificatePage';
 import CourseLearningInterface from '@/components/CourseLearningInterface'; // Add this import
+import LiveCourseManagement from "@/components/admin/live-courses/LiveCourseManagement";
+import TrainerDashboard from "@/components/dashboards/TrainerDashboard";
+// import { Toaster } from "@/components/ui/toaster";
+
 
 const queryClient = new QueryClient();
 
@@ -371,7 +375,15 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          
+        <Route
+  path="login/trainer/dashboard"
+  element={
+    <TrainerDashboard
+      user={{ name: "Trainer Name", role: "trainer" }}
+    />
+  }
+/>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </TooltipProvider>

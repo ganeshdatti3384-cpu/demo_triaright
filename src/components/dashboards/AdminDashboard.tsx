@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import LiveCourseManagement from "@/components/admin/live-courses/LiveCourseManagement";
+import LiveCourseCouponsManagement from "@/components/admin/live-courses/LiveCourseCouponsManagement";
+import LiveCourseBatchesManagement from "@/components/admin/live-courses/LiveCourseBatchesManagement";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { 
@@ -27,17 +31,17 @@ import {
   MessageSquare,
   User
 } from 'lucide-react';
-import CourseManagement from '../admin/CourseManagement';
-import UserManagement from '../admin/UserManagement';
-import JobManagement from '../admin/JobManagement';
-import Pack365Management from '../admin/Pack365Management';
-import CollegeManagement from '../admin/CollegeManagement';
-import RegularInternshipManagement from '../admin/RegularInternshipManagement';
-import APInternshipManagement from '../admin/APInternshipManagement';
-import FeedbackManagement from '../admin/FeedbackManagement';
-import PlacementManagement from '../admin/PlacementManagement';
-import UpdateManagement from '../admin/UpdateManagement';
-import Navbar from '../Navbar';
+import CourseManagement from '@/components/admin/CourseManagement';
+import UserManagement from '@/components/admin/UserManagement';
+import JobManagement from '@/components/admin/JobManagement';
+import Pack365Management from '@/components/admin/Pack365Management';
+import CollegeManagement from '@/components/admin/CollegeManagement';
+import RegularInternshipManagement from '@/components/admin/RegularInternshipManagement';
+import APInternshipManagement from '@/components/admin/APInternshipManagement';
+import FeedbackManagement from '@/components/admin/FeedbackManagement';
+import PlacementManagement from '@/components/admin/PlacementManagement';
+import UpdateManagement from '@/components/admin/UpdateManagement';
+import Navbar from '@/components/Navbar';
 import { collegeApi } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -150,6 +154,9 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           {[
             { value: 'users', label: 'Users' },
             { value: 'courses', label: 'Courses' },
+            { value: 'live-courses', label: 'Live Courses' },
+            { value: 'live-course-coupons', label: 'Live Coupons' },
+            { value: 'live-course-batches', label: 'Live Batches' },
             { value: 'regular-internships', label: 'Internships' },
             { value: 'ap-internships', label: 'AP Exclusive' },
             { value: 'pack365', label: 'Pack365' },
@@ -232,18 +239,21 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           {/* Desktop Tabs */}
-          <TabsList className="hidden lg:grid w-full grid-cols-11 gap-1 mb-6">
-            <TabsTrigger value="users" className="text-xs">Users</TabsTrigger>
-            <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
-            <TabsTrigger value="regular-internships" className="text-xs">Internships</TabsTrigger>
-            <TabsTrigger value="ap-internships" className="text-xs">AP Exclusive</TabsTrigger>
-            <TabsTrigger value="pack365" className="text-xs">Pack365</TabsTrigger>
-            <TabsTrigger value="jobs" className="text-xs">Jobs</TabsTrigger>
-            <TabsTrigger value="colleges" className="text-xs">Colleges</TabsTrigger>
-            <TabsTrigger value="placements" className="text-xs">Placements</TabsTrigger>
-            <TabsTrigger value="feedbacks" className="text-xs">Feedbacks</TabsTrigger>
-            <TabsTrigger value="updates" className="text-xs">Updates</TabsTrigger>
-            <TabsTrigger value="college-requests" className="text-xs">Requests</TabsTrigger>
+          <TabsList className="hidden lg:flex w-full gap-1 mb-6 overflow-x-auto">
+            <TabsTrigger value="users" className="text-xs whitespace-nowrap">Users</TabsTrigger>
+            <TabsTrigger value="courses" className="text-xs whitespace-nowrap">Courses</TabsTrigger>
+            <TabsTrigger value="live-courses" className="text-xs whitespace-nowrap">Live Courses</TabsTrigger>
+            <TabsTrigger value="live-course-coupons" className="text-xs whitespace-nowrap">Live Coupons</TabsTrigger>
+            <TabsTrigger value="live-course-batches" className="text-xs whitespace-nowrap">Live Batches</TabsTrigger>
+            <TabsTrigger value="regular-internships" className="text-xs whitespace-nowrap">Internships</TabsTrigger>
+            <TabsTrigger value="ap-internships" className="text-xs whitespace-nowrap">AP Exclusive</TabsTrigger>
+            <TabsTrigger value="pack365" className="text-xs whitespace-nowrap">Pack365</TabsTrigger>
+            <TabsTrigger value="jobs" className="text-xs whitespace-nowrap">Jobs</TabsTrigger>
+            <TabsTrigger value="colleges" className="text-xs whitespace-nowrap">Colleges</TabsTrigger>
+            <TabsTrigger value="placements" className="text-xs whitespace-nowrap">Placements</TabsTrigger>
+            <TabsTrigger value="feedbacks" className="text-xs whitespace-nowrap">Feedbacks</TabsTrigger>
+            <TabsTrigger value="updates" className="text-xs whitespace-nowrap">Updates</TabsTrigger>
+            <TabsTrigger value="college-requests" className="text-xs whitespace-nowrap">Requests</TabsTrigger>
           </TabsList>
 
           {/* Mobile Tab Selector */}
@@ -255,6 +265,9 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             >
               <option value="users">Users</option>
               <option value="courses">Courses</option>
+              <option value="live-courses">Live Courses</option>
+              <option value="live-course-coupons">Live Coupons</option>
+              <option value="live-course-batches">Live Batches</option>
               <option value="regular-internships">Internships</option>
               <option value="ap-internships">AP Exclusive</option>
               <option value="pack365">Pack365</option>
@@ -273,6 +286,18 @@ const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
           <TabsContent value="courses" className="space-y-6">
             <CourseManagement />
+          </TabsContent>
+
+          <TabsContent value="live-courses" className="space-y-6">
+            <LiveCourseManagement />
+          </TabsContent>
+
+          <TabsContent value="live-course-coupons" className="space-y-6">
+            <LiveCourseCouponsManagement />
+          </TabsContent>
+
+          <TabsContent value="live-course-batches" className="space-y-6">
+            <LiveCourseBatchesManagement />
           </TabsContent>
 
           <TabsContent value="regular-internships" className="space-y-6">

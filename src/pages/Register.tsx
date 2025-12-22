@@ -40,7 +40,18 @@ import {
 import { authApi } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 
-// Base schema for all roles
+// Trainer types list (you confirmed "use this list")
+const TRAINER_TYPES = [
+  'Technical Trainer',
+  'Coding Trainer',
+  'Aptitude Trainer',
+  'Soft Skills Trainer',
+  'Communication Trainer',
+  'Domain Expert',
+  'Industry Instructor',
+] as const;
+
+// Base schema for all roles (added trainer-specific optional fields)
 const baseSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
@@ -50,20 +61,66 @@ const baseSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
   address: z.string().min(1, 'Address is required'),
-  role: z.enum(['student', 'college', 'jobseeker', 'employer']),
+  role: z.enum(['student', 'college', 'jobseeker', 'employer', 'trainer']),
+
+  // Trainer-specific (optional in base, required via refine if role === 'trainer')
+  expertise: z.string().optional(),
+  trainerType: z.enum(TRAINER_TYPES).optional(),
+  experienceYears: z.string().optional(),
+  bio: z.string().optional(),
+  linkedin: z.string().optional(),
+
   acceptTerms: z.boolean().refine((val) => val === true, {
     message: 'You must accept terms and conditions'
   })
 });
 
-// Refine for password match
-const registrationSchema = baseSchema.refine(
-  (data) => data.password === data.confirmPassword,
-  {
+// Refine for password match and trainer required fields
+const registrationSchema = baseSchema
+  .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
-  }
-);
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === 'trainer') {
+      if (!data.expertise || data.expertise.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Expertise is required for trainers',
+          path: ['expertise'],
+        });
+      }
+      if (!data.trainerType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Trainer type is required',
+          path: ['trainerType'],
+        });
+      }
+      // experienceYears can be optional, but if provided ensure it's a number string
+      if (data.experienceYears && isNaN(Number(data.experienceYears))) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Experience must be a number',
+          path: ['experienceYears'],
+        });
+      }
+      // optional: validate linkedin URL if provided
+      if (data.linkedin && data.linkedin.trim() !== '') {
+        try {
+          // simple URL check
+          // eslint-disable-next-line no-new
+          new URL(data.linkedin);
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'LinkedIn must be a valid URL',
+            path: ['linkedin'],
+          });
+        }
+      }
+    }
+  });
 
 type RegistrationFormData = z.infer<typeof registrationSchema>;
 
@@ -76,6 +133,7 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [collegeLogo, setCollegeLogo] = useState<File | null>(null);
   const [companyLogo, setCompanyLogo] = useState<File | null>(null);
+  const [trainerPhoto, setTrainerPhoto] = useState<File | null>(null);
   const [collegeName, setCollegeName] = useState('');
   const [collegeCode, setCollegeCode] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -101,6 +159,16 @@ const Register = () => {
   const handleRegister = async (formData: RegistrationFormData) => {
     try {
       setIsLoading(true);
+toast({
+  title: "Trainer Account Created!",
+  description: "Your trainer account has been successfully created.",
+});
+
+if (formData.role === "trainer") {
+  navigate("/login");
+} else {
+  navigate("/login");
+}
 
       // Create FormData for file uploads
       const formDataToSend = new FormData();
@@ -115,7 +183,7 @@ const Register = () => {
       formDataToSend.append('password', formData.password);
       formDataToSend.append('role', formData.role);
 
-      // Add role-specific fields - FIXED FOR ALL ROLES
+      // Add role-specific fields - college
       if (formData.role === 'college') {
         if (!collegeName) {
           toast({
@@ -133,14 +201,14 @@ const Register = () => {
           });
           return;
         }
-        
+
         formDataToSend.append('collegeName', collegeName);
         formDataToSend.append('collegeCode', collegeCode);
         if (collegeLogo) {
           formDataToSend.append('collegeLogo', collegeLogo);
         }
       } else if (formData.role === 'employer') {
-        // FIX: Send required fields for employer
+        // employer
         if (!companyName) {
           toast({
             title: 'Validation Error',
@@ -157,38 +225,53 @@ const Register = () => {
           });
           return;
         }
-        
+
         formDataToSend.append('companyName', companyName);
         formDataToSend.append('companyType', companyType);
         if (companyLogo) {
           formDataToSend.append('companyLogo', companyLogo);
         }
       } else if (formData.role === 'student') {
-        // FIX: Send collegeName for student (optional)
+        // student (optional collegeName)
         if (collegeName) {
           formDataToSend.append('collegeName', collegeName);
         }
       } else if (formData.role === 'jobseeker') {
-        // FIX: Jobseeker doesn't need additional fields for registration
-        // The backend will create the profile with default values
+        // jobseeker - no extra fields
         console.log('Jobseeker registration - no additional fields needed');
+      } else if (formData.role === 'trainer') {
+        // TRAINER: append trainer-specific fields (these are validated by zod refine)
+        formDataToSend.append('expertise', formData.expertise || '');
+        formDataToSend.append('trainerType', formData.trainerType || '');
+        if (formData.experienceYears) {
+          formDataToSend.append('experienceYears', formData.experienceYears);
+        }
+        if (formData.bio) {
+          formDataToSend.append('bio', formData.bio);
+        }
+        if (formData.linkedin) {
+          formDataToSend.append('linkedin', formData.linkedin);
+        }
+        if (trainerPhoto) {
+          formDataToSend.append('profilePhoto', trainerPhoto);
+        }
       }
 
       console.log('Sending registration data for role:', formData.role);
-      
-      // Call the register API with FormData
-      await authApi.register(formDataToSend);
 
-      toast({ 
-        title: 'Success', 
-        description: 'Registration successful! Please login.' 
+      // Call the register API with FormData
+      const response = await authApi.register(formDataToSend as any);
+
+      toast({
+        title: 'Success',
+        description: 'Registration successful! Please login.'
       });
       navigate('/login');
     } catch (error: any) {
       console.error('Registration error:', error);
-      
+
       const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'Something went wrong';
-      
+
       // Handle specific error cases
       if (errorMessage.includes('duplicate key') && errorMessage.includes('email')) {
         setError('email', {
@@ -231,6 +314,12 @@ const Register = () => {
   const handleCompanyLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setCompanyLogo(e.target.files[0]);
+    }
+  };
+
+  const handleTrainerPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setTrainerPhoto(e.target.files[0]);
     }
   };
 
@@ -416,6 +505,7 @@ const Register = () => {
                               <SelectItem value="college">College</SelectItem>
                               <SelectItem value="jobseeker">Job Seeker</SelectItem>
                               <SelectItem value="employer">Employer</SelectItem>
+                              <SelectItem value="trainer">Trainer</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
@@ -687,6 +777,99 @@ const Register = () => {
                             </div>
                           </div>
                         </div>
+                      )}
+
+                      {/* Trainer-specific fields */}
+                      {selectedRole === 'trainer' && (
+                        <>
+                          <div>
+                            <Label htmlFor="trainerType" className="text-gray-700 font-medium">Trainer Type *</Label>
+                            <Controller
+                              name="trainerType"
+                              control={control}
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
+                                    <SelectValue placeholder="Select trainer type" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                                    {TRAINER_TYPES.map((t) => (
+                                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                            {errors.trainerType && <p className="text-red-500 text-sm mt-1">{(errors as any).trainerType?.message}</p>}
+                          </div>
+
+                          <div>
+                            <Label htmlFor="expertise" className="text-gray-700 font-medium">Area of Expertise *</Label>
+                            <div className="relative mt-1">
+                              <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input
+                                id="expertise"
+                                {...register('expertise')}
+                                placeholder="e.g. MERN Stack, Data Science, Java"
+                                className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                              />
+                            </div>
+                            {errors.expertise && <p className="text-red-500 text-sm mt-1">{(errors as any).expertise?.message}</p>}
+                          </div>
+
+                          <div>
+                            <Label htmlFor="experienceYears" className="text-gray-700 font-medium">Years of Experience</Label>
+                            <div className="relative mt-1">
+                              <Input
+                                id="experienceYears"
+                                {...register('experienceYears')}
+                                placeholder="e.g. 3"
+                                className="pl-3 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                              />
+                            </div>
+                            {errors.experienceYears && <p className="text-red-500 text-sm mt-1">{(errors as any).experienceYears?.message}</p>}
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <Label htmlFor="bio" className="text-gray-700 font-medium">Short Bio (optional)</Label>
+                            <div className="relative mt-1">
+                              <textarea
+                                id="bio"
+                                {...register('bio')}
+                                placeholder="A short bio to describe your expertise and teaching style"
+                                className="pl-3 h-24 w-full border-gray-200 focus:border-blue-500 transition-colors rounded-md p-3"
+                              />
+                            </div>
+                            {errors.bio && <p className="text-red-500 text-sm mt-1">{(errors as any).bio?.message}</p>}
+                          </div>
+
+                          <div>
+                            <Label htmlFor="linkedin" className="text-gray-700 font-medium">LinkedIn Profile (optional)</Label>
+                            <div className="relative mt-1">
+                              <Input
+                                id="linkedin"
+                                {...register('linkedin')}
+                                placeholder="https://www.linkedin.com/in/yourprofile"
+                                className="pl-3 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                              />
+                            </div>
+                            {errors.linkedin && <p className="text-red-500 text-sm mt-1">{(errors as any).linkedin?.message}</p>}
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <Label htmlFor="trainerPhoto" className="text-gray-700 font-medium">Profile Photo (optional)</Label>
+                            <div className="relative mt-1">
+                              <ImageIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input
+                                id="trainerPhoto"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleTrainerPhotoChange}
+                                className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
+                              />
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
 
