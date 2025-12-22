@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, Plus, Users, Clock, Video, DollarSign, Calendar, Zap, Sparkles, BookOpen, Target, GraduationCap, Upload, FileText, MapPin, Award } from "lucide-react";
+import { Edit, Trash2, Plus, Users, Clock, DollarSign, Calendar, Zap, Sparkles, BookOpen, Target, GraduationCap, Upload, FileText, MapPin, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -30,9 +31,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// API Configuration - Update these with your actual backend URLs
-const API_BASE_URL = "http://localhost:5007"; // Change this to your backend URL
-const getAuthToken = () => localStorage.getItem("token"); // Adjust based on your auth implementation
+const API_BASE_URL = "http://localhost:5007";
+const getAuthToken = () => localStorage.getItem("token");
 
 interface LiveCourse {
   _id: string;
@@ -96,7 +96,6 @@ const LiveCourseManagement: React.FC = () => {
   const [courseToDelete, setCourseToDelete] = useState<LiveCourse | null>(null);
   const [editingCourse, setEditingCourse] = useState<LiveCourse | null>(null);
 
-  // Form fields
   const [formData, setFormData] = useState({
     courseName: "",
     description: "",
@@ -117,55 +116,51 @@ const LiveCourseManagement: React.FC = () => {
     language: "English",
   });
 
-  // File uploads
   const [courseImage, setCourseImage] = useState<File | null>(null);
   const [courseDocuments, setCourseDocuments] = useState<File[]>([]);
+  const [courseImagePreview, setCourseImagePreview] = useState<string>("");
 
   const { toast } = useToast();
 
-const fetchTrainers = async () => {
-  try {
-    const token = getAuthToken();
-    const response = await fetch('http://localhost:5001/api/users/all', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  const fetchTrainers = async () => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch('http://localhost:5001/api/users/all', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
  
-    if (!response.ok) throw new Error("Failed to fetch trainers");
+      if (!response.ok) throw new Error("Failed to fetch trainers");
  
-    const data = await response.json();
+      const data = await response.json();
  
-    // Filter and format trainers - the response structure matches Trainer interface
-    const formattedTrainers = data
-      .filter((trainer: any) => trainer.personalDetails && trainer.personalDetails.firstName)
-      .map((trainer: any) => ({
-        userId: trainer.userId,
-        personalDetails: {
-          firstName: trainer.personalDetails.firstName,
-          lastName: trainer.personalDetails.lastName,
-          email: trainer.personalDetails.email,
-        }
-      }));
+      const formattedTrainers = data
+        .filter((trainer: any) => trainer.personalDetails && trainer.personalDetails.firstName)
+        .map((trainer: any) => ({
+          userId: trainer.userId,
+          personalDetails: {
+            firstName: trainer.personalDetails.firstName,
+            lastName: trainer.personalDetails.lastName,
+            email: trainer.personalDetails.email,
+          }
+        }));
  
-    setTrainers(formattedTrainers);
-  } catch (error) {
-    console.error("Error fetching trainers:", error);
-    toast({
-      title: "Error",
-      description: "Failed to load trainers",
-      variant: "destructive",
-    });
-  }
-};
+      setTrainers(formattedTrainers);
+    } catch (error) {
+      console.error("Error fetching trainers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load trainers",
+        variant: "destructive",
+      });
+    }
+  };
 
-  // Fetch all live courses
   const fetchLiveCourses = async () => {
     try {
       setFetchingData(true);
-      const token = getAuthToken();
-      const response = await fetch(`http://localhost:5007/api/livecourses/live-courses`, {
-      });
+      const response = await fetch(`http://localhost:5007/api/livecourses/live-courses`);
 
       if (!response.ok) throw new Error("Failed to fetch live courses");
 
@@ -210,6 +205,26 @@ const fetchTrainers = async () => {
     });
     setCourseImage(null);
     setCourseDocuments([]);
+    setCourseImagePreview("");
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCourseImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCourseImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDocumentsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      setCourseDocuments(Array.from(files));
+    }
   };
 
   const handleAddLiveCourse = async () => {
@@ -228,7 +243,7 @@ const fetchTrainers = async () => {
       const token = getAuthToken();
       const formDataToSend = new FormData();
 
-      // Append basic fields
+      // Basic fields
       formDataToSend.append("courseName", formData.courseName);
       formDataToSend.append("description", formData.description);
       formDataToSend.append("price", formData.price.toString());
@@ -237,32 +252,45 @@ const fetchTrainers = async () => {
       formDataToSend.append("status", formData.status);
       formDataToSend.append("enrolledCount", "0");
 
-      // Duration
+      // Duration as nested object - use bracket notation
       if (formData.durationValue > 0) {
-        formDataToSend.append("duration", JSON.stringify({
-          value: formData.durationValue,
-          unit: formData.durationUnit,
-        }));
+        formDataToSend.append("duration[value]", formData.durationValue.toString());
+        formDataToSend.append("duration[unit]", formData.durationUnit);
       }
 
-      // Location
-      formDataToSend.append("location", JSON.stringify({
-        type: formData.locationType,
-        venue: formData.venue,
-        city: formData.city,
-        state: formData.state,
-      }));
+      // Location as nested object - use bracket notation
+      formDataToSend.append("location[type]", formData.locationType);
+      if (formData.locationType !== "online") {
+        formDataToSend.append("location[venue]", formData.venue || "");
+        formDataToSend.append("location[city]", formData.city || "");
+        formDataToSend.append("location[state]", formData.state || "");
+      }
 
-      // Optional fields
-      if (formData.courseOverview) formDataToSend.append("courseOverview", formData.courseOverview);
-      if (formData.maxStudents > 0) formDataToSend.append("maxStudents", formData.maxStudents.toString());
-      if (formData.category) formDataToSend.append("category", formData.category);
-      if (formData.language) formDataToSend.append("language", formData.language);
+      // Optional text fields
+      if (formData.courseOverview && formData.courseOverview.trim()) {
+        formDataToSend.append("courseOverview", formData.courseOverview);
+      }
+      if (formData.maxStudents > 0) {
+        formDataToSend.append("maxStudents", formData.maxStudents.toString());
+      }
+      if (formData.category && formData.category.trim()) {
+        formDataToSend.append("category", formData.category);
+      }
+      if (formData.language && formData.language.trim()) {
+        formDataToSend.append("language", formData.language);
+      }
 
-      // Learning outcomes
-      if (formData.learningOutcomes) {
-        const outcomes = formData.learningOutcomes.split("\n").filter(o => o.trim());
-        formDataToSend.append("learningOutcomes", JSON.stringify(outcomes));
+      // Learning outcomes - split by newline and filter empty
+      if (formData.learningOutcomes && formData.learningOutcomes.trim()) {
+        const outcomes = formData.learningOutcomes
+          .split("\n")
+          .map(o => o.trim())
+          .filter(o => o.length > 0);
+        
+        // Append each outcome individually
+        outcomes.forEach((outcome) => {
+          formDataToSend.append("learningOutcomes[]", outcome);
+        });
       }
 
       // Files
@@ -270,9 +298,11 @@ const fetchTrainers = async () => {
         formDataToSend.append("courseImage", courseImage);
       }
 
-      courseDocuments.forEach((doc) => {
-        formDataToSend.append("courseDocuments", doc);
-      });
+      if (courseDocuments && courseDocuments.length > 0) {
+        courseDocuments.forEach((doc) => {
+          formDataToSend.append("courseDocuments", doc);
+        });
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/livecourses/admin/live-courses`, {
         method: "POST",
@@ -287,8 +317,6 @@ const fetchTrainers = async () => {
         throw new Error(errorData.message || "Failed to create course");
       }
 
-      const data = await response.json();
-
       toast({
         title: "Success",
         description: "Live course created successfully",
@@ -296,7 +324,7 @@ const fetchTrainers = async () => {
 
       setIsAddDialogOpen(false);
       resetForm();
-      fetchLiveCourses(); // Refresh the list
+      fetchLiveCourses();
     } catch (error: any) {
       console.error("Error creating course:", error);
       toast({
@@ -311,6 +339,17 @@ const fetchTrainers = async () => {
 
   const openEditDialog = (course: LiveCourse) => {
     setEditingCourse(course);
+    
+    // Parse location if it's a string
+    let locationData = course.location;
+    if (typeof course.location === 'string') {
+      try {
+        locationData = JSON.parse(course.location);
+      } catch (e) {
+        locationData = { type: 'online' };
+      }
+    }
+    
     setFormData({
       courseName: course.courseName,
       description: course.description,
@@ -318,10 +357,10 @@ const fetchTrainers = async () => {
       trainerUserId: course.trainerUserId,
       durationValue: course.duration?.value || 0,
       durationUnit: course.duration?.unit || "weeks",
-      locationType: course.location?.type || "online",
-      venue: course.location?.venue || "",
-      city: course.location?.city || "",
-      state: course.location?.state || "",
+      locationType: locationData?.type || "online",
+      venue: locationData?.venue || "",
+      city: locationData?.city || "",
+      state: locationData?.state || "",
       courseOverview: course.courseOverview || "",
       certificateProvided: course.certificateProvided,
       learningOutcomes: course.learningOutcomes?.join("\n") || "",
@@ -330,6 +369,16 @@ const fetchTrainers = async () => {
       category: course.category || "",
       language: course.language || "English",
     });
+    
+    // Set image preview if exists
+    if (course.courseImage) {
+      setCourseImagePreview(course.courseImage);
+    }
+    
+    // Reset file inputs
+    setCourseImage(null);
+    setCourseDocuments([]);
+    
     setIsEditDialogOpen(true);
   };
 
@@ -351,7 +400,7 @@ const fetchTrainers = async () => {
       const token = getAuthToken();
       const formDataToSend = new FormData();
 
-      // Append all fields
+      // Basic fields
       formDataToSend.append("courseName", formData.courseName);
       formDataToSend.append("description", formData.description);
       formDataToSend.append("price", formData.price.toString());
@@ -359,37 +408,56 @@ const fetchTrainers = async () => {
       formDataToSend.append("certificateProvided", formData.certificateProvided.toString());
       formDataToSend.append("status", formData.status);
 
+      // Duration - use bracket notation
       if (formData.durationValue > 0) {
-        formDataToSend.append("duration", JSON.stringify({
-          value: formData.durationValue,
-          unit: formData.durationUnit,
-        }));
+        formDataToSend.append("duration[value]", formData.durationValue.toString());
+        formDataToSend.append("duration[unit]", formData.durationUnit);
       }
 
-      formDataToSend.append("location", JSON.stringify({
-        type: formData.locationType,
-        venue: formData.venue,
-        city: formData.city,
-        state: formData.state,
-      }));
-
-      if (formData.courseOverview) formDataToSend.append("courseOverview", formData.courseOverview);
-      if (formData.maxStudents > 0) formDataToSend.append("maxStudents", formData.maxStudents.toString());
-      if (formData.category) formDataToSend.append("category", formData.category);
-      if (formData.language) formDataToSend.append("language", formData.language);
-
-      if (formData.learningOutcomes) {
-        const outcomes = formData.learningOutcomes.split("\n").filter(o => o.trim());
-        formDataToSend.append("learningOutcomes", JSON.stringify(outcomes));
+      // Location - use bracket notation
+      formDataToSend.append("location[type]", formData.locationType);
+      if (formData.locationType !== "online") {
+        formDataToSend.append("location[venue]", formData.venue || "");
+        formDataToSend.append("location[city]", formData.city || "");
+        formDataToSend.append("location[state]", formData.state || "");
       }
 
+      // Optional fields
+      if (formData.courseOverview && formData.courseOverview.trim()) {
+        formDataToSend.append("courseOverview", formData.courseOverview);
+      }
+      if (formData.maxStudents > 0) {
+        formDataToSend.append("maxStudents", formData.maxStudents.toString());
+      }
+      if (formData.category && formData.category.trim()) {
+        formDataToSend.append("category", formData.category);
+      }
+      if (formData.language && formData.language.trim()) {
+        formDataToSend.append("language", formData.language);
+      }
+
+      // Learning outcomes
+      if (formData.learningOutcomes && formData.learningOutcomes.trim()) {
+        const outcomes = formData.learningOutcomes
+          .split("\n")
+          .map(o => o.trim())
+          .filter(o => o.length > 0);
+        
+        outcomes.forEach((outcome) => {
+          formDataToSend.append("learningOutcomes[]", outcome);
+        });
+      }
+
+      // Files - only if new files are selected
       if (courseImage) {
         formDataToSend.append("courseImage", courseImage);
       }
 
-      courseDocuments.forEach((doc) => {
-        formDataToSend.append("courseDocuments", doc);
-      });
+      if (courseDocuments && courseDocuments.length > 0) {
+        courseDocuments.forEach((doc) => {
+          formDataToSend.append("courseDocuments", doc);
+        });
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/livecourses/admin/live-courses/${editingCourse._id}`, {
         method: "PUT",
@@ -505,7 +573,7 @@ const fetchTrainers = async () => {
             <BookOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               value={formData.courseName}
-              onChange={(e) => setFormData((prev) => ({ ...prev, courseName: e.target.value }))}
+              onChange={(e) => setFormData({ ...formData, courseName: e.target.value })}
               className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
               placeholder="e.g., Advanced React Development"
             />
@@ -516,7 +584,7 @@ const fetchTrainers = async () => {
           <Label className="text-sm font-semibold text-gray-700">
             Trainer <span className="text-red-500">*</span>
           </Label>
-          <Select value={formData.trainerUserId} onValueChange={(value) => setFormData((prev) => ({ ...prev, trainerUserId: value }))}>
+          <Select value={formData.trainerUserId} onValueChange={(value) => setFormData({ ...formData, trainerUserId: value })}>
             <SelectTrigger className="border-2 border-gray-200 focus:border-blue-500 rounded-xl bg-white/80 shadow-sm h-10">
               <SelectValue placeholder="Select trainer" />
             </SelectTrigger>
@@ -538,7 +606,7 @@ const fetchTrainers = async () => {
         <Textarea
           rows={4}
           value={formData.description}
-          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl resize-none bg-white/80 shadow-sm"
           placeholder="Detailed description of the course..."
         />
@@ -552,7 +620,7 @@ const fetchTrainers = async () => {
             <Input
               type="number"
               value={formData.price}
-              onChange={(e) => setFormData((prev) => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+              onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
               className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
               placeholder="0"
             />
@@ -564,7 +632,7 @@ const fetchTrainers = async () => {
           <Input
             type="number"
             value={formData.durationValue}
-            onChange={(e) => setFormData((prev) => ({ ...prev, durationValue: parseInt(e.target.value) || 0 }))}
+            onChange={(e) => setFormData({ ...formData, durationValue: parseInt(e.target.value) || 0 })}
             className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
             placeholder="Duration"
           />
@@ -572,7 +640,7 @@ const fetchTrainers = async () => {
 
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold text-gray-700">Unit</Label>
-          <Select value={formData.durationUnit} onValueChange={(value) => setFormData((prev) => ({ ...prev, durationUnit: value }))}>
+          <Select value={formData.durationUnit} onValueChange={(value) => setFormData({ ...formData, durationUnit: value })}>
             <SelectTrigger className="border-2 border-gray-200 focus:border-blue-500 rounded-xl bg-white/80 shadow-sm h-10">
               <SelectValue />
             </SelectTrigger>
@@ -588,7 +656,7 @@ const fetchTrainers = async () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold text-gray-700">Location Type</Label>
-          <Select value={formData.locationType} onValueChange={(value) => setFormData((prev) => ({ ...prev, locationType: value }))}>
+          <Select value={formData.locationType} onValueChange={(value) => setFormData({ ...formData, locationType: value })}>
             <SelectTrigger className="border-2 border-gray-200 focus:border-blue-500 rounded-xl bg-white/80 shadow-sm h-10">
               <SelectValue />
             </SelectTrigger>
@@ -602,7 +670,7 @@ const fetchTrainers = async () => {
 
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold text-gray-700">Status</Label>
-          <Select value={formData.status} onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}>
+          <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
             <SelectTrigger className="border-2 border-gray-200 focus:border-blue-500 rounded-xl bg-white/80 shadow-sm h-10">
               <SelectValue />
             </SelectTrigger>
@@ -623,7 +691,7 @@ const fetchTrainers = async () => {
             <Label className="text-sm font-semibold text-gray-700">Venue</Label>
             <Input
               value={formData.venue}
-              onChange={(e) => setFormData((prev) => ({ ...prev, venue: e.target.value }))}
+              onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
               className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
               placeholder="Venue name"
             />
@@ -632,7 +700,7 @@ const fetchTrainers = async () => {
             <Label className="text-sm font-semibold text-gray-700">City</Label>
             <Input
               value={formData.city}
-              onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
+              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
               className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
               placeholder="City"
             />
@@ -641,7 +709,7 @@ const fetchTrainers = async () => {
             <Label className="text-sm font-semibold text-gray-700">State</Label>
             <Input
               value={formData.state}
-              onChange={(e) => setFormData((prev) => ({ ...prev, state: e.target.value }))}
+              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
               className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
               placeholder="State"
             />
@@ -655,7 +723,7 @@ const fetchTrainers = async () => {
           <Input
             type="number"
             value={formData.maxStudents}
-            onChange={(e) => setFormData((prev) => ({ ...prev, maxStudents: parseInt(e.target.value) || 0 }))}
+            onChange={(e) => setFormData({ ...formData, maxStudents: parseInt(e.target.value) || 0 })}
             className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
             placeholder="0"
           />
@@ -665,7 +733,7 @@ const fetchTrainers = async () => {
           <Label className="text-sm font-semibold text-gray-700">Category</Label>
           <Input
             value={formData.category}
-            onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
             placeholder="e.g., Programming"
           />
@@ -675,7 +743,7 @@ const fetchTrainers = async () => {
           <Label className="text-sm font-semibold text-gray-700">Language</Label>
           <Input
             value={formData.language}
-            onChange={(e) => setFormData((prev) => ({ ...prev, language: e.target.value }))}
+            onChange={(e) => setFormData({ ...formData, language: e.target.value })}
             className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
             placeholder="English"
           />
@@ -687,7 +755,7 @@ const fetchTrainers = async () => {
         <Textarea
           rows={3}
           value={formData.courseOverview}
-          onChange={(e) => setFormData((prev) => ({ ...prev, courseOverview: e.target.value }))}
+          onChange={(e) => setFormData({ ...formData, courseOverview: e.target.value })}
           className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl resize-none bg-white/80 shadow-sm"
           placeholder="Brief overview..."
         />
@@ -698,7 +766,7 @@ const fetchTrainers = async () => {
         <Textarea
           rows={4}
           value={formData.learningOutcomes}
-          onChange={(e) => setFormData((prev) => ({ ...prev, learningOutcomes: e.target.value }))}
+          onChange={(e) => setFormData({ ...formData, learningOutcomes: e.target.value })}
           className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl resize-none bg-white/80 shadow-sm"
           placeholder="Enter each learning outcome on a new line"
         />
@@ -709,7 +777,7 @@ const fetchTrainers = async () => {
           type="checkbox"
           id="certificate"
           checked={formData.certificateProvided}
-          onChange={(e) => setFormData((prev) => ({ ...prev, certificateProvided: e.target.checked }))}
+          onChange={(e) => setFormData({ ...formData, certificateProvided: e.target.checked })}
           className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-300"
         />
         <Label htmlFor="certificate" className="text-sm font-semibold text-gray-700 cursor-pointer">
@@ -719,12 +787,17 @@ const fetchTrainers = async () => {
 
       <div className="space-y-2.5">
         <Label className="text-sm font-semibold text-gray-700">Course Image</Label>
+        {courseImagePreview && (
+          <div className="mb-2">
+            <img src={courseImagePreview} alt="Preview" className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200" />
+          </div>
+        )}
         <div className="relative">
           <Upload className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             type="file"
             accept="image/*"
-            onChange={(e) => setCourseImage(e.target.files?.[0] || null)}
+            onChange={handleImageChange}
             className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
           />
         </div>
@@ -738,7 +811,7 @@ const fetchTrainers = async () => {
             type="file"
             multiple
             accept=".pdf,.doc,.docx"
-            onChange={(e) => setCourseDocuments(Array.from(e.target.files || []))}
+            onChange={handleDocumentsChange}
             className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
           />
         </div>
@@ -915,136 +988,148 @@ const fetchTrainers = async () => {
 
         {/* Live Courses Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {liveCourses.map((course) => (
-            <Card
-              key={course._id}
-              className="group relative overflow-hidden bg-gradient-to-b from-white to-gray-50/60 backdrop-blur-sm border-2 border-gray-200/70 hover:border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-200/5 via-gray-200/5 to-gray-200/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              
-              <div className="absolute top-3 right-3 z-10">
-                <Badge className={`text-xs font-bold px-2.5 py-1 rounded-full shadow text-white border-0 ${getStatusColor(course.status)}`}>
-                  {course.status.toUpperCase()}
-                </Badge>
-              </div>
-              
-              <CardHeader className="pt-6 pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    {course.courseImage && (
-                      <img src={course.courseImage} alt={course.courseName} className="w-full h-32 object-cover rounded-lg mb-3" />
+          {liveCourses.map((course) => {
+            // Parse location if it's a stringified JSON
+            let locationData = course.location;
+            if (typeof course.location === 'string') {
+              try {
+                locationData = JSON.parse(course.location);
+              } catch (e) {
+                locationData = { type: 'online' };
+              }
+            }
+
+            return (
+              <Card
+                key={course._id}
+                className="group relative overflow-hidden bg-gradient-to-b from-white to-gray-50/60 backdrop-blur-sm border-2 border-gray-200/70 hover:border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-gray-200/5 via-gray-200/5 to-gray-200/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                <div className="absolute top-3 right-3 z-10">
+                  <Badge className={`text-xs font-bold px-2.5 py-1 rounded-full shadow text-white border-0 ${getStatusColor(course.status)}`}>
+                    {course.status.toUpperCase()}
+                  </Badge>
+                </div>
+                
+                <CardHeader className="pt-6 pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      {course.courseImage && (
+                        <img src={course.courseImage} alt={course.courseName} className="w-full h-32 object-cover rounded-lg mb-3" />
+                      )}
+                      <div className="flex items-center gap-2.5 mb-2.5">
+                        <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-400 rounded-lg shadow">
+                          <BookOpen className="h-4 w-4 text-white" />
+                        </div>
+                        <CardTitle className="text-base font-bold bg-gradient-to-r from-gray-800 to-gray-700 bg-clip-text text-transparent line-clamp-2">
+                          {course.courseName}
+                        </CardTitle>
+                      </div>
+                      <div className="flex items-center gap-2.5 mt-2">
+                        <div className="p-1.5 bg-gradient-to-br from-gray-100 to-gray-100 rounded-lg shadow-sm">
+                          <Users className="h-3.5 w-3.5 text-gray-700" />
+                        </div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {course.trainerName}
+                        </p>
+                      </div>
+                    </div>
+                    {course.price > 0 && (
+                      <Badge className="text-xs font-bold px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-400 text-white border-0 shadow">
+                        ${course.price}
+                      </Badge>
                     )}
-                    <div className="flex items-center gap-2.5 mb-2.5">
-                      <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-400 rounded-lg shadow">
-                        <BookOpen className="h-4 w-4 text-white" />
-                      </div>
-                      <CardTitle className="text-base font-bold bg-gradient-to-r from-gray-800 to-gray-700 bg-clip-text text-transparent line-clamp-2">
-                        {course.courseName}
-                      </CardTitle>
-                    </div>
-                    <div className="flex items-center gap-2.5 mt-2">
-                      <div className="p-1.5 bg-gradient-to-br from-gray-100 to-gray-100 rounded-lg shadow-sm">
-                        <Users className="h-3.5 w-3.5 text-gray-700" />
-                      </div>
-                      <p className="text-sm font-semibold text-gray-800">
-                        {course.trainerName}
-                      </p>
-                    </div>
                   </div>
-                  {course.price > 0 && (
-                    <Badge className="text-xs font-bold px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-400 text-white border-0 shadow">
-                      ${course.price}
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-4 pt-0 pb-5">
-                <div className="space-y-3">
-                  {course.duration && (
-                    <div className="flex items-center gap-2.5 p-2.5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-lg">
-                      <div className="p-1.5 bg-white rounded-lg shadow-sm">
-                        <Clock className="h-3.5 w-3.5 text-gray-600" />
+                </CardHeader>
+                
+                <CardContent className="space-y-4 pt-0 pb-5">
+                  <div className="space-y-3">
+                    {course.duration && (
+                      <div className="flex items-center gap-2.5 p-2.5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-lg">
+                        <div className="p-1.5 bg-white rounded-lg shadow-sm">
+                          <Clock className="h-3.5 w-3.5 text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-900">DURATION</p>
+                          <p className="text-xs text-gray-700 font-medium">
+                            {course.duration.value} {course.duration.unit}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-900">DURATION</p>
-                        <p className="text-xs text-gray-700 font-medium">
-                          {course.duration.value} {course.duration.unit}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {course.location && (
-                    <div className="flex items-center gap-2.5 p-2.5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-lg">
-                      <div className="p-1.5 bg-white rounded-lg shadow-sm">
-                        <MapPin className="h-3.5 w-3.5 text-gray-600" />
+                    {locationData && (
+                      <div className="flex items-center gap-2.5 p-2.5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-lg">
+                        <div className="p-1.5 bg-white rounded-lg shadow-sm">
+                          <MapPin className="h-3.5 w-3.5 text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-900">LOCATION</p>
+                          <Badge className={`text-xs font-medium px-2 py-0.5 text-white border-0 shadow ${getLocationColor(locationData.type)}`}>
+                            {locationData.type}
+                          </Badge>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-900">LOCATION</p>
-                        <Badge className={`text-xs font-medium px-2 py-0.5 text-white border-0 shadow ${getLocationColor(course.location.type)}`}>
-                          {course.location.type}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {course.maxStudents && (
-                    <div className="flex items-center gap-2.5 p-2.5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-lg">
-                      <div className="p-1.5 bg-white rounded-lg shadow-sm">
-                        <Users className="h-3.5 w-3.5 text-gray-600" />
+                    {course.maxStudents && (
+                      <div className="flex items-center gap-2.5 p-2.5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-lg">
+                        <div className="p-1.5 bg-white rounded-lg shadow-sm">
+                          <Users className="h-3.5 w-3.5 text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-900">CAPACITY</p>
+                          <p className="text-xs text-gray-700 font-medium">
+                            {course.enrolledCount} / {course.maxStudents} students
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-900">CAPACITY</p>
-                        <p className="text-xs text-gray-700 font-medium">
-                          {course.enrolledCount} / {course.maxStudents} students
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {course.certificateProvided && (
-                    <div className="flex items-center gap-2.5 p-2.5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg">
-                      <div className="p-1.5 bg-white rounded-lg shadow-sm">
-                        <Award className="h-3.5 w-3.5 text-amber-600" />
+                    {course.certificateProvided && (
+                      <div className="flex items-center gap-2.5 p-2.5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg">
+                        <div className="p-1.5 bg-white rounded-lg shadow-sm">
+                          <Award className="h-3.5 w-3.5 text-amber-600" />
+                        </div>
+                        <p className="text-xs font-semibold text-amber-900">Certificate Provided</p>
                       </div>
-                      <p className="text-xs font-semibold text-amber-900">Certificate Provided</p>
-                    </div>
-                  )}
-                </div>
-
-                {course.description && (
-                  <div className="pt-2 border-t border-gray-100/50">
-                    <p className="text-xs text-gray-700 line-clamp-3">{course.description}</p>
+                    )}
                   </div>
-                )}
 
-                <div className="flex justify-between pt-3 border-t border-gray-100/50">
-                  <div className="flex gap-2">
+                  {course.description && (
+                    <div className="pt-2 border-t border-gray-100/50">
+                      <p className="text-xs text-gray-700 line-clamp-3">{course.description}</p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between pt-3 border-t border-gray-100/50">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditDialog(course)}
+                        className="group relative overflow-hidden border-2 border-gray-200 hover:border-gray-400 bg-gradient-to-r from-white to-gray-50 hover:from-gray-50 hover:to-gray-50 text-gray-700 hover:text-gray-900 font-medium text-xs px-2.5 py-1.5 rounded-lg shadow-sm hover:shadow transition-all duration-300"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                        <Edit className="h-3 w-3 mr-1.5 relative z-10" />
+                        <span className="relative z-10">Edit</span>
+                      </Button>
+                    </div>
                     <Button
-                      variant="outline"
                       size="sm"
-                      onClick={() => openEditDialog(course)}
-                      className="group relative overflow-hidden border-2 border-gray-200 hover:border-gray-400 bg-gradient-to-r from-white to-gray-50 hover:from-gray-50 hover:to-gray-50 text-gray-700 hover:text-gray-900 font-medium text-xs px-2.5 py-1.5 rounded-lg shadow-sm hover:shadow transition-all duration-300"
+                      onClick={() => setCourseToDelete(course)}
+                      className="group relative overflow-hidden bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-medium text-xs px-2.5 py-1.5 rounded-lg shadow-sm hover:shadow transition-all duration-300 hover:scale-105"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                      <Edit className="h-3 w-3 mr-1.5 relative z-10" />
-                      <span className="relative z-10">Edit</span>
+                      <Trash2 className="h-3 w-3 mr-1.5 relative z-10" />
+                      <span className="relative z-10">Delete</span>
                     </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setCourseToDelete(course)}
-                    className="group relative overflow-hidden bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-medium text-xs px-2.5 py-1.5 rounded-lg shadow-sm hover:shadow transition-all duration-300 hover:scale-105"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                    <Trash2 className="h-3 w-3 mr-1.5 relative z-10" />
-                    <span className="relative z-10">Delete</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {liveCourses.length === 0 && (
