@@ -983,7 +983,7 @@ const fetchTrainers = async () => {
                       <div>
                         <p className="text-xs font-semibold text-gray-900">LOCATION</p>
                         <Badge className={`text-xs font-medium px-2 py-0.5 text-white border-0 shadow ${getLocationColor(course.location.type)}`}>
-                          {course.location.type.toUpperCase()}
+                          {course.location.type}
                         </Badge>
                       </div>
                     </div>
