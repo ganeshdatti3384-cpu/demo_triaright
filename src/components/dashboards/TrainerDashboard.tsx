@@ -67,6 +67,7 @@ import {
   Camera,
   Plus,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 
 // Assignment Components
@@ -84,9 +85,7 @@ import BatchList from "@/components/trainer/BatchList";
 import CreateBatchModal from "@/components/trainer/CreateBatchModal";
 import ViewStudentsModal from "@/components/trainer/ViewStudentsModal";
 
-// --------------------------------------
 // Section Type
-// --------------------------------------
 type Section =
   | "overview"
   | "courses"
@@ -105,9 +104,7 @@ interface TrainerDashboardProps {
   };
 }
 
-// --------------------------------------
 // Navbar Items
-// --------------------------------------
 const navItems: { key: Section; label: string; icon: any; description: string }[] = [
   { key: "overview", label: "Overview", icon: Home, description: "Dashboard insights" },
   { key: "courses", label: "Courses", icon: BookOpen, description: "Manage courses" },
@@ -120,239 +117,31 @@ const navItems: { key: Section; label: string; icon: any; description: string }[
 
 // Default profile data
 const defaultProfile = {
-  fullName: "Alex Johnson",
-  email: "alex.johnson@yakken.com",
-  phone: "+1 (555) 123-4567",
-  location: "San Francisco, CA",
-  bio: "Senior Trainer specializing in React, Node.js, and modern web development. Passionate about creating engaging learning experiences.",
-  expertise: ["React", "Node.js", "TypeScript", "UI/UX Design"],
-  website: "https://alexjohnson.dev",
-  linkedin: "https://linkedin.com/in/alexjohnson",
-  twitter: "https://twitter.com/alexjohnson",
-  yearsExperience: 8,
-  studentsTaught: 1200,
-  rating: 4.8,
+  fullName: "",
+  email: "",
+  phone: "",
+  location: "",
+  bio: "",
+  expertise: [],
+  website: "",
+  linkedin: "",
+  twitter: "",
+  yearsExperience: 0,
+  studentsTaught: 0,
+  rating: 0,
   avatar: "",
 };
 
-// Default courses data
-const defaultCourses = [
-  {
-    id: 1,
-    name: "React Mastery",
-    instructor: "Alex Johnson",
-    description: "Master React from basics to advanced concepts with hands-on projects",
-    demoVideoLink: "https://youtube.com/watch?v=example1",
-    stream: "IT",
-    provider: "Triaright",
-    language: "English",
-    isPaid: true,
-    hasCertification: true,
-    hasFinalExam: true,
-    courseImage: "",
-    curriculumDoc: "",
-    topics: [
-      { id: 1, name: "React Fundamentals", examFileName: "fundamentals.xlsx", subTopics: [] },
-      { id: 2, name: "State Management", examFileName: "state-management.xlsx", subTopics: [] },
-    ],
-    createdAt: "2024-01-15",
-    students: 45,
-    rating: 4.8,
-    status: "published"
-  },
-  {
-    id: 2,
-    name: "Node.js Backend",
-    instructor: "Alex Johnson",
-    description: "Build scalable backend applications with Node.js and Express",
-    demoVideoLink: "https://youtube.com/watch?v=example2",
-    stream: "IT",
-    provider: "Triaright",
-    language: "English",
-    isPaid: true,
-    hasCertification: true,
-    hasFinalExam: true,
-    courseImage: "",
-    curriculumDoc: "",
-    topics: [
-      { id: 1, name: "Node.js Basics", examFileName: "basics.xlsx", subTopics: [] },
-      { id: 2, name: "Express Framework", examFileName: "express.xlsx", subTopics: [] },
-    ],
-    createdAt: "2024-01-20",
-    students: 32,
-    rating: 4.6,
-    status: "published"
-  },
-  {
-    id: 3,
-    name: "UI/UX Design",
-    instructor: "Alex Johnson",
-    description: "Learn modern UI/UX design principles and tools",
-    demoVideoLink: "https://youtube.com/watch?v=example3",
-    stream: "Design",
-    provider: "Triaright",
-    language: "English",
-    isPaid: false,
-    hasCertification: false,
-    hasFinalExam: false,
-    courseImage: "",
-    curriculumDoc: "",
-    topics: [
-      { id: 1, name: "Design Fundamentals", examFileName: "design-fundamentals.xlsx", subTopics: [] },
-    ],
-    createdAt: "2024-02-01",
-    students: 28,
-    rating: 4.9,
-    status: "published"
-  },
-  {
-    id: 4,
-    name: "Data Structures",
-    instructor: "Alex Johnson",
-    description: "Master data structures and algorithms for technical interviews",
-    demoVideoLink: "https://youtube.com/watch?v=example4",
-    stream: "IT",
-    provider: "Triaright",
-    language: "English",
-    isPaid: true,
-    hasCertification: true,
-    hasFinalExam: true,
-    courseImage: "",
-    curriculumDoc: "",
-    topics: [
-      { id: 1, name: "Arrays & Linked Lists", examFileName: "arrays.xlsx", subTopics: [] },
-      { id: 2, name: "Trees & Graphs", examFileName: "trees.xlsx", subTopics: [] },
-    ],
-    createdAt: "2024-02-10",
-    students: 51,
-    rating: 4.7,
-    status: "draft"
-  },
-];
-
-// Default batches data
-const defaultBatches = [
-  {
-    id: "1",
-    batchName: "MERN-Batch-Jan-2024",
-    courseId: "1",
-    trainerId: "trainer-1",
-    schedule: {
-      day: "Monday",
-      startTime: "10:00",
-      endTime: "12:00",
-      timezone: "IST (UTC+5:30)"
-    },
-    startDate: "2024-01-01",
-    endDate: "2024-03-31",
-    students: Array(35).fill({}).map((_, i) => ({
-      id: `student-${i}`,
-      name: `Student ${i + 1}`,
-      email: `student${i + 1}@example.com`,
-      enrollmentDate: '2024-01-01',
-      phone: `+1 (555) ${100 + i}-${1000 + i}`
-    })),
-    maxStudents: 50,
-    currentStudents: 35,
-    status: 'Ongoing' as const,
-    meetingLink: "https://meet.google.com/abc-defg-hij",
-    isActive: true
-  },
-  {
-    id: "2",
-    batchName: "React-Batch-Feb-2024",
-    courseId: "1",
-    trainerId: "trainer-1",
-    schedule: {
-      day: "Wednesday",
-      startTime: "14:00",
-      endTime: "16:00",
-      timezone: "IST (UTC+5:30)"
-    },
-    startDate: "2024-02-01",
-    endDate: "2024-04-30",
-    students: Array(20).fill({}).map((_, i) => ({
-      id: `student-${i + 35}`,
-      name: `Student ${i + 36}`,
-      email: `student${i + 36}@example.com`,
-      enrollmentDate: '2024-02-01',
-      phone: `+1 (555) ${200 + i}-${2000 + i}`
-    })),
-    maxStudents: 40,
-    currentStudents: 20,
-    status: 'Ongoing' as const,
-    meetingLink: "https://meet.google.com/xyz-uvw-rst",
-    isActive: true
-  },
-  {
-    id: "3",
-    batchName: "NodeJS-Batch-Mar-2024",
-    courseId: "2",
-    trainerId: "trainer-1",
-    schedule: {
-      day: "Friday",
-      startTime: "09:00",
-      endTime: "11:00",
-      timezone: "IST (UTC+5:30)"
-    },
-    startDate: "2024-03-01",
-    endDate: "2024-05-31",
-    students: Array(15).fill({}).map((_, i) => ({
-      id: `student-${i + 55}`,
-      name: `Student ${i + 56}`,
-      email: `student${i + 56}@example.com`,
-      enrollmentDate: '2024-03-01',
-      phone: `+1 (555) ${300 + i}-${3000 + i}`
-    })),
-    maxStudents: 30,
-    currentStudents: 15,
-    status: 'Scheduled' as const,
-    meetingLink: "https://meet.google.com/mno-pqr-stu",
-    isActive: true
-  },
-  {
-    id: "4",
-    batchName: "UI/UX-Batch-Dec-2023",
-    courseId: "3",
-    trainerId: "trainer-1",
-    schedule: {
-      day: "Tuesday",
-      startTime: "11:00",
-      endTime: "13:00",
-      timezone: "IST (UTC+5:30)"
-    },
-    startDate: "2023-12-01",
-    endDate: "2024-02-29",
-    students: Array(28).fill({}).map((_, i) => ({
-      id: `student-${i + 70}`,
-      name: `Student ${i + 71}`,
-      email: `student${i + 71}@example.com`,
-      enrollmentDate: '2023-12-01',
-      phone: `+1 (555) ${400 + i}-${4000 + i}`
-    })),
-    maxStudents: 30,
-    currentStudents: 28,
-    status: 'Completed' as const,
-    meetingLink: "https://meet.google.com/vwx-yza-bcd",
-    isActive: false
-  },
-];
-
-// --------------------------------------
-// FULL TRAINER DASHBOARD UI
-// --------------------------------------
 const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
   user = { name: "Alex Johnson", role: "Senior Trainer", avatar: "", trainerId: "" },
 }) => {
   const [active, setActive] = useState<Section>("overview");
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingData, setIsFetchingData] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   
-  // Profile state - Load from localStorage
-  const [profile, setProfile] = useState(() => {
-    const savedProfile = localStorage.getItem('trainerProfile');
-    return savedProfile ? JSON.parse(savedProfile) : defaultProfile;
-  });
-
+  // Profile state
+  const [profile, setProfile] = useState(defaultProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [tempProfile, setTempProfile] = useState(profile);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -366,17 +155,11 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
   const [showCreateSession, setShowCreateSession] = useState(false);
   const [sessions, setSessions] = useState<any[]>([]);
 
-  // Courses - Load from localStorage
-  const [courses, setCourses] = useState(() => {
-    const savedCourses = localStorage.getItem('trainerCourses');
-    return savedCourses ? JSON.parse(savedCourses) : defaultCourses;
-  });
+  // Courses
+  const [courses, setCourses] = useState<any[]>([]);
 
-  // Batches - Load from localStorage
-  const [batches, setBatches] = useState(() => {
-    const savedBatches = localStorage.getItem('trainerBatches');
-    return savedBatches ? JSON.parse(savedBatches) : defaultBatches;
-  });
+  // Batches
+  const [batches, setBatches] = useState<any[]>([]);
 
   // Batch Modals
   const [showCreateBatchModal, setShowCreateBatchModal] = useState(false);
@@ -390,7 +173,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
 
   // Calculate statistics based on actual data
   const calculateStats = () => {
-    const activeBatches = batches.filter(b => b.status === 'Ongoing' && b.isActive).length;
+    const activeBatches = batches.filter(b => b.status === 'ongoing' && b.isActive).length;
     const upcomingSessions = sessions.filter(s => {
       const sessionDate = new Date(s.date);
       const today = new Date();
@@ -399,14 +182,10 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     
     const pendingAssignments = assignments.filter(a => a.status === 'pending').length;
     
-    // Calculate total students across all active batches
-    const totalStudents = batches
-      .filter(b => b.isActive)
-      .reduce((sum, batch) => sum + batch.currentStudents, 0);
+    const totalStudents = batches.reduce((sum, batch) => sum + batch.currentStudents, 0);
     
-    // Calculate completion rate based on batch progress
     const completionRate = batches.length > 0 
-      ? Math.round((batches.filter(b => b.status === 'Completed').length / batches.length) * 100)
+      ? Math.round((batches.filter(b => b.status === 'completed').length / batches.length) * 100)
       : 0;
 
     const publishedCourses = courses.filter(c => c.status === "published").length;
@@ -426,111 +205,430 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
   const [stats, setStats] = useState(calculateStats());
 
   // --------------------------------------
-  // Load saved data from localStorage on component mount
+  // API Functions
   // --------------------------------------
+  const fetchTrainerProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log('Fetching trainer profile...');
+      const response = await fetch('http://localhost:5001/api/users/trainer/profile', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        // credentials: 'include',
+      });
+
+      console.log('Profile response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch trainer profile:', errorText);
+        throw new Error(`Failed to fetch trainer profile: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Fetched profile data:', data);
+      
+      const transformedProfile = {
+        fullName: `${data.personalDetails?.firstName || ''} ${data.personalDetails?.lastName || ''}`.trim(),
+        email: data.personalDetails?.email || '',
+        phone: data.personalDetails?.phone || '',
+        location: data.personalDetails?.address?.street || '',
+        bio: data.bio || '',
+        expertise: data.expertise || [],
+        website: '',
+        linkedin: '',
+        twitter: '',
+        yearsExperience: data.experience?.length > 0 
+          ? new Date().getFullYear() - new Date(data.experience[0].startDate).getFullYear()
+          : 0,
+        studentsTaught: data.totalStudentsTaught || 0,
+        rating: data.rating || 0,
+        avatar: '',
+        userId: data.userId,
+        education: data.education || [],
+        experience: data.experience || [],
+        certifications: data.certifications || []
+      };
+
+      console.log('Transformed profile:', transformedProfile);
+      setProfile(transformedProfile);
+      setTempProfile(transformedProfile);
+      
+      return transformedProfile;
+    } catch (error) {
+      console.error('Error fetching trainer profile:', error);
+      const fallbackProfile = {
+        fullName: "Demo Trainer",
+        email: "demo@example.com",
+        phone: "",
+        location: "",
+        bio: "Profile data could not be loaded",
+        expertise: [],
+        website: "",
+        linkedin: "",
+        twitter: "",
+        yearsExperience: 0,
+        studentsTaught: 0,
+        rating: 0,
+        avatar: "",
+      };
+      setProfile(fallbackProfile);
+      setTempProfile(fallbackProfile);
+      return null;
+    }
+  };
+
+  const fetchLiveCourses = async () => {
+    try {
+      console.log('Fetching live courses...');
+      const response = await fetch('http://localhost:5007/api/livecourses/live-courses', {
+        method: 'GET',
+      });
+
+      console.log('Courses response status:', response.status);
+     
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch courses:', errorText);
+        throw new Error(`Failed to fetch courses: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Fetched courses data:', data);
+      
+      if (!data.courses || !Array.isArray(data.courses)) {
+        console.warn('No courses array in response:', data);
+        setCourses([]);
+        return [];
+      }
+
+      const transformedCourses = data.courses.map((course: any) => ({
+        id: course._id,
+        name: course.courseName,
+        instructor: course.trainerName,
+        description: course.description,
+        demoVideoLink: '',
+        stream: course.category,
+        provider: 'Triaright',
+        language: course.language,
+        isPaid: course.price > 0,
+        price: course.price,
+        hasCertification: course.certificateProvided,
+        hasFinalExam: false,
+        courseImage: course.courseImage || '',
+        curriculumDoc: course.courseDocuments?.[0] || '',
+        courseDocuments: course.courseDocuments || [],
+        topics: course.syllabus?.map((s: any, idx: number) => ({
+          id: idx + 1,
+          name: s.module,
+          examFileName: '',
+          subTopics: s.topics || []
+        })) || [],
+        createdAt: course.createdAt,
+        students: course.enrolledCount || 0,
+        maxStudents: course.maxStudents || 0,
+        rating: 0,
+        status: course.status,
+        courseId: course.courseId,
+        courseOverview: course.courseOverview || '',
+        learningOutcomes: course.learningOutcomes || [],
+        duration: course.duration || {},
+        location: course.location || {}
+      }));
+
+      console.log('Transformed courses:', transformedCourses);
+      setCourses(transformedCourses);
+      
+      return transformedCourses;
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      setCourses([]);
+      return [];
+    }
+  };
+
+  const fetchTrainerBatches = async () => {
+    try {
+       const token = localStorage.getItem("token");
+      console.log('Fetching trainer batches...');
+      const response = await fetch('http://localhost:5007/api/livecourses/trainer/assigned/batches', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+      });
+
+      console.log('Batches response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch batches:', errorText);
+        throw new Error(`Failed to fetch batches: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Fetched batches data:', data);
+
+      if (!data.batches || !Array.isArray(data.batches)) {
+        console.warn('No batches array in response:', data);
+        setBatches([]);
+        return [];
+      }
+
+      // Transform API data to match our batch structure
+      const transformedBatches = data.batches.map((batch: any) => {
+        // Get the first schedule or create a default one
+        const firstSchedule = batch.schedule?.[0] || {
+          day: 'Not Set',
+          startTime: '00:00',
+          endTime: '00:00',
+          timezone: 'IST'
+        };
+
+        return {
+          id: batch._id,
+          batchName: batch.batchName,
+          courseId: batch.courseId?._id || '',
+          courseName: batch.courseId?.courseName || 'Unknown Course',
+          courseCategory: batch.courseId?.category || '',
+          trainerId: batch.trainerUserId,
+          // Convert schedule array to single schedule object for BatchList component
+          schedule: {
+            day: firstSchedule.day,
+            startTime: firstSchedule.startTime || '00:00',
+            endTime: firstSchedule.endTime || '00:00',
+            timezone: firstSchedule.timezone || 'IST'
+          },
+          // Keep full schedule array for other uses
+          scheduleArray: batch.schedule?.map((s: any) => ({
+            day: s.day,
+            startTime: s.startTime || '00:00',
+            endTime: s.endTime || '00:00',
+            timezone: s.timezone || 'IST'
+          })) || [],
+          startDate: batch.startDate,
+          endDate: batch.endDate,
+          students: batch.students?.map((student: any) => ({
+            id: student._id,
+            name: `${student.UserId?.firstName || ''} ${student.UserId?.lastName || ''}`.trim(),
+            email: student.UserId?.email || '',
+            enrollmentDate: student.enrollmentDate,
+            phone: student.UserId?.phone || '',
+            status: student.status,
+            certificateIssued: student.certificateIssued
+          })) || [],
+          maxStudents: batch.maxStudents,
+          currentStudents: batch.currentStudents,
+          status: batch.status,
+          meetingLink: batch.meetingLink || '',
+          isActive: batch.isActive
+        };
+      });
+
+      console.log('Transformed batches:', transformedBatches);
+      setBatches(transformedBatches);
+
+      return transformedBatches;
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+      setBatches([]);
+      return [];
+    }
+  };
+
+
+  const fetchLiveSessions = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    console.log('Fetching live sessions...');
+    
+    const response = await fetch('http://localhost:5007/api/livecourses/trainer/live-sessions', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+    });
+
+    console.log('Sessions response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Failed to fetch sessions:', errorText);
+      throw new Error(`Failed to fetch sessions: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Fetched sessions data:', data);
+
+    if (!data.sessions || !Array.isArray(data.sessions)) {
+      console.warn('No sessions array in response:', data);
+      setSessions([]);
+      return [];
+    }
+
+    // Transform API data to match your session structure
+    const transformedSessions = data.sessions.map((session: any) => ({
+      id: session._id,
+      sessionId: session._id,
+      title: session.sessionTitle,
+      sessionNumber: session.sessionNumber,
+      description: session.description,
+      batchId: session.batchId?._id || '',
+      batch: session.batchId?.batchName || 'Unknown Batch',
+      courseId: session.courseId?._id || '',
+      courseName: session.courseId?.courseName || 'Unknown Course',
+      trainerUserId: session.trainerUserId,
+      date: session.scheduledDate,
+      scheduledDate: session.scheduledDate,
+      time: `${session.scheduledStartTime} - ${session.scheduledEndTime}`,
+      scheduledStartTime: session.scheduledStartTime,
+      scheduledEndTime: session.scheduledEndTime,
+      meetingLink: session.meetingLink,
+      status: session.status,
+      sessionMaterials: session.sessionMaterials?.map((material: any) => ({
+        type: material.type,
+        title: material.title,
+        url: material.url,
+        id: material._id,
+        uploadedAt: material.uploadedAt
+      })) || [],
+      attendance: session.attendance || [],
+      recordingUrl: session.recordingUrl,
+      recordingDuration: session.recordingDuration,
+      actualStartTime: session.actualStartTime,
+      actualEndTime: session.actualEndTime,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt
+    }));
+
+    console.log('Transformed sessions:', transformedSessions);
+    setSessions(transformedSessions);
+
+    return transformedSessions;
+  } catch (error) {
+    console.error('Error fetching sessions:', error);
+    setSessions([]);
+    return [];
+  }
+};
+  // Load saved data from localStorage and API on component mount
   useEffect(() => {
-    // Load profile from localStorage
-    const savedProfile = localStorage.getItem('trainerProfile');
-    if (savedProfile) {
+    const loadInitialData = async () => {
+      setIsFetchingData(true);
+      setApiError(null);
+      
       try {
-        const parsedProfile = JSON.parse(savedProfile);
-        setProfile(parsedProfile);
-        setTempProfile(parsedProfile);
-      } catch (error) {
-        console.error('Error loading profile from localStorage:', error);
-      }
-    }
+        console.log('Starting initial data load...');
+        
+        // Fetch profile from API
+        const profileResult = await fetchTrainerProfile();
+        console.log('Profile fetch result:', profileResult);
+        
+        // Fetch courses from API
+        const coursesResult = await fetchLiveCourses();
+        console.log('Courses fetch result:', coursesResult);
 
-    // Load courses from localStorage
-    const savedCourses = localStorage.getItem('trainerCourses');
-    if (savedCourses) {
-      try {
-        const parsedCourses = JSON.parse(savedCourses);
-        setCourses(parsedCourses);
-      } catch (error) {
-        console.error('Error loading courses from localStorage:', error);
-      }
-    }
+        // Fetch batches from API
+        const batchesResult = await fetchTrainerBatches();
+        console.log('Batches fetch result:', batchesResult);
 
-    // Load batches from localStorage
-    const savedBatches = localStorage.getItem('trainerBatches');
-    if (savedBatches) {
-      try {
-        const parsedBatches = JSON.parse(savedBatches);
-        setBatches(parsedBatches);
-      } catch (error) {
-        console.error('Error loading batches from localStorage:', error);
-      }
-    }
+        // Load assignments from localStorage
+        const savedAssignments = localStorage.getItem('trainerAssignments');
+        if (savedAssignments) {
+          try {
+            const parsedAssignments = JSON.parse(savedAssignments);
+            console.log('Loaded assignments from localStorage:', parsedAssignments);
+            setAssignments(parsedAssignments);
+          } catch (error) {
+            console.error('Error loading assignments from localStorage:', error);
+          }
+        }
 
-    // Load assignments from localStorage
-    const savedAssignments = localStorage.getItem('trainerAssignments');
-    if (savedAssignments) {
-      try {
-        const parsedAssignments = JSON.parse(savedAssignments);
-        setAssignments(parsedAssignments);
-      } catch (error) {
-        console.error('Error loading assignments from localStorage:', error);
-      }
-    }
+        // Load sessions from localStorage
+        
 
-    // Load sessions from localStorage
-    const savedSessions = localStorage.getItem('trainerSessions');
-    if (savedSessions) {
-      try {
-        const parsedSessions = JSON.parse(savedSessions);
-        setSessions(parsedSessions);
+        console.log('Initial data load completed successfully');
       } catch (error) {
-        console.error('Error loading sessions from localStorage:', error);
+        console.error('Error loading initial data:', error);
+        setApiError('Failed to load data from server. Please check your connection and try again.');
+      } finally {
+        setIsFetchingData(false);
       }
-    }
+    };
+
+    loadInitialData();
   }, []);
 
-  // --------------------------------------
-  // Save data to localStorage whenever they change
-  // --------------------------------------
+  // Update stats when data changes
   useEffect(() => {
-    localStorage.setItem('trainerProfile', JSON.stringify(profile));
-  }, [profile]);
+    if (!isFetchingData) {
+      const newStats = calculateStats();
+      setStats(newStats);
+    }
+  }, [batches, courses, assignments, sessions, isFetchingData]);
+
+  // Save assignments and sessions to localStorage
+  useEffect(() => {
+    if (!isFetchingData && assignments.length > 0) {
+      localStorage.setItem('trainerAssignments', JSON.stringify(assignments));
+    }
+  }, [assignments, isFetchingData]);
 
   useEffect(() => {
-    localStorage.setItem('trainerCourses', JSON.stringify(courses));
-    // Update stats when courses change
-    setStats(prev => ({ ...prev, courses: courses.filter(c => c.status === "published").length }));
-  }, [courses]);
+  const loadInitialData = async () => {
+    setIsFetchingData(true);
+    setApiError(null);
+    
+    try {
+      console.log('Starting initial data load...');
+      
+      // Fetch profile from API
+      const profileResult = await fetchTrainerProfile();
+      console.log('Profile fetch result:', profileResult);
+      
+      // Fetch courses from API
+      const coursesResult = await fetchLiveCourses();
+      console.log('Courses fetch result:', coursesResult);
 
-  useEffect(() => {
-    localStorage.setItem('trainerBatches', JSON.stringify(batches));
-    // Update stats when batches change
-    const newStats = calculateStats();
-    setStats(newStats);
-  }, [batches]);
+      // Fetch batches from API
+      const batchesResult = await fetchTrainerBatches();
+      console.log('Batches fetch result:', batchesResult);
 
-  useEffect(() => {
-    localStorage.setItem('trainerAssignments', JSON.stringify(assignments));
-    // Update stats when assignments change
-    const pendingAssignments = assignments.filter(a => a.status === 'pending').length;
-    setStats(prev => ({ 
-      ...prev, 
-      pendingAssignments,
-      totalAssignments: assignments.length 
-    }));
-  }, [assignments]);
+      // Fetch sessions from API (NEW)
+      const sessionsResult = await fetchLiveSessions();
+      console.log('Sessions fetch result:', sessionsResult);
 
-  useEffect(() => {
-    localStorage.setItem('trainerSessions', JSON.stringify(sessions));
-    // Update stats when sessions change
-    const upcomingSessions = sessions.filter(s => {
-      const sessionDate = new Date(s.date);
-      const today = new Date();
-      return sessionDate >= today;
-    }).length;
-    setStats(prev => ({ ...prev, upcomingSessions }));
-  }, [sessions]);
+      // Load assignments from localStorage
+      const savedAssignments = localStorage.getItem('trainerAssignments');
+      if (savedAssignments) {
+        try {
+          const parsedAssignments = JSON.parse(savedAssignments);
+          console.log('Loaded assignments from localStorage:', parsedAssignments);
+          setAssignments(parsedAssignments);
+        } catch (error) {
+          console.error('Error loading assignments from localStorage:', error);
+        }
+      }
 
-  // --------------------------------------
-  // Fake Animation Loader for Overview
-  // --------------------------------------
+      console.log('Initial data load completed successfully');
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      setApiError('Failed to load data from server. Please check your connection and try again.');
+    } finally {
+      setIsFetchingData(false);
+    }
+  };
+
+  loadInitialData();
+}, []);
+
+  // Animation Loader for Overview
   useEffect(() => {
     setIsLoading(true);
 
@@ -550,9 +648,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // --------------------------------------
   // Profile Handlers
-  // --------------------------------------
   const handleEditProfile = () => {
     setTempProfile(profile);
     setIsEditing(true);
@@ -567,9 +663,6 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     
     setProfile(updatedProfile);
     setIsEditing(false);
-    
-    localStorage.setItem('trainerProfile', JSON.stringify(updatedProfile));
-    
     setAvatarPreview(null);
   };
 
@@ -596,9 +689,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     setTempProfile(prev => ({ ...prev, [name]: value }));
   };
 
-  // --------------------------------------
   // Assignment Handlers
-  // --------------------------------------
   const handleCreateAssignment = (data: any) => {
     const newAssignment = {
       ...data,
@@ -615,9 +706,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     setAssignments(newAssignments);
   };
 
-  // --------------------------------------
   // Session Handlers
-  // --------------------------------------
   const handleCreateSession = (data: any) => {
     const newSession = {
       ...data,
@@ -634,38 +723,47 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     setSessions(newSessions);
   };
 
-  // --------------------------------------
   // Course Handlers
-  // --------------------------------------
-  const handleCreateCourse = (course: any) => {
-    const newCourse = {
-      ...course,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-      students: 0,
-      rating: 0,
-      status: 'draft'
-    };
-    const newCourses = [...courses, newCourse];
-    setCourses(newCourses);
+  const handleCreateCourse = async (course: any) => {
+    try {
+      const newCourse = {
+        ...course,
+        id: Date.now(),
+        createdAt: new Date().toISOString(),
+        students: 0,
+        rating: 0,
+        status: 'draft'
+      };
+      const newCourses = [...courses, newCourse];
+      setCourses(newCourses);
+    } catch (error) {
+      console.error('Error creating course:', error);
+    }
   };
 
-  const handleUpdateCourse = (updatedCourse: any) => {
-    const newCourses = courses.map(course => 
-      course.id === updatedCourse.id ? updatedCourse : course
-    );
-    setCourses(newCourses);
+  const handleUpdateCourse = async (updatedCourse: any) => {
+    try {
+      const newCourses = courses.map(course => 
+        course.id === updatedCourse.id ? updatedCourse : course
+      );
+      setCourses(newCourses);
+    } catch (error) {
+      console.error('Error updating course:', error);
+    }
   };
 
-  const handleDeleteCourse = (id: number) => {
-    const newCourses = courses.filter(course => course.id !== id);
-    setCourses(newCourses);
+  const handleDeleteCourse = async (id: number) => {
+    try {
+      const newCourses = courses.filter(course => course.id !== id);
+      setCourses(newCourses);
+    } catch (error) {
+      console.error('Error deleting course:', error);
+    }
   };
 
-  // --------------------------------------
   // Batch Handlers
-  // --------------------------------------
-  const handleCreateBatch = (batchData: any) => {
+  const handleCreateBatch = async (batchData: any) => {
+    // In a real app, POST to API here
     const newBatch = {
       id: Date.now().toString(),
       ...batchData,
@@ -683,7 +781,8 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     setShowEditBatchModal(true);
   };
 
-  const handleUpdateBatch = (updatedBatchData: any) => {
+  const handleUpdateBatch = async (updatedBatchData: any) => {
+    // In a real app, PUT to API here
     const newBatches = batches.map(batch => 
       batch.id === updatedBatchData.id ? { ...batch, ...updatedBatchData } : batch
     );
@@ -692,7 +791,8 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     setBatchToEdit(null);
   };
 
-  const handleDeleteBatch = (batchId: string) => {
+  const handleDeleteBatch = async (batchId: string) => {
+    // In a real app, DELETE to API here
     const newBatches = batches.filter(batch => batch.id !== batchId);
     setBatches(newBatches);
   };
@@ -702,22 +802,60 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     setShowViewStudentsModal(true);
   };
 
-  // --------------------------------------
   // Render Sections
-  // --------------------------------------
   const renderContent = () => {
     switch (active) {
-      // ----------------------
-      // OVERVIEW SECTION
-      // ----------------------
       case "overview":
+        if (isFetchingData) {
+          return (
+            <div className="w-full max-w-7xl mx-auto px-2 md:px-4">
+              <div className="flex items-center justify-center h-96">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading your dashboard...</p>
+                  <p className="text-gray-400 text-sm mt-2">Fetching data from server</p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        if (apiError) {
+          return (
+            <div className="w-full max-w-7xl mx-auto px-2 md:px-4">
+              <div className="flex items-center justify-center h-96">
+                <Card className="max-w-md">
+                  <CardContent className="p-6 text-center">
+                    <div className="text-red-500 mb-4">
+                      <svg className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Connection Error</h3>
+                    <p className="text-gray-600 mb-4">{apiError}</p>
+                    <div className="space-y-2">
+                      <Button 
+                        onClick={() => window.location.reload()}
+                        className="w-full"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Retry
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          );
+        }
+        
         return (
           <div className="w-full max-w-7xl mx-auto px-2 md:px-4">
             {/* Welcome Header with Stats */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                  Welcome back, <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{profile.fullName}</span>! 👋
+                  Welcome back, <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{profile.fullName || "Trainer"}</span>! 👋
                 </h1>
                 <p className="text-gray-600 mt-1">Here's what's happening with your teaching today</p>
               </div>
@@ -836,43 +974,58 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {courses.slice(0, 4).map((course) => (
-                        <div 
-                          key={course.id}
-                          className="group p-4 rounded-xl border hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-300 cursor-pointer"
-                          onClick={() => setActive("courses")}
-                        >
-                          <div className="flex justify-between items-center mb-3">
-                            <h3 className="font-semibold text-gray-800">{course.name}</h3>
-                            <Badge variant="outline" className="gap-1">
-                              <Users className="h-3 w-3" />
-                              {course.students} students
-                            </Badge>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Status</span>
-                              <Badge className={
-                                course.status === 'published' ? 'bg-green-100 text-green-800' :
-                                course.status === 'draft' ? 'bg-amber-100 text-amber-800' :
-                                'bg-gray-100 text-gray-800'
-                              }>
-                                {course.status}
+                      {courses.length > 0 ? (
+                        courses.slice(0, 4).map((course) => (
+                          <div 
+                            key={course.id}
+                            className="group p-4 rounded-xl border hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-300 cursor-pointer"
+                            onClick={() => setActive("courses")}
+                          >
+                            <div className="flex justify-between items-center mb-3">
+                              <h3 className="font-semibold text-gray-800">{course.name}</h3>
+                              <Badge variant="outline" className="gap-1">
+                                <Users className="h-3 w-3" />
+                                {course.students} students
                               </Badge>
                             </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Stream</span>
-                              <span className="font-medium">{course.stream}</span>
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Status</span>
+                                <Badge className={
+                                  course.status === 'published' ? 'bg-green-100 text-green-800' :
+                                  course.status === 'draft' ? 'bg-amber-100 text-amber-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }>
+                                  {course.status}
+                                </Badge>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Stream</span>
+                                <span className="font-medium">{course.stream}</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center mt-4 pt-4 border-t">
+                              <span className="text-xs text-gray-500">Created {new Date(course.createdAt).toLocaleDateString()}</span>
+                              <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                Manage <ChevronRight className="h-3 w-3 ml-1" />
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex justify-between items-center mt-4 pt-4 border-t">
-                            <span className="text-xs text-gray-500">Created {new Date(course.createdAt).toLocaleDateString()}</span>
-                            <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                              Manage <ChevronRight className="h-3 w-3 ml-1" />
-                            </Button>
-                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                          <p className="text-gray-500">No courses available</p>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="mt-2"
+                            onClick={() => setActive("courses")}
+                          >
+                            Create Your First Course
+                          </Button>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -989,7 +1142,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="text-center p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/30 border">
-                    <div className="text-3xl font-bold text-blue-600 mb-2">4.8</div>
+                    <div className="text-3xl font-bold text-blue-600 mb-2">{profile.rating || 4.8}</div>
                     <div className="text-sm text-gray-600">Average Rating</div>
                     <div className="flex justify-center gap-1 mt-2">
                       {[1,2,3,4,5].map(i => <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />)}
@@ -998,7 +1151,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                   <div className="text-center p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100/30 border">
                     <div className="text-3xl font-bold text-green-600 mb-2">
                       {batches.length > 0 ? Math.round(
-                        (batches.filter(b => b.status === 'Completed').length / batches.length) * 100
+                        (batches.filter(b => b.status === 'completed').length / batches.length) * 100
                       ) : 0}%
                     </div>
                     <div className="text-sm text-gray-600">Batch Completion Rate</div>
@@ -1008,7 +1161,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                           className="h-full bg-gradient-to-r from-green-400 to-emerald-400 rounded-full" 
                           style={{ 
                             width: `${batches.length > 0 ? Math.round(
-                              (batches.filter(b => b.status === 'Completed').length / batches.length) * 100
+                              (batches.filter(b => b.status === 'completed').length / batches.length) * 100
                             ) : 0}%` 
                           }}
                         ></div>
@@ -1030,12 +1183,20 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
           </div>
         );
 
-      // ----------------------
-      // COURSES SECTION
-      // ----------------------
       case "courses":
         return (
           <div className="max-w-7xl mx-auto p-2 md:p-4 space-y-6">
+            <div className="flex justify-end mb-4">
+              <Button 
+                variant="outline" 
+                onClick={fetchLiveCourses}
+                className="gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh from API
+              </Button>
+            </div>
+            
             <CoursesList
               courses={courses}
               onCourseCreated={handleCreateCourse}
@@ -1045,9 +1206,6 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
           </div>
         );
 
-      // ----------------------
-      // ASSIGNMENTS SECTION
-      // ----------------------
       case "assignments":
         return (
           <div className="max-w-6xl mx-auto p-2 md:p-4 space-y-6">
@@ -1059,70 +1217,78 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
           </div>
         );
 
-      // ----------------------
-      // SESSIONS SECTION
-      // ----------------------
       case "sessions":
-        return (
-          <div className="max-w-6xl mx-auto p-2 md:p-4 space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Live Sessions</h2>
-                <p className="text-gray-600">Schedule and conduct interactive classes</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button variant="outline" className="gap-2">
-                  <Filter className="h-4 w-4" />
-                  Filter
-                </Button>
-                <Button
-                  className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-emerald-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all"
-                  onClick={() => setShowCreateSession(true)}
-                >
-                  <Video className="h-4 w-4 mr-2" />
-                  Create Session
-                </Button>
-              </div>
-            </div>
+  return (
+    <div className="max-w-6xl mx-auto p-2 md:p-4 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Live Sessions</h2>
+          <p className="text-gray-600">Schedule and conduct interactive classes</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={fetchLiveSessions}
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh from API
+          </Button>
+          {/* <Button variant="outline" className="gap-2">
+            <Filter className="h-4 w-4" />
+            Filter
+          </Button> */}
+          <Button
+            className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-emerald-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all"
+            onClick={() => setShowCreateSession(true)}
+          >
+            <Video className="h-4 w-4 mr-2" />
+            Create Session
+          </Button>
+        </div>
+      </div>
 
-            {showCreateSession && (
-              <div className="animate-in fade-in-50">
-                <CreateSession
-                  onCreated={handleCreateSession}
-                />
-              </div>
-            )}
+      {showCreateSession && (
+        <div className="animate-in fade-in-50">
+          <CreateSession
+            onCreated={handleCreateSession}
+          />
+        </div>
+      )}
 
-            <SessionsList
-              sessions={sessions}
-              onDelete={handleDeleteSession}
-            />
-          </div>
-        );
-
-      // ----------------------
-      // BATCHES SECTION
-      // ----------------------
+      <SessionsList
+        sessions={sessions}
+        onDelete={handleDeleteSession}
+      />
+    </div>
+  );
       case "batches":
         return (
           <div className="max-w-7xl mx-auto p-2 md:p-4 space-y-6">
-            {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Batches Management</h2>
                 <p className="text-gray-600">Organize students into groups with scheduled classes</p>
               </div>
-              <Button 
-                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-xl transition-all"
-                onClick={() => setShowCreateBatchModal(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Batch
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline"
+                  onClick={fetchTrainerBatches}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh from API
+                </Button>
+                <Button 
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-xl transition-all"
+                  onClick={() => setShowCreateBatchModal(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Batch
+                </Button>
+              </div>
             </div>
 
-            {/* Search and Filter */}
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -1134,10 +1300,10 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                 />
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="gap-2">
+                {/* <Button variant="outline" className="gap-2">
                   <Filter className="h-4 w-4" />
                   Filter
-                </Button>
+                </Button> */}
                 <Button variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
                   Export
@@ -1145,7 +1311,6 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
               </div>
             </div>
 
-            {/* Batches Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
                 <CardContent className="p-4">
@@ -1164,7 +1329,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                     <div>
                       <p className="text-sm text-green-700">Active Batches</p>
                       <p className="text-2xl font-bold text-green-900">
-                        {batches.filter(b => b.status === 'Ongoing').length}
+                        {batches.filter(b => b.status === 'ongoing').length}
                       </p>
                     </div>
                     <CheckCircle className="h-8 w-8 text-green-600" />
@@ -1201,7 +1366,6 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
               </Card>
             </div>
 
-            {/* Batch List */}
             <Card className="shadow-lg border-0">
               <CardContent className="p-6">
                 {batches.length > 0 ? (
@@ -1233,19 +1397,24 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
           </div>
         );
 
-      // ----------------------
-      // PROFILE SECTION
-      // ----------------------
       case "profile":
         return (
           <div className="max-w-6xl mx-auto p-2 md:p-4 space-y-6">
-            {/* Profile Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Profile Settings</h2>
                 <p className="text-gray-600">Manage your personal information and preferences</p>
               </div>
               <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={fetchTrainerProfile}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh Profile
+                </Button>
                 {!isEditing ? (
                   <Button 
                     onClick={handleEditProfile}
@@ -1274,7 +1443,6 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Profile Info */}
               <div className="lg:col-span-2">
                 <Card className="shadow-lg border-0 overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
@@ -1342,28 +1510,6 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                             rows={4}
                           />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="website">Website</Label>
-                            <Input
-                              id="website"
-                              name="website"
-                              value={tempProfile.website}
-                              onChange={handleInputChange}
-                              placeholder="https://yourwebsite.com"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="linkedin">LinkedIn</Label>
-                            <Input
-                              id="linkedin"
-                              name="linkedin"
-                              value={tempProfile.linkedin}
-                              onChange={handleInputChange}
-                              placeholder="https://linkedin.com/in/yourprofile"
-                            />
-                          </div>
-                        </div>
                       </div>
                     ) : (
                       <div className="space-y-6">
@@ -1404,35 +1550,11 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                           </div>
                           <p className="text-gray-700 leading-relaxed">{profile.bio}</p>
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-gray-500">
-                            <Globe className="h-4 w-4" />
-                            <span className="text-sm">Links</span>
-                          </div>
-                          <div className="flex flex-wrap gap-3">
-                            {profile.website && (
-                              <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm">
-                                Website
-                              </a>
-                            )}
-                            {profile.linkedin && (
-                              <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm">
-                                LinkedIn
-                              </a>
-                            )}
-                            {profile.twitter && (
-                              <a href={profile.twitter} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm">
-                                Twitter
-                              </a>
-                            )}
-                          </div>
-                        </div>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Expertise Section */}
                 <Card className="shadow-lg border-0 overflow-hidden mt-6">
                   <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -1442,19 +1564,95 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="flex flex-wrap gap-2">
-                      {profile.expertise.map((skill, index) => (
-                        <Badge key={index} className="bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-200">
-                          {skill}
-                        </Badge>
-                      ))}
+                      {profile.expertise && profile.expertise.length > 0 ? (
+                        profile.expertise.map((skill, index) => (
+                          <Badge key={index} className="bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-200">
+                            {skill}
+                          </Badge>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 text-sm">No expertise listed</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
+
+                {profile.education && profile.education.length > 0 && (
+                  <Card className="shadow-lg border-0 overflow-hidden mt-6">
+                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
+                      <CardTitle className="text-lg font-bold flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5 text-green-500" />
+                        Education
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        {profile.education.map((edu: any, idx: number) => (
+                          <div key={idx} className="p-4 bg-gray-50 rounded-lg border">
+                            <h4 className="font-semibold text-gray-900">{edu.degree}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{edu.institution}</p>
+                            <p className="text-sm text-gray-500 mt-1">{edu.fieldOfStudy}</p>
+                            <p className="text-xs text-gray-400 mt-2">{edu.startYear} - {edu.endYear || 'Present'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {profile.experience && profile.experience.length > 0 && (
+                  <Card className="shadow-lg border-0 overflow-hidden mt-6">
+                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
+                      <CardTitle className="text-lg font-bold flex items-center gap-2">
+                        <Award className="h-5 w-5 text-purple-500" />
+                        Professional Experience
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        {profile.experience.map((exp: any, idx: number) => (
+                          <div key={idx} className="p-4 bg-gray-50 rounded-lg border">
+                            <h4 className="font-semibold text-gray-900">{exp.position}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{exp.company}</p>
+                            <p className="text-sm text-gray-700 mt-2">{exp.description}</p>
+                            <p className="text-xs text-gray-400 mt-2">
+                              {new Date(exp.startDate).toLocaleDateString()} - {exp.currentlyWorking ? 'Present' : new Date(exp.endDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {profile.certifications && profile.certifications.length > 0 && (
+                  <Card className="shadow-lg border-0 overflow-hidden mt-6">
+                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
+                      <CardTitle className="text-lg font-bold flex items-center gap-2">
+                        <Award className="h-5 w-5 text-amber-500" />
+                        Certifications
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        {profile.certifications.map((cert: any, idx: number) => (
+                          <div key={idx} className="p-4 bg-gray-50 rounded-lg border">
+                            <h4 className="font-semibold text-gray-900">{cert.name}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{cert.issuedBy}</p>
+                            <p className="text-xs text-gray-500 mt-1">Credential ID: {cert.credentialId}</p>
+                            <p className="text-xs text-gray-400 mt-2">
+                              Issued: {new Date(cert.issueDate).toLocaleDateString()}
+                              {cert.expiryDate && ` • Expires: ${new Date(cert.expiryDate).toLocaleDateString()}`}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
-              {/* Right Column - Avatar & Stats */}
               <div className="space-y-6">
-                {/* Avatar Card */}
                 <Card className="shadow-lg border-0 overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -1468,7 +1666,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                         <Avatar className="h-40 w-40 border-4 border-white shadow-xl">
                           <AvatarImage src={avatarPreview || profile.avatar} />
                           <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-3xl">
-                            {profile.fullName?.charAt(0)}
+                            {profile.fullName?.charAt(0) || "T"}
                           </AvatarFallback>
                         </Avatar>
                         {isEditing && (
@@ -1486,16 +1684,20 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                       {isEditing ? (
                         <div className="text-center">
                           <p className="text-sm text-gray-600 mb-2">Upload a new photo</p>
-                          <Button variant="outline" size="sm" className="gap-2">
-                            <Upload className="h-4 w-4" />
-                            Choose Image
+                          <label className="cursor-pointer">
+                            <Button variant="outline" size="sm" className="gap-2" asChild>
+                              <span>
+                                <Upload className="h-4 w-4" />
+                                Choose Image
+                              </span>
+                            </Button>
                             <input
                               type="file"
                               className="hidden"
                               accept="image/*"
                               onChange={handleAvatarChange}
                             />
-                          </Button>
+                          </label>
                         </div>
                       ) : (
                         <div className="text-center">
@@ -1507,7 +1709,6 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                   </CardContent>
                 </Card>
 
-                {/* Stats Card */}
                 <Card className="shadow-lg border-0 overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -1568,7 +1769,6 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                   </CardContent>
                 </Card>
 
-                {/* Quick Links */}
                 <Card className="shadow-lg border-0 overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -1618,17 +1818,12 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     }
   };
 
-  // --------------------------------------
-  // Return Final JSX
-  // --------------------------------------
   return (
     <>
       <TrainerNavbar />
       
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100 p-4 md:p-6">
-        {/* Main Container */}
         <div className="max-w-7xl mx-auto">
-          {/* Top Bar with User Info */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
@@ -1641,19 +1836,18 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right hidden md:block">
-                <p className="font-medium text-gray-900">{profile.fullName}</p>
+                <p className="font-medium text-gray-900">{profile.fullName || "Trainer"}</p>
                 <p className="text-sm text-gray-500">{user?.role}</p>
               </div>
               <Avatar className="h-10 w-10 border-2 border-white shadow">
                 <AvatarImage src={avatarPreview || profile.avatar} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                  {profile.fullName?.charAt(0)}
+                  {profile.fullName?.charAt(0) || "T"}
                 </AvatarFallback>
               </Avatar>
             </div>
           </div>
 
-          {/* Navigation Tabs - Enhanced */}
           <div className="mb-8">
             <Card className="shadow-lg border-0 overflow-hidden">
               <CardContent className="p-2">
@@ -1692,19 +1886,11 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
             </Card>
           </div>
 
-          {/* Main Content */}
           <main>{renderContent()}</main>
 
-          {/* Footer */}
-          <footer className="mt-12 pt-8 border-t border-gray-200">
-            <div className="text-center text-gray-500 text-sm">
-              <p>© 2024 Yakken Learning Platform. Empowering educators worldwide.</p>
-              <p className="mt-1">Built with ❤️ for better education</p>
-            </div>
-          </footer>
+         
         </div>
 
-        {/* Batch Modals */}
         <CreateBatchModal
           open={showCreateBatchModal}
           onClose={() => setShowCreateBatchModal(false)}
@@ -1737,7 +1923,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
           students={selectedBatch?.students || []}
           batchInfo={{
             batchName: selectedBatch?.batchName || '',
-            schedule: selectedBatch?.schedule || { day: '', startTime: '', endTime: '' },
+            schedule: selectedBatch?.schedule || { day: '', startTime: '00:00', endTime: '00:00' },
             currentStudents: selectedBatch?.currentStudents || 0,
             maxStudents: selectedBatch?.maxStudents || 0
           }}
