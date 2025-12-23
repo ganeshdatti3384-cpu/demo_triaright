@@ -70,19 +70,19 @@ const BatchList: React.FC<BatchListProps> = ({ batches, onViewStudents, onEditBa
     return (current / max) * 100;
   };
 
-  const handleDeleteClick = (e: React.MouseEvent, batchId: string) => {
-    e.stopPropagation();
-    setShowDeleteConfirm(batchId);
-  };
+  // const handleDeleteClick = (e: React.MouseEvent, batchId: string) => {
+  //   e.stopPropagation();
+  //   setShowDeleteConfirm(batchId);
+  // };
 
-  const handleConfirmDelete = (batchId: string) => {
-    onDeleteBatch(batchId);
-    setShowDeleteConfirm(null);
-  };
+  // const handleConfirmDelete = (batchId: string) => {
+  //   onDeleteBatch(batchId);
+  //   setShowDeleteConfirm(null);
+  // };
 
-  const handleCancelDelete = () => {
-    setShowDeleteConfirm(null);
-  };
+  // const handleCancelDelete = () => {
+  //   setShowDeleteConfirm(null);
+  // };
 
   const styles = {
     container: {
@@ -441,7 +441,7 @@ const BatchList: React.FC<BatchListProps> = ({ batches, onViewStudents, onEditBa
                 onMouseEnter={() => setHoveredCard(batch.id)}
                 onMouseLeave={() => setHoveredCard(null)}
               >
-                {isDeleting && (
+                {/* {isDeleting && (
                   <div style={styles.deleteConfirm}>
                     <div style={styles.deleteText}>
                       <div style={styles.deleteTitle}>Delete Batch?</div>
@@ -467,7 +467,7 @@ const BatchList: React.FC<BatchListProps> = ({ batches, onViewStudents, onEditBa
                     </div>
                   </div>
                 )}
-                
+                 */}
                 <div style={{ ...styles.cardBefore(isHovered) }} />
                 
                 <div style={styles.titleWrapper}>
@@ -559,7 +559,7 @@ const BatchList: React.FC<BatchListProps> = ({ batches, onViewStudents, onEditBa
                 )}
 
                 <div style={styles.actions}>
-                  <button 
+                  {/* <button 
                     className="batch-edit-btn"
                     style={{...styles.actionButton, ...styles.editButton}}
                     onClick={() => onEditBatch(batch)}
@@ -569,17 +569,17 @@ const BatchList: React.FC<BatchListProps> = ({ batches, onViewStudents, onEditBa
                       <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2"/>
                     </svg>
                     Edit
-                  </button>
-                  <button 
+                  </button> */}
+                  {/* <button 
                     className="batch-delete-btn"
                     style={{...styles.actionButton, ...styles.deleteButton}}
                     onClick={(e) => handleDeleteClick(e, batch.id)}
-                  >
-                    <svg style={{width: '14px', height: '14px', strokeWidth: '2px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  > */}
+                    {/* <svg style={{width: '14px', height: '14px', strokeWidth: '2px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor">
                       <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" strokeWidth="2"/>
                     </svg>
                     Delete
-                  </button>
+                  </button> */}
                 </div>
               </div>
             );

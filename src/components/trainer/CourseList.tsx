@@ -31,7 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import CreateCourse from "./CreateCourse";
+// import CreateCourse from "./CreateCourse";
 
 interface Course {
   id: number;
@@ -177,15 +177,15 @@ const CoursesList: React.FC<CoursesListProps> = ({
       >
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Courses Management</h2>
-          <p className="text-gray-600">Create, edit, and manage your training courses</p>
+          {/* <p className="text-gray-600">Create, edit, and manage your training courses</p> */}
         </div>
-        <Button
+        {/* <Button
           onClick={() => setShowCreateModal(true)}
           className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
         >
           <BookOpen className="h-4 w-4 mr-2" />
           Create New Course
-        </Button>
+        </Button> */}
       </motion.div>
 
       {/* Search and Filters */}
@@ -274,14 +274,14 @@ const CoursesList: React.FC<CoursesListProps> = ({
                 </Button>
               </div>
               <div className="p-6">
-                <CreateCourse
+                {/* <CreateCourse
                   onCourseCreated={editingCourse ? handleSaveEdit : handleCreateNew}
                   onCancel={() => {
                     setShowCreateModal(false);
                     setEditingCourse(null);
                   }}
                   initialData={editingCourse}
-                />
+                /> */}
               </div>
             </motion.div>
           </motion.div>

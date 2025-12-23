@@ -583,3 +583,690 @@ const SessionsList: React.FC<SessionsListProps> = ({ sessions, onDelete, onEdit 
 };
 
 export default SessionsList;
+
+// import React, { useState, useEffect } from "react";
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
+// import { Badge } from "@/components/ui/badge";
+// import { useToast } from "@/components/ui/use-toast";
+// import {
+//   Calendar,
+//   Clock,
+//   Video,
+//   Users,
+//   BookOpen,
+//   Plus,
+//   Eye,
+//   Edit,
+//   Trash2,
+//   ExternalLink,
+//   X,
+//   Save,
+//   AlertCircle,
+//   Search
+// } from "lucide-react";
+// import { motion, AnimatePresence } from "framer-motion";
+
+// // API base URL - replace with your actual API
+// const API_BASE = "http://localhost:5007/api/livecourses";
+
+// const SessionList = () => {
+//   const { toast } = useToast();
+  
+//   const [courses, setCourses] = useState([]);
+//   const [selectedCourse, setSelectedCourse] = useState(null);
+//   const [batches, setBatches] = useState([]);
+//   const [sessions, setSessions] = useState([]);
+//   const [loading, setLoading] = useState(false);
+  
+//   const [showEditModal, setShowEditModal] = useState(false);
+//   const [showDeleteModal, setShowDeleteModal] = useState(false);
+//   const [currentSession, setCurrentSession] = useState(null);
+  
+//   const [editForm, setEditForm] = useState({
+//     sessionTitle: "",
+//     sessionNumber: "",
+//     description: "",
+//     scheduledDate: "",
+//     scheduledStartTime: "",
+//     scheduledEndTime: "",
+//     meetingLink: ""
+//   });
+
+//   // Fetch trainer's courses on mount
+//   useEffect(() => {
+//     fetchCourses();
+//   }, []);
+
+//   const fetchCourses = async () => {
+//     setLoading(true);
+//     try {
+//       const token = localStorage.getItem("token"); // Get your auth token
+//       const response = await fetch(`http://localhost:5007/api/livecourses/trainer/assigned/courses`, {
+//         headers: {
+//           Authorization: `Bearer ${token}`
+//         }
+//       });
+//       const data = await response.json();
+//       setCourses(data.courses || []);
+//     } catch (error) {
+//       toast({
+//         title: "Error",
+//         description: "Failed to fetch courses",
+//         variant: "destructive"
+//       });
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const fetchBatchesByCourse = async (courseId) => {
+//     setLoading(true);
+//     try {
+//       const token = localStorage.getItem("token");
+//       const response = await fetch(`${API_BASE}/trainer/batches?courseId=${courseId}`, {
+//         headers: {
+//           Authorization: `Bearer ${token}`
+//         }
+//       });
+//       const data = await response.json();
+//       setBatches(data.batches || []);
+//     } catch (error) {
+//       toast({
+//         title: "Error",
+//         description: "Failed to fetch batches",
+//         variant: "destructive"
+//       });
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const fetchSessions = async (courseId) => {
+//     setLoading(true);
+//     try {
+//       const token = localStorage.getItem("token");
+//       const response = await fetch(`${API_BASE}/trainer/live-sessions?courseId=${courseId}`, {
+//         headers: {
+//           Authorization: `Bearer ${token}`
+//         }
+//       });
+//       const data = await response.json();
+//       setSessions(data.sessions || []);
+//     } catch (error) {
+//       toast({
+//         title: "Error",
+//         description: "Failed to fetch sessions",
+//         variant: "destructive"
+//       });
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handleCourseSelect = (course) => {
+//     setSelectedCourse(course);
+//     fetchBatchesByCourse(course._id);
+//     fetchSessions(course._id);
+//   };
+
+//   const handleEditClick = (session) => {
+//     setCurrentSession(session);
+//     setEditForm({
+//       sessionTitle: session.sessionTitle || "",
+//       sessionNumber: session.sessionNumber || "",
+//       description: session.description || "",
+//       scheduledDate: session.scheduledDate?.substring(0, 10) || "",
+//       scheduledStartTime: session.scheduledStartTime || "",
+//       scheduledEndTime: session.scheduledEndTime || "",
+//       meetingLink: session.meetingLink || ""
+//     });
+//     setShowEditModal(true);
+//   };
+
+//   const handleUpdateSession = async () => {
+//     try {
+//       const token = localStorage.getItem("token");
+//       const response = await fetch(`${API_BASE}/trainer/live-sessions/${currentSession._id}`, {
+//         method: "PUT",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${token}`
+//         },
+//         body: JSON.stringify(editForm)
+//       });
+
+//       if (response.ok) {
+//         toast({
+//           title: "Success",
+//           description: "Session updated successfully"
+//         });
+//         setShowEditModal(false);
+//         fetchSessions(selectedCourse._id);
+//       }
+//     } catch (error) {
+//       toast({
+//         title: "Error",
+//         description: "Failed to update session",
+//         variant: "destructive"
+//       });
+//     }
+//   };
+
+//   const handleDeleteConfirm = async () => {
+//     try {
+//       const token = localStorage.getItem("token");
+//       const response = await fetch(`${API_BASE}/trainer/live-sessions/${currentSession._id}`, {
+//         method: "DELETE",
+//         headers: {
+//           Authorization: `Bearer ${token}`
+//         }
+//       });
+
+//       if (response.ok) {
+//         toast({
+//           title: "Success",
+//           description: "Session deleted successfully"
+//         });
+//         setShowDeleteModal(false);
+//         fetchSessions(selectedCourse._id);
+//       }
+//     } catch (error) {
+//       toast({
+//         title: "Error",
+//         description: "Failed to delete session",
+//         variant: "destructive"
+//       });
+//     }
+//   };
+
+//   const formatDate = (dateString) => {
+//     if (!dateString) return "N/A";
+//     const date = new Date(dateString);
+//     return date.toLocaleDateString("en-US", {
+//       weekday: "short",
+//       month: "short",
+//       day: "numeric",
+//       year: "numeric"
+//     });
+//   };
+
+//   const getStatusBadge = (status) => {
+//     const variants = {
+//       scheduled: "bg-blue-100 text-blue-800 border-blue-200",
+//       live: "bg-green-100 text-green-800 border-green-200",
+//       completed: "bg-gray-100 text-gray-800 border-gray-200",
+//       cancelled: "bg-red-100 text-red-800 border-red-200"
+//     };
+//     return variants[status] || variants.scheduled;
+//   };
+
+//   const getSessionsByBatch = (batchId) => {
+//     return sessions.filter(session => session.batchId === batchId);
+//   };
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+//       <div className="max-w-7xl mx-auto space-y-6">
+//         {/* Header */}
+//         <motion.div
+//           initial={{ opacity: 0, y: -20 }}
+//           animate={{ opacity: 1, y: 0 }}
+//         >
+//           <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-xl">
+//             <CardHeader>
+//               <div className="flex items-center gap-3">
+//                 <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+//                   <Video className="h-8 w-8" />
+//                 </div>
+//                 <div>
+//                   <CardTitle className="text-2xl font-bold">Live Session Management</CardTitle>
+//                   <p className="text-blue-100 mt-1">Manage your live sessions by course and batch</p>
+//                 </div>
+//               </div>
+//             </CardHeader>
+//           </Card>
+//         </motion.div>
+
+//         {/* Course Selection */}
+//         <motion.div
+//           initial={{ opacity: 0, y: 20 }}
+//           animate={{ opacity: 1, y: 0 }}
+//           transition={{ delay: 0.1 }}
+//         >
+//           <Card className="shadow-lg">
+//             <CardHeader>
+//               <CardTitle className="flex items-center gap-2">
+//                 <BookOpen className="h-5 w-5 text-blue-600" />
+//                 Select Course to View Sessions
+//               </CardTitle>
+//             </CardHeader>
+//             <CardContent>
+//               {loading && !selectedCourse ? (
+//                 <div className="text-center py-8">
+//                   <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+//                   <p className="text-gray-600 mt-4">Loading courses...</p>
+//                 </div>
+//               ) : courses.length === 0 ? (
+//                 <div className="text-center py-8">
+//                   <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+//                   <p className="text-gray-600">No courses found</p>
+//                 </div>
+//               ) : (
+//                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+//                   {courses.map((course) => (
+//                     <motion.div
+//                       key={course._id}
+//                       whileHover={{ scale: 1.02 }}
+//                       whileTap={{ scale: 0.98 }}
+//                     >
+//                       <Card
+//                         className={`cursor-pointer transition-all ${
+//                           selectedCourse?._id === course._id
+//                             ? "ring-2 ring-blue-500 bg-blue-50"
+//                             : "hover:shadow-md hover:border-blue-200"
+//                         }`}
+//                         onClick={() => handleCourseSelect(course)}
+//                       >
+//                         <CardContent className="p-4">
+//                           <div className="flex items-center gap-3">
+//                             <div className="p-2 bg-blue-100 rounded-lg">
+//                               <BookOpen className="h-5 w-5 text-blue-600" />
+//                             </div>
+//                             <div className="flex-1">
+//                               <h3 className="font-semibold text-gray-900">
+//                                 {course.courseName}
+//                               </h3>
+//                               <p className="text-sm text-gray-600">
+//                                 {course.duration || "N/A"}
+//                               </p>
+//                             </div>
+//                           </div>
+//                         </CardContent>
+//                       </Card>
+//                     </motion.div>
+//                   ))}
+//                 </div>
+//               )}
+//             </CardContent>
+//           </Card>
+//         </motion.div>
+
+//         {/* Batches and Sessions */}
+//         <AnimatePresence>
+//           {selectedCourse && (
+//             <motion.div
+//               initial={{ opacity: 0, y: 20 }}
+//               animate={{ opacity: 1, y: 0 }}
+//               exit={{ opacity: 0, y: -20 }}
+//               className="space-y-6"
+//             >
+//               {loading ? (
+//                 <div className="text-center py-12">
+//                   <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+//                   <p className="text-gray-600 mt-4">Loading sessions...</p>
+//                 </div>
+//               ) : batches.length === 0 ? (
+//                 <Card className="shadow-lg">
+//                   <CardContent className="p-12 text-center">
+//                     <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+//                     <h3 className="text-lg font-semibold text-gray-500 mb-2">
+//                       No batches found for this course
+//                     </h3>
+//                   </CardContent>
+//                 </Card>
+//               ) : (
+//                 batches.map((batch) => {
+//                   const batchSessions = getSessionsByBatch(batch._id);
+                  
+//                   return (
+//                     <Card key={batch._id} className="shadow-lg">
+//                       <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
+//                         <div className="flex items-center justify-between">
+//                           <div className="flex items-center gap-3">
+//                             <div className="p-2 bg-purple-100 rounded-lg">
+//                               <Users className="h-5 w-5 text-purple-600" />
+//                             </div>
+//                             <div>
+//                               <CardTitle>{batch.batchName}</CardTitle>
+//                               <p className="text-sm text-gray-600 mt-1">
+//                                 {batchSessions.length} session(s)
+//                               </p>
+//                             </div>
+//                           </div>
+//                           <Badge variant="outline">
+//                             {batch.students?.length || 0} Students
+//                           </Badge>
+//                         </div>
+//                       </CardHeader>
+//                       <CardContent className="p-6">
+//                         {batchSessions.length === 0 ? (
+//                           <div className="text-center py-8">
+//                             <Video className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+//                             <p className="text-gray-600">No sessions for this batch</p>
+//                           </div>
+//                         ) : (
+//                           <div className="space-y-3">
+//                             {batchSessions.map((session, index) => (
+//                               <motion.div
+//                                 key={session._id}
+//                                 initial={{ opacity: 0, x: -20 }}
+//                                 animate={{ opacity: 1, x: 0 }}
+//                                 transition={{ delay: index * 0.05 }}
+//                               >
+//                                 <Card className="hover:shadow-md transition-all border-l-4 border-l-blue-500">
+//                                   <CardContent className="p-4">
+//                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+//                                       <div className="flex-1">
+//                                         <div className="flex items-start gap-3">
+//                                           <div className="p-2 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 mt-1">
+//                                             <Video className="h-5 w-5 text-blue-600" />
+//                                           </div>
+//                                           <div className="flex-1">
+//                                             <div className="flex flex-wrap items-center gap-2 mb-2">
+//                                               {session.sessionNumber && (
+//                                                 <Badge variant="outline" className="text-xs">
+//                                                   Session {session.sessionNumber}
+//                                                 </Badge>
+//                                               )}
+//                                               <h3 className="font-bold text-lg text-gray-900">
+//                                                 {session.sessionTitle}
+//                                               </h3>
+//                                               <Badge className={getStatusBadge(session.status)}>
+//                                                 {session.status}
+//                                               </Badge>
+//                                             </div>
+//                                             {session.description && (
+//                                               <p className="text-sm text-gray-600 mb-2">
+//                                                 {session.description}
+//                                               </p>
+//                                             )}
+//                                             <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+//                                               <div className="flex items-center gap-2">
+//                                                 <Calendar className="h-4 w-4 text-gray-400" />
+//                                                 <span>{formatDate(session.scheduledDate)}</span>
+//                                               </div>
+//                                               <div className="flex items-center gap-2">
+//                                                 <Clock className="h-4 w-4 text-gray-400" />
+//                                                 <span>
+//                                                   {session.scheduledStartTime || "N/A"}
+//                                                   {session.scheduledEndTime && ` - ${session.scheduledEndTime}`}
+//                                                 </span>
+//                                               </div>
+//                                               {session.meetingLink && (
+//                                                 <div className="flex items-center gap-2">
+//                                                   <ExternalLink className="h-4 w-4 text-gray-400" />
+//                                                   <a 
+//                                                     href={session.meetingLink} 
+//                                                     target="_blank" 
+//                                                     rel="noopener noreferrer"
+//                                                     className="text-blue-600 hover:underline"
+//                                                   >
+//                                                     Join Link
+//                                                   </a>
+//                                                 </div>
+//                                               )}
+//                                             </div>
+//                                           </div>
+//                                         </div>
+//                                       </div>
+
+//                                       <div className="flex items-center gap-2">
+//                                         <Button
+//                                           size="sm"
+//                                           variant="outline"
+//                                           className="gap-1"
+//                                           onClick={() => handleEditClick(session)}
+//                                         >
+//                                           <Edit className="h-4 w-4" />
+//                                           <span className="hidden sm:inline">Edit</span>
+//                                         </Button>
+//                                         <Button
+//                                           size="sm"
+//                                           variant="destructive"
+//                                           className="gap-1"
+//                                           onClick={() => {
+//                                             setCurrentSession(session);
+//                                             setShowDeleteModal(true);
+//                                           }}
+//                                         >
+//                                           <Trash2 className="h-4 w-4" />
+//                                           <span className="hidden sm:inline">Delete</span>
+//                                         </Button>
+//                                       </div>
+//                                     </div>
+//                                   </CardContent>
+//                                 </Card>
+//                               </motion.div>
+//                             ))}
+//                           </div>
+//                         )}
+//                       </CardContent>
+//                     </Card>
+//                   );
+//                 })
+//               )}
+//             </motion.div>
+//           )}
+//         </AnimatePresence>
+//       </div>
+
+//       {/* Edit Modal */}
+//       <AnimatePresence>
+//         {showEditModal && currentSession && (
+//           <motion.div
+//             className="fixed inset-0 z-50 flex items-center justify-center p-4"
+//             initial={{ opacity: 0 }}
+//             animate={{ opacity: 1 }}
+//             exit={{ opacity: 0 }}
+//           >
+//             <div
+//               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+//               onClick={() => setShowEditModal(false)}
+//             />
+//             <motion.div
+//               initial={{ scale: 0.9, opacity: 0, y: 20 }}
+//               animate={{ scale: 1, opacity: 1, y: 0 }}
+//               exit={{ scale: 0.9, opacity: 0, y: 20 }}
+//               className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <Card className="shadow-2xl">
+//                 <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-white">
+//                   <div className="flex items-center justify-between">
+//                     <CardTitle className="flex items-center gap-2">
+//                       <Edit className="h-5 w-5 text-blue-600" />
+//                       Edit Session
+//                     </CardTitle>
+//                     <Button
+//                       variant="ghost"
+//                       size="sm"
+//                       onClick={() => setShowEditModal(false)}
+//                       className="h-8 w-8 p-0"
+//                     >
+//                       <X className="h-4 w-4" />
+//                     </Button>
+//                   </div>
+//                 </CardHeader>
+//                 <CardContent className="p-6">
+//                   <div className="space-y-5">
+//                     <div>
+//                       <label className="block text-sm font-medium text-gray-700 mb-2">
+//                         Session Title <span className="text-red-500">*</span>
+//                       </label>
+//                       <Input
+//                         value={editForm.sessionTitle}
+//                         onChange={(e) =>
+//                           setEditForm({ ...editForm, sessionTitle: e.target.value })
+//                         }
+//                         placeholder="Enter session title"
+//                       />
+//                     </div>
+
+//                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                       <div>
+//                         <label className="block text-sm font-medium text-gray-700 mb-2">
+//                           Session Number
+//                         </label>
+//                         <Input
+//                           type="number"
+//                           value={editForm.sessionNumber}
+//                           onChange={(e) =>
+//                             setEditForm({ ...editForm, sessionNumber: e.target.value })
+//                           }
+//                           placeholder="e.g., 1"
+//                         />
+//                       </div>
+//                       <div>
+//                         <label className="block text-sm font-medium text-gray-700 mb-2">
+//                           Date <span className="text-red-500">*</span>
+//                         </label>
+//                         <Input
+//                           type="date"
+//                           value={editForm.scheduledDate}
+//                           onChange={(e) =>
+//                             setEditForm({ ...editForm, scheduledDate: e.target.value })
+//                           }
+//                         />
+//                       </div>
+//                     </div>
+
+//                     <div>
+//                       <label className="block text-sm font-medium text-gray-700 mb-2">
+//                         Description
+//                       </label>
+//                       <textarea
+//                         value={editForm.description}
+//                         onChange={(e) =>
+//                           setEditForm({ ...editForm, description: e.target.value })
+//                         }
+//                         placeholder="Session description"
+//                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+//                         rows={3}
+//                       />
+//                     </div>
+
+//                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                       <div>
+//                         <label className="block text-sm font-medium text-gray-700 mb-2">
+//                           Start Time <span className="text-red-500">*</span>
+//                         </label>
+//                         <Input
+//                           type="time"
+//                           value={editForm.scheduledStartTime}
+//                           onChange={(e) =>
+//                             setEditForm({ ...editForm, scheduledStartTime: e.target.value })
+//                           }
+//                         />
+//                       </div>
+//                       <div>
+//                         <label className="block text-sm font-medium text-gray-700 mb-2">
+//                           End Time
+//                         </label>
+//                         <Input
+//                           type="time"
+//                           value={editForm.scheduledEndTime}
+//                           onChange={(e) =>
+//                             setEditForm({ ...editForm, scheduledEndTime: e.target.value })
+//                           }
+//                         />
+//                       </div>
+//                     </div>
+
+//                     <div>
+//                       <label className="block text-sm font-medium text-gray-700 mb-2">
+//                         Meeting Link <span className="text-red-500">*</span>
+//                       </label>
+//                       <Input
+//                         value={editForm.meetingLink}
+//                         onChange={(e) =>
+//                           setEditForm({ ...editForm, meetingLink: e.target.value })
+//                         }
+//                         placeholder="Zoom / Google Meet link"
+//                       />
+//                     </div>
+
+//                     <div className="flex justify-end gap-3 pt-4 border-t">
+//                       <Button
+//                         variant="outline"
+//                         onClick={() => setShowEditModal(false)}
+//                       >
+//                         Cancel
+//                       </Button>
+//                       <Button
+//                         onClick={handleUpdateSession}
+//                         className="bg-gradient-to-r from-blue-600 to-blue-700 text-white gap-2"
+//                       >
+//                         <Save className="h-4 w-4" />
+//                         Save Changes
+//                       </Button>
+//                     </div>
+//                   </div>
+//                 </CardContent>
+//               </Card>
+//             </motion.div>
+//           </motion.div>
+//         )}
+//       </AnimatePresence>
+
+//       {/* Delete Modal */}
+//       <AnimatePresence>
+//         {showDeleteModal && currentSession && (
+//           <motion.div
+//             className="fixed inset-0 z-50 flex items-center justify-center p-4"
+//             initial={{ opacity: 0 }}
+//             animate={{ opacity: 1 }}
+//             exit={{ opacity: 0 }}
+//           >
+//             <div
+//               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+//               onClick={() => setShowDeleteModal(false)}
+//             />
+//             <motion.div
+//               initial={{ scale: 0.9, opacity: 0 }}
+//               animate={{ scale: 1, opacity: 1 }}
+//               exit={{ scale: 0.9, opacity: 0 }}
+//               className="relative w-full max-w-md"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <Card className="shadow-2xl">
+//                 <CardContent className="p-6">
+//                   <div className="text-center">
+//                     <div className="p-4 bg-red-50 rounded-full w-16 h-16 mx-auto mb-4">
+//                       <AlertCircle className="h-8 w-8 text-red-600 mx-auto" />
+//                     </div>
+//                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
+//                       Delete Session?
+//                     </h3>
+//                     <p className="text-gray-600 mb-6">
+//                       Are you sure you want to delete "<span className="font-semibold">{currentSession.sessionTitle}</span>"? This action cannot be undone.
+//                     </p>
+//                     <div className="flex justify-center gap-3">
+//                       <Button
+//                         variant="outline"
+//                         onClick={() => setShowDeleteModal(false)}
+//                       >
+//                         Cancel
+//                       </Button>
+//                       <Button
+//                         variant="destructive"
+//                         onClick={handleDeleteConfirm}
+//                         className="gap-2"
+//                       >
+//                         <Trash2 className="h-4 w-4" />
+//                         Delete
+//                       </Button>
+//                     </div>
+//                   </div>
+//                 </CardContent>
+//               </Card>
+//             </motion.div>
+//           </motion.div>
+//         )}
+//       </AnimatePresence>
+//     </div>
+//   );
+// };
+
+// export default SessionList;

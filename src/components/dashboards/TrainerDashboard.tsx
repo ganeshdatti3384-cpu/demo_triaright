@@ -82,7 +82,7 @@ import CoursesList from "@/components/trainer/CourseList";
 
 // Import Batch Components
 import BatchList from "@/components/trainer/BatchList";
-import CreateBatchModal from "@/components/trainer/CreateBatchModal";
+// import CreateBatchModal from "@/components/trainer/CreateBatchModal";
 import ViewStudentsModal from "@/components/trainer/ViewStudentsModal";
 
 // Section Type
@@ -1021,14 +1021,14 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                         <div className="text-center py-8">
                           <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                           <p className="text-gray-500">No courses available</p>
-                          <Button 
+                          {/* <Button 
                             size="sm" 
                             variant="ghost" 
                             className="mt-2"
                             onClick={() => setActive("courses")}
                           >
                             Create Your First Course
-                          </Button>
+                          </Button> */}
                         </div>
                       )}
                     </div>
@@ -1062,20 +1062,20 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                         <Video className="h-5 w-5" />
                         <span className="text-sm">Live Session</span>
                       </Button>
-                      <Button 
+                      {/* <Button 
                         onClick={() => setShowCreateBatchModal(true)}
                         className="h-auto py-4 flex-col gap-2 bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border-purple-200 text-purple-700"
                       >
                         <Users2 className="h-5 w-5" />
                         <span className="text-sm">Create Batch</span>
-                      </Button>
-                      <Button 
+                      </Button> */}
+                      {/* <Button 
                         onClick={() => setActive("courses")}
                         className="h-auto py-4 flex-col gap-2 bg-gradient-to-br from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 border-amber-200 text-amber-700"
                       >
                         <BookOpen className="h-5 w-5" />
                         <span className="text-sm">Create Course</span>
-                      </Button>
+                      </Button> */}
                     </div>
                   </CardContent>
                 </Card>
@@ -1284,13 +1284,13 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                   <RefreshCw className="h-4 w-4" />
                   Refresh from API
                 </Button>
-                <Button 
+                {/* <Button 
                   className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-xl transition-all"
                   onClick={() => setShowCreateBatchModal(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create New Batch
-                </Button>
+                </Button> */}
               </div>
             </div>
 
@@ -1309,10 +1309,10 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                   <Filter className="h-4 w-4" />
                   Filter
                 </Button> */}
-                <Button variant="outline" className="gap-2">
+                {/* <Button variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
                   Export
-                </Button>
+                </Button> */}
               </div>
             </div>
 
@@ -1387,14 +1387,14 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
                   <div className="text-center py-12">
                     <Users2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-700 mb-2">No batches created yet</h3>
-                    <p className="text-gray-500 mb-6">Start organizing your students into batches for better management</p>
+                    {/* <p className="text-gray-500 mb-6">Start organizing your students into batches for better management</p>
                     <Button 
                       className="bg-gradient-to-r from-purple-600 to-pink-600 text-white"
                       onClick={() => setShowCreateBatchModal(true)}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Create Your First Batch
-                    </Button>
+                    </Button> */}
                   </div>
                 )}
               </CardContent>
@@ -1896,7 +1896,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
          
         </div>
 
-        <CreateBatchModal
+        {/* <CreateBatchModal
           open={showCreateBatchModal}
           onClose={() => setShowCreateBatchModal(false)}
           onSubmit={handleCreateBatch}
@@ -1905,9 +1905,9 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
             title: course.name
           }))}
           mode="create"
-        />
+        /> */}
 
-        <CreateBatchModal
+        {/* <CreateBatchModal
           open={showEditBatchModal}
           onClose={() => {
             setShowEditBatchModal(false);
@@ -1920,7 +1920,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
           }))}
           editData={batchToEdit}
           mode="edit"
-        />
+        /> */}
 
         <ViewStudentsModal
           open={showViewStudentsModal}
