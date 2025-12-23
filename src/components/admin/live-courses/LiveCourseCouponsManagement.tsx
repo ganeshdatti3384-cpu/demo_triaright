@@ -1,5 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import React, { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,55 +32,68 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Edit, Trash2, Plus, Tag, Percent, IndianRupee, Calendar, Users, CheckCircle, XCircle, Copy, Sparkles, Zap, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Edit, 
+  Trash2, 
+  Plus, 
+  Tag, 
+  Percent, 
+  IndianRupee, 
+  Calendar, 
+  Users, 
+  CheckCircle, 
+  XCircle, 
+  Copy, 
+  Sparkles, 
+  Zap, 
+  Crown 
+} from "lucide-react";
 
-// API Configuration
-const API_BASE_URL = "http://localhost:5007"; // Update with your backend URL
+/* ================= CONFIG ================= */
+
+const API_BASE_URL = "http://localhost:5007";
 const getAuthToken = () => localStorage.getItem("token");
 
-interface UsedByEntry {
-  userId: string;
-  usedAt: string;
-}
+/* ================= TYPES ================= */
 
 interface LiveCourse {
   _id: string;
   courseName: string;
-  price: number;
 }
 
-interface LiveCourseEnrollmentCode {
+interface Coupon {
   _id: string;
   code: string;
-  applicableCourse: {
-    _id: string;
-    courseName: string;
-  } | null;
+  applicableCourse: LiveCourse | null;
   discountType: "flat" | "percentage";
   discountAmount: number;
   maxDiscount: number | null;
   isActive: boolean;
   usageLimit: number | null;
   usedCount: number;
-  usedBy: UsedByEntry[];
   expiresAt: string | null;
-  createdBy: string;
   description: string;
-  createdAt: string;
-  updatedAt: string;
+  createdBy?: string;
 }
 
+/* ================= COMPONENT ================= */
+
 const LiveCourseCouponsManagement: React.FC = () => {
-  const [coupons, setCoupons] = useState<LiveCourseEnrollmentCode[]>([]);
+  const { toast } = useToast();
+
   const [liveCourses, setLiveCourses] = useState<LiveCourse[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [fetchingData, setFetchingData] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [fetchingData, setFetchingData] = useState(true);
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [couponToDelete, setCouponToDelete] = useState<LiveCourseEnrollmentCode | null>(null);
-  const [editingCoupon, setEditingCoupon] = useState<LiveCourseEnrollmentCode | null>(null);
+  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+  const [couponToDelete, setCouponToDelete] = useState<Coupon | null>(null);
+
+  /* ================= FORM STATE ================= */
 
   const [formData, setFormData] = useState({
     code: "",
@@ -88,52 +107,34 @@ const LiveCourseCouponsManagement: React.FC = () => {
     description: "",
   });
 
-  const { toast } = useToast();
+  /* ================= FETCH LIVE COURSES ================= */
 
-  // Fetch all live courses for dropdown
   const fetchLiveCourses = async () => {
-    try {
-      const token = getAuthToken();
-      const response = await fetch(`http://localhost:5007/api/livecourses/live-courses`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch live courses");
-
-      const data = await response.json();
-      setLiveCourses(data.courses || []);
-    } catch (error) {
-      console.error("Error fetching live courses:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load live courses",
-        variant: "destructive",
-      });
-    }
+    const res = await fetch(`${API_BASE_URL}/api/livecourses/live-courses`);
+    const data = await res.json();
+    setLiveCourses(data.courses || []);
   };
 
-  // Fetch all coupons
+  /* ================= FETCH COUPONS ================= */
+
   const fetchCoupons = async () => {
     try {
       setFetchingData(true);
       const token = getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
 
-      if (!response.ok) throw new Error("Failed to fetch coupons");
+      const res = await fetch(
+        `${API_BASE_URL}/api/livecourses/admin/coupons`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-      const data = await response.json();
+      const data = await res.json();
       setCoupons(data.coupons || []);
-    } catch (error) {
-      console.error("Error fetching coupons:", error);
+    } catch {
       toast({
         title: "Error",
-        description: "Failed to load coupons",
+        description: "Failed to fetch coupons",
         variant: "destructive",
       });
     } finally {
@@ -145,6 +146,8 @@ const LiveCourseCouponsManagement: React.FC = () => {
     fetchLiveCourses();
     fetchCoupons();
   }, []);
+
+  /* ================= RESET FORM ================= */
 
   const resetForm = () => {
     setFormData({
@@ -160,8 +163,9 @@ const LiveCourseCouponsManagement: React.FC = () => {
     });
   };
 
-  // CREATE Coupon
-  const handleAddCoupon = async () => {
+  /* ================= CREATE COUPON ================= */
+
+  const handleCreateCoupon = async () => {
     if (!formData.code) {
       toast({
         title: "Error",
@@ -189,23 +193,28 @@ const LiveCourseCouponsManagement: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-
     try {
+      setLoading(true);
       const token = getAuthToken();
+
       const payload = {
         code: formData.code.toUpperCase().trim(),
         applicableCourse: formData.applicableCourse || null,
         discountType: formData.discountType,
         discountAmount: formData.discountAmount,
-        maxDiscount: formData.maxDiscount > 0 ? formData.maxDiscount : null,
+        maxDiscount:
+          formData.discountType === "percentage"
+            ? formData.maxDiscount || null
+            : null,
         isActive: formData.isActive,
-        usageLimit: formData.usageLimit > 0 ? formData.usageLimit : null,
-        expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
+        usageLimit: formData.usageLimit || null,
+        expiresAt: formData.expiresAt
+          ? new Date(formData.expiresAt)
+          : null,
         description: formData.description,
       };
 
-      const response = await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons`, {
+      await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -214,24 +223,15 @@ const LiveCourseCouponsManagement: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create coupon");
-      }
-
-      toast({
-        title: "Success",
-        description: "Coupon created successfully",
-      });
+      toast({ title: "Success", description: "Coupon created successfully" });
 
       setIsAddDialogOpen(false);
       resetForm();
       fetchCoupons();
-    } catch (error: any) {
-      console.error("Error creating coupon:", error);
+    } catch {
       toast({
         title: "Error",
-        description: error.message || "Failed to create coupon",
+        description: "Coupon creation failed",
         variant: "destructive",
       });
     } finally {
@@ -239,8 +239,11 @@ const LiveCourseCouponsManagement: React.FC = () => {
     }
   };
 
-  const openEditDialog = (coupon: LiveCourseEnrollmentCode) => {
+  /* ================= OPEN EDIT ================= */
+
+  const openEditDialog = (coupon: Coupon) => {
     setEditingCoupon(coupon);
+
     setFormData({
       code: coupon.code,
       applicableCourse: coupon.applicableCourse?._id || "",
@@ -249,14 +252,18 @@ const LiveCourseCouponsManagement: React.FC = () => {
       maxDiscount: coupon.maxDiscount || 0,
       isActive: coupon.isActive,
       usageLimit: coupon.usageLimit || 0,
-      expiresAt: coupon.expiresAt ? coupon.expiresAt.slice(0, 16) : "",
-      description: coupon.description,
+      expiresAt: coupon.expiresAt
+        ? coupon.expiresAt.split("T")[0]
+        : "",
+      description: coupon.description || "",
     });
+
     setIsEditDialogOpen(true);
   };
 
-  // UPDATE Coupon
-  const handleEditCoupon = async () => {
+  /* ================= UPDATE COUPON ================= */
+
+  const handleUpdateCoupon = async () => {
     if (!editingCoupon) return;
 
     if (!formData.code) {
@@ -286,50 +293,49 @@ const LiveCourseCouponsManagement: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-
     try {
+      setLoading(true);
       const token = getAuthToken();
+
       const payload = {
         code: formData.code.toUpperCase().trim(),
         applicableCourse: formData.applicableCourse || null,
         discountType: formData.discountType,
         discountAmount: formData.discountAmount,
-        maxDiscount: formData.maxDiscount > 0 ? formData.maxDiscount : null,
+        maxDiscount:
+          formData.discountType === "percentage" && formData.maxDiscount > 0
+            ? formData.maxDiscount
+            : null,
         isActive: formData.isActive,
         usageLimit: formData.usageLimit > 0 ? formData.usageLimit : null,
-        expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
+        expiresAt: formData.expiresAt
+          ? new Date(formData.expiresAt).toISOString()
+          : null,
         description: formData.description,
       };
 
-      const response = await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons/${editingCoupon._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      await fetch(
+        `${API_BASE_URL}/api/livecourses/admin/coupons/${editingCoupon._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update coupon");
-      }
-
-      toast({
-        title: "Success",
-        description: "Coupon updated successfully",
-      });
+      toast({ title: "Success", description: "Coupon updated successfully" });
 
       setIsEditDialogOpen(false);
       setEditingCoupon(null);
       resetForm();
       fetchCoupons();
-    } catch (error: any) {
-      console.error("Error updating coupon:", error);
+    } catch {
       toast({
         title: "Error",
-        description: error.message || "Failed to update coupon",
+        description: "Failed to update coupon",
         variant: "destructive",
       });
     } finally {
@@ -337,40 +343,31 @@ const LiveCourseCouponsManagement: React.FC = () => {
     }
   };
 
-  // DELETE Coupon
+  /* ================= DELETE ================= */
+
   const handleDeleteCoupon = async () => {
     if (!couponToDelete) return;
 
     try {
       const token = getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons/${couponToDelete._id}`, {
+      await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons/${couponToDelete._id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to delete coupon");
-      }
-
-      toast({
-        title: "Deleted",
-        description: "Coupon deleted successfully",
-      });
-
+      toast({ title: "Deleted", description: "Coupon deleted successfully" });
       setCouponToDelete(null);
       fetchCoupons();
-    } catch (error: any) {
-      console.error("Error deleting coupon:", error);
+    } catch {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete coupon",
+        description: "Failed to delete coupon",
         variant: "destructive",
       });
     }
   };
+
+  /* ================= UTILITY FUNCTIONS ================= */
 
   const copyToClipboard = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -397,25 +394,11 @@ const LiveCourseCouponsManagement: React.FC = () => {
     return new Date(expiresAt) < new Date();
   };
 
-  const isUsageExceeded = (coupon: LiveCourseEnrollmentCode) => {
+  const isUsageExceeded = (coupon: Coupon) => {
     return coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit;
   };
 
-  if (fetchingData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50/50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block p-4 bg-white rounded-2xl shadow-lg mb-4">
-            <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-            </svg>
-          </div>
-          <p className="text-gray-600 font-medium">Loading coupons...</p>
-        </div>
-      </div>
-    );
-  }
+  /* ================= FORM FIELDS COMPONENT ================= */
 
   const CouponFormFields = () => (
     <div className="space-y-5 max-h-[65vh] overflow-y-auto p-1">
@@ -442,13 +425,13 @@ const LiveCourseCouponsManagement: React.FC = () => {
           </Label>
           <Select 
             value={formData.applicableCourse} 
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, applicableCourse: value }))}
+            onValueChange={(value) => setFormData((prev) => ({ ...prev, applicableCourse: value === "ALL" ? "" : value }))}
           >
             <SelectTrigger className="border-2 border-gray-200 focus:border-blue-500 rounded-xl bg-white/80 shadow-sm h-10">
-              <SelectValue placeholder="All courses" />
+              <SelectValue placeholder="Select courses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Courses</SelectItem>
+              <SelectItem value="ALL">All Courses</SelectItem>
               {liveCourses.map((course) => (
                 <SelectItem key={course._id} value={course._id}>
                   {course.courseName}
@@ -547,7 +530,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              type="datetime-local"
+              type="date"
               value={formData.expiresAt}
               onChange={(e) => setFormData((prev) => ({ ...prev, expiresAt: e.target.value }))}
               className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
@@ -583,6 +566,26 @@ const LiveCourseCouponsManagement: React.FC = () => {
       </div>
     </div>
   );
+
+  /* ================= LOADING STATE ================= */
+
+  if (fetchingData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50/50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block p-4 bg-white rounded-2xl shadow-lg mb-4">
+            <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+            </svg>
+          </div>
+          <p className="text-gray-600 font-medium">Loading coupons...</p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ================= UI ================= */
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50/50 to-gray-100 p-4 relative overflow-hidden">
@@ -657,7 +660,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
               <CouponFormFields />
 
               <Button
-                onClick={handleAddCoupon}
+                onClick={handleCreateCoupon}
                 className="w-full mt-3 group relative overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
                 disabled={loading}
               >
@@ -994,7 +997,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
             <CouponFormFields />
 
             <Button
-              onClick={handleEditCoupon}
+              onClick={handleUpdateCoupon}
               className="w-full mt-3 group relative overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
               disabled={loading}
             >
@@ -1069,3 +1072,464 @@ const LiveCourseCouponsManagement: React.FC = () => {
 };
 
 export default LiveCourseCouponsManagement;
+
+// import React, { useEffect, useState } from "react";
+// import {
+//   Card,
+//   CardContent,
+//   CardHeader,
+//   CardTitle,
+// } from "@/components/ui/card";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
+// import { Label } from "@/components/ui/label";
+// import { Textarea } from "@/components/ui/textarea";
+// import {
+//   Dialog,
+//   DialogContent,
+//   DialogHeader,
+//   DialogTitle,
+// } from "@/components/ui/dialog";
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select";
+// import { useToast } from "@/hooks/use-toast";
+
+// /* ================= CONFIG ================= */
+
+// const API_BASE_URL = "http://localhost:5007";
+// const getAuthToken = () => localStorage.getItem("token");
+
+// /* ================= TYPES ================= */
+
+// interface LiveCourse {
+//   _id: string;
+//   courseName: string;
+// }
+
+// interface Coupon {
+//   _id: string;
+//   code: string;
+//   applicableCourse: LiveCourse | null;
+//   discountType: "flat" | "percentage";
+//   discountAmount: number;
+//   maxDiscount: number | null;
+//   isActive: boolean;
+//   usageLimit: number | null;
+//   usedCount: number;
+//   expiresAt: string | null;
+//   description: string;
+// }
+
+// /* ================= COMPONENT ================= */
+
+// const LiveCourseCouponsManagement: React.FC = () => {
+//   const { toast } = useToast();
+
+//   const [liveCourses, setLiveCourses] = useState<LiveCourse[]>([]);
+//   const [coupons, setCoupons] = useState<Coupon[]>([]);
+//   const [fetchingData, setFetchingData] = useState(false);
+//   const [loading, setLoading] = useState(false);
+
+//   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+//   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+//   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+
+//   /* ================= FORM STATE ================= */
+
+//   const [formData, setFormData] = useState({
+//     code: "",
+//     applicableCourse: "",
+//     discountType: "flat" as "flat" | "percentage",
+//     discountAmount: 0,
+//     maxDiscount: 0,
+//     isActive: true,
+//     usageLimit: 0,
+//     expiresAt: "",
+//     description: "",
+//   });
+
+//   /* ================= FETCH LIVE COURSES ================= */
+
+//   const fetchLiveCourses = async () => {
+//     const res = await fetch(`${API_BASE_URL}/api/livecourses/live-courses`);
+//     const data = await res.json();
+//     setLiveCourses(data.courses || []);
+//   };
+
+//   /* ================= FETCH COUPONS ================= */
+
+//   const fetchCoupons = async () => {
+//     try {
+//       setFetchingData(true);
+//       const token = getAuthToken();
+
+//       const res = await fetch(
+//         `${API_BASE_URL}/api/livecourses/admin/coupons`,
+//         {
+//           headers: { Authorization: `Bearer ${token}` },
+//         }
+//       );
+
+//       const data = await res.json();
+//       setCoupons(data.coupons || []);
+//     } catch {
+//       toast({
+//         title: "Error",
+//         description: "Failed to fetch coupons",
+//         variant: "destructive",
+//       });
+//     } finally {
+//       setFetchingData(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchLiveCourses();
+//     fetchCoupons();
+//   }, []);
+
+//   /* ================= RESET FORM ================= */
+
+//   const resetForm = () => {
+//     setFormData({
+//       code: "",
+//       applicableCourse: "",
+//       discountType: "flat",
+//       discountAmount: 0,
+//       maxDiscount: 0,
+//       isActive: true,
+//       usageLimit: 0,
+//       expiresAt: "",
+//       description: "",
+//     });
+//   };
+
+//   /* ================= CREATE COUPON ================= */
+
+//   const handleCreateCoupon = async () => {
+//     try {
+//       setLoading(true);
+//       const token = getAuthToken();
+
+//       const payload = {
+//         code: formData.code.toUpperCase().trim(),
+//         applicableCourse: formData.applicableCourse || null,
+//         discountType: formData.discountType,
+//         discountAmount: formData.discountAmount,
+//         maxDiscount:
+//           formData.discountType === "percentage"
+//             ? formData.maxDiscount || null
+//             : null,
+//         isActive: formData.isActive,
+//         usageLimit: formData.usageLimit || null,
+//         expiresAt: formData.expiresAt
+//           ? new Date(formData.expiresAt)
+//           : null,
+//         description: formData.description,
+//       };
+
+//       await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons`, {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${token}`,
+//         },
+//         body: JSON.stringify(payload),
+//       });
+
+//       toast({ title: "Success", description: "Coupon created" });
+
+//       setIsAddDialogOpen(false);
+//       resetForm();
+//       fetchCoupons();
+//     } catch {
+//       toast({
+//         title: "Error",
+//         description: "Coupon creation failed",
+//         variant: "destructive",
+//       });
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   /* ================= OPEN EDIT ================= */
+
+//   const openEditDialog = (coupon: Coupon) => {
+//     setEditingCoupon(coupon);
+
+//     setFormData({
+//       code: coupon.code,
+//       applicableCourse: coupon.applicableCourse?._id || "",
+//       discountType: coupon.discountType,
+//       discountAmount: coupon.discountAmount,
+//       maxDiscount: coupon.maxDiscount || 0,
+//       isActive: coupon.isActive,
+//       usageLimit: coupon.usageLimit || 0,
+//       expiresAt: coupon.expiresAt
+//         ? coupon.expiresAt.split("T")[0]
+//         : "",
+//       description: coupon.description || "",
+//     });
+
+//     setIsEditDialogOpen(true);
+//   };
+
+//   /* ================= UPDATE COUPON ================= */
+
+//   const handleUpdateCoupon = async () => {
+//     if (!editingCoupon) return;
+
+//     try {
+//       setLoading(true);
+//       const token = getAuthToken();
+
+//       const payload = {
+//         code: formData.code.toUpperCase().trim(),
+//         applicableCourse: formData.applicableCourse || null,
+//         discountType: formData.discountType,
+//         discountAmount: formData.discountAmount,
+//         maxDiscount:
+//           formData.discountType === "percentage" && formData.maxDiscount > 0
+//             ? formData.maxDiscount
+//             : null,
+//         isActive: formData.isActive,
+//         usageLimit: formData.usageLimit > 0 ? formData.usageLimit : null,
+//         expiresAt: formData.expiresAt
+//           ? new Date(formData.expiresAt).toISOString()
+//           : null,
+//         description: formData.description,
+//       };
+
+//       await fetch(
+//         `${API_BASE_URL}/api/livecourses/admin/coupons/${editingCoupon._id}`,
+//         {
+//           method: "PUT",
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Bearer ${token}`,
+//           },
+//           body: JSON.stringify(payload),
+//         }
+//       );
+
+//       toast({ title: "Success", description: "Coupon updated" });
+
+//       setIsEditDialogOpen(false);
+//       setEditingCoupon(null);
+//       resetForm();
+//       fetchCoupons();
+//     } catch {
+//       toast({
+//         title: "Error",
+//         description: "Failed to update coupon",
+//         variant: "destructive",
+//       });
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   /* ================= DELETE ================= */
+
+//   const handleDeleteCoupon = async (id: string) => {
+//     const token = getAuthToken();
+//     await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons/${id}`, {
+//       method: "DELETE",
+//       headers: { Authorization: `Bearer ${token}` },
+//     });
+
+//     toast({ title: "Deleted", description: "Coupon deleted" });
+//     fetchCoupons();
+//   };
+
+//   /* ================= UI ================= */
+
+//   return (
+//     <Card>
+//       <CardHeader className="flex flex-row justify-between">
+//         <CardTitle>Live Course Coupons</CardTitle>
+//         <Button onClick={() => setIsAddDialogOpen(true)}>
+//           + Add Coupon
+//         </Button>
+//       </CardHeader>
+
+//       <CardContent>
+//         {/* ADD & EDIT DIALOGS SHARE SAME FORM */}
+//         {[isAddDialogOpen, isEditDialogOpen].map((open, idx) => (
+//           <Dialog
+//             key={idx}
+//             open={open}
+//             onOpenChange={
+//               idx === 0 ? setIsAddDialogOpen : setIsEditDialogOpen
+//             }
+//           >
+//             <DialogContent className="max-w-xl">
+//               <DialogHeader>
+//                 <DialogTitle>
+//                   {idx === 0 ? "Create Coupon" : "Edit Coupon"}
+//                 </DialogTitle>
+//               </DialogHeader>
+
+//               <div className="space-y-3">
+//                 <Input
+//                   placeholder="Coupon Code"
+//                   value={formData.code}
+//                   onChange={(e) =>
+//                     setFormData({ ...formData, code: e.target.value })
+//                   }
+//                 />
+
+//                 <Select
+//                   value={formData.applicableCourse}
+//                   onValueChange={(v) =>
+//                     setFormData({
+//                       ...formData,
+//                       applicableCourse: v === "ALL" ? "" : v,
+//                     })
+//                   }
+//                 >
+//                   <SelectTrigger>
+//                     <SelectValue placeholder="Select Course" />
+//                   </SelectTrigger>
+//                   <SelectContent>
+//                     <SelectItem value="ALL">All Courses</SelectItem>
+//                     {liveCourses.map((c) => (
+//                       <SelectItem key={c._id} value={c._id}>
+//                         {c.courseName}
+//                       </SelectItem>
+//                     ))}
+//                   </SelectContent>
+//                 </Select>
+
+//                 <Select
+//                   value={formData.discountType}
+//                   onValueChange={(v) =>
+//                     setFormData({
+//                       ...formData,
+//                       discountType: v as any,
+//                     })
+//                   }
+//                 >
+//                   <SelectTrigger>
+//                     <SelectValue />
+//                   </SelectTrigger>
+//                   <SelectContent>
+//                     <SelectItem value="flat">Flat</SelectItem>
+//                     <SelectItem value="percentage">Percentage</SelectItem>
+//                   </SelectContent>
+//                 </Select>
+
+//                 <Input
+//                   type="number"
+//                   placeholder="Discount Amount"
+//                   value={formData.discountAmount}
+//                   onChange={(e) =>
+//                     setFormData({
+//                       ...formData,
+//                       discountAmount: Number(e.target.value),
+//                     })
+//                   }
+//                 />
+
+//                 {formData.discountType === "percentage" && (
+//                   <Input
+//                     type="number"
+//                     placeholder="Max Discount"
+//                     value={formData.maxDiscount}
+//                     onChange={(e) =>
+//                       setFormData({
+//                         ...formData,
+//                         maxDiscount: Number(e.target.value),
+//                       })
+//                     }
+//                   />
+//                 )}
+
+//                 <Input
+//                   type="date"
+//                   value={formData.expiresAt}
+//                   onChange={(e) =>
+//                     setFormData({
+//                       ...formData,
+//                       expiresAt: e.target.value,
+//                     })
+//                   }
+//                 />
+
+//                 <Textarea
+//                   placeholder="Description"
+//                   value={formData.description}
+//                   onChange={(e) =>
+//                     setFormData({
+//                       ...formData,
+//                       description: e.target.value,
+//                     })
+//                   }
+//                 />
+
+//                 <Button
+//                   onClick={idx === 0 ? handleCreateCoupon : handleUpdateCoupon}
+//                   disabled={loading}
+//                 >
+//                   {loading
+//                     ? "Saving..."
+//                     : idx === 0
+//                     ? "Create Coupon"
+//                     : "Update Coupon"}
+//                 </Button>
+//               </div>
+//             </DialogContent>
+//           </Dialog>
+//         ))}
+
+//         {/* LIST */}
+//         <div className="mt-4 space-y-2">
+//           {fetchingData ? (
+//             <p>Loading...</p>
+//           ) : (
+//             coupons.map((c) => (
+//               <div
+//                 key={c._id}
+//                 className="border p-3 rounded flex justify-between"
+//               >
+//                 <div>
+//                   <p className="font-semibold">{c.code}</p>
+//                   <p className="text-sm text-gray-500">
+//                     {c.applicableCourse
+//                       ? c.applicableCourse.courseName
+//                       : "All Courses"}
+//                   </p>
+//                 </div>
+
+//                 <div className="flex gap-2">
+//                   <Button
+//                     size="icon"
+//                     variant="outline"
+//                     onClick={() => openEditDialog(c)}
+//                   >
+//                     ✏️
+//                   </Button>
+//                   <Button
+//                     size="icon"
+//                     variant="destructive"
+//                     onClick={() => handleDeleteCoupon(c._id)}
+//                   >
+//                     🗑️
+//                   </Button>
+//                 </div>
+//               </div>
+//             ))
+//           )}
+//         </div>
+//       </CardContent>
+//     </Card>
+//   );
+// };
+
+// export default LiveCourseCouponsManagement;
