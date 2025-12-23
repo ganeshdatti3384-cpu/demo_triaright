@@ -58,7 +58,7 @@ const Login = () => {
           break;
 
         /*  ⭐ TRAINER → Trainer Dashboard  */
-        case 'trainer':
+        case 'Trainer':
           navigate('/trainer/dashboard');
           break;
 

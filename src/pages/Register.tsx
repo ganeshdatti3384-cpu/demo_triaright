@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,87 +39,36 @@ import {
 import { authApi } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 
-// Trainer types list (you confirmed "use this list")
-const TRAINER_TYPES = [
-  'Technical Trainer',
-  'Coding Trainer',
-  'Aptitude Trainer',
-  'Soft Skills Trainer',
-  'Communication Trainer',
-  'Domain Expert',
-  'Industry Instructor',
-] as const;
-
-// Base schema for all roles (added trainer-specific optional fields)
+// Base schema for all roles
 const baseSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email address'),
-  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
-  whatsappNumber: z.string().min(10, 'WhatsApp number must be at least 10 digits'),
+  firstName: z.string().min(1, 'First name is required').trim(),
+  lastName: z.string().min(1, 'Last name is required').trim(),
+  email: z.string().email('Invalid email address').trim().toLowerCase(),
+  phoneNumber: z.string()
+    .min(10, 'Phone number must be at least 10 digits')
+    .regex(/^[0-9+\-\s()]*$/, 'Invalid phone number format')
+    .trim(),
+  whatsappNumber: z.string()
+    .min(10, 'WhatsApp number must be at least 10 digits')
+    .regex(/^[0-9+\-\s()]*$/, 'Invalid WhatsApp number format')
+    .trim(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  address: z.string().min(1, 'Address is required'),
-  role: z.enum(['student', 'college', 'jobseeker', 'employer', 'trainer']),
-
-  // Trainer-specific (optional in base, required via refine if role === 'trainer')
-  expertise: z.string().optional(),
-  trainerType: z.enum(TRAINER_TYPES).optional(),
-  experienceYears: z.string().optional(),
-  bio: z.string().optional(),
-  linkedin: z.string().optional(),
-
+  address: z.string().min(1, 'Address is required').trim(),
+  role: z.enum(['student', 'college', 'jobseeker', 'employer', 'Trainer']),
   acceptTerms: z.boolean().refine((val) => val === true, {
     message: 'You must accept terms and conditions'
   })
 });
 
-// Refine for password match and trainer required fields
-const registrationSchema = baseSchema
-  .refine((data) => data.password === data.confirmPassword, {
+// Refine for password match
+const registrationSchema = baseSchema.refine(
+  (data) => data.password === data.confirmPassword,
+  {
     message: "Passwords don't match",
     path: ["confirmPassword"],
-  })
-  .superRefine((data, ctx) => {
-    if (data.role === 'trainer') {
-      if (!data.expertise || data.expertise.trim() === '') {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Expertise is required for trainers',
-          path: ['expertise'],
-        });
-      }
-      if (!data.trainerType) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Trainer type is required',
-          path: ['trainerType'],
-        });
-      }
-      // experienceYears can be optional, but if provided ensure it's a number string
-      if (data.experienceYears && isNaN(Number(data.experienceYears))) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Experience must be a number',
-          path: ['experienceYears'],
-        });
-      }
-      // optional: validate linkedin URL if provided
-      if (data.linkedin && data.linkedin.trim() !== '') {
-        try {
-          // simple URL check
-          // eslint-disable-next-line no-new
-          new URL(data.linkedin);
-        } catch {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'LinkedIn must be a valid URL',
-            path: ['linkedin'],
-          });
-        }
-      }
-    }
-  });
+  }
+);
 
 type RegistrationFormData = z.infer<typeof registrationSchema>;
 
@@ -131,11 +79,16 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // File states
   const [collegeLogo, setCollegeLogo] = useState<File | null>(null);
   const [companyLogo, setCompanyLogo] = useState<File | null>(null);
-  const [trainerPhoto, setTrainerPhoto] = useState<File | null>(null);
+
+  // College fields
   const [collegeName, setCollegeName] = useState('');
   const [collegeCode, setCollegeCode] = useState('');
+
+  // Employer fields
   const [companyName, setCompanyName] = useState('');
   const [companyType, setCompanyType] = useState('');
 
@@ -159,62 +112,35 @@ const Register = () => {
   const handleRegister = async (formData: RegistrationFormData) => {
     try {
       setIsLoading(true);
-toast({
-  title: "Trainer Account Created!",
-  description: "Your trainer account has been successfully created.",
-});
 
-if (formData.role === "trainer") {
-  navigate("/login");
-} else {
-  navigate("/login");
-}
-
-      // Create FormData for file uploads
-      const formDataToSend = new FormData();
-
-      // Add common fields
-      formDataToSend.append('firstName', formData.firstName);
-      formDataToSend.append('lastName', formData.lastName);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('phoneNumber', formData.phoneNumber);
-      formDataToSend.append('whatsappNumber', formData.whatsappNumber);
-      formDataToSend.append('address', formData.address);
-      formDataToSend.append('password', formData.password);
-      formDataToSend.append('role', formData.role);
-
-      // Add role-specific fields - college
+      // Validate role-specific required fields before submission
       if (formData.role === 'college') {
-        if (!collegeName) {
+        if (!collegeName.trim()) {
           toast({
             title: 'Validation Error',
             description: 'College name is required',
             variant: 'destructive'
           });
+          setIsLoading(false);
           return;
         }
-        if (!collegeCode) {
+        if (!collegeCode.trim()) {
           toast({
             title: 'Validation Error',
             description: 'College code is required',
             variant: 'destructive'
           });
+          setIsLoading(false);
           return;
         }
-
-        formDataToSend.append('collegeName', collegeName);
-        formDataToSend.append('collegeCode', collegeCode);
-        if (collegeLogo) {
-          formDataToSend.append('collegeLogo', collegeLogo);
-        }
       } else if (formData.role === 'employer') {
-        // employer
-        if (!companyName) {
+        if (!companyName.trim()) {
           toast({
             title: 'Validation Error',
             description: 'Company name is required',
             variant: 'destructive'
           });
+          setIsLoading(false);
           return;
         }
         if (!companyType) {
@@ -223,57 +149,72 @@ if (formData.role === "trainer") {
             description: 'Company type is required',
             variant: 'destructive'
           });
+          setIsLoading(false);
           return;
         }
+      }
 
-        formDataToSend.append('companyName', companyName);
+      // Create FormData for file uploads
+      const formDataToSend = new FormData();
+
+      // Add common fields with trimming
+      formDataToSend.append('firstName', formData.firstName.trim());
+      formDataToSend.append('lastName', formData.lastName.trim());
+      formDataToSend.append('email', formData.email.trim().toLowerCase());
+      formDataToSend.append('phoneNumber', formData.phoneNumber.trim());
+      formDataToSend.append('whatsappNumber', formData.whatsappNumber.trim());
+      formDataToSend.append('address', formData.address.trim());
+      formDataToSend.append('password', formData.password);
+      formDataToSend.append('role', formData.role);
+
+      // Add role-specific fields
+      if (formData.role === 'college') {
+        formDataToSend.append('collegeName', collegeName.trim());
+        formDataToSend.append('collegeCode', collegeCode.trim());
+        if (collegeLogo) {
+          formDataToSend.append('collegeLogo', collegeLogo);
+        }
+      } else if (formData.role === 'employer') {
+        formDataToSend.append('companyName', companyName.trim());
         formDataToSend.append('companyType', companyType);
         if (companyLogo) {
           formDataToSend.append('companyLogo', companyLogo);
         }
       } else if (formData.role === 'student') {
-        // student (optional collegeName)
-        if (collegeName) {
-          formDataToSend.append('collegeName', collegeName);
-        }
-      } else if (formData.role === 'jobseeker') {
-        // jobseeker - no extra fields
-        console.log('Jobseeker registration - no additional fields needed');
-      } else if (formData.role === 'trainer') {
-        // TRAINER: append trainer-specific fields (these are validated by zod refine)
-        formDataToSend.append('expertise', formData.expertise || '');
-        formDataToSend.append('trainerType', formData.trainerType || '');
-        if (formData.experienceYears) {
-          formDataToSend.append('experienceYears', formData.experienceYears);
-        }
-        if (formData.bio) {
-          formDataToSend.append('bio', formData.bio);
-        }
-        if (formData.linkedin) {
-          formDataToSend.append('linkedin', formData.linkedin);
-        }
-        if (trainerPhoto) {
-          formDataToSend.append('profilePhoto', trainerPhoto);
+        if (collegeName.trim()) {
+          formDataToSend.append('collegeName', collegeName.trim());
         }
       }
 
-      console.log('Sending registration data for role:', formData.role);
+      // Log FormData contents for debugging
+      console.log('Form data being sent:');
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(`${key}:`, value);
+      }
 
       // Call the register API with FormData
       const response = await authApi.register(formDataToSend as any);
 
       toast({
         title: 'Success',
-        description: 'Registration successful! Please login.'
+        description: `Registration successful! Please login.`
       });
+      
       navigate('/login');
     } catch (error: any) {
       console.error('Registration error:', error);
+      console.error('Error response:', error?.response);
 
-      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'Something went wrong';
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error?.message ||
+                          'Something went wrong';
 
       // Handle specific error cases
-      if (errorMessage.includes('duplicate key') && errorMessage.includes('email')) {
+      if (errorMessage.toLowerCase().includes('email') && 
+          (errorMessage.toLowerCase().includes('duplicate') || 
+           errorMessage.toLowerCase().includes('exists') ||
+           errorMessage.toLowerCase().includes('already'))) {
         setError('email', {
           type: 'manual',
           message: 'This email is already registered. Please use a different email or login.'
@@ -283,7 +224,10 @@ if (formData.role === "trainer") {
           description: 'This email address is already registered. Please use a different email or try logging in.',
           variant: 'destructive'
         });
-      } else if (errorMessage.includes('duplicate key') && errorMessage.includes('phoneNumber')) {
+      } else if (errorMessage.toLowerCase().includes('phone') && 
+                 (errorMessage.toLowerCase().includes('duplicate') || 
+                  errorMessage.toLowerCase().includes('exists') ||
+                  errorMessage.toLowerCase().includes('already'))) {
         setError('phoneNumber', {
           type: 'manual',
           message: 'This phone number is already registered.'
@@ -307,19 +251,51 @@ if (formData.role === "trainer") {
 
   const handleCollegeLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setCollegeLogo(e.target.files[0]);
+      const file = e.target.files[0];
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: 'File Too Large',
+          description: 'Logo must be less than 5MB',
+          variant: 'destructive'
+        });
+        return;
+      }
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid File Type',
+          description: 'Please upload an image file',
+          variant: 'destructive'
+        });
+        return;
+      }
+      setCollegeLogo(file);
     }
   };
 
   const handleCompanyLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setCompanyLogo(e.target.files[0]);
-    }
-  };
-
-  const handleTrainerPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setTrainerPhoto(e.target.files[0]);
+      const file = e.target.files[0];
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: 'File Too Large',
+          description: 'Logo must be less than 5MB',
+          variant: 'destructive'
+        });
+        return;
+      }
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid File Type',
+          description: 'Please upload an image file',
+          variant: 'destructive'
+        });
+        return;
+      }
+      setCompanyLogo(file);
     }
   };
 
@@ -505,7 +481,7 @@ if (formData.role === "trainer") {
                               <SelectItem value="college">College</SelectItem>
                               <SelectItem value="jobseeker">Job Seeker</SelectItem>
                               <SelectItem value="employer">Employer</SelectItem>
-                              <SelectItem value="trainer">Trainer</SelectItem>
+                              <SelectItem value="Trainer">Trainer</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
@@ -706,6 +682,11 @@ if (formData.role === "trainer") {
                                 className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                               />
                             </div>
+                            {collegeLogo && (
+                              <p className="text-sm text-green-600 mt-1">
+                                Selected: {collegeLogo.name}
+                              </p>
+                            )}
                           </div>
                         </>
                       )}
@@ -757,6 +738,11 @@ if (formData.role === "trainer") {
                                 className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                               />
                             </div>
+                            {companyLogo && (
+                              <p className="text-sm text-green-600 mt-1">
+                                Selected: {companyLogo.name}
+                              </p>
+                            )}
                           </div>
                         </>
                       )}
@@ -770,7 +756,7 @@ if (formData.role === "trainer") {
                               <div>
                                 <h4 className="font-medium text-blue-800">Job Seeker Account</h4>
                                 <p className="text-sm text-blue-700 mt-1">
-                                  Your basic profile will be created. You can add your qualifications, 
+                                  Your basic profile will be created. You can add your qualifications,
                                   work experience, skills, and upload your resume after registration.
                                 </p>
                               </div>
@@ -779,97 +765,22 @@ if (formData.role === "trainer") {
                         </div>
                       )}
 
-                      {/* Trainer-specific fields */}
-                      {selectedRole === 'trainer' && (
-                        <>
-                          <div>
-                            <Label htmlFor="trainerType" className="text-gray-700 font-medium">Trainer Type *</Label>
-                            <Controller
-                              name="trainerType"
-                              control={control}
-                              render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <SelectTrigger className="h-11 mt-1 border-gray-200 focus:border-blue-500">
-                                    <SelectValue placeholder="Select trainer type" />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                                    {TRAINER_TYPES.map((t) => (
-                                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            />
-                            {errors.trainerType && <p className="text-red-500 text-sm mt-1">{(errors as any).trainerType?.message}</p>}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="expertise" className="text-gray-700 font-medium">Area of Expertise *</Label>
-                            <div className="relative mt-1">
-                              <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                              <Input
-                                id="expertise"
-                                {...register('expertise')}
-                                placeholder="e.g. MERN Stack, Data Science, Java"
-                                className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
-                              />
-                            </div>
-                            {errors.expertise && <p className="text-red-500 text-sm mt-1">{(errors as any).expertise?.message}</p>}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="experienceYears" className="text-gray-700 font-medium">Years of Experience</Label>
-                            <div className="relative mt-1">
-                              <Input
-                                id="experienceYears"
-                                {...register('experienceYears')}
-                                placeholder="e.g. 3"
-                                className="pl-3 h-11 border-gray-200 focus:border-blue-500 transition-colors"
-                              />
-                            </div>
-                            {errors.experienceYears && <p className="text-red-500 text-sm mt-1">{(errors as any).experienceYears?.message}</p>}
-                          </div>
-
-                          <div className="md:col-span-2">
-                            <Label htmlFor="bio" className="text-gray-700 font-medium">Short Bio (optional)</Label>
-                            <div className="relative mt-1">
-                              <textarea
-                                id="bio"
-                                {...register('bio')}
-                                placeholder="A short bio to describe your expertise and teaching style"
-                                className="pl-3 h-24 w-full border-gray-200 focus:border-blue-500 transition-colors rounded-md p-3"
-                              />
-                            </div>
-                            {errors.bio && <p className="text-red-500 text-sm mt-1">{(errors as any).bio?.message}</p>}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="linkedin" className="text-gray-700 font-medium">LinkedIn Profile (optional)</Label>
-                            <div className="relative mt-1">
-                              <Input
-                                id="linkedin"
-                                {...register('linkedin')}
-                                placeholder="https://www.linkedin.com/in/yourprofile"
-                                className="pl-3 h-11 border-gray-200 focus:border-blue-500 transition-colors"
-                              />
-                            </div>
-                            {errors.linkedin && <p className="text-red-500 text-sm mt-1">{(errors as any).linkedin?.message}</p>}
-                          </div>
-
-                          <div className="md:col-span-2">
-                            <Label htmlFor="trainerPhoto" className="text-gray-700 font-medium">Profile Photo (optional)</Label>
-                            <div className="relative mt-1">
-                              <ImageIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                              <Input
-                                id="trainerPhoto"
-                                type="file"
-                                accept="image/*"
-                                onChange={handleTrainerPhotoChange}
-                                className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
-                              />
+                      {/* Trainer-specific info */}
+                      {selectedRole === 'Trainer' && (
+                        <div className="md:col-span-2">
+                          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                            <div className="flex items-start space-x-3">
+                              <GraduationCap className="h-5 w-5 text-purple-600 mt-0.5" />
+                              <div>
+                                <h4 className="font-medium text-purple-800">Trainer Account</h4>
+                                <p className="text-sm text-purple-700 mt-1">
+                                  Your basic profile will be created. You can add your specialization,
+                                  experience, qualifications, and other details after registration.
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
 
@@ -878,10 +789,10 @@ if (formData.role === "trainer") {
                         name="acceptTerms"
                         control={control}
                         render={({ field }) => (
-                          <Checkbox 
-                            id="acceptTerms" 
-                            checked={field.value} 
-                            onCheckedChange={field.onChange} 
+                          <Checkbox
+                            id="acceptTerms"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
                           />
                         )}
                       />
