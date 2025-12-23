@@ -26,8 +26,24 @@ export const authApi = {
     return res.data;
   },
 
-  register: async (payload: RegisterPayload): Promise<LoginResponse> => {
-    const res = await axios.post(`${API_BASE_URL}/users/register`, payload);
+ register: async (payload: RegisterPayload | FormData): Promise<LoginResponse> => {
+    // Check if payload is FormData
+    const isFormData = payload instanceof FormData;
+    
+    // Set appropriate headers based on data type
+    const config = isFormData
+      ? {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      : {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        };
+
+    const res = await axios.post(`${API_BASE_URL}/users/register`, payload, config);
     return res.data;
   },
 

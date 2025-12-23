@@ -284,8 +284,13 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
   const fetchLiveCourses = async () => {
     try {
       console.log('Fetching live courses...');
-      const response = await fetch('http://localhost:5007/api/livecourses/live-courses', {
+        const token = localStorage.getItem("token");
+      const response = await fetch('http://localhost:5007/api/livecourses/trainer/assigned/courses', {
         method: 'GET',
+         headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
       });
 
       console.log('Courses response status:', response.status);
