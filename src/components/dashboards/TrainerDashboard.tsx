@@ -1222,7 +1222,9 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
           </div>
         );
 
-      case "sessions":
+     // Replace the "sessions" case in your renderContent() function with this:
+
+case "sessions":
   return (
     <div className="max-w-6xl mx-auto p-2 md:p-4 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1239,10 +1241,6 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
             <RefreshCw className="h-4 w-4" />
             Refresh from API
           </Button>
-          {/* <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button> */}
           <Button
             className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-emerald-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all"
             onClick={() => setShowCreateSession(true)}
@@ -1253,13 +1251,17 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
         </div>
       </div>
 
-      {showCreateSession && (
-        <div className="animate-in fade-in-50">
-          <CreateSession
-            onCreated={handleCreateSession}
-          />
-        </div>
-      )}
+      {/* CreateSession Modal - Pass correct props */}
+      <CreateSession
+        open={showCreateSession}
+        onOpenChange={setShowCreateSession}
+        onCreated={(data) => {
+          handleCreateSession(data);
+          setShowCreateSession(false);
+        }}
+        apiBaseUrl="http://localhost:5007/api/livecourses"
+        trainerId={user?.trainerId}
+      />
 
       <SessionsList
         sessions={sessions}

@@ -509,7 +509,9 @@ const CreateLiveSession: React.FC<CreateLiveSessionProps> = ({
     setFetchingBatches(true);
     try {
       const token = getAuthToken();
-      const response = await fetch(`${apiBaseUrl}/trainer/batches?courseId=${courseId}`, {
+      console.log(courseId);
+      // http://localhost:5007/api/livecourses/admin/courses/6948f5038703c1d21226819f/batches
+      const response = await fetch(`${apiBaseUrl}/admin/courses/${courseId}/batches`, {
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
