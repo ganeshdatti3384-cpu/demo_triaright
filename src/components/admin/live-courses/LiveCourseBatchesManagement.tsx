@@ -46,9 +46,9 @@ export default function LiveCourseBatchesManagement() {
   const [viewMode, setViewMode] = useState("grid");
 
   const [formData, setFormData] = useState({
-    batchName: "", courseId: "", trainerUserId: "", day: "", startTime: "",
+    batchName: "", courseId: "", trainerUserId: "", days: [], startTime: "",
     endTime: "", timezone: "IST (UTC+5:30)", startDate: "", endDate: "",
-    maxStudents: 0, currentStudents: 0, meetingLink: "", notes: "",
+    maxStudents: 0, currentStudents: 0,
     status: "published", isActive: true,
   });
 
@@ -157,9 +157,9 @@ export default function LiveCourseBatchesManagement() {
 
   const resetForm = () => {
     setFormData({
-      batchName: "", courseId: "", trainerUserId: "", day: "", startTime: "",
+      batchName: "", courseId: "", trainerUserId: "", days: [], startTime: "",
       endTime: "", timezone: "IST (UTC+5:30)", startDate: "", endDate: "",
-      maxStudents: 0, currentStudents: 0, meetingLink: "", notes: "",
+      maxStudents: 0, currentStudents: 0,
       status: "published", isActive: true,
     });
     setTrainers([]);
@@ -174,22 +174,24 @@ export default function LiveCourseBatchesManagement() {
     setLoading(true);
     try {
       const token = getAuthToken();
+      
+      // Create schedule array for each selected day
+      const schedule = formData.days.map(day => ({
+        day: day,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        timezone: formData.timezone,
+      }));
+      
       const payload = {
         batchName: formData.batchName,
         courseId: formData.courseId,
         trainerUserId: formData.trainerUserId,
-        schedule: formData.day ? [{
-          day: formData.day, 
-          startTime: formData.startTime,
-          endTime: formData.endTime, 
-          timezone: formData.timezone,
-        }] : [],
+        schedule: schedule,
         startDate: formData.startDate,
         endDate: formData.endDate || undefined,
         maxStudents: formData.maxStudents || undefined,
         currentStudents: 0,
-        meetingLink: formData.meetingLink || undefined,
-        notes: formData.notes || undefined,
         status: formData.status,
         isActive: formData.isActive,
       };
@@ -218,13 +220,16 @@ export default function LiveCourseBatchesManagement() {
 
   const openEditDialog = async (batch) => {
     setEditingBatch(batch);
+    
+    // Extract unique days from schedule
+    const scheduleDays = batch.schedule?.map(s => s.day) || [];
     const schedule = batch.schedule?.[0] || {};
     
     setFormData({
       batchName: batch.batchName,
-      courseId: batch.courseId._id,
+      courseId: batch.courseId,
       trainerUserId: batch.trainerUserId,
-      day: schedule.day || "",
+      days: scheduleDays,
       startTime: schedule.startTime || "",
       endTime: schedule.endTime || "",
       timezone: schedule.timezone || "IST (UTC+5:30)",
@@ -232,13 +237,11 @@ export default function LiveCourseBatchesManagement() {
       endDate: batch.endDate ? new Date(batch.endDate).toISOString().split('T')[0] : "",
       maxStudents: batch.maxStudents || 0,
       currentStudents: batch.currentStudents || 0,
-      meetingLink: batch.meetingLink || "",
-      notes: batch.notes || "",
       status: batch.status,
       isActive: batch.isActive,
     });
     
-    if (batch.courseId._id) await fetchTrainers(batch.courseId._id);
+    if (batch.courseId) await fetchTrainers(batch.courseId);
     setIsEditDialogOpen(true);
   };
 
@@ -251,22 +254,24 @@ export default function LiveCourseBatchesManagement() {
     setLoading(true);
     try {
       const token = getAuthToken();
+      
+      // Create schedule array for each selected day
+      const schedule = formData.days.map(day => ({
+        day: day,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        timezone: formData.timezone,
+      }));
+      
       const payload = {
         batchName: formData.batchName,
         courseId: formData.courseId,
         trainerUserId: formData.trainerUserId,
-        schedule: formData.day ? [{
-          day: formData.day, 
-          startTime: formData.startTime,
-          endTime: formData.endTime, 
-          timezone: formData.timezone,
-        }] : [],
+        schedule: schedule,
         startDate: formData.startDate,
         endDate: formData.endDate || undefined,
         maxStudents: formData.maxStudents || undefined,
         currentStudents: formData.currentStudents || 0,
-        meetingLink: formData.meetingLink || undefined,
-        notes: formData.notes || undefined,
         status: formData.status,
         isActive: formData.isActive,
       };
@@ -326,7 +331,9 @@ export default function LiveCourseBatchesManagement() {
     if (searchQuery) {
       const search = searchQuery.toLowerCase();
       return batch.batchName.toLowerCase().includes(search) ||
-             batch.courseId?.courseName?.toLowerCase().includes(search) ||
+             batch.course?.courseName?.toLowerCase().includes(search) ||
+             batch.trainer?.firstName?.toLowerCase().includes(search) ||
+             batch.trainer?.lastName?.toLowerCase().includes(search) ||
              batch.trainerUserId.toLowerCase().includes(search);
     }
     return true;
@@ -407,39 +414,49 @@ export default function LiveCourseBatchesManagement() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold">Day</Label>
-          <select
-            className="w-full border-2 rounded-xl px-3 py-2 text-sm h-10"
-            value={formData.day}
-            onChange={(e) => setFormData(prev => ({ ...prev, day: e.target.value }))}
-          >
-            <option value="">Select Day</option>
-            {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(day => (
-              <option key={day} value={day}>{day}</option>
-            ))}
-          </select>
+      <div className="space-y-2.5">
+        <Label className="text-sm font-semibold">Days</Label>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-2 rounded-xl">
+          {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(day => (
+            <div key={day} className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id={day}
+                checked={formData.days.includes(day)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setFormData(prev => ({ ...prev, days: [...prev.days, day] }));
+                  } else {
+                    setFormData(prev => ({ ...prev, days: prev.days.filter(d => d !== day) }));
+                  }
+                }}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor={day} className="text-sm cursor-pointer">{day}</Label>
+            </div>
+          ))}
         </div>
+        {formData.days.length > 0 && (
+          <p className="text-xs text-gray-500">Selected: {formData.days.join(", ")}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold">Timezone</Label>
           <Input value={formData.timezone} onChange={(e) => setFormData(prev => ({ ...prev, timezone: e.target.value }))} className="rounded-xl h-10" />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold">Start Time</Label>
           <Input type="time" value={formData.startTime} onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))} className="rounded-xl h-10" />
         </div>
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold">End Time</Label>
-          <Input type="time" value={formData.endTime} onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))} className="rounded-xl h-10" />
-        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
+          <Label className="text-sm font-semibold">End Time</Label>
+          <Input type="time" value={formData.endTime} onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))} className="rounded-xl h-10" />
+        </div>
           <Label className="text-sm font-semibold">Start Date <span className="text-red-500">*</span></Label>
           <Input type="date" value={formData.startDate} onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))} className="rounded-xl h-10" />
         </div>
@@ -447,7 +464,7 @@ export default function LiveCourseBatchesManagement() {
           <Label className="text-sm font-semibold">End Date</Label>
           <Input type="date" value={formData.endDate} onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))} className="rounded-xl h-10" />
         </div>
-      </div>
+      
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
@@ -468,16 +485,6 @@ export default function LiveCourseBatchesManagement() {
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
-      </div>
-
-      <div className="space-y-2.5">
-        <Label className="text-sm font-semibold">Meeting Link</Label>
-        <Input placeholder="https://meet.google.com/abc-defg-hij" value={formData.meetingLink} onChange={(e) => setFormData(prev => ({ ...prev, meetingLink: e.target.value }))} className="rounded-xl h-10" />
-      </div>
-
-      <div className="space-y-2.5">
-        <Label className="text-sm font-semibold">Notes / Description</Label>
-        <Textarea rows={3} value={formData.notes} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} className="rounded-xl resize-none" placeholder="Add notes..." />
       </div>
 
       <div className="flex items-center space-x-3 p-3.5 bg-gray-50 rounded-xl border-2">
@@ -577,7 +584,7 @@ export default function LiveCourseBatchesManagement() {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <BookOpen className="h-3.5 w-3.5 text-gray-700" />
-                    <p className="text-sm font-semibold">{batch.courseId?.courseName || 'N/A'}</p>
+                    <p className="text-sm font-semibold">{batch.course?.courseName || 'N/A'}</p>
                   </div>
                 </CardHeader>
                 
@@ -587,17 +594,23 @@ export default function LiveCourseBatchesManagement() {
                       <User className="h-3.5 w-3.5" />
                       <div>
                         <p className="text-xs font-semibold">TRAINER</p>
-                        <p className="text-xs">{batch.trainerUserId}</p>
+                        <p className="text-xs">
+                          {batch.trainer 
+                            ? `${batch.trainer.firstName} ${batch.trainer.lastName}` 
+                            : batch.trainerUserId}
+                        </p>
                       </div>
                     </div>
 
-                    {batch.schedule?.[0] && (
+                    {batch.schedule && batch.schedule.length > 0 && (
                       <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-lg">
                         <CalendarDays className="h-3.5 w-3.5" />
                         <div>
                           <p className="text-xs font-semibold">SCHEDULE</p>
                           <p className="text-xs">
-                            {batch.schedule[0].day} {batch.schedule[0].startTime && `• ${batch.schedule[0].startTime}`}
+                            {batch.schedule.map(s => s.day).join(", ")} 
+                            {batch.schedule[0].startTime && ` • ${batch.schedule[0].startTime}`}
+                            {batch.schedule[0].endTime && ` - ${batch.schedule[0].endTime}`}
                           </p>
                         </div>
                       </div>
@@ -665,10 +678,5 @@ export default function LiveCourseBatchesManagement() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </div>
-  );
-}
-
-
-
-
+      </div>
+  )}
