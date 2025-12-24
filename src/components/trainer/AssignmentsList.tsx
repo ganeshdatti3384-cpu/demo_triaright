@@ -43,15 +43,7 @@ const AssignmentList = ({ onViewSubmissions }) => {
   const [editForm, setEditForm] = useState({});
   const [viewSubmissionsFor, setViewSubmissionsFor] = useState(null);
 
-// In return statement - first line
-if (viewSubmissionsFor) {
-  return (
-    <AssignmentSubmissions
-      assignmentId={viewSubmissionsFor}
-      onBack={() => setViewSubmissionsFor(null)}
-    />
-  );
-}
+
 
   const token = () => localStorage.getItem("token");
 
@@ -296,15 +288,16 @@ if (viewSubmissionsFor) {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => onViewSubmissions && onViewSubmissions(a._id)}
-                      className="bg-purple-50 hover:bg-purple-100"
-                    >
-                      <Users className="h-4 w-4 mr-1" />
-                      Submissions
-                    </Button>
+                  <Button 
+  size="sm" 
+  variant="outline" 
+  onClick={() => setViewSubmissionsFor(a._id)}
+  className="bg-purple-50 hover:bg-purple-100"
+>
+  <Users className="h-4 w-4 mr-1" />
+  Submissions
+</Button>
+
                     <Button size="sm" variant="outline" onClick={() => setViewAssignment(a)}>
                       <Eye className="h-4 w-4" />
                     </Button>
