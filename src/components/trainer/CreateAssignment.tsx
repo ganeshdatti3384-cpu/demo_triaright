@@ -262,7 +262,7 @@ const CreateAssignment: React.FC = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${API_BASE_URL}/trainer/batches?courseId=${courseId}`,
+        `${API_BASE_URL}/admin/courses/${courseId}/batches`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
