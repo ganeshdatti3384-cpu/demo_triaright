@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +15,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import AssignmentSubmissions from "./AssignmentSubmission";
+
+import AssignmentSubmissions from './AssignmentSubmission';
+
 const API_BASE_URL = "http://localhost:5007/api/livecourses";
 
 const AssignmentList = ({ onViewSubmissions }) => {
@@ -42,8 +42,6 @@ const AssignmentList = ({ onViewSubmissions }) => {
   
   const [editForm, setEditForm] = useState({});
   const [viewSubmissionsFor, setViewSubmissionsFor] = useState(null);
-
-
 
   const token = () => localStorage.getItem("token");
 
@@ -195,6 +193,16 @@ const AssignmentList = ({ onViewSubmissions }) => {
     return colors[status?.toLowerCase()] || "bg-blue-100 text-blue-800";
   };
 
+  // ✅ CRITICAL: Conditional return AFTER all hooks AND function definitions
+  if (viewSubmissionsFor) {
+    return (
+      <AssignmentSubmissions
+        assignmentId={viewSubmissionsFor}
+        onBack={() => setViewSubmissionsFor(null)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
@@ -288,15 +296,15 @@ const AssignmentList = ({ onViewSubmissions }) => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                  <Button 
-  size="sm" 
-  variant="outline" 
-  onClick={() => setViewSubmissionsFor(a._id)}
-  className="bg-purple-50 hover:bg-purple-100"
->
-  <Users className="h-4 w-4 mr-1" />
-  Submissions
-</Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => setViewSubmissionsFor(a._id)}
+                      className="bg-purple-50 hover:bg-purple-100"
+                    >
+                      <Users className="h-4 w-4 mr-1" />
+                      Submissions
+                    </Button>
 
                     <Button size="sm" variant="outline" onClick={() => setViewAssignment(a)}>
                       <Eye className="h-4 w-4" />

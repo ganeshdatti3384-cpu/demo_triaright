@@ -6,18 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  Search, FileText, Award, Clock, Paperclip, Eye, Edit, Check,
-  Download, BarChart3, Users, Calendar, ArrowLeft, X,
-  AlertCircle, CheckCircle, Loader2, User, FileCheck,
-  TrendingUp, TrendingDown, Minus, Star, MessageSquare
+  Search, FileText, Award, Clock, Paperclip, Eye, Edit, Trash2,
+  Download, BarChart3, Users, Calendar, BookOpen, ChevronRight,
+  AlertCircle, CheckCircle, X, Save, UserCheck, FileCheck,
+  CalendarDays, Tag, Loader2, Upload, RefreshCw, User, Check,
+  ArrowLeft, MessageSquare, Star, TrendingUp, TrendingDown, Minus
 } from "lucide-react";
 import {
-  Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 
 const API_BASE_URL = "http://localhost:5007/api/livecourses";
 
+// Assignment Submissions Component
 const AssignmentSubmissions = ({ assignmentId, onBack }) => {
   const { toast } = useToast();
   
@@ -73,7 +75,9 @@ const AssignmentSubmissions = ({ assignmentId, onBack }) => {
         headers: { Authorization: `Bearer ${token()}` }
       });
       const data = await res.json();
-      setStatistics(data);
+      console.log(data);
+       setStatistics(data.statistics);
+
     } catch (err) {
       console.error(err);
     }
@@ -703,5 +707,4 @@ const AssignmentSubmissions = ({ assignmentId, onBack }) => {
     </div>
   );
 };
-
 export default AssignmentSubmissions;
