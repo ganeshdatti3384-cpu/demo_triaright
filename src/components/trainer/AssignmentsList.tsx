@@ -9,7 +9,7 @@ import {
   Search, FileText, Award, Clock, Paperclip, Eye, Edit, Trash2,
   Download, BarChart3, Users, Calendar, BookOpen, ChevronRight,
   AlertCircle, CheckCircle, X, Save, UserCheck, FileCheck,
-  CalendarDays, Tag, Loader2, Upload, RefreshCw,
+  CalendarDays, Tag, Loader2, Upload, RefreshCw, Plus,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 
 import AssignmentSubmissions from './AssignmentSubmission';
+import CreateAssignment from './CreateAssignment';
 
 const API_BASE_URL = "http://localhost:5007/api/livecourses";
 
@@ -42,6 +43,7 @@ const AssignmentList = ({ onViewSubmissions }) => {
   
   const [editForm, setEditForm] = useState({});
   const [viewSubmissionsFor, setViewSubmissionsFor] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const token = () => localStorage.getItem("token");
 
@@ -193,7 +195,26 @@ const AssignmentList = ({ onViewSubmissions }) => {
     return colors[status?.toLowerCase()] || "bg-blue-100 text-blue-800";
   };
 
-  // ✅ CRITICAL: Conditional return AFTER all hooks AND function definitions
+  const handleCreateSuccess = () => {
+    setShowCreateForm(false);
+    fetchAssignments(true);
+  };
+
+  // Conditional returns AFTER all hooks
+  if (showCreateForm) {
+    return (
+      <div>
+        <div className="mb-4">
+          <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+            <X className="h-4 w-4 mr-2" />
+            Back to Assignments
+          </Button>
+        </div>
+        <CreateAssignment onSuccess={handleCreateSuccess} />
+      </div>
+    );
+  }
+
   if (viewSubmissionsFor) {
     return (
       <AssignmentSubmissions
@@ -214,6 +235,10 @@ const AssignmentList = ({ onViewSubmissions }) => {
           <Button variant="outline" onClick={() => fetchAssignments(true)} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
+          </Button>
+          <Button onClick={() => setShowCreateForm(true)} className="bg-blue-600 text-white hover:bg-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Assignment
           </Button>
         </div>
       </div>

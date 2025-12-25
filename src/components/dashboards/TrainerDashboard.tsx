@@ -2063,7 +2063,7 @@ type Section =
   | "batches"
   | "sessions"
   | "assignments"
-  | "submissions"
+  // | "submissions"
   | "profile";
 
 interface TrainerDashboardProps {
@@ -2082,7 +2082,7 @@ const navItems: { key: Section; label: string; icon: any; description: string }[
   { key: "batches", label: "Batches", icon: Users2, description: "Student batches" },
   { key: "sessions", label: "Sessions", icon: Video, description: "Live classes" },
   { key: "assignments", label: "Assignments", icon: FileCode, description: "Tasks & projects" },
-  { key: "submissions", label: "Submissions", icon: Send, description: "Student work" },
+  // { key: "submissions", label: "Submissions", icon: Send, description: "Student work" },
   { key: "profile", label: "Profile", icon: User, description: "Your profile" },
 ];
 
@@ -3190,7 +3190,7 @@ const removeExperience = (index: number) => {
         </div>
 
         {/* Performance Metrics */}
-        <Card className="shadow-lg border-0 mb-8">
+        {/* <Card className="shadow-lg border-0 mb-8">
           <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
             <div className="flex justify-between items-center">
               <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -3245,7 +3245,7 @@ const removeExperience = (index: number) => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     );
 
