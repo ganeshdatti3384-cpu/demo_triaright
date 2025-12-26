@@ -70,7 +70,8 @@ import LiveCourseManagement from "@/components/admin/live-courses/LiveCourseMana
 import TrainerDashboard from "@/components/dashboards/TrainerDashboard";
 // import { Toaster } from "@/components/ui/toaster";
 
-
+import LiveCourseEnrollment from './components/student/LiveCourseenrollement';
+import LiveCoursesessions from './components/student/LiveCoursessessions';
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -103,7 +104,8 @@ const App = () => {
           <Route path="/pack365" element={<Pack365 />} />
           <Route path="/pack365/bundle/:streamName" element={<Pack365BundleDetail />} />
           <Route path="/community" element={<CommunityPage />} />
-          
+             <Route path="/enroll" element={<LiveCourseEnrollment />} />
+              <Route path="/sessions" element={<LiveCoursesessions />} />
           {/* Jobs Routes */}
           <Route path="/jobs" element={<JobsPage />} />
           <Route path="/jobs/assistance" element={<JobAssistance />} />

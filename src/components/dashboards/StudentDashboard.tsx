@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import APStudentDashboard from '@/components/student/APStudentDashboard';
 import ApplyInternshipDialog from '@/components/internships/ApplyInternshipDialog';
 import StudentCourseManagement from '../student/studentCourseManagement';
-
+import LiveCourseenrollement from '../student/LiveCourseenrollement';
 interface Job {
   _id: string;
   title: string;
@@ -678,6 +678,7 @@ const StudentDashboard = () => {
     { id: 'compiler', label: 'Compiler', icon: Code },
     { id: 'resume', label: 'Resume Builder', icon: FileText },
     { id: 'profile', label: 'Profile', icon: User },
+    {id: 'liveenrollement', label: 'LiveCourses', icon: BookOpen },
   ];
 
   // Render content based on active tab
@@ -1492,6 +1493,9 @@ const StudentDashboard = () => {
 
       case 'profile':
         return <EnhancedProfile />;
+      
+      case 'liveenrollement':
+        return <LiveCourseenrollement/>;
 
       default:
         return (
