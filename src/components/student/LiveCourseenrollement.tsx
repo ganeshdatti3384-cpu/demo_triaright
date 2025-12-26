@@ -34,6 +34,12 @@ const LiveCourseEnrollment = () => {
     links: '',
     files: []
   });
+
+  // Detail View States
+  const [sessionDetail, setSessionDetail] = useState(null);
+  const [assignmentDetail, setAssignmentDetail] = useState(null);
+  const [assignmentSubmission, setAssignmentSubmission] = useState(null);
+
   useEffect(() => {
     const userStr = localStorage.getItem('currentUser');
     if (userStr) {
@@ -125,8 +131,6 @@ const LiveCourseEnrollment = () => {
     }
   };
 
-
-
   const fetchUpcomingSessions = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/student/live-sessions/upcoming`, {
@@ -150,7 +154,7 @@ const LiveCourseEnrollment = () => {
       // Store all assignments
       setAllAssignments(data.assignments || []);
       
-        if (batchId && courseId) {
+      if (batchId && courseId) {
         const filteredAssignments = (data.assignments || []).filter(assignment => {
           const assignmentBatchId = assignment.batchId?._id || assignment.batchId;
           const assignmentCourseId = assignment.courseId?._id || assignment.courseId;
@@ -176,6 +180,49 @@ const LiveCourseEnrollment = () => {
       setMySubmissions(data.submissions || []);
     } catch (err) {
       console.error('Failed to fetch submissions');
+    }
+  };
+
+  const fetchSessionDetail = async (sessionId) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/student/live-sessions/${sessionId}`, {
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      setSessionDetail(data.session);
+      setDashboardTab('sessionDetail');
+    } catch (err) {
+      console.error('Failed to fetch session details');
+      alert('Error loading session details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAssignmentDetail = async (assignmentId) => {
+    setLoading(true);
+    try {
+      const [assignmentRes, submissionRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/assignments/student/${assignmentId}`, {
+          headers: getAuthHeaders()
+        }),
+        fetch(`${API_BASE_URL}/assignments/${assignmentId}/my-submission`, {
+          headers: getAuthHeaders()
+        })
+      ]);
+
+      const assignmentData = await assignmentRes.json();
+      const submissionData = await submissionRes.json();
+
+      setAssignmentDetail(assignmentData.assignment);
+      setAssignmentSubmission(submissionData.submission || null);
+      setDashboardTab('assignmentDetail');
+    } catch (err) {
+      console.error('Failed to fetch assignment details');
+      alert('Error loading assignment details');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -466,7 +513,7 @@ const LiveCourseEnrollment = () => {
     }
   };
 
- const AllCoursesCard = ({ course, enrolled = false }) => (
+  const AllCoursesCard = ({ course, enrolled = false }) => (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       <div className="relative">
         <img
@@ -527,6 +574,7 @@ const LiveCourseEnrollment = () => {
       </div>
     </div>
   );
+
   const DashboardCourseCard = ({ enrollment }) => (
     <div 
       onClick={() => {
@@ -571,7 +619,10 @@ const LiveCourseEnrollment = () => {
     const isCompleted = session.status === 'completed';
 
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div 
+        className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => fetchSessionDetail(session._id)}
+      >
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-lg font-bold text-gray-800">{session.sessionTitle}</h3>
@@ -590,7 +641,7 @@ const LiveCourseEnrollment = () => {
         </div>
 
         {session.description && (
-          <p className="text-gray-600 mb-4">{session.description}</p>
+          <p className="text-gray-600 mb-4 line-clamp-2">{session.description}</p>
         )}
 
         <div className="space-y-2 text-sm text-gray-600 mb-4">
@@ -604,29 +655,31 @@ const LiveCourseEnrollment = () => {
           </div>
         </div>
 
-        {canJoin && (
-          <a 
-            href={session.meetingLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-          >
-            <Video size={18} />
-            Join Session
-          </a>
-        )}
+        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+          {canJoin && (
+            <a 
+              href={session.meetingLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <Video size={18} />
+              Join Session
+            </a>
+          )}
 
-        {isCompleted && session.recordingUrl && (
-          <a 
-            href={session.recordingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 mt-2"
-          >
-            <Download size={18} />
-            View Recording
-          </a>
-        )}
+          {isCompleted && session.recordingUrl && (
+            <a 
+              href={session.recordingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <Download size={18} />
+              View Recording
+            </a>
+          )}
+        </div>
       </div>
     );
   };
@@ -637,14 +690,17 @@ const LiveCourseEnrollment = () => {
     const isSubmitted = !!submission;
 
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div 
+        className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => fetchAssignmentDetail(assignment._id)}
+      >
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-800">{assignment.title}</h3>
-            <p className="text-gray-600 text-sm mt-2">{assignment.description}</p>
+            <p className="text-gray-600 text-sm mt-2 line-clamp-2">{assignment.description}</p>
           </div>
           {isSubmitted && (
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ml-2 ${
               submission.status === 'graded' ? 'bg-green-100 text-green-800' :
               submission.status === 'resubmission_required' ? 'bg-orange-100 text-orange-800' :
               'bg-blue-100 text-blue-800'
@@ -679,14 +735,14 @@ const LiveCourseEnrollment = () => {
               </span>
             </div>
             {submission.feedback && (
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-gray-700 line-clamp-2">
                 <strong>Feedback:</strong> {submission.feedback}
               </p>
             )}
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
           {!isSubmitted && !isPastDue && (
             <button
               onClick={() => {
@@ -818,6 +874,415 @@ const LiveCourseEnrollment = () => {
     );
   };
 
+  const SessionDetailView = () => {
+    if (!sessionDetail) return null;
+
+    const canJoin = isSessionJoinable(sessionDetail);
+    const isCompleted = sessionDetail.status === 'completed';
+
+    return (
+      <div className="max-w-4xl mx-auto">
+        <button
+          onClick={() => {
+            setDashboardTab('sessions');
+            setSessionDetail(null);
+          }}
+          className="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-700"
+        >
+          ← Back to Sessions
+        </button>
+
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {sessionDetail.sessionTitle}
+              </h1>
+              {sessionDetail.sessionNumber && (
+                <span className="text-lg text-gray-500">Session #{sessionDetail.sessionNumber}</span>
+              )}
+            </div>
+            <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+              sessionDetail.status === 'live' ? 'bg-red-100 text-red-800' :
+              sessionDetail.status === 'completed' ? 'bg-green-100 text-green-800' :
+              sessionDetail.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {sessionDetail.status.toUpperCase()}
+            </span>
+          </div>
+
+          {sessionDetail.description && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+              <p className="text-gray-700 whitespace-pre-wrap">{sessionDetail.description}</p>
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Schedule Details
+              </h3>
+              <div className="space-y-2 text-sm">
+                <p><strong>Date:</strong> {new Date(sessionDetail.scheduledDate).toLocaleDateString()}</p>
+                <p><strong>Start Time:</strong> {sessionDetail.scheduledStartTime}</p>
+                <p><strong>End Time:</strong> {sessionDetail.scheduledEndTime}</p>
+                {sessionDetail.duration && (
+                  <p><strong>Duration:</strong> {sessionDetail.duration} minutes</p>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <BookOpen className="w-5 h-5" />
+                Course Information
+              </h3>
+              <div className="space-y-2 text-sm">
+                {sessionDetail.courseId && (
+                  <p><strong>Course:</strong> {sessionDetail.courseId.courseName || 'N/A'}</p>
+                )}
+                {sessionDetail.batchId && (
+                  <>
+                    <p><strong>Batch:</strong> {sessionDetail.batchId.batchName || 'N/A'}</p>
+                    {sessionDetail.batchId.startDate && (
+                      <p><strong>Batch Start:</strong> {new Date(sessionDetail.batchId.startDate).toLocaleDateString()}</p>
+                    )}
+                    {sessionDetail.batchId.endDate && (
+                      <p><strong>Batch End:</strong> {new Date(sessionDetail.batchId.endDate).toLocaleDateString()}</p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {sessionDetail.trainerUserId && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-semibold text-blue-900 mb-2">Trainer Information</h3>
+              <p className="text-blue-800 text-sm">
+                <strong>Trainer ID:</strong> {sessionDetail.trainerUserId}
+              </p>
+            </div>
+          )}
+
+          {sessionDetail.sessionMaterials && sessionDetail.sessionMaterials.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Session Materials</h3>
+              <div className="space-y-2">
+                {sessionDetail.sessionMaterials.map((material, idx) => (
+                  <a
+                    key={idx}
+                    href={material.url || material}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-blue-600 hover:text-blue-700 p-3 bg-gray-50 rounded-lg"
+                  >
+                    <FileText className="w-5 h-5" />
+                    {material.title || material.name || `Material ${idx + 1}`}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {sessionDetail.topics && sessionDetail.topics.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Topics to be Covered</h3>
+              <ul className="list-disc list-inside space-y-1 text-gray-700">
+                {sessionDetail.topics.map((topic, idx) => (
+                  <li key={idx}>{topic}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {sessionDetail.resources && sessionDetail.resources.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Additional Resources</h3>
+              <div className="space-y-2">
+                {sessionDetail.resources.map((resource, idx) => (
+                  <a
+                    key={idx}
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                  >
+                    <Link2 className="w-4 h-4" />
+                    {resource.title || resource.url}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            {canJoin && sessionDetail.meetingLink && (
+              <a
+                href={sessionDetail.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+              >
+                <Video size={20} />
+                Join Session Now
+              </a>
+            )}
+
+            {isCompleted && sessionDetail.recordingUrl && (
+              <a
+                href={sessionDetail.recordingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+              >
+                <Download size={20} />
+                View Recording
+              </a>
+            )}
+          </div>
+
+          {sessionDetail.notes && (
+            <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h3 className="font-semibold text-yellow-900 mb-2">Session Notes</h3>
+              <p className="text-yellow-800 text-sm whitespace-pre-wrap">{sessionDetail.notes}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const AssignmentDetailView = () => {
+    if (!assignmentDetail) return null;
+
+    const isPastDue = assignmentDetail.isPastDue;
+    const isSubmitted = !!assignmentSubmission;
+
+    return (
+      <div className="max-w-4xl mx-auto">
+        <button
+          onClick={() => {
+            setDashboardTab('assignments');
+            setAssignmentDetail(null);
+            setAssignmentSubmission(null);
+          }}
+          className="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-700"
+        >
+          ← Back to Assignments
+        </button>
+
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {assignmentDetail.title}
+              </h1>
+              {assignmentDetail.assignmentNumber && (
+                <span className="text-lg text-gray-500">Assignment #{assignmentDetail.assignmentNumber}</span>
+              )}
+            </div>
+            {isSubmitted && (
+              <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                assignmentSubmission.status === 'graded' ? 'bg-green-100 text-green-800' :
+                assignmentSubmission.status === 'resubmission_required' ? 'bg-orange-100 text-orange-800' :
+                'bg-blue-100 text-blue-800'
+              }`}>
+                {assignmentSubmission.status === 'graded' ? 'GRADED' :
+                 assignmentSubmission.status === 'resubmission_required' ? 'RESUBMIT REQUIRED' :
+                 'SUBMITTED'}
+              </span>
+            )}
+          </div>
+
+          {assignmentDetail.description && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+              <p className="text-gray-700 whitespace-pre-wrap">{assignmentDetail.description}</p>
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Due Date
+              </h3>
+              <p className="text-gray-700">
+                {new Date(assignmentDetail.dueDate).toLocaleString()}
+              </p>
+              {isPastDue && !isSubmitted && (
+                <p className="text-red-600 font-semibold mt-2">⚠️ This assignment is overdue</p>
+              )}
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Award className="w-5 h-5" />
+                Grading Information
+              </h3>
+              <p className="text-gray-700">
+                <strong>Maximum Marks:</strong> {assignmentDetail.maxMarks}
+              </p>
+            </div>
+          </div>
+
+          {assignmentDetail.instructions && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-semibold text-blue-900 mb-2">Instructions</h3>
+              <p className="text-blue-800 text-sm whitespace-pre-wrap">{assignmentDetail.instructions}</p>
+            </div>
+          )}
+
+          {assignmentDetail.attachments && assignmentDetail.attachments.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Attachments</h3>
+              <div className="space-y-2">
+                {assignmentDetail.attachments.map((attachment, idx) => (
+                  <a
+                    key={idx}
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-blue-600 hover:text-blue-700 p-3 bg-gray-50 rounded-lg"
+                  >
+                    <FileText className="w-5 h-5" />
+                    {attachment.name || `Attachment ${idx + 1}`}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {assignmentSubmission && (
+            <div className="mb-6 border-t pt-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Your Submission</h3>
+              
+              {assignmentSubmission.textContent && (
+                <div className="mb-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">Text Content</h4>
+                  <p className="text-gray-700 bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
+                    {assignmentSubmission.textContent}
+                  </p>
+                </div>
+              )}
+
+              {assignmentSubmission.links && assignmentSubmission.links.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">Submitted Links</h4>
+                  <div className="space-y-2">
+                    {assignmentSubmission.links.map((link, idx) => (
+                      <a
+                        key={idx}
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                      >
+                        <Link2 className="w-4 h-4" />
+                        {link}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {assignmentSubmission.files && assignmentSubmission.files.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">Submitted Files</h4>
+                  <div className="space-y-2">
+                    {assignmentSubmission.files.map((file, idx) => (
+                      <a
+                        key={idx}
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 p-3 bg-gray-50 rounded-lg"
+                      >
+                        <FileText className="w-5 h-5" />
+                        {file.name || `File ${idx + 1}`}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-sm text-gray-600 mt-4">
+                Submitted on: {new Date(assignmentSubmission.submittedAt).toLocaleString()}
+              </p>
+
+              {assignmentSubmission.grade !== null && assignmentSubmission.grade !== undefined && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Award className="text-green-600 w-8 h-8" />
+                    <div>
+                      <h4 className="text-2xl font-bold text-green-800">
+                        {assignmentSubmission.grade}/{assignmentSubmission.maxGrade || assignmentDetail.maxMarks}
+                      </h4>
+                      <p className="text-sm text-green-700">Your Grade</p>
+                    </div>
+                  </div>
+                  {assignmentSubmission.feedback && (
+                    <div className="mt-4 pt-4 border-t border-green-200">
+                      <h4 className="font-semibold text-green-900 mb-2">Instructor Feedback</h4>
+                      <p className="text-green-800 whitespace-pre-wrap">{assignmentSubmission.feedback}</p>
+                    </div>
+                  )}
+                  {assignmentSubmission.gradedAt && (
+                    <p className="text-sm text-green-700 mt-3">
+                      Graded on: {new Date(assignmentSubmission.gradedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            {!isSubmitted && !isPastDue && (
+              <button
+                onClick={() => {
+                  setSelectedAssignment(assignmentDetail);
+                  setSubmitModal(true);
+                }}
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+              >
+                <Upload size={20} />
+                Submit Assignment
+              </button>
+            )}
+
+            {assignmentSubmission?.status === 'resubmission_required' && (
+              <button
+                onClick={() => {
+                  setSelectedAssignment(assignmentDetail);
+                  setSubmitModal(true);
+                }}
+                className="flex-1 bg-orange-600 text-white py-3 px-6 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+              >
+                <RefreshCw size={20} />
+                Resubmit Assignment
+              </button>
+            )}
+
+            {isSubmitted && assignmentSubmission.status !== 'graded' && (
+              <button
+                onClick={() => handleDeleteSubmission(assignmentDetail._id)}
+                className="flex-1 bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+              >
+                <Trash2 size={20} />
+                Delete Submission
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading && activeTab !== 'my') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -845,17 +1310,16 @@ const LiveCourseEnrollment = () => {
         </div>
       )}
 
-      {/* Main Tabs */}
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-4 border-b">
+          <div className="flex gap-4 border-b overflow-x-auto">
             <button
               onClick={() => {
                 setActiveTab('all');
                 setDashboardTab('courses');
                 setSelectedEnrollment(null);
               }}
-              className={`py-4 px-6 font-semibold transition-colors ${
+              className={`py-4 px-6 font-semibold transition-colors whitespace-nowrap ${
                 activeTab === 'all' 
                   ? 'border-b-2 border-blue-600 text-blue-600' 
                   : 'text-gray-600 hover:text-gray-800'
@@ -870,7 +1334,7 @@ const LiveCourseEnrollment = () => {
                 setSelectedEnrollment(null);
                 fetchUpcomingSessions();
               }}
-              className={`py-4 px-6 font-semibold transition-colors ${
+              className={`py-4 px-6 font-semibold transition-colors whitespace-nowrap ${
                 activeTab === 'my' 
                   ? 'border-b-2 border-blue-600 text-blue-600' 
                   : 'text-gray-600 hover:text-gray-800'
@@ -879,12 +1343,11 @@ const LiveCourseEnrollment = () => {
               My Courses ({myCourses.length})
             </button>
 
-            {/* Sub-tabs for My Courses */}
             {activeTab === 'my' && selectedEnrollment && (
               <>
                 <button
                   onClick={() => setDashboardTab('sessions')}
-                  className={`py-4 px-6 font-semibold transition-colors ${
+                  className={`py-4 px-6 font-semibold transition-colors whitespace-nowrap ${
                     dashboardTab === 'sessions' 
                       ? 'border-b-2 border-blue-600 text-blue-600' 
                       : 'text-gray-600 hover:text-gray-800'
@@ -897,7 +1360,7 @@ const LiveCourseEnrollment = () => {
                     setDashboardTab('assignments');
                     fetchMySubmissions();
                   }}
-                  className={`py-4 px-6 font-semibold transition-colors ${
+                  className={`py-4 px-6 font-semibold transition-colors whitespace-nowrap ${
                     dashboardTab === 'assignments' 
                       ? 'border-b-2 border-blue-600 text-blue-600' 
                       : 'text-gray-600 hover:text-gray-800'
@@ -908,7 +1371,6 @@ const LiveCourseEnrollment = () => {
               </>
             )}
 
-            {/* All Sessions & All Assignments tabs - visible when in My Courses */}
             {activeTab === 'my' && (
               <>
                 <button
@@ -917,7 +1379,7 @@ const LiveCourseEnrollment = () => {
                     setSelectedEnrollment(null);
                     fetchSessions(); 
                   }}
-                  className={`py-4 px-6 font-semibold transition-colors ${
+                  className={`py-4 px-6 font-semibold transition-colors whitespace-nowrap ${
                     dashboardTab === 'allSessions' 
                       ? 'border-b-2 border-blue-600 text-blue-600' 
                       : 'text-gray-600 hover:text-gray-800'
@@ -929,10 +1391,10 @@ const LiveCourseEnrollment = () => {
                   onClick={() => {
                     setDashboardTab('allAssignments');
                     setSelectedEnrollment(null);
-                    fetchAssignments(); // Fetch all assignments without filtering
+                    fetchAssignments();
                     fetchMySubmissions();
                   }}
-                  className={`py-4 px-6 font-semibold transition-colors ${
+                  className={`py-4 px-6 font-semibold transition-colors whitespace-nowrap ${
                     dashboardTab === 'allAssignments' 
                       ? 'border-b-2 border-blue-600 text-blue-600' 
                       : 'text-gray-600 hover:text-gray-800'
@@ -970,7 +1432,6 @@ const LiveCourseEnrollment = () => {
           </div>
         )}
 
-        {/* My Courses Dashboard */}
         {activeTab === 'my' && !loading && (
           <>
             {dashboardTab === 'courses' && (
@@ -985,6 +1446,10 @@ const LiveCourseEnrollment = () => {
                 )}
               </div>
             )}
+
+            {dashboardTab === 'sessionDetail' && <SessionDetailView />}
+
+            {dashboardTab === 'assignmentDetail' && <AssignmentDetailView />}
 
             {dashboardTab === 'sessions' && selectedEnrollment && (
               <div>
@@ -1049,7 +1514,6 @@ const LiveCourseEnrollment = () => {
               </div>
             )}
 
-            {/* All Assignments View */}
             {dashboardTab === 'allAssignments' && (
               <div>
                 <div className="mb-6">
@@ -1074,7 +1538,6 @@ const LiveCourseEnrollment = () => {
         )}
       </div>
 
-      {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
@@ -1188,6 +1651,7 @@ const LiveCourseEnrollment = () => {
           </div>
         </div>
       )}
+      
       {submitModal && <SubmitModal />}
     </div>
   );

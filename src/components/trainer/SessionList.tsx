@@ -1293,6 +1293,7 @@ const SessionList = () => {
     meetingLink: "",
     recordingUrl: "",
     recordingDuration: "",
+    status: "scheduled",
     sessionMaterials: []
   });
 
@@ -1514,6 +1515,7 @@ const SessionList = () => {
       meetingLink: session.meetingLink || "",
       recordingUrl: session.recordingUrl || "",
       recordingDuration: session.recordingDuration || "",
+      status: session.status || "scheduled",
       sessionMaterials: session.sessionMaterials || []
     });
     setPendingFiles({});
@@ -1593,6 +1595,7 @@ const SessionList = () => {
         meetingLink: editForm.meetingLink,
         recordingUrl: editForm.recordingUrl,
         recordingDuration: editForm.recordingDuration ? Number(editForm.recordingDuration) : undefined,
+        status: editForm.status,
         sessionMaterials: updatedMaterials
       };
 
@@ -2184,6 +2187,24 @@ const SessionList = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Status <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={editForm.status}
+                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      >
+                        <option value="scheduled">Scheduled</option>
+                        <option value="live">Live</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Date <span className="text-red-500">*</span>
                       </label>
                       <Input
@@ -2192,6 +2213,27 @@ const SessionList = () => {
                         onChange={(e) => setEditForm({ ...editForm, scheduledDate: e.target.value })}
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Start Time <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="time"
+                        value={editForm.scheduledStartTime}
+                        onChange={(e) => setEditForm({ ...editForm, scheduledStartTime: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      End Time
+                    </label>
+                    <Input
+                      type="time"
+                      value={editForm.scheduledEndTime}
+                      onChange={(e) => setEditForm({ ...editForm, scheduledEndTime: e.target.value })}
+                    />
                   </div>
 
                   <div>
@@ -2205,29 +2247,6 @@ const SessionList = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                       rows={3}
                     />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Start Time <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        type="time"
-                        value={editForm.scheduledStartTime}
-                        onChange={(e) => setEditForm({ ...editForm, scheduledStartTime: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        End Time
-                      </label>
-                      <Input
-                        type="time"
-                        value={editForm.scheduledEndTime}
-                        onChange={(e) => setEditForm({ ...editForm, scheduledEndTime: e.target.value })}
-                      />
-                    </div>
                   </div>
 
                   <div>
