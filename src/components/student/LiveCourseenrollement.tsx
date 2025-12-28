@@ -190,6 +190,8 @@ const LiveCourseEnrollment = () => {
         headers: getAuthHeaders()
       });
       const data = await response.json();
+      console.log(data);
+      console.log(sessionId)
       setSessionDetail(data.session);
       setDashboardTab('sessionDetail');
     } catch (err) {
@@ -675,7 +677,7 @@ const LiveCourseEnrollment = () => {
               rel="noopener noreferrer"
               className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
             >
-              <Download size={18} />
+              {/* <Download size={18} /> */}
               View Recording
             </a>
           )}
@@ -880,6 +882,13 @@ const LiveCourseEnrollment = () => {
     const canJoin = isSessionJoinable(sessionDetail);
     const isCompleted = sessionDetail.status === 'completed';
 
+    // Find current user's attendance status
+    const userAttendance = sessionDetail.attendance?.find(att => {
+      const studentId = att.studentId?._id || att.studentId;
+      const userId = currentUser?.id || currentUser?._id;
+      return studentId === userId;
+    });
+
     return (
       <div className="max-w-4xl mx-auto">
         <button
@@ -902,14 +911,24 @@ const LiveCourseEnrollment = () => {
                 <span className="text-lg text-gray-500">Session #{sessionDetail.sessionNumber}</span>
               )}
             </div>
-            <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
-              sessionDetail.status === 'live' ? 'bg-red-100 text-red-800' :
-              sessionDetail.status === 'completed' ? 'bg-green-100 text-green-800' :
-              sessionDetail.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {sessionDetail.status.toUpperCase()}
-            </span>
+            <div className="flex flex-col items-end gap-2">
+              <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                sessionDetail.status === 'live' ? 'bg-red-100 text-red-800' :
+                sessionDetail.status === 'completed' ? 'bg-green-100 text-green-800' :
+                sessionDetail.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {sessionDetail.status.toUpperCase()}
+              </span>
+              {userAttendance && (
+                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                  userAttendance.status === 'present' ? 'bg-green-100 text-green-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {userAttendance.status === 'present' ? '✓ Present' : '✗ Absent'}
+                </span>
+              )}
+            </div>
           </div>
 
           {sessionDetail.description && (
@@ -968,22 +987,58 @@ const LiveCourseEnrollment = () => {
             </div>
           )}
 
-          {sessionDetail.sessionMaterials && sessionDetail.sessionMaterials.length > 0 && (
+        {sessionDetail.sessionMaterials && sessionDetail.sessionMaterials.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Session Materials</h3>
-              <div className="space-y-2">
-                {sessionDetail.sessionMaterials.map((material, idx) => (
-                  <a
-                    key={idx}
-                    href={material.url || material}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-blue-600 hover:text-blue-700 p-3 bg-gray-50 rounded-lg"
-                  >
-                    <FileText className="w-5 h-5" />
-                    {material.title || material.name || `Material ${idx + 1}`}
-                  </a>
-                ))}
+              <div className="space-y-4">
+                {sessionDetail.sessionMaterials.map((material, idx) => {
+                  const materialUrl = material.url || material;
+                  const materialTitle = material.title || material.name || `Material ${idx + 1}`;
+                  const materialType = material.type || '';
+                  
+                  // Check if it's an image
+                  const isImage = materialType === 'image' || 
+                    /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(materialUrl);
+                  
+                  if (isImage) {
+                    return (
+                      <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                          <p className="font-medium text-gray-800">{materialTitle}</p>
+                        </div>
+                        <img
+                          src={materialUrl}
+                          alt={materialTitle}
+                          className="w-full h-auto max-h-96 object-contain bg-gray-100"
+                        />
+                      </div>
+                    );
+                  }
+                  
+                  // For documents and other files
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                        <span className="font-medium text-gray-800 truncate">{materialTitle}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        
+                        <a
+                          href={materialUrl}
+                          download
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium whitespace-nowrap flex items-center gap-1"
+                        >
+                          <Download size={16} />
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1039,7 +1094,7 @@ const LiveCourseEnrollment = () => {
                 rel="noopener noreferrer"
                 className="flex-1 bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 font-semibold"
               >
-                <Download size={20} />
+                {/* <Download size={20} /> */}
                 View Recording
               </a>
             )}
