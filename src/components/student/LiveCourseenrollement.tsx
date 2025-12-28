@@ -39,6 +39,7 @@ const LiveCourseEnrollment = () => {
   const [sessionDetail, setSessionDetail] = useState(null);
   const [assignmentDetail, setAssignmentDetail] = useState(null);
   const [assignmentSubmission, setAssignmentSubmission] = useState(null);
+    const [trainerInfo, setTrainerInfo] = useState(null);
 
   useEffect(() => {
     const userStr = localStorage.getItem('currentUser');
@@ -67,6 +68,13 @@ const LiveCourseEnrollment = () => {
     fetchAllCourses();
     fetchMyCourses();
   }, []);
+
+  useEffect(() => {
+  if (sessionDetail?.trainerUserId) {
+    fetchTrainerInfo(sessionDetail.trainerUserId);
+  }
+}, [sessionDetail?.trainerUserId]);
+
 
   const getAuthHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -199,6 +207,18 @@ const LiveCourseEnrollment = () => {
       alert('Error loading session details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTrainerInfo = async (trainerUserId) => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/users/${trainerUserId}`);
+      const data = await response.json();
+      if (data.success) {
+        setTrainerInfo(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch trainer info');
     }
   };
 
@@ -978,14 +998,30 @@ const LiveCourseEnrollment = () => {
             </div>
           </div>
 
-          {sessionDetail.trainerUserId && (
-            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">Trainer Information</h3>
-              <p className="text-blue-800 text-sm">
-                <strong>Trainer ID:</strong> {sessionDetail.trainerUserId}
-              </p>
-            </div>
-          )}
+         {sessionDetail.trainerUserId && trainerInfo && (
+  <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <h3 className="font-semibold text-blue-900 mb-2">
+      Trainer Information
+    </h3>
+
+    <p className="text-blue-800 text-sm">
+      <strong>Trainer ID:</strong> {sessionDetail.trainerUserId}
+    </p>
+
+    <p className="text-blue-800 text-sm">
+      <strong>Trainer Name:</strong>{" "}
+      {trainerInfo.firstName} {trainerInfo.lastName}
+    </p>
+
+    {/* Optional */}
+    {/* {trainerInfo.email && (
+      <p className="text-blue-800 text-sm">
+        <strong>Email:</strong> {trainerInfo.email}
+      </p>
+    )} */}
+  </div>
+)}
+
 
         {sessionDetail.sessionMaterials && sessionDetail.sessionMaterials.length > 0 && (
             <div className="mb-6">
