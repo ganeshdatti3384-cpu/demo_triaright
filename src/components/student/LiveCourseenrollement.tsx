@@ -39,7 +39,7 @@ const LiveCourseEnrollment = () => {
   const [sessionDetail, setSessionDetail] = useState(null);
   const [assignmentDetail, setAssignmentDetail] = useState(null);
   const [assignmentSubmission, setAssignmentSubmission] = useState(null);
-    const [trainerInfo, setTrainerInfo] = useState(null);
+  const [trainerInfo, setTrainerInfo] = useState(null);
 
   useEffect(() => {
     const userStr = localStorage.getItem('currentUser');
@@ -70,11 +70,10 @@ const LiveCourseEnrollment = () => {
   }, []);
 
   useEffect(() => {
-  if (sessionDetail?.trainerUserId) {
-    fetchTrainerInfo(sessionDetail.trainerUserId);
-  }
-}, [sessionDetail?.trainerUserId]);
-
+    if (sessionDetail?.trainerUserId) {
+      fetchTrainerInfo(sessionDetail.trainerUserId);
+    }
+  }, [sessionDetail?.trainerUserId]);
 
   const getAuthHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -120,10 +119,8 @@ const LiveCourseEnrollment = () => {
       });
       const data = await response.json();
       
-      // Store all sessions
       setAllSessions(data.sessions || []);
       
-      // Filter sessions by selected batch if batchId is provided
       if (batchId) {
         const filteredSessions = (data.sessions || []).filter(
           session => session.batchId === batchId || session.batchId?._id === batchId
@@ -159,7 +156,6 @@ const LiveCourseEnrollment = () => {
       });
       const data = await response.json();
       
-      // Store all assignments
       setAllAssignments(data.assignments || []);
       
       if (batchId && courseId) {
@@ -198,8 +194,6 @@ const LiveCourseEnrollment = () => {
         headers: getAuthHeaders()
       });
       const data = await response.json();
-      console.log(data);
-      console.log(sessionId)
       setSessionDetail(data.session);
       setDashboardTab('sessionDetail');
     } catch (err) {
@@ -222,7 +216,8 @@ const LiveCourseEnrollment = () => {
     }
   };
 
-  const fetchAssignmentDetail = async (assignmentId) => {
+ const fetchAssignmentDetail = async (assignmentId) => {
+    console.log('Fetching assignment detail for ID:', assignmentId);
     setLoading(true);
     try {
       const [assignmentRes, submissionRes] = await Promise.all([
@@ -237,11 +232,22 @@ const LiveCourseEnrollment = () => {
       const assignmentData = await assignmentRes.json();
       const submissionData = await submissionRes.json();
 
+      console.log('Assignment Data:', assignmentData);
+      console.log('Submission Data:', submissionData);
+
       setAssignmentDetail(assignmentData.assignment);
-      setAssignmentSubmission(submissionData.submission || null);
+      
+      // Check if submission exists in the response
+      if (submissionData.submitted && submissionData.submission) {
+        setAssignmentSubmission(submissionData.submission);
+      } else {
+        setAssignmentSubmission(null);
+      }
+      
+      console.log('Setting dashboardTab to assignmentDetail');
       setDashboardTab('assignmentDetail');
     } catch (err) {
-      console.error('Failed to fetch assignment details');
+      console.error('Failed to fetch assignment details:', err);
       alert('Error loading assignment details');
     } finally {
       setLoading(false);
@@ -265,7 +271,7 @@ const LiveCourseEnrollment = () => {
         },
         body: formData
       });
-
+     
       if (response.ok) {
         alert('Assignment submitted successfully!');
         setSubmitModal(false);
@@ -697,7 +703,6 @@ const LiveCourseEnrollment = () => {
               rel="noopener noreferrer"
               className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
             >
-              {/* <Download size={18} /> */}
               View Recording
             </a>
           )}
@@ -805,9 +810,12 @@ const LiveCourseEnrollment = () => {
     );
   };
 
+  
+
+  
   const SubmitModal = () => {
     const isResubmit = mySubmissions.find(s => s.assignmentId._id === selectedAssignment?._id)?.status === 'resubmission_required';
-
+    
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
@@ -875,6 +883,7 @@ const LiveCourseEnrollment = () => {
                   handleResubmit(selectedAssignment._id);
                 } else {
                   handleSubmitAssignment(selectedAssignment._id);
+                  console.log(selectedAssignment._id);
                 }
               }}
               className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
@@ -1221,32 +1230,32 @@ const LiveCourseEnrollment = () => {
             </div>
           </div>
 
-          {assignmentDetail.instructions && (
-            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">Instructions</h3>
-              <p className="text-blue-800 text-sm whitespace-pre-wrap">{assignmentDetail.instructions}</p>
-            </div>
-          )}
+         {assignmentDetail.attachments &&
+ assignmentDetail.attachments.length > 0 && (
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+      Attachments
+    </h3>
 
-          {assignmentDetail.attachments && assignmentDetail.attachments.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Attachments</h3>
-              <div className="space-y-2">
-                {assignmentDetail.attachments.map((attachment, idx) => (
-                  <a
-                    key={idx}
-                    href={attachment.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-blue-600 hover:text-blue-700 p-3 bg-gray-50 rounded-lg"
-                  >
-                    <FileText className="w-5 h-5" />
-                    {attachment.name || `Attachment ${idx + 1}`}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+    <div className="space-y-2">
+      {assignmentDetail.attachments.map((attachment, idx) => (
+        <a
+          key={idx}
+          href={attachment.fileUrl}   // ✅ correct
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 p-3 bg-gray-50 rounded-lg cursor-pointer"
+        >
+          <FileText className="w-5 h-5" />
+          <span className="underline">
+            {attachment.fileName || `Attachment ${idx + 1}`}
+          </span>
+        </a>
+      ))}
+    </div>
+  </div>
+)}
+
 
           {assignmentSubmission && (
             <div className="mb-6 border-t pt-6">
@@ -1281,20 +1290,20 @@ const LiveCourseEnrollment = () => {
                 </div>
               )}
 
-              {assignmentSubmission.files && assignmentSubmission.files.length > 0 && (
+              {assignmentSubmission.submittedFiles && assignmentSubmission.submittedFiles.length > 0 && (
                 <div className="mb-4">
                   <h4 className="font-semibold text-gray-800 mb-2">Submitted Files</h4>
                   <div className="space-y-2">
-                    {assignmentSubmission.files.map((file, idx) => (
+                    {assignmentSubmission.submittedFiles.map((file, idx) => (
                       <a
                         key={idx}
-                        href={file.url}
+                        href={file.url || file}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-blue-600 hover:text-blue-700 p-3 bg-gray-50 rounded-lg"
                       >
                         <FileText className="w-5 h-5" />
-                        {file.name || `File ${idx + 1}`}
+                        {file.name || file.filename || `File ${idx + 1}`}
                       </a>
                     ))}
                   </div>
@@ -1333,7 +1342,7 @@ const LiveCourseEnrollment = () => {
           )}
 
           <div className="flex gap-3">
-            {!isSubmitted && !isPastDue && (
+            {/* {!isSubmitted && !isPastDue && (
               <button
                 onClick={() => {
                   setSelectedAssignment(assignmentDetail);
@@ -1344,7 +1353,7 @@ const LiveCourseEnrollment = () => {
                 <Upload size={20} />
                 Submit Assignment
               </button>
-            )}
+            )} */}
 
             {assignmentSubmission?.status === 'resubmission_required' && (
               <button
