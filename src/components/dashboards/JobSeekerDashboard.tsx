@@ -4,20 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
 import { 
   BookOpen, 
   Clock, 
-  Award, 
-  TrendingUp, 
   Users, 
-  Star,
   MapPin,
   Calendar,
-  Target,
-  FileText,
-  Download,
   Plus,
   Edit,
   Trash2
@@ -44,34 +37,9 @@ interface Opportunity {
 
 const JobSeekerDashboard = () => {
   const navigate = useNavigate();
+
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
-  const [userName, setUserName] = useState<string>('');
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([
-    {
-      id: 1,
-      title: 'Frontend Developer',
-      company: 'Tech Innovations Inc.',
-      location: 'Remote',
-      type: 'Full-time',
-      deadline: '2024-08-15'
-    },
-    {
-      id: 2,
-      title: 'UX/UI Designer',
-      company: 'Creative Solutions Ltd.',
-      location: 'New York',
-      type: 'Contract',
-      deadline: '2024-07-30'
-    },
-    {
-      id: 3,
-      title: 'Data Analyst',
-      company: 'Analytics Pro Corp.',
-      location: 'San Francisco',
-      type: 'Full-time',
-      deadline: '2024-08-01'
-    }
-  ]);
+  const [userName, setUserName] = useState('');
   const [availableCourses, setAvailableCourses] = useState<any[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [newGoal, setNewGoal] = useState('');
@@ -79,23 +47,27 @@ const JobSeekerDashboard = () => {
   const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
   const [editedGoalText, setEditedGoalText] = useState('');
 
+  const opportunities: Opportunity[] = [
+    {
+      id: 1,
+      title: 'Frontend Developer',
+      company: 'Tech Innovations Inc.',
+      location: 'Remote',
+      type: 'Full-time',
+      deadline: '2024-08-15'
+    }
+  ];
+
   useEffect(() => {
     const storedCourses = localStorage.getItem('enrolledCourses');
-    if (storedCourses) {
-      setEnrolledCourses(JSON.parse(storedCourses));
-    }
+    if (storedCourses) setEnrolledCourses(JSON.parse(storedCourses));
 
     const storedName = localStorage.getItem('userName');
-    if (storedName) {
-      setUserName(storedName);
-    }
+    if (storedName) setUserName(storedName);
 
     const storedGoals = localStorage.getItem('jobSeekerGoals');
-    if (storedGoals) {
-      setGoals(JSON.parse(storedGoals));
-    }
+    if (storedGoals) setGoals(JSON.parse(storedGoals));
 
-    // Load available courses
     loadAvailableCourses();
   }, []);
 
@@ -104,8 +76,8 @@ const JobSeekerDashboard = () => {
       setLoadingCourses(true);
       const courses = await courseApi.getAllCourses();
       setAvailableCourses(courses.courses || []);
-    } catch (error) {
-      console.error('Error loading courses:', error);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoadingCourses(false);
     }
@@ -115,33 +87,27 @@ const JobSeekerDashboard = () => {
     localStorage.setItem('jobSeekerGoals', JSON.stringify(goals));
   }, [goals]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userName');
-    navigate('/job-seeker');
-  };
-
   const handleCourseClick = (courseId: string) => {
     navigate(`/courses/recorded/${courseId}`);
   };
 
-  const handleOpportunityClick = (opportunityId: number) => {
-    // Implement logic to view opportunity details
-    console.log(`View opportunity ${opportunityId}`);
-  };
+  // ✅ FIXED: Live Course Navigation
+const handleLiveCoursesClick = () => {
+  navigate('/enroll');
+};
+
 
   const handleAddGoal = () => {
-    if (newGoal.trim() !== '') {
+    if (newGoal.trim()) {
       setGoals([...goals, newGoal]);
       setNewGoal('');
     }
   };
 
   const handleDeleteGoal = (index: number) => {
-    const newGoals = [...goals];
-    newGoals.splice(index, 1);
-    setGoals(newGoals);
+    const updated = [...goals];
+    updated.splice(index, 1);
+    setGoals(updated);
   };
 
   const handleEditGoal = (index: number) => {
@@ -150,163 +116,111 @@ const JobSeekerDashboard = () => {
   };
 
   const handleUpdateGoal = (index: number) => {
-    const newGoals = [...goals];
-    newGoals[index] = editedGoalText;
-    setGoals(newGoals);
+    const updated = [...goals];
+    updated[index] = editedGoalText;
+    setGoals(updated);
     setEditingGoalId(null);
   };
 
-  const styles = {
-    card: {
-      backgroundColor: '#f9f9f9',
-      borderRadius: '8px',
-      padding: '20px',
-      marginBottom: '20px',
-      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-    },
-    header: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      marginBottom: '15px',
-      color: '#333'
-    },
-    content: {
-      fontSize: '16px',
-      color: '#555'
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
-      
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome, {userName}!
-            </h1>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/job-seeker/profile')}
-            >
-              Edit Profile
-            </Button>
-          </div>
-        </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Enrolled Courses */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Enrolled Courses</CardTitle>
-              <CardDescription>Your active courses and progress</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {enrolledCourses.map((course) => (
-                <div key={course.id} className="border rounded-md p-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold">{course.title}</h3>
-                    <Button variant="link" onClick={() => handleCourseClick(course.id)}>
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      View Course
-                    </Button>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <Clock className="h-4 w-4" />
-                    <span>{course.completed ? 'Completed' : 'In Progress'}</span>
-                  </div>
-                  <Progress value={course.progress} />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+      <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
-          {/* Job Opportunities */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Job Opportunities</CardTitle>
-              <CardDescription>Explore relevant job openings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {opportunities.map((opportunity) => (
-                <div key={opportunity.id} className="border rounded-md p-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold">{opportunity.title}</h3>
-                    <Badge>{opportunity.type}</Badge>
-                  </div>
-                  <p className="text-sm text-gray-600">{opportunity.company}</p>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <MapPin className="h-4 w-4" />
-                    <span>{opportunity.location}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <Calendar className="h-4 w-4" />
-                    <span>Deadline: {opportunity.deadline}</span>
-                  </div>
-                  <Button variant="outline" onClick={() => handleOpportunityClick(opportunity.id)}>
-                    View Details
-                  </Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Career Goals */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Career Goals</CardTitle>
-              <CardDescription>Set and track your professional goals</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex">
-                <Input
-                  type="text"
-                  placeholder="Add a new goal"
-                  value={newGoal}
-                  onChange={(e) => setNewGoal(e.target.value)}
-                />
-                <Button onClick={handleAddGoal} className="ml-2">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add
+        {/* Enrolled Courses */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Enrolled Courses</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {enrolledCourses.map(course => (
+              <div key={course.id} className="mb-4">
+                <h3 className="font-semibold">{course.title}</h3>
+                <Progress value={course.progress} />
+                <Button variant="link" onClick={() => handleCourseClick(course.id)}>
+                  <BookOpen className="h-4 w-4 mr-1" /> View
                 </Button>
               </div>
-              <ul className="space-y-2">
-                {goals.map((goal, index) => (
-                  <li key={index} className="flex items-center justify-between">
-                    {editingGoalId === index ? (
-                      <div className="flex items-center w-full">
-                        <Input
-                          type="text"
-                          value={editedGoalText}
-                          onChange={(e) => setEditedGoalText(e.target.value)}
-                          className="mr-2"
-                        />
-                        <Button onClick={() => handleUpdateGoal(index)} variant="outline">
-                          Update
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <span>{goal}</span>
-                        <div>
-                          <Button onClick={() => handleEditGoal(index)} variant="ghost" size="icon">
-                            <Edit className="h-4 w-4 mr-2" />
-                          </Button>
-                          <Button onClick={() => handleDeleteGoal(index)} variant="ghost" size="icon">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* ✅ Live Courses Card */}
+   <Card
+  onClick={handleLiveCoursesClick}
+  className="cursor-pointer hover:shadow-lg transition-all hover:scale-105"
+>
+  <CardHeader>
+    <CardTitle className="flex items-center justify-center">
+      <Users className="mr-2" />
+      Live Courses
+    </CardTitle>
+    <CardDescription className="text-center">
+      Click to explore live courses
+    </CardDescription>
+  </CardHeader>
+</Card>
+
+        {/* Job Opportunities */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Job Opportunities</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {opportunities.map(job => (
+              <div key={job.id}>
+                <h3>{job.title}</h3>
+                <Badge>{job.type}</Badge>
+                <div className="text-sm text-gray-500 flex items-center">
+                  <MapPin className="h-4 w-4 mr-1" /> {job.location}
+                </div>
+                <div className="text-sm text-gray-500 flex items-center">
+                  <Calendar className="h-4 w-4 mr-1" /> {job.deadline}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Career Goals */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Career Goals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex mb-2">
+              <Input value={newGoal} onChange={e => setNewGoal(e.target.value)} />
+              <Button onClick={handleAddGoal} className="ml-2">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {goals.map((goal, i) => (
+              <div key={i} className="flex justify-between items-center">
+                {editingGoalId === i ? (
+                  <>
+                    <Input value={editedGoalText} onChange={e => setEditedGoalText(e.target.value)} />
+                    <Button onClick={() => handleUpdateGoal(i)}>Save</Button>
+                  </>
+                ) : (
+                  <>
+                    <span>{goal}</span>
+                    <div>
+                      <Button size="icon" variant="ghost" onClick={() => handleEditGoal(i)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleDeleteGoal(i)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
       </main>
     </div>
   );
