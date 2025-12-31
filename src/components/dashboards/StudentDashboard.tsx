@@ -913,14 +913,7 @@ const StudentDashboard = () => {
                                       </div>
                                     </div>
 
-                                    <div>
-                                      <div className="flex justify-between items-center mb-2">
-                                        <span className="text-sm font-medium">Progress</span>
-                                        <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage || 0)}%</span>
-                                      </div>
-                                      <Progress value={enrollment.totalWatchedPercentage || 0} className="h-2" />
-                                    </div>
-
+                  
                                     <div className="flex items-center justify-between text-xs text-gray-500">
                                       <div className="flex items-center">
                                         <Calendar className="h-3 w-3 mr-1" />
