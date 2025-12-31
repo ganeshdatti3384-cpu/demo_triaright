@@ -389,8 +389,8 @@ const APCertificatePage = () => {
                   <Award className="h-5 w-5 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Completion</p>
-                  <p className="text-lg font-semibold text-gray-900">{certificateData.completionPercentage}%</p>
+                  <p className="text-sm font-medium text-gray-600">Instructor</p>
+                  <p className="text-lg font-semibold text-gray-900">{certificateData.instructorName}</p>
                 </div>
               </div>
             </div>
