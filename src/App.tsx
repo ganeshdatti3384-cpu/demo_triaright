@@ -68,6 +68,7 @@ import Pack365CertificatePage from '@/components/pack365/Pack365CertificatePage'
 import CourseLearningInterface from '@/components/CourseLearningInterface'; // Add this import
 import LiveCourseManagement from "@/components/admin/live-courses/LiveCourseManagement";
 import TrainerDashboard from "@/components/dashboards/TrainerDashboard";
+import LiveCourseDetail from './pages/LiveCourseDetail';
 // import { Toaster } from "@/components/ui/toaster";
 
 import LiveCourseEnrollment from './components/student/LiveCourseenrollement';
@@ -100,6 +101,7 @@ const App = () => {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/live-courses" element={<LiveCourses />} />
+          <Route path="/courses/live/:courseId" element={<LiveCourseDetail />} />
           <Route path="/recorded-courses" element={<RecordedCourses />} />
           <Route path="/pack365" element={<Pack365 />} />
           <Route path="/pack365/bundle/:streamName" element={<Pack365BundleDetail />} />
