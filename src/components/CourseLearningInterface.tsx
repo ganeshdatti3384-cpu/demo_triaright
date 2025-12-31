@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+// Triaright_EduCareer/src/components/CourseLearningInterface.tsx
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -11,46 +12,34 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   BookOpen,
   Play,
-  CheckCircle,
-  Clock,
-  Award,
-  FileText,
-  GraduationCap,
   ArrowLeft,
   Home,
+  CheckCircle,
+  Circle,
+  FileText,
+  Award,
+  Clock,
+  AlertCircle,
+  Loader2,
+  XCircle,
+  ChevronRight,
+  ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 
-/**
- * Updated frontend CourseLearningInterface:
- * - Rewritten to align with backend endpoints and behaviors.
- * - Uses YouTube Iframe API to play YouTube videos (extracts videoId).
- * - Tracks watch time per subtopic while video plays and sends updateTopicProgress to backend.
- * - Uses `/courses/enrollment/my-course-progress/:courseId` to fetch enrollment for this course.
- * - Handles exam endpoints responses including already-attempted behavior (returns existing result).
- *
- * Notes:
- * - Backend expects watchedDuration in minutes; the YouTube player gives seconds so we convert.
- * - updateTopicProgress endpoint: POST { courseId, topicName, subTopicName, watchedDuration }
- */
-
-type Subtopic = {
+type SubtopicFromCourse = {
   name: string;
   link?: string;
-  duration?: number; // minutes
+  duration?: number;
 };
 
-type Topic = {
+type TopicFromCourse = {
   topicName: string;
-  topicCount?: number;
-  subtopics: Subtopic[];
-  directLink?: string;
-  examExcelLink?: string;
+  subtopics: SubtopicFromCourse[];
 };
 
 type CourseModel = {
@@ -58,60 +47,62 @@ type CourseModel = {
   courseId?: string;
   courseName: string;
   courseDescription?: string;
-  curriculum: Topic[];
+  curriculum: TopicFromCourse[];
   demoVideoLink?: string;
   totalDuration?: number;
   courseImageLink?: string;
   price?: number;
   courseType?: string;
   stream?: string;
-  hasFinalExam?: boolean;
+  instructorName?: string;
 };
 
-type EnrollmentProgressSubtopic = {
+// Progress types matching backend - UPDATED based on backend response
+type SubtopicProgress = {
   subTopicName: string;
-  subTopicLink?: string;
-  watchedDuration: number; // minutes
-  totalDuration: number; // minutes
+  subTopicLink: string;
+  isCompleted: boolean;
 };
 
-type EnrollmentProgressTopic = {
+type TopicProgress = {
   topicName: string;
-  subtopics: EnrollmentProgressSubtopic[];
-  topicWatchedDuration: number;
-  topicTotalDuration: number;
+  subtopics: SubtopicProgress[];
+  isCompleted: boolean;
   examAttempted: boolean;
   examScore: number;
   passed: boolean;
-  completed?: boolean;
+  examDate?: string;
 };
 
-type EnrollmentModel = {
-  _id?: string;
-  courseId: string | { _id?: string };
-  userId?: string;
+type EnrollmentProgress = {
+  _id: string;
+  userId: string;
+  courseId: string;
+  progress: TopicProgress[];
+  totalTopics: number;
+  completedTopics: number;
+  totalSubtopics: number;
+  completedSubtopics: number;
+  courseCompletionPercentage: number;
+  isCourseCompleted: boolean;
+  finalExamEligible: boolean;
+  finalExamAttempted: boolean;
+  // These fields might not be in the getMyCourseProgress response
+  finalExamScore?: number;
+  finalExamPassed?: boolean;
+  finalExamDate?: string;
+  certificateEligible?: boolean;
+  courseCompletedAt?: string;
+  finalExamPassedAt?: string;
+  enrollmentDate?: string;
   isPaid?: boolean;
   amountPaid?: number;
-  progress: EnrollmentProgressTopic[];
-  totalWatchedDuration: number;
-  totalVideoDuration: number;
-  finalExamEligible?: boolean;
-  finalExamAttempted?: boolean;
-  courseCompleted?: boolean;
-  completedAt?: string;
-  enrollmentDate?: string;
-  accessExpiresAt?: string;
-  videoProgressPercent?: number;
-  courseName?: string;
-  courseImageLink?: string;
-  certificateLink?: string;
 };
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://dev.triaright.com/api";
 
 const extractYouTubeId = (url?: string) => {
   if (!url) return null;
-  // support many youtube url forms
   const reg =
     /(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/))([a-zA-Z0-9_-]{10,})/;
   const m = url.match(reg);
@@ -121,172 +112,577 @@ const extractYouTubeId = (url?: string) => {
 const CourseLearningInterface: React.FC = () => {
   const { id: courseId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, token } = useAuth();
   const { toast } = useToast();
 
   const [course, setCourse] = useState<CourseModel | null>(null);
-  const [enrollment, setEnrollment] = useState<EnrollmentModel | null>(null);
+  const [enrollment, setEnrollment] = useState<EnrollmentProgress | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [fetchingEnrollment, setFetchingEnrollment] = useState(false);
+  const [updatingSubtopic, setUpdatingSubtopic] = useState<string | null>(null);
+  const [examResults, setExamResults] = useState<any>(null);
 
-  // playing location
+  // Exam result modal state
+  const [showExamResult, setShowExamResult] = useState<{
+    type: 'topic' | 'final';
+    result: any;
+    topicName?: string;
+  } | null>(null);
+
+  // playing location (indexes)
   const [playingSubtopic, setPlayingSubtopic] = useState<{ topicIndex: number; subIndex: number } | null>(null);
 
   // YouTube player refs & state
   const ytPlayerRef = useRef<any | null>(null);
   const ytContainerRef = useRef<HTMLDivElement | null>(null);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
-  const watchingSecondsRef = useRef<number>(0); // accumulated seconds for current subtopic session
-  const pollIntervalRef = useRef<number | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
 
-  // exam states
-  const [showTopicExamModal, setShowTopicExamModal] = useState(false);
-  const [currentExam, setCurrentExam] = useState<any | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [examResult, setExamResult] = useState<any | null>(null);
-  const [submittingExam, setSubmittingExam] = useState(false);
-
-  // helper to fetch course and enrollment (per-backend)
-  const fetchCourseAndEnrollment = async () => {
+  // Fetch course from backend
+  const fetchCourse = async () => {
     setLoading(true);
     try {
       if (!courseId) {
         toast({ title: "Error", description: "Course not specified", variant: "destructive" });
-        navigate("/student");
+        navigate("/courses");
         return;
       }
 
-      // fetch course
       const courseResp = await axios.get(`${API_BASE_URL}/courses/${courseId}`);
       if (courseResp.data && courseResp.data.course) {
         setCourse(courseResp.data.course);
       } else {
         toast({ title: "Course not found", description: "This course doesn't exist", variant: "destructive" });
-        navigate("/student");
+        navigate("/courses");
         return;
-      }
-
-      // fetch enrollment for this user & course using my-course-progress endpoint
-      if (token) {
-        try {
-          const enrollResp = await axios.get(
-            `${API_BASE_URL}/courses/enrollment/my-course-progress/${courseId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          if (enrollResp.data && enrollResp.data.data) {
-            const d = enrollResp.data.data;
-            // Map to EnrollmentModel-ish structure expected by UI
-            const mapped: EnrollmentModel = {
-              _id: "",
-              courseId: d.courseId,
-              userId: user?._id,
-              isPaid: d.isPaid,
-              amountPaid: d.amountPaid,
-              progress: d.progress || [],
-              totalWatchedDuration: d.totalWatchedDuration || 0,
-              totalVideoDuration: d.totalVideoDuration || 0,
-              finalExamEligible: d.finalExamEligible,
-              finalExamAttempted: d.finalExamAttempted,
-              accessExpiresAt: d.accessExpiresAt,
-              enrollmentDate: d.enrollmentDate,
-              courseCompleted: d.courseCompleted,
-              completedAt: d.completedAt,
-              videoProgressPercent: d.videoProgressPercent,
-              courseName: courseResp.data.course?.courseName,
-              courseImageLink: courseResp.data.course?.courseImageLink,
-            };
-            setEnrollment(mapped);
-          } else {
-            setEnrollment(null);
-          }
-        } catch (err: any) {
-          // If not found (404) or not enrolled, set null
-          if (err.response?.status === 404) {
-            setEnrollment(null);
-          } else {
-            console.error("Failed to fetch enrollment:", err);
-            setEnrollment(null);
-          }
-        }
-      } else {
-        setEnrollment(null);
       }
     } catch (err: any) {
       console.error("Failed to load course:", err);
-      toast({ title: "Error", description: "Failed to load course details", variant: "destructive" });
-      navigate("/student");
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to load course details",
+        variant: "destructive",
+      });
+      navigate("/courses");
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch enrollment progress
+  const fetchEnrollmentProgress = async (courseId: string) => {
+    if (!token) {
+      setIsEnrolled(false);
+      return;
+    }
+    
+    setFetchingEnrollment(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/courses/enrollment/my-course-progress/${courseId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data && response.data.data) {
+        const enrollmentData = response.data.data;
+        console.log("Enrollment data fetched:", enrollmentData);
+        setEnrollment(enrollmentData);
+        setIsEnrolled(true);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch enrollment progress:", err);
+      if (err.response?.status === 401) {
+        toast({
+          title: "Session Expired",
+          description: "Please login again",
+          variant: "destructive",
+        });
+      } else if (err.response?.status === 404) {
+        setIsEnrolled(false);
+      } else {
+        console.log("Enrollment fetch error:", err.response?.data?.message);
+      }
+      setIsEnrolled(false);
+    } finally {
+      setFetchingEnrollment(false);
+    }
+  };
+
+  // Fetch exam results separately - CRITICAL: Get actual exam results from exams endpoint
+  const fetchExamResults = async () => {
+    if (!courseId || !token) return;
+    
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/courses/exams/status/${courseId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        console.log("Exam results fetched:", response.data.examStatus);
+        setExamResults(response.data.examStatus);
+      }
+    } catch (error) {
+      console.error("Failed to fetch exam results:", error);
+    }
+  };
+
+  // Mark subtopic as complete/incomplete
+  const markSubtopicComplete = async (topicName: string, subTopicName: string, isCompleted: boolean) => {
+    if (!courseId || !enrollment || !token) return;
+    
+    const updateKey = `${topicName}-${subTopicName}`;
+    setUpdatingSubtopic(updateKey);
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/courses/enrollment/update-progress`,
+        {
+          courseId,
+          topicName,
+          subTopicName,
+          isCompleted,
+          updateType: "subtopic"
+        },
+        {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        const updatedEnrollment = { ...enrollment };
+        
+        const topicIndex = updatedEnrollment.progress.findIndex(t => t.topicName === topicName);
+        if (topicIndex !== -1) {
+          const subtopicIndex = updatedEnrollment.progress[topicIndex].subtopics.findIndex(
+            st => st.subTopicName === subTopicName
+          );
+          if (subtopicIndex !== -1) {
+            updatedEnrollment.progress[topicIndex].subtopics[subtopicIndex].isCompleted = isCompleted;
+            
+            const allCompleted = updatedEnrollment.progress[topicIndex].subtopics.every(st => st.isCompleted);
+            updatedEnrollment.progress[topicIndex].isCompleted = allCompleted;
+          }
+        }
+
+        if (response.data.completionStats) {
+          updatedEnrollment.completedSubtopics = response.data.completionStats.completedSubtopics;
+          updatedEnrollment.completedTopics = response.data.completionStats.completedTopics;
+          updatedEnrollment.courseCompletionPercentage = response.data.completionStats.courseCompletionPercentage;
+          updatedEnrollment.isCourseCompleted = response.data.completionStats.isCourseCompleted;
+          updatedEnrollment.finalExamEligible = response.data.completionStats.isCourseCompleted;
+        }
+
+        setEnrollment(updatedEnrollment);
+        
+        toast({
+          title: "Success",
+          description: response.data.message,
+          variant: "default",
+        });
+      }
+    } catch (err: any) {
+      console.error("Failed to update subtopic progress:", err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to update progress",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingSubtopic(null);
+    }
+  };
+
+  // Get completion status for a subtopic
+  const getSubtopicStatus = (topicName: string, subtopicName: string): boolean => {
+    if (!enrollment) return false;
+    
+    const topic = enrollment.progress.find(t => t.topicName === topicName);
+    if (!topic) return false;
+    
+    const subtopic = topic.subtopics.find(st => st.subTopicName === subtopicName);
+    return subtopic?.isCompleted || false;
+  };
+
+  // Check if all subtopics in a topic are completed
+  const areAllSubtopicsCompleted = (topicName: string): boolean => {
+    if (!enrollment) return false;
+    const topic = enrollment.progress.find(t => t.topicName === topicName);
+    if (!topic) return false;
+    
+    return topic.subtopics.every(st => st.isCompleted);
+  };
+
+  // Check if topic exam is passed
+  const isTopicExamPassed = (topicName: string): boolean => {
+    if (!enrollment) return false;
+    const topic = enrollment.progress.find(t => t.topicName === topicName);
+    if (!topic) return false;
+    
+    return topic.passed || false;
+  };
+
+  // Check if all topic exams are passed
+  const areAllTopicExamsPassed = (): boolean => {
+    if (!enrollment || !enrollment.progress || enrollment.progress.length === 0) return false;
+    
+    return enrollment.progress.every(topic => topic.passed === true);
+  };
+
+  // Get completed subtopics count in a topic
+  const getCompletedSubtopicsCount = (topicName: string): number => {
+    if (!enrollment) return 0;
+    const topic = enrollment.progress.find(t => t.topicName === topicName);
+    if (!topic) return 0;
+    
+    return topic.subtopics.filter(st => st.isCompleted).length;
+  };
+
+  // Get topic progress details
+  const getTopicProgressDetails = (topicName: string) => {
+    if (!enrollment) return null;
+    return enrollment.progress.find(t => t.topicName === topicName);
+  };
+
+  // Navigate to topic exam
+  const navigateToTopicExam = (topicName: string) => {
+    if (!courseId) return;
+    navigate(`/ap-internship-exam/${courseId}/${encodeURIComponent(topicName)}`);
+  };
+
+  // Navigate to final exam - FIXED PATH
+  const navigateToFinalExam = () => {
+    if (!courseId) return;
+    navigate(`/ap-internship-final-exam/${courseId}`);
+  };
+
+  // Navigate to certificate - FIXED PATH to use the correct route
+  const navigateToCertificate = () => {
+    if (!courseId) return;
+    
+    // Debug before navigating
+    debugCertificateEligibility();
+    
+    // Use the correct certificate route that matches your backend
+    navigate(`/courses/certificate/${courseId}`);
+  };
+
+  // Get final exam status from exam results
+  const getFinalExamStatus = () => {
+    if (!examResults || !examResults.finalExam) {
+      return {
+        attempted: enrollment?.finalExamAttempted || false,
+        passed: false,
+        score: 0,
+        attemptsUsed: 0,
+        bestScore: 0
+      };
+    }
+    
+    const finalExam = examResults.finalExam;
+    return {
+      attempted: finalExam.results && finalExam.results.length > 0,
+      passed: finalExam.passed || false,
+      score: finalExam.bestScore || 0,
+      attemptsUsed: finalExam.attemptsUsed || 0,
+      bestScore: finalExam.bestScore || 0
+    };
+  };
+
+  // Check if certificate is eligible - FIXED: Check enrollment first, then fallback to exam results
+  const isCertificateEligible = (): boolean => {
+    // First check if enrollment has certificateEligible field set
+    if (enrollment?.certificateEligible !== undefined) {
+      console.log("Certificate eligibility from enrollment:", enrollment.certificateEligible);
+      return enrollment.certificateEligible;
+    }
+    
+    // Fallback: Check exam results
+    const finalExamStatus = getFinalExamStatus();
+    console.log("Certificate eligibility from exam results:", finalExamStatus.passed);
+    return finalExamStatus.passed || false;
+  };
+
+  // Debug function for certificate eligibility
+  const debugCertificateEligibility = () => {
+    console.log("=== Certificate Eligibility Debug ===");
+    console.log("Enrollment data:", enrollment);
+    console.log("Exam results:", examResults);
+    console.log("enrollment.certificateEligible:", enrollment?.certificateEligible);
+    console.log("enrollment.finalExamAttempted:", enrollment?.finalExamAttempted);
+    console.log("enrollment.isCourseCompleted:", enrollment?.isCourseCompleted);
+    console.log("getFinalExamStatus():", getFinalExamStatus());
+    console.log("isCertificateEligible():", isCertificateEligible());
+    console.log("=== End Debug ===");
+  };
+
+  // Enroll in course if not enrolled
+  const enrollInCourse = async () => {
+    if (!courseId || !course) return;
+    
+    try {
+      if (course.courseType === 'unpaid') {
+        const response = await axios.post(
+          `${API_BASE_URL}/courses/enrollments/free`,
+          { courseId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (response.data.success) {
+          toast({
+            title: "Success",
+            description: "Successfully enrolled in the course",
+            variant: "default",
+          });
+          await fetchEnrollmentProgress(courseId);
+          await fetchExamResults();
+        }
+      } else {
+        navigate(`/courses/${courseId}/enroll`);
+      }
+    } catch (err: any) {
+      console.error("Failed to enroll:", err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to enroll in course",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Close exam result modal - UPDATED: Refresh both exam results AND enrollment
+  const closeExamResult = () => {
+    setShowExamResult(null);
+    if (courseId && showExamResult?.type === 'final' && showExamResult.result.passed) {
+      // Refetch BOTH exam results and enrollment data
+      toast({
+        title: "Refreshing Data",
+        description: "Updating your certificate eligibility...",
+        variant: "default",
+      });
+      
+      setTimeout(() => {
+        fetchExamResults();
+        fetchEnrollmentProgress(courseId);
+      }, 1000);
+    }
+  };
+
+  // Show exam result details modal
+  const renderExamResultModal = () => {
+    if (!showExamResult) return null;
+
+    const { type, result, topicName } = showExamResult;
+    const isPassed = result.passed;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className={`p-8 ${isPassed ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-red-50 to-orange-50'}`}>
+            <div className="text-center">
+              {isPassed ? (
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4">
+                  <CheckCircle className="h-10 w-10 text-green-600" />
+                </div>
+              ) : (
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 rounded-full mb-4">
+                  <XCircle className="h-10 w-10 text-red-600" />
+                </div>
+              )}
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                {type === 'topic' ? 'Topic Exam' : 'Final Exam'} {isPassed ? 'Passed!' : 'Results'}
+              </h3>
+              {topicName && (
+                <p className="text-gray-600 mb-4">Topic: {topicName}</p>
+              )}
+              
+              <div className="bg-white rounded-lg p-6 shadow-sm mb-6">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Score</p>
+                    <p className={`text-3xl font-bold ${isPassed ? 'text-green-600' : 'text-red-600'}`}>
+                      {result.score}%
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Correct Answers</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {result.correctAnswers}/{result.totalQuestions}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Passing Score</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {result.passingScore}% Required
+                  </p>
+                </div>
+              </div>
+
+              {type === 'final' && isPassed && (
+                <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-center justify-center gap-2">
+                    <Award className="h-6 w-6 text-yellow-600" />
+                    <span className="font-semibold text-yellow-800">
+                      Congratulations! You're now eligible for the certificate!
+                    </span>
+                  </div>
+                  <p className="text-sm text-yellow-700 mt-2">
+                    Your certificate eligibility is being updated. It may take a few moments to reflect.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                {type === 'topic' && !isPassed && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      closeExamResult();
+                      navigate(`/ap-internship-exam/${courseId}/${encodeURIComponent(topicName || '')}`);
+                    }}
+                    className="flex-1"
+                  >
+                    Retake Exam
+                  </Button>
+                )}
+                <Button
+                  onClick={closeExamResult}
+                  className={`flex-1 ${isPassed ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                >
+                  Continue Learning
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Effect for initial course load
   useEffect(() => {
-    fetchCourseAndEnrollment();
-    // cleanup on unmount
+    if (courseId) {
+      fetchCourse();
+    }
     return () => {
-      stopPolling();
       destroyYTPlayer();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, token]);
+  }, [courseId]);
 
-  // Use memoized percent from enrollment returned by my-course-progress (videoProgressPercent)
-  const videoProgressPercent = useMemo(() => {
-    if (!enrollment) return 0;
-    if (typeof enrollment.videoProgressPercent === "number") return Math.round(enrollment.videoProgressPercent);
-    if (!enrollment.totalVideoDuration || enrollment.totalVideoDuration === 0) return 0;
-    return Math.floor((enrollment.totalWatchedDuration / enrollment.totalVideoDuration) * 100);
-  }, [enrollment]);
+  // Effect to fetch enrollment when course and token are available
+  useEffect(() => {
+    if (course && token && initialLoad) {
+      const timer = setTimeout(() => {
+        fetchEnrollmentProgress(course._id);
+        fetchExamResults();
+        setInitialLoad(false);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [course, token, initialLoad]);
 
-  // YT player utilities
+  // Effect to handle exam results from navigation - UPDATED: Refresh both data sources
+  useEffect(() => {
+    if (location.state?.examResult || location.state?.finalExamResult) {
+      const result = location.state.examResult || location.state.finalExamResult;
+      const isFinalExam = !!location.state.finalExamResult;
+      
+      setShowExamResult({
+        type: isFinalExam ? 'final' : 'topic',
+        result,
+        topicName: location.state.topicName
+      });
+      
+      // Refetch BOTH exam results AND enrollment data
+      toast({
+        title: "Updating Progress",
+        description: "Refreshing your course data...",
+        variant: "default",
+      });
+      
+      setTimeout(() => {
+        fetchExamResults();
+        if (courseId) {
+          fetchEnrollmentProgress(courseId);
+        }
+      }, 1500);
+      
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  // YouTube Player Management
   const loadYouTubeIframeAPI = (): Promise<void> => {
     return new Promise((resolve) => {
       if ((window as any).YT && (window as any).YT.Player) {
         resolve();
         return;
       }
-      const existing = document.getElementById("youtube-iframe-api");
-      if (existing) {
-        // script already added but YT not ready yet
-        (window as any).onYouTubeIframeAPIReady = () => {
-          resolve();
-        };
+      
+      const existingScript = document.getElementById("youtube-iframe-api");
+      if (existingScript) {
+        (window as any).onYouTubeIframeAPIReady = () => resolve();
         return;
       }
+      
       const tag = document.createElement("script");
       tag.id = "youtube-iframe-api";
       tag.src = "https://www.youtube.com/iframe_api";
-      document.body.appendChild(tag);
+      tag.async = true;
+      
       (window as any).onYouTubeIframeAPIReady = () => {
+        console.log("YouTube API ready");
         resolve();
       };
+      
+      document.body.appendChild(tag);
     });
   };
 
   const createYTPlayer = async (videoId: string) => {
-    await loadYouTubeIframeAPI();
-    destroyYTPlayer();
+    try {
+      await loadYouTubeIframeAPI();
+      destroyYTPlayer();
 
-    if (!ytContainerRef.current) return;
+      if (!ytContainerRef.current) {
+        console.error("YouTube container ref not available");
+        return;
+      }
 
-    // create player
-    ytPlayerRef.current = new (window as any).YT.Player(ytContainerRef.current, {
-      height: "390",
-      width: "100%",
-      videoId,
-      playerVars: {
-        // prevent related videos and modestbranding
-        rel: 0,
-        modestbranding: 1,
-        origin: window.location.origin,
-      },
-      events: {
-        onReady: () => {
-          // nothing for now
+      if (ytContainerRef.current) {
+        ytContainerRef.current.innerHTML = "";
+      }
+
+      ytPlayerRef.current = new (window as any).YT.Player(ytContainerRef.current, {
+        height: "100%",
+        width: "100%",
+        videoId,
+        playerVars: {
+          rel: 0,
+          modestbranding: 1,
+          autoplay: 1,
+          playsinline: 1,
+          origin: window.location.origin,
         },
-        onStateChange: onYTStateChange,
-      },
-    });
+        events: {
+          onReady: (event: any) => {
+            console.log("YouTube Player Ready");
+            event.target.playVideo();
+          },
+          onError: (event: any) => {
+            console.error("YouTube Player Error:", event.data);
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Failed to create YouTube player:", error);
+    }
   };
 
   const destroyYTPlayer = () => {
@@ -295,361 +691,122 @@ const CourseLearningInterface: React.FC = () => {
         ytPlayerRef.current.destroy();
       }
     } catch (e) {
-      // ignore
+      console.error("Error destroying YT player:", e);
     } finally {
       ytPlayerRef.current = null;
-      setIsPlaying(false);
-      watchingSecondsRef.current = 0;
-      stopPolling();
     }
   };
 
-  const onYTStateChange = (event: any) => {
-    const YT = (window as any).YT;
-    if (!YT) return;
-    // YT.PlayerState
-    if (event.data === YT.PlayerState.PLAYING) {
-      setIsPlaying(true);
-      startPolling();
-    } else if (event.data === YT.PlayerState.PAUSED) {
-      setIsPlaying(false);
-      stopPolling();
-      // send partial progress update
-      sendAccumulatedWatchProgress();
-    } else if (event.data === YT.PlayerState.ENDED) {
-      setIsPlaying(false);
-      stopPolling();
-      // mark watched fully
-      sendAccumulatedWatchProgress(true); // indicate ended -> send full duration
-    } else {
-      // other states
-    }
-  };
-
-  const startPolling = () => {
-    stopPolling();
-    // poll every 8 seconds to accumulate watch time
-    pollIntervalRef.current = window.setInterval(() => {
-      try {
-        if (ytPlayerRef.current && ytPlayerRef.current.getCurrentTime) {
-          const currentTime = ytPlayerRef.current.getCurrentTime();
-          // we accumulate seconds roughly by reading currentTime - previousPosition? Simpler: increment by 8s
-          watchingSecondsRef.current += 8;
-        } else {
-          watchingSecondsRef.current += 8;
-        }
-      } catch (e) {
-        watchingSecondsRef.current += 8;
-      }
-    }, 8000) as unknown as number;
-  };
-
-  const stopPolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-  };
-
-  const sendAccumulatedWatchProgress = async (forceMarkFull = false) => {
-    // called when paused/ended to persist watched duration
-    if (!playingSubtopic || !course || !enrollment || !token) {
-      watchingSecondsRef.current = 0;
-      return;
-    }
-    const tIndex = playingSubtopic.topicIndex;
-    const sIndex = playingSubtopic.subIndex;
-    const topic = course.curriculum[tIndex];
-    const sub = topic?.subtopics?.[sIndex];
-    if (!topic || !sub) {
-      watchingSecondsRef.current = 0;
-      return;
-    }
-
-    // If forcing full (video ended), we can mark watchedDuration = sub.duration
-    let watchedMinutes = 0;
-    if (forceMarkFull) {
-      watchedMinutes = sub.duration || 0;
-    } else {
-      watchedMinutes = Math.ceil(watchingSecondsRef.current / 60);
-      // ensure not exceeding sub.duration
-      if (sub.duration) watchedMinutes = Math.min(watchedMinutes, sub.duration);
-    }
-
-    if (watchedMinutes <= 0) {
-      watchingSecondsRef.current = 0;
-      return;
-    }
-
-    // POST to backend updateTopicProgress
-    const payload = {
-      courseId,
-      topicName: topic.topicName,
-      subTopicName: sub.name,
-      watchedDuration: watchedMinutes,
-    };
-
-    try {
-      const resp = await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (resp.data && resp.data.success) {
-        // Refresh enrollment for accurate state
-        await refreshEnrollment();
-        toast({ title: "Progress updated", description: `${sub.name} progress saved`, variant: "default" });
-      } else {
-        // backend returned success:false
-        toast({ title: "Error", description: resp.data?.message || "Failed to update progress", variant: "destructive" });
-      }
-    } catch (err: any) {
-      console.error("Failed to update progress:", err);
-      toast({ title: "Error", description: err?.response?.data?.message || "Failed to update progress", variant: "destructive" });
-    } finally {
-      watchingSecondsRef.current = 0;
-    }
-  };
-
-  const refreshEnrollment = async () => {
-    if (!token || !courseId) return;
-    try {
-      const enrollResp = await axios.get(`${API_BASE_URL}/courses/enrollment/my-course-progress/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (enrollResp.data && enrollResp.data.data) {
-        const d = enrollResp.data.data;
-        const mapped: EnrollmentModel = {
-          _id: "",
-          courseId: d.courseId,
-          userId: user?._id,
-          isPaid: d.isPaid,
-          amountPaid: d.amountPaid,
-          progress: d.progress || [],
-          totalWatchedDuration: d.totalWatchedDuration || 0,
-          totalVideoDuration: d.totalVideoDuration || 0,
-          finalExamEligible: d.finalExamEligible,
-          finalExamAttempted: d.finalExamAttempted,
-          accessExpiresAt: d.accessExpiresAt,
-          enrollmentDate: d.enrollmentDate,
-          courseCompleted: d.courseCompleted,
-          completedAt: d.completedAt,
-          videoProgressPercent: d.videoProgressPercent,
-          courseName: course?.courseName,
-          courseImageLink: course?.courseImageLink,
-        };
-        setEnrollment(mapped);
-      }
-    } catch (err) {
-      console.error("Failed to refresh enrollment:", err);
-    }
-  };
-
-  // Open a subtopic: set playingSubtopic, instantiate player if it's a YouTube url
+  // Open subtopic player
   const openSubtopic = (tIndex: number, sIndex: number) => {
     if (!course) return;
-    const topic = course.curriculum[tIndex];
-    if (!topic) return;
-    const sub = topic.subtopics[sIndex];
-    if (!sub) return;
+
+    if (!isEnrolled) {
+      toast({
+        title: "Enrollment Required",
+        description: "Please enroll in the course to access lessons",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setPlayingSubtopic({ topicIndex: tIndex, subIndex: sIndex });
 
-    const videoId = extractYouTubeId(sub.link);
+    let link = course.curriculum?.[tIndex]?.subtopics?.[sIndex]?.link;
+    if (!link) {
+      destroyYTPlayer();
+      setCurrentVideoId(null);
+      toast({
+        title: "No Video",
+        description: "This lesson doesn't have a playable video",
+        variant: "default",
+      });
+      return;
+    }
+    const videoId = extractYouTubeId(link);
     if (videoId) {
       setCurrentVideoId(videoId);
-      // create player
       createYTPlayer(videoId).catch((e) => {
         console.error("YT player create error:", e);
       });
-    } else if (sub.link) {
-      // Not a youtube link: destroy YT player and set container to show message
-      destroyYTPlayer();
-      setCurrentVideoId(null);
     } else {
       destroyYTPlayer();
       setCurrentVideoId(null);
-    }
-    // reset accumulated seconds
-    watchingSecondsRef.current = 0;
-  };
-
-  // Mark subtopic as watched explicitly (fallback button)
-  const markSubtopicWatched = async (tIndex: number, sIndex: number) => {
-    if (!enrollment || !course || !token) {
-      toast({ title: "Error", description: "You must be enrolled to update progress", variant: "destructive" });
-      return;
-    }
-    const topic = course.curriculum[tIndex];
-    const sub = topic?.subtopics[sIndex];
-    if (!topic || !sub) {
-      toast({ title: "Error", description: "Subtopic not found", variant: "destructive" });
-      return;
-    }
-    const payload = {
-      courseId,
-      topicName: topic.topicName,
-      subTopicName: sub.name,
-      watchedDuration: sub.duration || 30,
-    };
-    try {
-      const resp = await axios.post(`${API_BASE_URL}/courses/updateTopicProgress`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
+      toast({
+        title: "No Video",
+        description: "This lesson doesn't have a playable video",
+        variant: "default",
       });
-      if (resp.data && resp.data.success) {
-        await refreshEnrollment();
-        toast({ title: "Progress updated", description: "Subtopic marked as watched", variant: "default" });
-      } else {
-        toast({ title: "Error", description: resp.data?.message || "Failed to update progress", variant: "destructive" });
-      }
-    } catch (err: any) {
-      console.error("Failed to update progress", err);
-      toast({ title: "Error", description: err?.response?.data?.message || "Failed to update progress", variant: "destructive" });
     }
   };
 
-  // Topic Exam: fetch and open. Backend returns 400 if already attempted and includes result.
-  const handleOpenTopicExam = async (topicName: string) => {
-    if (!token || !courseId) {
-      toast({ title: "Login required", description: "Please login to attempt exams", variant: "destructive" });
-      navigate("/login");
-      return;
-    }
-    setShowTopicExamModal(true);
-    setCurrentExam(null);
-    setAnswers({});
-    setExamResult(null);
-    try {
-      const encodedTopic = encodeURIComponent(topicName);
-      const resp = await axios.get(`${API_BASE_URL}/courses/exams/topic/${courseId}/${encodedTopic}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.data && resp.data.exam) {
-        setCurrentExam(resp.data.exam);
-      } else if (resp.data) {
-        setCurrentExam(resp.data);
-      } else {
-        toast({ title: "No exam", description: "No exam found for this topic", variant: "default" });
-        setShowTopicExamModal(false);
-      }
-    } catch (err: any) {
-      // backend may return 400 with existing result when already attempted
-      if (err.response?.status === 400 && err.response.data?.result) {
-        setExamResult(err.response.data.result);
-        setCurrentExam(null);
-        setShowTopicExamModal(true);
-        toast({ title: "Exam already attempted", description: "You have already attempted this topic exam. Showing result.", variant: "default" });
-      } else {
-        console.error("Failed to fetch topic exam", err);
-        toast({ title: "Error", description: err?.response?.data?.message || "Failed to fetch topic exam", variant: "destructive" });
-        setShowTopicExamModal(false);
+  // Auto-play first video when enrolled
+  useEffect(() => {
+    if (isEnrolled && course && course.curriculum && course.curriculum.length > 0 && !currentVideoId) {
+      const firstTopic = course.curriculum[0];
+      if (firstTopic.subtopics && firstTopic.subtopics.length > 0) {
+        const firstSubtopic = firstTopic.subtopics[0];
+        const videoId = extractYouTubeId(firstSubtopic.link);
+        if (videoId) {
+          setPlayingSubtopic({ topicIndex: 0, subIndex: 0 });
+          setCurrentVideoId(videoId);
+          
+          const timer = setTimeout(() => {
+            createYTPlayer(videoId).catch((e) => {
+              console.error("Failed to auto-create YT player:", e);
+            });
+          }, 500);
+          
+          return () => clearTimeout(timer);
+        }
       }
     }
-  };
+  }, [isEnrolled, course, currentVideoId]);
 
-  const handleTopicAnswerChange = (questionId: string, option: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: option }));
-  };
-
-  const submitTopicExam = async () => {
-    if (!currentExam || !token || !courseId) return;
-    setSubmittingExam(true);
-    try {
-      const payload = {
-        courseId,
-        topicName: currentExam.topicName,
-        answers,
-      };
-      const resp = await axios.post(`${API_BASE_URL}/courses/exams/topic/validate`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.data) {
-        setExamResult(resp.data.result || resp.data);
-        // refresh enrollment
-        await refreshEnrollment();
-        toast({ title: "Exam submitted", description: "Topic exam submitted successfully", variant: "default" });
-      }
-    } catch (err: any) {
-      console.error("Topic exam submit failed", err);
-      toast({ title: "Error", description: err?.response?.data?.message || "Failed to submit exam", variant: "destructive" });
-    } finally {
-      setSubmittingExam(false);
-    }
-  };
-
-  // Final exam open & submit similar to topic flow
-  const [showFinalExamModal, setShowFinalExamModal] = useState(false);
-  const [finalExam, setFinalExam] = useState<any | null>(null);
-
-  const handleOpenFinalExam = async () => {
-    if (!token || !courseId) {
-      toast({ title: "Login required", description: "Please login to attempt exams", variant: "destructive" });
-      navigate("/login");
-      return;
-    }
-    setShowFinalExamModal(true);
-    setFinalExam(null);
-    setAnswers({});
-    setExamResult(null);
-    try {
-      const resp = await axios.get(`${API_BASE_URL}/courses/exams/final/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.data && resp.data.exam) {
-        setFinalExam(resp.data.exam);
-      } else if (resp.data) {
-        setFinalExam(resp.data);
-      } else {
-        toast({ title: "No exam", description: "No final exam found for this course", variant: "default" });
-        setShowFinalExamModal(false);
-      }
-    } catch (err: any) {
-      // backend may return 400 if not eligible or attempts exceeded
-      if (err.response?.status === 400) {
-        toast({ title: "Cannot open final exam", description: err.response.data?.message || "Not eligible or max attempts exceeded", variant: "destructive" });
-      } else {
-        toast({ title: "Error", description: err?.response?.data?.message || "Failed to fetch final exam", variant: "destructive" });
-      }
-      setShowFinalExamModal(false);
-    }
-  };
-
-  const submitFinalExam = async () => {
-    if (!finalExam || !token || !courseId) return;
-    setSubmittingExam(true);
-    try {
-      const payload = { courseId, answers };
-      const resp = await axios.post(`${API_BASE_URL}/courses/exams/validate/final`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.data) {
-        setExamResult(resp.data.result || resp.data);
-        await refreshEnrollment();
-        toast({ title: "Final exam submitted", description: "Final exam submitted successfully", variant: "default" });
-      }
-    } catch (err: any) {
-      console.error("Final exam submit failed", err);
-      toast({ title: "Error", description: err?.response?.data?.message || "Failed to submit final exam", variant: "destructive" });
-    } finally {
-      setSubmittingExam(false);
-    }
-  };
-
-  // Small UI component: SubtopicRow
-  const SubtopicRow: React.FC<{ tIndex: number; sIndex: number; sub: Subtopic }> = ({ tIndex, sIndex, sub }) => {
-    const topic = course?.curriculum?.[tIndex];
-    const progressTopic = enrollment?.progress?.find((pt) => pt.topicName === topic?.topicName);
-    const watched = progressTopic ? progressTopic.subtopics[sIndex]?.watchedDuration || 0 : 0;
-    const total = progressTopic ? progressTopic.subtopics[sIndex]?.totalDuration || sub.duration || 0 : sub.duration || 0;
-
-    const isThisPlaying = playingSubtopic && playingSubtopic.topicIndex === tIndex && playingSubtopic.subIndex === sIndex;
+  // UI SubtopicRow Component
+  const SubtopicRow: React.FC<{ 
+    tIndex: number; 
+    sIndex: number; 
+    sub: SubtopicFromCourse;
+    topicName: string;
+  }> = ({ tIndex, sIndex, sub, topicName }) => {
+    const isThisPlaying = playingSubtopic?.topicIndex === tIndex && playingSubtopic?.subIndex === sIndex;
+    const isCompleted = getSubtopicStatus(topicName, sub.name);
+    const updateKey = `${topicName}-${sub.name}`;
+    const isUpdating = updatingSubtopic === updateKey;
 
     return (
-      <div className="flex items-center justify-between gap-4 border-b py-3 hover:bg-gray-50 px-2 rounded">
-        <div className="flex-1">
-          <div className="font-medium">{sub.name}</div>
-          <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
-            <Clock className="h-3 w-3" />
-            <span>Duration: {total} min • Watched: {Math.min(watched, total)} min</span>
+      <div className={`flex items-center justify-between gap-4 border-b py-3 hover:bg-gray-50 px-2 rounded ${isCompleted ? 'bg-green-50' : ''}`}>
+        <div className="flex-1 flex items-start gap-3">
+          {isEnrolled && (
+            <button
+              onClick={() => markSubtopicComplete(topicName, sub.name, !isCompleted)}
+              className="flex-shrink-0 mt-1"
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+              ) : isCompleted ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <Circle className="h-5 w-5 text-gray-300 hover:text-gray-400" />
+              )}
+            </button>
+          )}
+          <div className="flex-1">
+            <div className="font-medium flex items-center gap-2">
+              <Play className="h-4 w-4 text-gray-400" />
+              {sub.name}
+              {isCompleted && isEnrolled && (
+                <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-200">
+                  Completed
+                </Badge>
+              )}
+            </div>
+            <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+              <Clock className="h-3 w-3" />
+              <span>Duration: {sub.duration || 0} min</span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -658,32 +815,249 @@ const CourseLearningInterface: React.FC = () => {
             variant={isThisPlaying ? "secondary" : "outline"}
             onClick={() => openSubtopic(tIndex, sIndex)}
             className="flex items-center gap-1"
+            disabled={!isEnrolled}
           >
             <Play className="h-3 w-3" />
             {isThisPlaying ? "Playing" : "Play"}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => markSubtopicWatched(tIndex, sIndex)}
-            variant="ghost"
-            className="flex items-center gap-1"
-          >
-            <CheckCircle className="h-3 w-3" />
-            Mark Watched
           </Button>
         </div>
       </div>
     );
   };
 
-  if (loading) {
+  // Render Topic Exam Status Component
+  const TopicExamStatus: React.FC<{ topicName: string }> = ({ topicName }) => {
+    const topicProgress = getTopicProgressDetails(topicName);
+    
+    if (!topicProgress || !isEnrolled) return null;
+
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto py-10">
-          <div className="text-center">
-            <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full mx-auto" />
-            <p className="mt-4 text-gray-600">Loading course...</p>
+      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+            <FileText className="h-4 w-4 text-blue-600" />
+            Topic Exam Status
+          </h4>
+          {topicProgress.examAttempted && (
+            <Badge variant={topicProgress.passed ? "default" : "destructive"} className="text-xs">
+              {topicProgress.passed ? "Passed" : "Failed"}
+            </Badge>
+          )}
+        </div>
+        
+        {topicProgress.examAttempted ? (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Score:</span>
+              <span className={`font-semibold ${topicProgress.passed ? 'text-green-600' : 'text-red-600'}`}>
+                {topicProgress.examScore}%
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Status:</span>
+              <span className="font-medium">
+                {topicProgress.passed ? "Passed" : "Needs Retake"}
+              </span>
+            </div>
+            {topicProgress.examDate && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Date:</span>
+                <span className="font-medium">
+                  {new Date(topicProgress.examDate).toLocaleDateString()}
+                </span>
+              </div>
+            )}
+            <Button
+              onClick={() => navigateToTopicExam(topicName)}
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+            >
+              {topicProgress.passed ? "View Exam Details" : "Retake Exam"}
+            </Button>
           </div>
+        ) : areAllSubtopicsCompleted(topicName) ? (
+          <div className="text-center py-2">
+            <p className="text-sm text-gray-600 mb-2">All lessons completed!</p>
+            <Button
+              onClick={() => navigateToTopicExam(topicName)}
+              size="sm"
+              className="w-full"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Take Topic Exam
+            </Button>
+          </div>
+        ) : (
+          <div className="text-center py-2">
+            <p className="text-sm text-gray-600">
+              Complete all lessons to unlock topic exam
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render Final Exam Status Component - UPDATED to use examResults
+  const FinalExamStatus: React.FC = () => {
+    if (!isEnrolled || !enrollment) return null;
+
+    const isCourseCompleted = enrollment.isCourseCompleted;
+    const allTopicsPassed = areAllTopicExamsPassed();
+    const finalExamEligible = enrollment.finalExamEligible && allTopicsPassed;
+    
+    // Get final exam status from exam results
+    const finalExamStatus = getFinalExamStatus();
+    const finalExamAttempted = finalExamStatus.attempted;
+    const finalExamPassed = finalExamStatus.passed;
+    const finalExamScore = finalExamStatus.bestScore;
+    const certificateEligible = isCertificateEligible();
+
+    console.log("FinalExamStatus rendering:", {
+      isCourseCompleted,
+      allTopicsPassed,
+      finalExamEligible,
+      finalExamAttempted,
+      finalExamPassed,
+      finalExamScore,
+      certificateEligible,
+      enrollmentCertificateEligible: enrollment?.certificateEligible,
+      examResults
+    });
+
+    // Check if should show final exam button
+    const shouldShowFinalExamButton = isCourseCompleted && allTopicsPassed && !finalExamAttempted;
+
+    return (
+      <div className="mt-8 pt-6 border-t">
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+              <Award className="h-5 w-5 text-blue-600" />
+              Final Exam Status
+            </h3>
+            {finalExamAttempted && (
+              <Badge variant={finalExamPassed ? "default" : "destructive"}>
+                {finalExamPassed ? "Passed" : "Failed"}
+              </Badge>
+            )}
+          </div>
+          
+          {!isCourseCompleted ? (
+            <div className="text-center py-4">
+              <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+              <p className="text-gray-700 mb-2">Complete all topics to unlock the final exam</p>
+              <p className="text-sm text-gray-600">
+                Progress: {enrollment.completedTopics}/{enrollment.totalTopics} topics completed
+              </p>
+            </div>
+          ) : !allTopicsPassed ? (
+            <div className="text-center py-4">
+              <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+              <p className="text-gray-700 mb-2">Pass all topic exams to unlock the final exam</p>
+              <p className="text-sm text-gray-600">
+                {enrollment.progress.filter(t => t.passed).length}/{enrollment.progress.length} topic exams passed
+              </p>
+            </div>
+          ) : !finalExamAttempted ? (
+            <div className="text-center py-4">
+              <FileText className="h-8 w-8 text-green-500 mx-auto mb-2" />
+              <p className="text-gray-700 mb-3">You're eligible for the final exam!</p>
+              <p className="text-sm text-gray-600 mb-4">
+                Test your comprehensive knowledge to earn your certificate
+              </p>
+              <Button
+                onClick={navigateToFinalExam}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                size="lg"
+              >
+                <ChevronRight className="h-5 w-5 mr-2" />
+                Take Final Exam
+              </Button>
+            </div>
+          ) : finalExamPassed ? (
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-semibold text-gray-700">Final Exam Score:</span>
+                  <span className="text-2xl font-bold text-green-600">{finalExamScore}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-700">Status:</span>
+                  <Badge className="bg-green-100 text-green-800 border-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Passed
+                  </Badge>
+                </div>
+                {examResults?.finalExam?.results?.[0]?.attemptedAt && (
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-sm text-gray-600">Date Completed:</span>
+                    <span className="text-sm font-medium">
+                      {new Date(examResults.finalExam.results[0].attemptedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {certificateEligible && (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Award className="h-8 w-8 text-green-600" />
+                      <div>
+                        <h4 className="font-bold text-green-800">Certificate Ready!</h4>
+                        <p className="text-sm text-green-700">Download your course completion certificate</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={navigateToCertificate}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Certificate
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-semibold text-gray-700">Final Exam Score:</span>
+                  <span className="text-2xl font-bold text-red-600">{finalExamScore}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-600">Status:</span>
+                  <Badge variant="destructive">Failed - Needs Retake</Badge>
+                </div>
+                <div className="mt-3 text-center">
+                  <p className="text-sm text-gray-600 mb-2">
+                    You need to pass the final exam to get your certificate
+                  </p>
+                  <Button
+                    onClick={navigateToFinalExam}
+                    className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Retake Final Exam
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  if (loading || fetchingEnrollment) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full mx-auto" />
+          <p className="mt-4 text-gray-600">Loading course...</p>
         </div>
       </div>
     );
@@ -701,9 +1075,9 @@ const CourseLearningInterface: React.FC = () => {
               <p className="mb-4">This course could not be found. It may have been removed.</p>
               <div className="flex gap-2">
                 <Button onClick={() => navigate(-1)}>Go Back</Button>
-                <Button variant="outline" onClick={() => navigate("/student")}>
+                <Button variant="outline" onClick={() => navigate("/courses")}>
                   <Home className="h-4 w-4 mr-2" />
-                  Dashboard
+                  Browse Courses
                 </Button>
               </div>
             </CardContent>
@@ -713,9 +1087,24 @@ const CourseLearningInterface: React.FC = () => {
     );
   }
 
+  const totalTopics = enrollment?.totalTopics || course.curriculum?.length || 0;
+  const totalSubtopics = enrollment?.totalSubtopics || course.curriculum?.reduce((total, topic) => total + topic.subtopics.length, 0) || 0;
+  const completedTopics = enrollment?.completedTopics || 0;
+  const completedSubtopics = enrollment?.completedSubtopics || 0;
+  const completionPercentage = enrollment?.courseCompletionPercentage || 0;
+  const isCourseCompleted = enrollment?.isCourseCompleted || false;
+  const allTopicsPassed = areAllTopicExamsPassed();
+  
+  // Get final exam status from exam results
+  const finalExamStatus = getFinalExamStatus();
+  const finalExamAttempted = finalExamStatus.attempted;
+  const finalExamPassed = finalExamStatus.passed;
+  const certificateEligible = isCertificateEligible();
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {renderExamResultModal()}
+
       <div className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -727,47 +1116,96 @@ const CourseLearningInterface: React.FC = () => {
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
+                Back to Courses
               </Button>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">{course.courseName}</h1>
                 <p className="text-sm text-gray-600">Course Learning Interface</p>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Overall Progress</div>
-              <div className="text-xl font-bold text-blue-600">{videoProgressPercent}%</div>
-            </div>
+            {isEnrolled && enrollment && (
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-sm text-gray-600">Progress</div>
+                  <div className="font-semibold">
+                    {completedTopics}/{totalTopics} topics • {completedSubtopics}/{totalSubtopics} lessons
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {enrollment.progress.filter(t => t.passed).length}/{enrollment.progress.length} exams passed
+                  </div>
+                </div>
+                <div className="w-32">
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-green-600 transition-all duration-300"
+                      style={{ width: `${completionPercentage}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1 text-center">
+                    {completionPercentage}% complete
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Player + basic info */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
+          <div className="lg:col-span-2">
+            {!isEnrolled && (
+              <Card className="bg-yellow-50 border-yellow-200 mb-6">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-6 w-6 text-yellow-600 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-yellow-800 mb-1">You are not enrolled in this course</h3>
+                      <p className="text-yellow-700 text-sm mb-3">
+                        {course.courseType === 'unpaid' 
+                          ? "This is a free course. Enroll now to start learning and track your progress."
+                          : "This is a paid course. Purchase the course to access all content and track your progress."}
+                      </p>
+                      <Button 
+                        onClick={enrollInCourse} 
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                      >
+                        {course.courseType === 'unpaid' ? "Enroll for Free" : "Purchase Course"}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card className="mb-6">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-2xl">{course.courseName}</CardTitle>
                     <CardDescription className="mt-2">{course.courseDescription}</CardDescription>
                   </div>
-                  <Badge variant={course.courseType === "paid" ? "default" : "secondary"}>
-                    {course.courseType === "paid" ? "Paid Course" : "Free Course"}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-2">
+                    <Badge variant={course.courseType === "paid" ? "default" : "secondary"}>
+                      {course.courseType === "paid" ? "Paid Course" : "Free Course"}
+                    </Badge>
+                    {isEnrolled && isCourseCompleted && (
+                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Course Completed
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="lg:col-span-2">
+                <div className="space-y-4">
+                  <div>
                     {currentVideoId ? (
                       <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
-                        {/* YouTube player container */}
                         <div ref={ytContainerRef} id="yt-player" className="w-full h-full" />
                       </div>
                     ) : playingSubtopic ? (
-                      // Non-YouTube or no link
                       <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
                         <div className="text-center">
                           <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
@@ -779,194 +1217,145 @@ const CourseLearningInterface: React.FC = () => {
                       <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
                         <div className="text-center">
                           <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                          <p>Select a lesson to start learning</p>
+                          <p>{isEnrolled ? "Select a lesson to start learning" : "Enroll to start learning"}</p>
                           <p className="text-sm mt-2">Click on any lesson below to begin</p>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="space-y-4">
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="space-y-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-500 mb-1">Your Progress</div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1">
-                                <Progress value={videoProgressPercent} />
-                              </div>
-                              <div className="text-sm font-medium">{videoProgressPercent}%</div>
-                            </div>
-                          </div>
+                  <div className="flex flex-wrap gap-2">
+                    {/* Show Final Exam Button only when all topics completed and all topic exams passed */}
+                    {isEnrolled && isCourseCompleted && allTopicsPassed && !finalExamAttempted && (
+                      <Button
+                        onClick={navigateToFinalExam}
+                        className="flex-1 min-w-[200px]"
+                        size="lg"
+                        variant="default"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Take Final Exam
+                      </Button>
+                    )}
 
-                          <div>
-                            <div className="text-sm font-medium text-gray-500 mb-1">Total Duration</div>
-                            <div className="text-lg font-medium">{course.totalDuration || 0} minutes</div>
-                          </div>
+                    {/* Show Certificate Button only when final exam is passed */}
+                    {isEnrolled && certificateEligible && (
+                      <Button
+                        onClick={navigateToCertificate}
+                        className="flex-1 min-w-[200px]"
+                        size="lg"
+                        variant="default"
+                        style={{ backgroundColor: '#10b981' }}
+                      >
+                        <Award className="h-4 w-4 mr-2" />
+                        View Certificate
+                      </Button>
+                    )}
 
-                          <div>
-                            {!enrollment ? (
-                              <Button
-                                onClick={() => {
-                                  if (!token) {
-                                    toast({ title: "Login required", description: "Please login to enroll", variant: "destructive" });
-                                    navigate("/login");
-                                    return;
-                                  }
-                                  navigate(`/course-enrollment/${courseId}`);
-                                }}
-                                className="w-full"
-                                size="lg"
-                              >
-                                Start Learning
-                              </Button>
-                            ) : (
-                              <Button
-                                onClick={() => {
-                                  // continue to first uncompleted lesson if any
-                                  if (!course.curriculum) return;
-                                  // find first topic with progress < total
-                                  const firstTopicIndex = course.curriculum.findIndex((t, i) => {
-                                    const p = enrollment.progress?.find(pp => pp.topicName === t.topicName);
-                                    if (!p) return true;
-                                    return p.topicWatchedDuration < (p.topicTotalDuration || t.subtopics.reduce((s, st) => s + (st.duration || 0), 0));
-                                  });
-                                  const topicIdx = firstTopicIndex === -1 ? 0 : firstTopicIndex;
-                                  const subIdx = 0;
-                                  openSubtopic(topicIdx, subIdx);
-                                }}
-                                className="w-full"
-                                size="lg"
-                              >
-                                Continue Learning
-                              </Button>
-                            )}
-                          </div>
-
-                          {enrollment?.finalExamEligible && !enrollment?.courseCompleted && (
-                            <Button onClick={handleOpenFinalExam} variant="secondary" className="w-full">
-                              <GraduationCap className="h-4 w-4 mr-2" />
-                              Attempt Final Exam
-                            </Button>
-                          )}
-
-                          {enrollment?.courseCompleted && (
-                            <div className="space-y-2 p-3 bg-green-50 rounded-lg">
-                              <div className="flex items-center gap-2">
-                                <Award className="h-5 w-5 text-green-600" />
-                                <div className="text-sm font-medium text-green-700">Course completed</div>
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                Completed on {new Date(enrollment.completedAt || "").toLocaleDateString()}
-                              </div>
-                              <Button
-                                onClick={() => {
-                                  const certLink = (enrollment as any).certificateLink;
-                                  if (certLink) {
-                                    window.open(certLink, "_blank");
-                                    return;
-                                  }
-                                  toast({
-                                    title: "Certificate",
-                                    description: "Certificate is generated by admin. Contact support if not available.",
-                                    variant: "default",
-                                  });
-                                }}
-                                variant="outline"
-                                className="w-full border-green-200 text-green-700 hover:bg-green-100"
-                              >
-                                <FileText className="h-4 w-4 mr-2" />
-                                View Certificate
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {/* Show Retake Final Exam Button if failed */}
+                    {isEnrolled && isCourseCompleted && finalExamAttempted && !certificateEligible && (
+                      <Button
+                        onClick={navigateToFinalExam}
+                        className="flex-1 min-w-[200px]"
+                        size="lg"
+                        variant="outline"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Retake Final Exam
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Curriculum */}
+          <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Course Curriculum</CardTitle>
-                <CardDescription>Topics and lessons to complete</CardDescription>
+                <CardDescription>
+                  {isEnrolled 
+                    ? `${completedSubtopics} of ${totalSubtopics} lessons completed • ${completionPercentage}% complete`
+                    : "Enroll to track your progress"}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {course.curriculum && course.curriculum.length > 0 ? (
-                  <div className="space-y-6">
+                  <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
                     {course.curriculum.map((topic, tIndex) => {
-                      const topicProgress = enrollment?.progress?.find((p) => p.topicName === topic.topicName);
-                      const topicWatched = topicProgress?.topicWatchedDuration || 0;
-                      const topicTotal =
-                        topicProgress?.topicTotalDuration ||
-                        topic.subtopics.reduce((s, st) => s + (st.duration || 0), 0);
-
-                      const canAttemptExam = !!topicProgress && topicWatched >= topicTotal;
-                      const topicProgressPercent = topicTotal > 0 ? Math.round((topicWatched / topicTotal) * 100) : 0;
+                      const topicTotal = topic.subtopics.reduce((s, st) => s + (st.duration || 0), 0);
+                      const isTopicCompleted = areAllSubtopicsCompleted(topic.topicName);
+                      const completedSubtopicsCount = getCompletedSubtopicsCount(topic.topicName);
+                      const topicProgress = getTopicProgressDetails(topic.topicName);
+                      const totalSubtopicsInTopic = topic.subtopics.length;
+                      const isTopicExamPassed = topicProgress?.passed || false;
 
                       return (
-                        <div key={topic.topicName} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <div className="font-semibold text-lg">{topic.topicName}</div>
-                              <div className="text-sm text-gray-500 mt-1">
-                                {topic.subtopics.length} lessons • {topicTotal} minutes
-                              </div>
+                        <div 
+                          key={topic.topicName} 
+                          className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${isTopicCompleted && isEnrolled ? 'bg-green-50 border-green-200' : 'bg-white'}`}
+                        >
+                          <div className="mb-4">
+                            <div className="font-semibold text-lg flex items-center gap-2">
+                              {topic.topicName}
+                              {isTopicCompleted && isEnrolled && (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              )}
+                              {topicProgress?.examAttempted && (
+                                <Badge 
+                                  variant={isTopicExamPassed ? "default" : "destructive"} 
+                                  className="text-xs ml-2"
+                                >
+                                  {isTopicExamPassed ? "Exam Passed" : "Exam Failed"}
+                                </Badge>
+                              )}
                             </div>
-                            <div className="text-right">
-                              <div className="text-sm font-medium">{topicProgressPercent}%</div>
-                              <div className="w-32">
-                                <Progress value={topicProgressPercent} />
-                              </div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              {isEnrolled 
+                                ? `${completedSubtopicsCount} of ${totalSubtopicsInTopic} lessons completed • ${topicTotal} minutes`
+                                : `${topic.subtopics.length} lessons • ${topicTotal} minutes`}
                             </div>
                           </div>
 
                           <div className="space-y-2 mb-4">
                             {topic.subtopics.map((sub, sIndex) => (
-                              <SubtopicRow key={`${sub.name}-${sIndex}`} tIndex={tIndex} sIndex={sIndex} sub={sub} />
+                              <SubtopicRow 
+                                key={`${sub.name}-${sIndex}`} 
+                                tIndex={tIndex} 
+                                sIndex={sIndex} 
+                                sub={sub}
+                                topicName={topic.topicName}
+                              />
                             ))}
                           </div>
 
-                          <div className="flex gap-2 pt-3 border-t">
-                            <Button
-                              onClick={() => {
-                                if (!enrollment) {
-                                  navigate(`/course-enrollment/${courseId}`);
-                                  return;
-                                }
-                                if (topic.subtopics && topic.subtopics.length > 0) {
-                                  openSubtopic(tIndex, 0);
-                                }
-                              }}
-                              className="flex-1"
-                            >
-                              <Play className="h-4 w-4 mr-2" />
-                              Start Topic
-                            </Button>
+                          {/* Topic Exam Status Component */}
+                          <TopicExamStatus topicName={topic.topicName} />
 
-                            <Button
-                              disabled={!canAttemptExam || !!topicProgress?.examAttempted}
-                              variant={canAttemptExam ? "secondary" : "outline"}
-                              onClick={() => handleOpenTopicExam(topic.topicName)}
-                              className="flex-1"
-                            >
-                              {topicProgress?.examAttempted ? (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Exam Completed
-                                </>
-                              ) : (
-                                "Attempt Topic Exam"
-                              )}
-                            </Button>
-                          </div>
+                          {(!isTopicCompleted || !isEnrolled) && (
+                            <div className="flex gap-2 pt-3 border-t">
+                              <Button
+                                onClick={() => {
+                                  if (topic.subtopics && topic.subtopics.length > 0) {
+                                    openSubtopic(tIndex, 0);
+                                  }
+                                }}
+                                className="flex-1"
+                                variant="outline"
+                                disabled={!isEnrolled}
+                              >
+                                <Play className="h-4 w-4 mr-2" />
+                                Start Topic
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
+                    
+                    {/* Final Exam Status Component - After all topics */}
+                    <FinalExamStatus />
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -976,321 +1365,33 @@ const CourseLearningInterface: React.FC = () => {
                 )}
               </CardContent>
             </Card>
-          </div>
 
-          {/* Right: Sidebar / Enrollment summary */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Enrollment Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!enrollment ? (
-                  <>
-                    <div className="text-sm text-gray-600 mb-4">
-                      You are not enrolled in this course. Enroll now to start learning.
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => {
-                          if (!token) {
-                            toast({ title: "Login required", description: "Please login to enroll", variant: "destructive" });
-                            navigate("/login");
-                            return;
-                          }
-                          navigate(`/course-enrollment/${courseId}`);
-                        }}
-                        className="flex-1"
+            {isEnrolled && certificateEligible && (
+              <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <Award className="h-8 w-8 text-green-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-green-800 mb-1">Certificate Ready!</h3>
+                      <p className="text-green-700 text-sm mb-3">
+                        Congratulations! You have successfully completed the course and passed the final exam. 
+                        You can now download your certificate.
+                      </p>
+                      <Button 
+                        onClick={navigateToCertificate}
+                        className="bg-green-600 hover:bg-green-700 text-white"
                       >
-                        Enroll Now
-                      </Button>
-                      <Button variant="outline" onClick={() => navigate("/student")}>
-                        Back to Dashboard
+                        <Award className="h-4 w-4 mr-2" />
+                        View Certificate
                       </Button>
                     </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="space-y-4">
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">Enrolled On</div>
-                        <div className="font-medium">
-                          {new Date(enrollment.enrollmentDate || Date.now()).toLocaleDateString()}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">Course Progress</div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <Progress value={videoProgressPercent} />
-                          </div>
-                          <div className="text-sm font-medium">{videoProgressPercent}%</div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-xs text-gray-500">Topics Passed</div>
-                          <div className="text-lg font-medium">
-                            {enrollment.progress.filter((p) => p.passed).length} / {enrollment.progress.length}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500">Final Exam</div>
-                          <div className="text-lg font-medium">
-                            {enrollment.finalExamEligible ? "Eligible" : "Not Eligible"}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="text-xs text-gray-500">Status Summary</div>
-                        <div className="text-sm space-y-1">
-                          <div className="flex justify-between">
-                            <span>Final Exam Attempted:</span>
-                            <span className={enrollment.finalExamAttempted ? "text-green-600 font-medium" : ""}>
-                              {enrollment.finalExamAttempted ? "Yes" : "No"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Course Completed:</span>
-                            <span className={enrollment.courseCompleted ? "text-green-600 font-medium" : ""}>
-                              {enrollment.courseCompleted ? "Yes" : "No"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Access Expires:</span>
-                            <span>
-                              {enrollment.accessExpiresAt ? new Date(enrollment.accessExpiresAt).toLocaleDateString() : "Never"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button onClick={handleOpenFinalExam} disabled={!enrollment.finalExamEligible || enrollment.courseCompleted} className="flex-1">
-                          {enrollment.courseCompleted ? "Course Completed" : "Take Final Exam"}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={async () => {
-                            await refreshEnrollment();
-                            toast({ title: "Refreshed", description: "Enrollment data refreshed", variant: "default" });
-                          }}
-                        >
-                          Refresh
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {course.stream && (
-                  <div>
-                    <div className="text-xs text-gray-500">Stream</div>
-                    <div className="font-medium capitalize">{course.stream}</div>
                   </div>
-                )}
-                {course.courseType && (
-                  <div>
-                    <div className="text-xs text-gray-500">Type</div>
-                    <div className="font-medium">{course.courseType === "paid" ? "Paid" : "Free"}</div>
-                  </div>
-                )}
-                {course.price !== undefined && course.courseType === "paid" && (
-                  <div>
-                    <div className="text-xs text-gray-500">Price</div>
-                    <div className="font-medium">₹{course.price}</div>
-                  </div>
-                )}
-                <div>
-                  <div className="text-xs text-gray-500">Total Lessons</div>
-                  <div className="font-medium">{course.curriculum?.reduce((total, topic) => total + topic.subtopics.length, 0) || 0}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Total Topics</div>
-                  <div className="font-medium">{course.curriculum?.length || 0}</div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Topic Exam Modal */}
-      <Dialog open={showTopicExamModal} onOpenChange={setShowTopicExamModal}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Topic Exam</DialogTitle>
-            <div className="text-sm text-gray-500">{currentExam?.topicName || currentExam?.examId}</div>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {!currentExam && !examResult ? (
-              <div className="text-center py-8">
-                <div className="animate-spin h-6 w-6 border-b-2 border-blue-600 rounded-full mx-auto"></div>
-                <p className="mt-2">Loading exam...</p>
-              </div>
-            ) : examResult ? (
-              <div className="p-4 border rounded-lg bg-gray-50">
-                <div className="font-semibold text-lg mb-2">Exam Result</div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Score:</span>
-                    <span className="font-semibold">{examResult.score || 0}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Passed:</span>
-                    <span className={`font-semibold ${examResult.passed ? "text-green-600" : "text-red-600"}`}>
-                      {examResult.passed ? "Yes" : "No"}
-                    </span>
-                  </div>
-                  {examResult.correctAnswers !== undefined && (
-                    <div className="flex justify-between">
-                      <span>Correct Answers:</span>
-                      <span>
-                        {examResult.correctAnswers} / {examResult.totalQuestions}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 text-sm text-gray-600">You can close this modal now. The results have been saved.</div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-sm text-gray-500">
-                  Time limit: {currentExam?.timeLimit} minutes • Passing score: {currentExam?.passingScore}%
-                </div>
-
-                <div className="space-y-6">
-                  {currentExam.questions?.map((q: any, idx: number) => (
-                    <div key={q._id || idx} className="border rounded p-4 bg-white">
-                      <div className="font-medium mb-3">
-                        {idx + 1}. {q.questionText}
-                      </div>
-                      <div className="space-y-2">
-                        {(q.options || []).map((opt: string, oi: number) => {
-                          const qid = q._id?.toString() || `q${idx}`;
-                          const checked = answers[qid] === opt;
-                          return (
-                            <label key={oi} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded">
-                              <input type="radio" name={qid} checked={checked} onChange={() => handleTopicAnswerChange(qid, opt)} className="form-radio h-4 w-4 text-blue-600" />
-                              <span className="flex-1">{opt}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2 justify-end pt-4 border-t">
-                  <Button variant="ghost" onClick={() => setShowTopicExamModal(false)}>Cancel</Button>
-                  <Button onClick={submitTopicExam} disabled={submittingExam || Object.keys(answers).length === 0}>
-                    {submittingExam ? "Submitting..." : "Submit Exam"}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Final Exam Modal */}
-      <Dialog open={showFinalExamModal} onOpenChange={setShowFinalExamModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Final Exam</DialogTitle>
-            <div className="text-sm text-gray-500">Final assessment for this course</div>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {!finalExam && !examResult ? (
-              <div className="text-center py-8">
-                <div className="animate-spin h-6 w-6 border-b-2 border-blue-600 rounded-full mx-auto"></div>
-                <p className="mt-2">Loading final exam...</p>
-              </div>
-            ) : examResult ? (
-              <div className="p-4 border rounded-lg bg-gray-50">
-                <div className="font-semibold text-lg mb-2">Final Exam Result</div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Score:</span>
-                    <span className="font-semibold">{examResult.score || 0}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Passed:</span>
-                    <span className={`font-semibold ${examResult.passed ? "text-green-600" : "text-red-600"}`}>
-                      {examResult.passed ? "Yes" : "No"}
-                    </span>
-                  </div>
-                  {examResult.correctAnswers !== undefined && (
-                    <div className="flex justify-between">
-                      <span>Correct Answers:</span>
-                      <span>
-                        {examResult.correctAnswers} / {examResult.totalQuestions}
-                      </span>
-                    </div>
-                  )}
-                  {examResult.attemptNumber && (
-                    <div className="flex justify-between">
-                      <span>Attempt Number:</span>
-                      <span>{examResult.attemptNumber}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 text-sm text-gray-600">
-                  {examResult.passed
-                    ? "Congratulations! You have passed the final exam. The course is now marked as completed."
-                    : "You did not pass this attempt. You can try again if you have remaining attempts."}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-sm text-gray-500">
-                  Time limit: {finalExam?.timeLimit} minutes • Passing score: {finalExam?.passingScore}%
-                  {finalExam?.currentAttempt && <span> • Attempt: {finalExam.currentAttempt} of {finalExam.maxAttempts}</span>}
-                </div>
-
-                <div className="space-y-6">
-                  {finalExam.questions?.map((q: any, idx: number) => (
-                    <div key={q._id || idx} className="border rounded p-4 bg-white">
-                      <div className="font-medium mb-3">{idx + 1}. {q.questionText}</div>
-                      <div className="space-y-2">
-                        {(q.options || []).map((opt: string, oi: number) => {
-                          const qid = q._id?.toString() || `q${idx}`;
-                          const checked = answers[qid] === opt;
-                          return (
-                            <label key={oi} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded">
-                              <input type="radio" name={qid} checked={checked} onChange={() => setAnswers(prev => ({ ...prev, [qid]: opt }))} className="form-radio h-4 w-4 text-blue-600" />
-                              <span className="flex-1">{opt}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2 justify-end pt-4 border-t">
-                  <Button variant="ghost" onClick={() => setShowFinalExamModal(false)}>Cancel</Button>
-                  <Button onClick={submitFinalExam} disabled={submittingExam || Object.keys(answers).length === 0}>
-                    {submittingExam ? "Submitting..." : "Submit Final Exam"}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
