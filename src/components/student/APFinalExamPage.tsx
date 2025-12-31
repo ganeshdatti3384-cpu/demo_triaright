@@ -17,7 +17,8 @@ import {
   AlertCircle,
   Loader2,
   Award,
-  BarChart3
+  BarChart3,
+  Download
 } from 'lucide-react';
 
 interface ExamQuestion {
@@ -209,6 +210,15 @@ const APFinalExamPage = () => {
           description: `You scored ${data.result.score}% (Required: ${data.result.passingScore}%)`,
           variant: data.result.passed ? 'default' : 'destructive'
         });
+
+        // If course completed and passed, show certificate option immediately
+        if (data.result.passed && data.result.courseCompleted) {
+          toast({
+            title: 'Course Completed!',
+            description: 'Congratulations! You can now download your certificate.',
+            variant: 'default'
+          });
+        }
       } else {
         throw new Error(data.message || 'Failed to submit exam');
       }
@@ -242,6 +252,12 @@ const APFinalExamPage = () => {
 
   const getAnsweredCount = () => {
     return Object.keys(answers).length;
+  };
+
+  const handleDownloadCertificate = () => {
+    if (enrollmentId && result?.courseCompleted) {
+      navigate(`/ap-internship-certificate/${enrollmentId}`);
+    }
   };
 
   if (loading) {
@@ -371,13 +387,13 @@ const APFinalExamPage = () => {
                     Retry Exam (Attempt {result.attemptNumber + 1})
                   </Button>
                 )}
-                {result.courseCompleted && (
+                {result.courseCompleted && result.passed && (
                   <Button 
-                    onClick={() => navigate(`/ap-internship-certificate/${enrollmentId}`)}
+                    onClick={handleDownloadCertificate}
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    <Award className="h-4 w-4 mr-2" />
-                    View Certificate
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Certificate
                   </Button>
                 )}
               </div>
