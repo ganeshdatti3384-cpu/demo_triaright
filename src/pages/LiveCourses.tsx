@@ -1,120 +1,82 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Code, Database, Calculator, TrendingUp, Users, Briefcase, Clock, Star } from 'lucide-react';
+import { Code, Database, Calculator, TrendingUp, Users, Briefcase, Clock, Star, Loader2, BookOpen, Award, MapPin, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
-import AuthModal from '@/components/AuthModal';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+const API_BASE_URL = "http://localhost:5007/api/livecourses";
 
 const LiveCourses = () => {
   const navigate = useNavigate();
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: 'login' as 'login' | 'register', userType: 'student' });
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleOpenAuth = (type: 'login' | 'register', userType: string) => {
-    setAuthModal({ isOpen: true, type, userType });
-  };
+  useEffect(() => {
+    fetchLiveCourses();
+  }, []);
 
-  const handleCloseAuth = () => {
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-  };
-
-  const handleAuthSuccess = (userRole: string, userName: string) => {
-    console.log(`User ${userName} logged in as ${userRole}`);
-    setAuthModal({ isOpen: false, type: 'login', userType: 'student' });
-    // You can add additional logic here like redirecting or updating user state
-  };
-
-  const courses = [
-    {
-      id: 'web-development',
-      title: 'Web Development',
-      description: 'Master HTML, CSS, JavaScript, React and build modern web applications',
-      duration: '12 weeks',
-      students: '2,500+',
-      rating: 4.8,
-      color: 'bg-blue-500',
-      icon: Code,
-      price: "₹2,999",
-      originalPrice: "₹4,999",
-      lessons: 45,
-      level: "Beginner to Advanced"
-    },
-    {
-      id: 'data-science',
-      title: 'Data Science',
-      description: 'Learn Python, Machine Learning, Statistics and Data Analysis',
-      duration: '16 weeks',
-      students: '1,800+',
-      rating: 4.9,
-      color: 'bg-orange-500',
-      icon: Database,
-      price: "₹2,499",
-      originalPrice: "₹3,999",
-      lessons: 38,
-      level: "Beginner"
-    },
-    {
-      id: 3,
-      title: 'Aptitude Training',
-      description: 'Quantitative aptitude, logical reasoning, and verbal ability',
-      duration: '8 weeks',
-      students: '3,200+',
-      rating: 4.7,
-      color: 'bg-green-500',
-      icon: Calculator,
-      price: "₹1,999",
-      originalPrice: "₹2,999",
-      lessons: 30,
-      level: "Beginner to Intermediate"
-    },
-    {
-      id: 4,
-      title: 'Business Analytics',
-      description: 'Excel, Power BI, Tableau and business intelligence tools',
-      duration: '10 weeks',
-      students: '1,500+',
-      rating: 4.6,
-      color: 'bg-purple-500',
-      icon: TrendingUp,
-      price: "₹3,499",
-      originalPrice: "₹5,499",
-      lessons: 55,
-      level: "Beginner to Advanced"
-    },
-    {
-      id: 5,
-      title: 'Soft Skills',
-      description: 'Communication, leadership and professional development',
-      duration: '6 weeks',
-      students: '4,000+',
-      rating: 4.8,
-      color: 'bg-pink-500',
-      icon: Users,
-      price: "₹2,299",
-      originalPrice: "₹3,499",
-      lessons: 35,
-      level: "Beginner"
-    },
-    {
-      id: 6,
-      title: 'Job Readiness',
-      description: 'Resume building, interview preparation and placement support',
-      duration: '4 weeks',
-      students: '2,800+',
-      rating: 4.9,
-      color: 'bg-indigo-500',
-      icon: Briefcase,
-      price: "₹3,299",
-      originalPrice: "₹4,799",
-      lessons: 42,
-      level: "Intermediate"
+  const fetchLiveCourses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await axios.get(`${API_BASE_URL}/live-courses`);
+      // Access the courses array from the response
+      setCourses(response.data.courses || []);
+    } catch (err) {
+      console.error('Error fetching live courses:', err);
+      setError('Failed to load courses. Please try again later.');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const handleCourseClick = (courseId: string) => {
+  const iconMap: { [key: string]: any } = {
+    Code,
+    Database,
+    Calculator,
+    TrendingUp,
+    Users,
+    Briefcase,
+    BookOpen,
+    GraduationCap
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const categoryLower = category?.toLowerCase() || '';
+    if (categoryLower.includes('web') || categoryLower.includes('it')) return Code;
+    if (categoryLower.includes('data')) return Database;
+    if (categoryLower.includes('business')) return TrendingUp;
+    return BookOpen;
+  };
+
+  const getCategoryColor = (category: string) => {
+    const categoryLower = category?.toLowerCase() || '';
+    if (categoryLower.includes('web') || categoryLower.includes('it')) return 'bg-blue-500';
+    if (categoryLower.includes('data')) return 'bg-purple-500';
+    if (categoryLower.includes('business')) return 'bg-green-500';
+    return 'bg-orange-500';
+  };
+
+  const getLocationType = (location: any) => {
+    if (typeof location === 'string') {
+      try {
+        location = JSON.parse(location);
+      } catch (e) {
+        return 'Online';
+      }
+    }
+    
+    if (location?.type === 'online') return 'Online';
+    if (location?.type === 'offline') return `Offline - ${location.city || ''}`;
+    if (location?.type === 'hybrid') return `Hybrid - ${location.city || ''}`;
+    return 'Online';
+  };
+
+  const handleViewDetails = (courseId: string) => {
     navigate(`/courses/live/${courseId}`);
   };
 
@@ -128,7 +90,7 @@ const LiveCourses = () => {
           <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">Live Courses</h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-             Join interactive live sessions with expert instructors, ask questions in real-time, and participate in group discussions.
+              Join interactive live sessions with expert instructors, ask questions in real-time, and participate in group discussions.
             </p>
           </div>
         </div>
@@ -136,80 +98,125 @@ const LiveCourses = () => {
 
       {/* Courses Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {courses.map((course) => (
-          <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleCourseClick(String(course.id))}>
-  <div className="relative flex items-center justify-center h-48">
-    <div className={`h-24 w-24 ${course.color} rounded-full flex items-center justify-center`}>
-      <course.icon className="h-12 w-12 text-white" />
-    </div>
-    <div className="absolute top-4 right-4">
-      <Badge variant="secondary" className="bg-white/90">
-        {course.level}
-      </Badge>
-    </div>
-  </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <p className="text-red-600 text-lg mb-4">{error}</p>
+            <Button onClick={fetchLiveCourses} variant="outline">
+              Try Again
+            </Button>
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-gray-600 text-lg">No live courses available at the moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {courses.map((course: any) => {
+              const IconComponent = getCategoryIcon(course.category);
+              const colorClass = getCategoryColor(course.category);
+              const locationType = getLocationType(course.location);
+              
+              return (
+                <Card key={course._id} className="overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => handleViewDetails(course.courseId)}>
+                  <div className="relative flex items-center justify-center h-48 bg-gradient-to-br from-gray-50 to-gray-100">
+                    {course.courseImage ? (
+                      <img 
+                        src={course.courseImage} 
+                        alt={course.courseName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className={`h-24 w-24 ${colorClass} rounded-full flex items-center justify-center`}>
+                        <IconComponent className="h-12 w-12 text-white" />
+                      </div>
+                    )}
+                    <div className="absolute top-4 right-4 z-10">
+                      <Badge className="bg-blue-400 text-blue shadow-md hover:bg-blue-700">
+                        {course.category}
+                      </Badge>
+                    </div>
+                    {course.certificateProvided && (
+                      <div className="absolute top-4 left-4 z-10">
+                        <Badge className="bg-green-500 text-white shadow-md">
+                          <Award className="h-3 w-3 mr-1" />
+                          Certificate
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
 
-  <CardHeader>
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        <CardTitle className="text-lg mb-2">{course.title}</CardTitle>
-        <CardDescription className="text-sm">{course.description}</CardDescription>
-      </div>
-    </div>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl mb-2">{course.courseName}</CardTitle>
+                        <CardDescription className="text-sm line-clamp-2">{course.description}</CardDescription>
+                      </div>
+                    </div>
 
-    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-4">
-      <div className="flex items-center">
-        <Clock className="h-4 w-4 mr-1" />
-        {course.duration}
-      </div>
-      <div className="flex items-center">
-        <Users className="h-4 w-4 mr-1" />
-        {course.students}
-      </div>
-      <div className="flex items-center">
-        <Star className="h-4 w-4 mr-1 fill-yellow-400 text-yellow-400" />
-        {course.rating}
-      </div>
-    </div>
-  </CardHeader>
+                    <div className="flex flex-col space-y-2 text-sm text-gray-600 mt-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {course.duration?.value} {course.duration?.unit}
+                        </div>
+                        <div className="flex items-center">
+                          <Users className="h-4 w-4 mr-1" />
+                          {course.enrolledCount}/{course.maxStudents}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        {locationType}
+                      </div>
 
-  <CardContent>
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center space-x-2">
-        <span className="text-2xl font-bold text-brand-primary">{course.price}</span>
-        <span className="text-lg text-gray-500 line-through">{course.originalPrice}</span>
-      </div>
-      <div className="text-sm text-gray-600">
-        {course.lessons} lessons
-      </div>
-    </div>
-  </CardContent>
+                      <div className="flex items-center">
+                        <GraduationCap className="h-4 w-4 mr-1" />
+                        {course.trainerName}
+                      </div>
+                    </div>
+                  </CardHeader>
 
-  <CardFooter>
-    <Button 
-      onClick={(e) => {
-        e.stopPropagation();
-        handleCourseClick(String(course.id));
-      }}
-      className="w-full bg-brand-primary hover:bg-blue-700 text-white"
-    >
-      View Details
-    </Button>
-  </CardFooter>
-</Card>
+                  <CardContent>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-3xl font-bold text-blue-600">₹{course.price}</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {course.language}
+                      </div>
+                    </div>
 
-          ))}
-        </div>
+                    {course.learningOutcomes && course.learningOutcomes.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs font-semibold text-gray-700 mb-1">Learning Outcomes:</p>
+                        <p className="text-xs text-gray-600 line-clamp-2">{course.learningOutcomes[0]}</p>
+                      </div>
+                    )}
+                  </CardContent>
+
+                  <CardFooter>
+                    <Button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewDetails(course.courseId);
+                      }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      View Details
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <AuthModal
-        isOpen={authModal.isOpen}
-        onClose={handleCloseAuth}
-        type={authModal.type}
-        userType={authModal.userType}
-        onAuthSuccess={handleAuthSuccess}
-      />
       <Footer />
     </div>
   );
