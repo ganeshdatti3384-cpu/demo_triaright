@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import {
   BookOpen,
@@ -373,13 +374,30 @@ const Pack365Dashboard = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {/* Topics Progress (without progress bar) */}
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center justify-between">
+                          {/* Progress Section */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">Stream Progress</span>
+                              <span className="text-sm text-gray-600">{Math.round(enrollment.totalWatchedPercentage)}%</span>
+                            </div>
+                            <Progress value={enrollment.totalWatchedPercentage} className="h-2" />
+                          </div>
+
+                          {/* Topics Progress */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium">Topics Completed</span>
-                              <span className="text-sm font-semibold text-gray-700">
+                              <span className="text-sm text-gray-600">
                                 {enrollment.watchedTopics} / {enrollment.totalTopics}
                               </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${(enrollment.watchedTopics / enrollment.totalTopics) * 100}%` }}
+                                />
+                              </div>
                             </div>
                           </div>
 
@@ -392,9 +410,10 @@ const Pack365Dashboard = () => {
                                 return (
                                   <div key={courseIndex} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg p-2">
                                     <span className="font-medium truncate">{course.courseName}</span>
-                                    <span className="text-gray-500 text-xs">
-                                      {Math.round(courseProgress)}% complete
-                                    </span>
+                                    <div className="flex items-center space-x-2">
+                                      <Progress value={courseProgress} className="w-16 h-2" />
+                                      <span className="text-gray-500 text-xs w-8">{Math.round(courseProgress)}%</span>
+                                    </div>
                                   </div>
                                 );
                               })}
