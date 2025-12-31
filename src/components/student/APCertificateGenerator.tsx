@@ -36,7 +36,7 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
       style={{ 
         width: '794px', 
         height: '1123px',
-        backgroundImage: 'url(/images/certificate-bg.jpg)',
+        backgroundImage: 'url(/lovable-uploads/certificate-bg.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -45,118 +45,52 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
       {/* Certificate Content */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center p-16 text-center">
         
-        {/* Header Section */}
-        <div className="mb-12">
-          <div className="flex items-center justify-center mb-6">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">TRIARIGHT</h1>
-              <div className="w-32 h-1 bg-green-600 mx-auto mb-2"></div>
-              <p className="text-lg text-gray-600 italic">THE NEW ERA OF LEARNING</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Certificate Title */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4 uppercase tracking-wider">
-            Certificate of Completion
-          </h2>
-          <div className="w-48 h-1 bg-blue-600 mx-auto"></div>
-        </div>
-
+        {/* Certificate Title - Removed as it's in background image */}
+        
         {/* Present To Section */}
-        <div className="mb-8">
+        <div className="mb-8 mt-32">
           <p className="text-lg text-gray-600 mb-4">This certificate is proudly presented to</p>
           <h3 className="text-4xl font-bold text-gray-900 mb-4 border-b-4 border-green-600 pb-4 px-12">
             {certificateData.studentName}
           </h3>
         </div>
 
-        {/* Completion Details */}
+        {/* Completion Details - Updated to match reference */}
         <div className="mb-8 max-w-2xl">
-          <p className="text-xl text-gray-700 leading-relaxed">
-            for successfully completing the{" "}
-            <span className="font-semibold text-blue-700">{certificateData.courseTitle}</span>{" "}
-            in <span className="font-semibold text-green-700">{certificateData.stream}</span>{" "}
-            offered by <span className="font-semibold text-purple-700">{certificateData.providerName}</span>
+          <p className="text-xl text-gray-700 leading-relaxed text-justify">
+            This is to certify that <strong>{certificateData.studentName}</strong> has actively participated and successfully completed the live training course titled "<strong>{certificateData.courseTitle}</strong>" conducted by <strong>{certificateData.providerName}</strong>.
+          </p>
+          <p className="text-xl text-gray-700 leading-relaxed text-justify mt-4">
+            The course was conducted from <strong>{new Date(certificateData.enrollmentDate).toLocaleDateString()}</strong> to <strong>{new Date(certificateData.completionDate).toLocaleDateString()}</strong> and involved hands-on sessions, live projects, group discussions, and practical coding challenges that enhanced the participant's skillset and real-world development capabilities.
+          </p>
+          <p className="text-xl text-gray-700 leading-relaxed text-justify mt-4">
+            We congratulate the learner on their achievement and wish them continued success in their career journey.
           </p>
         </div>
 
-        {/* Internship Details */}
-        <div className="mb-8 bg-gray-50 p-6 rounded-lg border border-gray-200 bg-opacity-80">
-          <p className="text-lg text-gray-700 mb-2">
-            <span className="font-semibold">Internship:</span> {certificateData.internshipTitle}
-          </p>
-          <p className="text-lg text-gray-700">
-            <span className="font-semibold">Company:</span> {certificateData.companyName}
-          </p>
-        </div>
-
-        {/* Performance Metrics */}
+        {/* Performance Metrics - Updated to show Instructor name instead of Duration */}
         <div className="grid grid-cols-2 gap-8 mb-8 text-sm text-gray-600">
           <div className="text-center">
             <p className="font-semibold">Completion Percentage</p>
             <p className="text-2xl font-bold text-green-600">{certificateData.completionPercentage}%</p>
           </div>
           <div className="text-center">
-            <p className="font-semibold">Duration</p>
-            <p className="text-lg font-bold text-blue-600">{certificateData.internshipDuration}</p>
+            <p className="font-semibold">Instructor</p>
+            <p className="text-lg font-bold text-blue-600">{certificateData.instructorName}</p>
           </div>
         </div>
 
-        {/* Dates Section */}
-        <div className="grid grid-cols-2 gap-12 mb-12 text-sm text-gray-600">
-          <div className="text-center">
-            <p className="font-semibold">Enrollment Date</p>
-            <p className="text-lg">
-              {new Date(certificateData.enrollmentDate).toLocaleDateString()}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="font-semibold">Completion Date</p>
-            <p className="text-lg">
-              {new Date(certificateData.completionDate).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-
-        {/* Signatures Section */}
-        <div className="grid grid-cols-2 gap-16 mt-8">
-          <div className="text-center">
-            <div className="border-t-2 border-gray-400 pt-2 w-32 mx-auto mb-2"></div>
-            <p className="font-semibold text-gray-700">Instructor</p>
-            <p className="text-gray-600">{certificateData.instructorName}</p>
-          </div>
-          <div className="text-center">
-            <div className="border-t-2 border-gray-400 pt-2 w-32 mx-auto mb-2"></div>
-            <p className="font-semibold text-gray-700">Director</p>
-            <p className="text-gray-600">Kisshore Kumaar</p>
-            <p className="text-xs text-gray-500">Founder & Director - Triaright</p>
-          </div>
-        </div>
-
-        {/* Footer Information */}
-        <div className="mt-16 text-xs text-gray-500">
-          <div className="grid grid-cols-3 gap-8 mb-4">
-            <div className="text-center">
+        {/* Date of Issue and Certificate No - Positioned according to background image */}
+        <div className="mt-auto w-full">
+          <div className="flex justify-between items-start px-20 mb-4">
+            <div className="text-left text-sm text-gray-600">
               <p className="font-semibold">Date of issue:</p>
               <p>{currentDate}</p>
             </div>
-            <div className="text-center">
+            <div className="text-right text-sm text-gray-600">
               <p className="font-semibold">Certificate no:</p>
               <p className="font-mono">{certificateData.certificateId}</p>
             </div>
-            <div className="text-center">
-              <p className="font-semibold">Verification</p>
-              <p>Valid and Verified</p>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-300 pt-4">
-            <p className="mb-1">Mail id: info@triaright.com | Contact: 9059373300</p>
-            <p className="text-xs">
-              7-1-58, 404B, 4th Floor, Surekha Chambers, Ameerpet, Hyderabad, Telangana - 500016
-            </p>
           </div>
         </div>
       </div>
@@ -170,7 +104,7 @@ const APCertificateGenerator: React.FC<APCertificateGeneratorProps> = ({ certifi
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
-            background-image: url(/images/certificate-bg.jpg) !important;
+            background-image: url(/lovable-uploads/certificate-bg.jpg) !important;
             background-size: cover !important;
             background-position: center !important;
             background-repeat: no-repeat !important;
