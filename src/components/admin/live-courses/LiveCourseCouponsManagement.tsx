@@ -807,7 +807,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
                       ? 'bg-gradient-to-r from-emerald-500 to-green-400 text-white border-0' 
                       : 'bg-gradient-to-r from-gray-500 to-gray-400 text-white border-0'
                   }`}>
-                    {isActuallyActive ? 'ACTIVE' : 'Expired'}
+                    {isActuallyActive ? 'ACTIVE' : ' EXPIRED'}
                   </Badge>
                 </div>
                 
@@ -893,12 +893,12 @@ const LiveCourseCouponsManagement: React.FC = () => {
                       <div className="p-1.5 bg-white rounded-lg shadow-sm">
                         <Calendar className="h-3.5 w-3.5 text-gray-600" />
                       </div>
-                      <div>
+                      {/* <div>
                         <p className="text-xs font-semibold text-gray-900">EXPIRY</p>
                         <p className={`text-xs font-medium ${isExpiredCoupon ? 'text-rose-600' : 'text-gray-700'}`}>
                           {expiryStatus}
                         </p>
-                      </div>
+                      </div> */}
                     </div>
 
                     {coupon.createdBy && (
