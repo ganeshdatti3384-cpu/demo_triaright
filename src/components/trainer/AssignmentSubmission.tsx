@@ -415,7 +415,7 @@ const AssignmentSubmissions = ({ assignmentId, onBack }) => {
                     
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-lg">{submission.UserId?.name || "Unknown Student"}</h3>
+                        <h3 className="font-bold text-lg">{submission.UserId?.firstName || "Unknown Student"}</h3>
                         <Badge className={getStatusColor(submission.status)}>
                           {submission.status.replace("_", " ")}
                         </Badge>

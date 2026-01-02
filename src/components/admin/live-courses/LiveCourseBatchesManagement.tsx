@@ -339,18 +339,7 @@ export default function LiveCourseBatchesManagement() {
     return true;
   });
 
-  if (pageLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-600">Loading batches...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const FormFields = () => (
+  const formFieldsJSX = (
     <>
       <div className="space-y-2.5">
         <Label className="text-sm font-semibold">Batch Name <span className="text-red-500">*</span></Label>
@@ -457,14 +446,16 @@ export default function LiveCourseBatchesManagement() {
           <Label className="text-sm font-semibold">End Time</Label>
           <Input type="time" value={formData.endTime} onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))} className="rounded-xl h-10" />
         </div>
+        <div className="space-y-2.5">
           <Label className="text-sm font-semibold">Start Date <span className="text-red-500">*</span></Label>
           <Input type="date" value={formData.startDate} onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))} className="rounded-xl h-10" />
         </div>
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold">End Date</Label>
-          <Input type="date" value={formData.endDate} onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))} className="rounded-xl h-10" />
-        </div>
-      
+      </div>
+
+      <div className="space-y-2.5">
+        <Label className="text-sm font-semibold">End Date</Label>
+        <Input type="date" value={formData.endDate} onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))} className="rounded-xl h-10" />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
@@ -501,7 +492,16 @@ export default function LiveCourseBatchesManagement() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 relative">
+      {/* Loading Overlay - doesn't unmount content */}
+      {pageLoading && (
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
+            <p className="text-gray-600">Loading batches...</p>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div className="bg-white p-6 rounded-2xl shadow-lg">
@@ -534,7 +534,7 @@ export default function LiveCourseBatchesManagement() {
                   <DialogTitle>Create New Batch</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-5">
-                  <FormFields />
+                  {formFieldsJSX}
                   <Button onClick={handleAddBatch} className="w-full" disabled={loading}>
                     {loading ? "Creating..." : "Create Batch"}
                   </Button>
@@ -655,7 +655,7 @@ export default function LiveCourseBatchesManagement() {
               <DialogTitle>Edit Batch</DialogTitle>
             </DialogHeader>
             <div className="space-y-5">
-              <FormFields />
+              {formFieldsJSX}
               <Button onClick={handleEditBatch} className="w-full" disabled={loading}>
                 {loading ? "Updating..." : "Update Batch"}
               </Button>
