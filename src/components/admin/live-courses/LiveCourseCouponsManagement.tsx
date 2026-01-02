@@ -52,7 +52,7 @@ import {
 
 /* ================= CONFIG ================= */
 
-const API_BASE_URL = "http://localhost:5007";
+const API_BASE_URL = "https://triaright.com/api/livecourses";
 const getAuthToken = () => localStorage.getItem("token");
 
 /* ================= TYPES ================= */
@@ -296,7 +296,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
   /* ================= FETCH LIVE COURSES ================= */
 
   const fetchLiveCourses = async () => {
-    const res = await fetch(`${API_BASE_URL}/api/livecourses/live-courses`);
+    const res = await fetch(`${API_BASE_URL}/live-courses`);
     const data = await res.json();
     setLiveCourses(data.courses || []);
   };
@@ -309,7 +309,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
       const token = getAuthToken();
 
       const res = await fetch(
-        `${API_BASE_URL}/api/livecourses/admin/coupons`,
+        `${API_BASE_URL}/admin/coupons`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -400,7 +400,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
         description: formData.description,
       };
 
-      await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons`, {
+      await fetch(`${API_BASE_URL}/admin/coupons`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -501,7 +501,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
       };
 
       await fetch(
-        `${API_BASE_URL}/api/livecourses/admin/coupons/${editingCoupon._id}`,
+        `${API_BASE_URL}/admin/coupons/${editingCoupon._id}`,
         {
           method: "PUT",
           headers: {
@@ -536,7 +536,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
 
     try {
       const token = getAuthToken();
-      await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons/${couponToDelete._id}`, {
+      await fetch(`${API_BASE_URL}/admin/coupons/${couponToDelete._id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

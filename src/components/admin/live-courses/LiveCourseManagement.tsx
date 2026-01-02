@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const API_BASE_URL = "http://localhost:5007";
+const API_BASE_URL = "https://triaright.com/api/livecourses";
 const getAuthToken = () => localStorage.getItem("token");
 
 interface LiveCourse {
@@ -125,7 +125,7 @@ const LiveCourseManagement: React.FC = () => {
   const fetchTrainers = async () => {
     try {
       const token = getAuthToken();
-      const response = await fetch('http://localhost:5001/api/users/all', {
+      const response = await fetch('https://triaright.com/api/users/all', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -160,7 +160,7 @@ const LiveCourseManagement: React.FC = () => {
   const fetchLiveCourses = async () => {
     try {
       setFetchingData(true);
-      const response = await fetch(`http://localhost:5007/api/livecourses/live-courses`);
+      const response = await fetch(`https://triaright.com/api/livecourses/live-courses`);
 
       if (!response.ok) throw new Error("Failed to fetch live courses");
 
@@ -304,7 +304,7 @@ const LiveCourseManagement: React.FC = () => {
         });
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/livecourses/admin/live-courses`, {
+      const response = await fetch(`${API_BASE_URL}/admin/live-courses`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -459,7 +459,7 @@ const LiveCourseManagement: React.FC = () => {
         });
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/livecourses/admin/live-courses/${editingCourse._id}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/live-courses/${editingCourse._id}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -498,7 +498,7 @@ const LiveCourseManagement: React.FC = () => {
 
     try {
       const token = getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/api/livecourses/admin/live-courses/${courseToDelete._id}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/live-courses/${courseToDelete._id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

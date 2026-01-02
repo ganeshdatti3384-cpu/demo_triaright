@@ -27,7 +27,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 
-const API_BASE_URL = "http://localhost:5007/api/livecourses";
+const API_BASE_URL = "https://triaright.com/api/livecourses";
 const getAuthToken = () => localStorage.getItem("token") || "";
 
 export default function LiveCourseBatchesManagement() {
