@@ -893,12 +893,12 @@ const LiveCourseCouponsManagement: React.FC = () => {
                       <div className="p-1.5 bg-white rounded-lg shadow-sm">
                         <Calendar className="h-3.5 w-3.5 text-gray-600" />
                       </div>
-                      <div>
+                      {/* <div>
                         <p className="text-xs font-semibold text-gray-900">EXPIRY</p>
                         <p className={`text-xs font-medium ${isExpiredCoupon ? 'text-rose-600' : 'text-gray-700'}`}>
                           {expiryStatus}
                         </p>
-                      </div>
+                      </div> */}
                     </div>
 
                     {coupon.createdBy && (
