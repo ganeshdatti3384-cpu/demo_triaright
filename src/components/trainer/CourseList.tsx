@@ -562,7 +562,7 @@ const CoursesList: React.FC<CoursesListProps> = ({
                             </div>
                           </div>
 
-                          <div className="flex gap-2 pt-2">
+                          {/* <div className="flex gap-2 pt-2">
                             <Button size="sm" variant="outline" className="gap-2">
                               <Eye className="h-4 w-4" />
                               Preview
@@ -575,7 +575,7 @@ const CoursesList: React.FC<CoursesListProps> = ({
                               <Share2 className="h-4 w-4" />
                               Share
                             </Button>
-                          </div>
+                          </div> */}
                         </div>
                       </motion.div>
                     )}

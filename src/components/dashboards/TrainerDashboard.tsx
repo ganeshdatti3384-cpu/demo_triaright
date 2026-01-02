@@ -219,7 +219,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     try {
       const token = localStorage.getItem("token");
       console.log('Fetching trainer profile...');
-      const response = await fetch('http://localhost:5001/api/users/trainer/profile', {
+      const response = await fetch('https://triaright.com/api/users/trainer/profile', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -285,7 +285,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     try {
       console.log('Fetching live courses...');
       const token = localStorage.getItem("token");
-      const response = await fetch('http://localhost:5007/api/livecourses/trainer/assigned/courses', {
+      const response = await fetch('https://triaright.com/api/livecourses/trainer/assigned/courses', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -359,7 +359,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
     try {
       const token = localStorage.getItem("token");
       console.log('Fetching trainer batches...');
-      const response = await fetch('http://localhost:5007/api/livecourses/trainer/assigned/batches', {
+      const response = await fetch('https://triaright.com/api/livecourses/trainer/assigned/batches', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -447,7 +447,7 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
       const token = localStorage.getItem("token");
       console.log('Fetching live sessions...');
       
-      const response = await fetch('http://localhost:5007/api/livecourses/trainer/live-sessions', {
+      const response = await fetch('https://triaright.com/api/livecourses/trainer/live-sessions', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -632,7 +632,7 @@ const handleSaveProfile = async () => {
 
     console.log('Updating profile with:', updatePayload);
 
-    const response = await fetch('http://localhost:5001/api/users/trainer/profile', {
+    const response = await fetch('https://triaright.com/api/users/trainer/profile', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -1343,7 +1343,7 @@ const removeExperience = (index: number) => {
             handleCreateSession(data);
             setShowCreateSession(false);
           }}
-          apiBaseUrl="http://localhost:5007/api/livecourses"
+          apiBaseUrl="https://triaright.com/api/livecourses"
           trainerId={user?.trainerId}
         />
 
