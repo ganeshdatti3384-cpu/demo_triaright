@@ -19,7 +19,7 @@ import {
 import AssignmentSubmissions from './AssignmentSubmission';
 import CreateAssignment from './CreateAssignment';
 
-const API_BASE_URL = "http://localhost:5007/api/livecourses";
+const API_BASE_URL = "https://triaright.com/api/livecourses";
 
 const AssignmentList = ({ onViewSubmissions }) => {
   const { toast } = useToast();

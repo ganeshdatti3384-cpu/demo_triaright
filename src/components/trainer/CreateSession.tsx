@@ -441,7 +441,7 @@ const CreateLiveSession: React.FC<CreateLiveSessionProps> = ({
   onCreated, 
   onOpenChange, 
   open = false,
-  apiBaseUrl = "http://localhost:5000/api",
+  apiBaseUrl = "https://triaright.com/api/livecourses",
   trainerId // Pass trainer ID from parent or get from user context
 }) => {
   const { toast } = useToast();

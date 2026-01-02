@@ -17,7 +17,7 @@ import {
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 
-const API_BASE_URL = "http://localhost:5007/api/livecourses";
+const API_BASE_URL = "https://triaright.com/api/livecourses";
 
 // Assignment Submissions Component
 const AssignmentSubmissions = ({ assignmentId, onBack }) => {
