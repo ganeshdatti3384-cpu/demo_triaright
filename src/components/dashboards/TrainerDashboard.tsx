@@ -2050,10 +2050,10 @@ const removeExperience = (index: number) => {
                       <div className="p-2 bg-green-100 rounded-lg">
                         <GraduationCap className="h-4 w-4 text-green-600" />
                       </div>
-                      <div>
+                      {/* <div>
                         <p className="text-sm text-gray-600">Students Taught</p>
                         <p className="font-bold text-lg text-gray-900">{profile.studentsTaught.toLocaleString()}</p>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                   <Separator />
@@ -2062,10 +2062,10 @@ const removeExperience = (index: number) => {
                       <div className="p-2 bg-amber-100 rounded-lg">
                         <Star className="h-4 w-4 text-amber-600" />
                       </div>
-                      <div>
+                      {/* <div>
                         <p className="text-sm text-gray-600">Average Rating</p>
-                        <p className="font-bold text-lg text-gray-900">{profile.rating}/5.0</p>
-                      </div>
+                        <p className="font-bold text-lg text-gray-900">{profile.rating}/5.0</p> */}
+                      {/* </div> */}
                     </div>
                   </div>
                   <Separator />
