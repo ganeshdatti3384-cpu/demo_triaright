@@ -11,7 +11,9 @@ import {
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import axios from 'axios';
+
 const API_BASE_URL = "https://triaright.com/api/livecourses";
+
 const LiveCourseDetail = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
@@ -290,10 +292,9 @@ const LiveCourseDetail = () => {
                       // Extract filename from URL and decode it
                       const urlParts = doc.split('/');
                       const fullFileName = urlParts[urlParts.length - 1];
-                      // Remove the UUID prefix (everything before the first dash and the dash itself)
-                      const fileNameWithoutUUID = fullFileName.includes('-') 
-                        ? fullFileName.substring(fullFileName.indexOf('-') + 1)
-                        : fullFileName;
+                      // Remove ALL UUID prefixes (everything up to and including the last UUID pattern)
+                      // UUID pattern: 8chars-4chars-4chars-4chars-12chars followed by dash
+                      const fileNameWithoutUUID = fullFileName.replace(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}-/i, '');
                       // Decode URL encoding
                       const decodedFileName = decodeURIComponent(fileNameWithoutUUID);
                       
@@ -313,26 +314,28 @@ const LiveCourseDetail = () => {
                       };
                       
                       return (
-                        <a 
+                        <div 
                           key={index}
-                          href={getViewerUrl(doc)}
-                          target="_blank"
-                          rel="noopener noreferrer"
                           className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                            <span className="text-gray-700 group-hover:text-blue-600 truncate">{decodedFileName}</span>
+                            <span className="text-gray-700 truncate">{decodedFileName}</span>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            onClick={(e) => e.preventDefault()}
+                          <a
+                            href={getViewerUrl(doc)}
+                            target="_blank"
+                            rel="noopener noreferrer"
                           >
-                            View Syllabus
-                          </Button>
-                        </a>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              View Syllabus
+                            </Button>
+                          </a>
+                        </div>
                       );
                     })}
                   </div>
