@@ -807,7 +807,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
                       ? 'bg-gradient-to-r from-emerald-500 to-green-400 text-white border-0' 
                       : 'bg-gradient-to-r from-gray-500 to-gray-400 text-white border-0'
                   }`}>
-                    {isActuallyActive ? 'ACTIVE' : 'Expired'}
+                    {isActuallyActive ? 'ACTIVE' : ' EXPIRED'}
                   </Badge>
                 </div>
                 
