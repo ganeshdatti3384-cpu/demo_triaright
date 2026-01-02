@@ -7,7 +7,7 @@ import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-const API_BASE_URL = "http://localhost:5007/api/livecourses";
+const API_BASE_URL = "https://triaright.com/api/livecourses";
 
 const LiveCourses = () => {
   const navigate = useNavigate();

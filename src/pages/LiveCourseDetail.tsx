@@ -11,7 +11,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import axios from 'axios';
-const API_BASE_URL = "http://localhost:5007/api/livecourses";
+const API_BASE_URL = "https://triaright.com/api/livecourses";
 const LiveCourseDetail = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
