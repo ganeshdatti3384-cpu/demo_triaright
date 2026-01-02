@@ -1008,13 +1008,6 @@ const LiveCourseManagement: React.FC = () => {
                 className="group relative overflow-hidden bg-gradient-to-b from-white to-gray-50/60 backdrop-blur-sm border-2 border-gray-200/70 hover:border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-gray-200/5 via-gray-200/5 to-gray-200/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                
-                <div className="absolute top-3 right-3 z-10">
-                  <Badge className={`text-xs font-bold px-2.5 py-1 rounded-full shadow text-white border-0 ${getStatusColor(course.status)}`}>
-                    {course.status.toUpperCase()}
-                  </Badge>
-                </div>
-                
                 <CardHeader className="pt-6 pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -1029,20 +1022,28 @@ const LiveCourseManagement: React.FC = () => {
                           {course.courseName}
                         </CardTitle>
                       </div>
-                      <div className="flex items-center gap-2.5 mt-2">
-                        <div className="p-1.5 bg-gradient-to-br from-gray-100 to-gray-100 rounded-lg shadow-sm">
-                          <Users className="h-3.5 w-3.5 text-gray-700" />
-                        </div>
-                        <p className="text-sm font-semibold text-gray-800">
-                          {course.trainerName}
-                        </p>
-                      </div>
+                     <div className="flex items-center gap-2.5 mt-2">
+  <div className="p-1.5 bg-gradient-to-br from-gray-100 to-gray-100 rounded-lg shadow-sm">
+    <Users className="h-3.5 w-3.5 text-gray-700" />
+  </div>
+
+  <p className="text-sm font-semibold text-gray-800">
+    {course.trainerName}
+  </p>
+  <Badge
+    className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow text-white border-0 ${getStatusColor(course.status)}`}
+  >
+    {course.status.toUpperCase()}
+  </Badge>
+</div>
+
                     </div>
-                    {course.price > 0 && (
-                      <Badge className="text-xs font-bold px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-400 text-white border-0 shadow">
-                        ${course.price}
-                      </Badge>
-                    )}
+                  {course.price > 0 && (
+  <Badge className="text-xs font-bold px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-400 text-white border-0 shadow">
+    ₹{course.price}
+  </Badge>
+)}
+
                   </div>
                 </CardHeader>
                 
