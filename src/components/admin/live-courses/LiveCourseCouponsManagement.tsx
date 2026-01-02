@@ -586,7 +586,8 @@ const LiveCourseCouponsManagement: React.FC = () => {
 
   /* ================= UI ================= */
 
-  return (
+
+return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50/50 to-gray-100 p-4 relative overflow-hidden">
       {/* Loading Overlay - shown on top, doesn't unmount content */}
       {fetchingData && (
@@ -753,7 +754,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-gray-600 mb-1.5"></p>
+                  <p className="text-xs font-medium text-gray-600 mb-1.5">Inactive Coupons</p>
                   <h3 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-700 bg-clip-text text-transparent">
                     {coupons.filter(c => !c.isActive || isExpired(c.expiresAt) || isUsageExceeded(c)).length}
                   </h3>
@@ -807,13 +808,13 @@ const LiveCourseCouponsManagement: React.FC = () => {
                       ? 'bg-gradient-to-r from-emerald-500 to-green-400 text-white border-0' 
                       : 'bg-gradient-to-r from-gray-500 to-gray-400 text-white border-0'
                   }`}>
-                    {isActuallyActive ? 'ACTIVE' : ' EXPIRED'}
+                    {isActuallyActive ? 'ACTIVE' : 'INACTIVE'}
                   </Badge>
                 </div>
                 
                 <CardHeader className="pt-6 pb-3">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                    <div className="flex-1 pr-20">
                       <div className="flex items-center gap-2.5 mb-2.5">
                         <div className={`p-2 rounded-lg shadow ${
                           isActuallyActive 
@@ -845,21 +846,21 @@ const LiveCourseCouponsManagement: React.FC = () => {
                           )}
                         </p>
                       </div>
+                      {(isExpiredCoupon || isUsageExceededCoupon) && (
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {isExpiredCoupon && (
+                            <Badge variant="destructive" className="text-xs px-2 py-0.5 bg-gradient-to-r from-rose-500 to-pink-400 text-white border-0 shadow">
+                              EXPIRED
+                            </Badge>
+                          )}
+                          {isUsageExceededCoupon && (
+                            <Badge className="text-xs px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-400 text-white border-0 shadow">
+                              LIMIT REACHED
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {(isExpiredCoupon || isUsageExceededCoupon) && (
-                      <div className="flex flex-col gap-1">
-                        {isExpiredCoupon && (
-                          <Badge variant="destructive" className="text-xs px-2 py-0.5 bg-gradient-to-r from-rose-500 to-pink-400 text-white border-0 shadow">
-                            EXPIRED
-                          </Badge>
-                        )}
-                        {isUsageExceededCoupon && (
-                          <Badge className="text-xs px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-400 text-white border-0 shadow">
-                            LIMIT REACHED
-                          </Badge>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </CardHeader>
                 
@@ -893,12 +894,12 @@ const LiveCourseCouponsManagement: React.FC = () => {
                       <div className="p-1.5 bg-white rounded-lg shadow-sm">
                         <Calendar className="h-3.5 w-3.5 text-gray-600" />
                       </div>
-                      {/* <div>
+                      <div>
                         <p className="text-xs font-semibold text-gray-900">EXPIRY</p>
                         <p className={`text-xs font-medium ${isExpiredCoupon ? 'text-rose-600' : 'text-gray-700'}`}>
                           {expiryStatus}
                         </p>
-                      </div> */}
+                      </div>
                     </div>
 
                     {coupon.createdBy && (
@@ -989,7 +990,6 @@ const LiveCourseCouponsManagement: React.FC = () => {
             </CardContent>
           </Card>
         )}
-
         {/* Edit Dialog - FIXED: Now passing all required props */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-xl bg-gradient-to-b from-white to-gray-50/50 backdrop-blur-sm border border-white/50 shadow-2xl shadow-blue-200/30 rounded-2xl">
