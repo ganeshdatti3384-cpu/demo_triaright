@@ -1,7 +1,164 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo, useCallback } from 'react';
 import { Calendar, Clock, FileText, Upload, CheckCircle, XCircle, AlertCircle, Video, Download, Trash2, RefreshCw, Award, Link2 } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:5007/api/livecourses';
+
+// Memoized Submit Modal to prevent re-renders on parent state changes
+const SubmitModal = memo(({ 
+  isOpen, 
+  onClose, 
+  selectedAssignment, 
+  isResubmit, 
+  onSubmit, 
+  onResubmit 
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedAssignment: any;
+  isResubmit: boolean;
+  onSubmit: (assignmentId: string, data: { textContent: string; links: string; files: File[] }) => void;
+  onResubmit: (assignmentId: string, data: { textContent: string; links: string; files: File[] }) => void;
+}) => {
+  const [localData, setLocalData] = useState({
+    textContent: '',
+    links: '',
+    files: [] as File[]
+  });
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocalData({ textContent: '', links: '', files: [] });
+    }
+  }, [isOpen]);
+
+  const handleAddLink = useCallback(() => {
+    if (localData.links && !localData.links.endsWith('\n')) {
+      setLocalData(prev => ({...prev, links: prev.links + '\n'}));
+    }
+  }, [localData.links]);
+
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setLocalData(prev => ({...prev, textContent: value}));
+  }, []);
+
+  const handleLinksChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setLocalData(prev => ({...prev, links: value}));
+  }, []);
+
+  const handleFilesChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalData(prev => ({...prev, files: Array.from(e.target.files || [])}));
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    if (isResubmit) {
+      onResubmit(selectedAssignment._id, localData);
+    } else {
+      onSubmit(selectedAssignment._id, localData);
+    }
+  }, [isResubmit, selectedAssignment, localData, onSubmit, onResubmit]);
+
+  const handleClose = useCallback(() => {
+    setLocalData({ textContent: '', links: '', files: [] });
+    onClose();
+  }, [onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <h2 className="text-2xl font-bold mb-4">
+          {isResubmit ? 'Resubmit' : 'Submit'} Assignment
+        </h2>
+        <h3 className="text-lg text-gray-700 mb-4">{selectedAssignment?.title}</h3>
+
+        <div className="space-y-4">
+          {!isResubmit && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Text Content
+                </label>
+                <textarea
+                  value={localData.textContent}
+                  onChange={handleTextChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 min-h-[120px]"
+                  placeholder="Enter your submission text..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Links (Press Enter to add new link)
+                </label>
+                <div className="relative">
+                  <textarea
+                    value={localData.links}
+                    onChange={handleLinksChange}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddLink();
+                      }
+                    }}
+                    className="w-full border border-gray-300 rounded-lg p-3 pr-10"
+                    placeholder="https://example.com (Press Enter to add)"
+                    rows={3}
+                  />
+                  <Link2 className="absolute right-3 top-3 text-gray-400" size={20} />
+                </div>
+                {localData.links && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    {localData.links.split('\n').filter(l => l.trim()).length} link(s) added
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upload Files
+            </label>
+            <input
+              type="file"
+              multiple
+              onChange={handleFilesChange}
+              className="w-full border border-gray-300 rounded-lg p-3"
+            />
+            {localData.files.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {Array.from(localData.files).map((file, idx) => (
+                  <p key={idx} className="text-sm text-gray-600">
+                    📎 {file.name}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={handleSubmit}
+            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
+          >
+            {isResubmit ? 'Resubmit' : 'Submit'}
+          </button>
+          <button
+            onClick={handleClose}
+            className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const StudentDashboard = () => {
   const [activeTab, setActiveTab] = useState('courses');
@@ -15,11 +172,6 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [submitModal, setSubmitModal] = useState(false);
-  const [submissionData, setSubmissionData] = useState({
-    textContent: '',
-    links: '',
-    files: []
-  });
 
   const getAuthHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -94,15 +246,15 @@ const StudentDashboard = () => {
     }
   };
 
-  const handleSubmitAssignment = async (assignmentId) => {
+  const handleSubmitAssignment = async (assignmentId: string, data: { textContent: string; links: string; files: File[] }) => {
     try {
       const formData = new FormData();
-      formData.append('textContent', submissionData.textContent);
+      formData.append('textContent', data.textContent);
       
-      const linksArray = submissionData.links.split('\n').filter(link => link.trim());
+      const linksArray = data.links.split('\n').filter(link => link.trim());
       linksArray.forEach(link => formData.append('links[]', link.trim()));
       
-      submissionData.files.forEach(file => formData.append('files', file));
+      data.files.forEach(file => formData.append('files', file));
 
       const response = await fetch(`${API_BASE_URL}/assignments/${assignmentId}/submit`, {
         method: 'POST',
@@ -115,22 +267,21 @@ const StudentDashboard = () => {
       if (response.ok) {
         alert('Assignment submitted successfully!');
         setSubmitModal(false);
-        setSubmissionData({ textContent: '', links: '', files: [] });
         fetchMySubmissions();
         fetchAssignments();
       } else {
-        const data = await response.json();
-        alert(data.message || 'Submission failed');
+        const res = await response.json();
+        alert(res.message || 'Submission failed');
       }
     } catch (err) {
       alert('Error submitting assignment');
     }
   };
 
-  const handleResubmit = async (assignmentId) => {
+  const handleResubmit = async (assignmentId: string, data: { textContent: string; links: string; files: File[] }) => {
     try {
       const formData = new FormData();
-      submissionData.files.forEach(file => formData.append('files', file));
+      data.files.forEach(file => formData.append('files', file));
 
       const response = await fetch(`${API_BASE_URL}/assignments/${assignmentId}/resubmit`, {
         method: 'POST',
@@ -143,7 +294,6 @@ const StudentDashboard = () => {
       if (response.ok) {
         alert('Assignment resubmitted successfully!');
         setSubmitModal(false);
-        setSubmissionData({ textContent: '', links: '', files: [] });
         fetchMySubmissions();
       }
     } catch (err) {
@@ -380,116 +530,7 @@ const StudentDashboard = () => {
     );
   };
 
-  const SubmitModal = () => {
-    const isResubmit = mySubmissions.find(s => s.assignmentId._id === selectedAssignment?._id)?.status === 'resubmission_required';
-
-    const handleAddLink = () => {
-      if (submissionData.links && !submissionData.links.endsWith('\n')) {
-        setSubmissionData({...submissionData, links: submissionData.links + '\n'});
-      }
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-          <h2 className="text-2xl font-bold mb-4">
-            {isResubmit ? 'Resubmit' : 'Submit'} Assignment
-          </h2>
-          <h3 className="text-lg text-gray-700 mb-4">{selectedAssignment?.title}</h3>
-
-          <div className="space-y-4">
-            {!isResubmit && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Text Content
-                  </label>
-                  <textarea
-                    value={submissionData.textContent}
-                    onChange={(e) => setSubmissionData({...submissionData, textContent: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg p-3 min-h-[120px]"
-                    placeholder="Enter your submission text..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Links (Press Enter to add new link)
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      value={submissionData.links}
-                      onChange={(e) => setSubmissionData({...submissionData, links: e.target.value})}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddLink();
-                        }
-                      }}
-                      className="w-full border border-gray-300 rounded-lg p-3 pr-10"
-                      placeholder="https://example.com (Press Enter to add)"
-                      rows="3"
-                    />
-                    <Link2 className="absolute right-3 top-3 text-gray-400" size={20} />
-                  </div>
-                  {submissionData.links && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      {submissionData.links.split('\n').filter(l => l.trim()).length} link(s) added
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Files
-              </label>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => setSubmissionData({...submissionData, files: Array.from(e.target.files)})}
-                className="w-full border border-gray-300 rounded-lg p-3"
-              />
-              {submissionData.files.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {Array.from(submissionData.files).map((file, idx) => (
-                    <p key={idx} className="text-sm text-gray-600">
-                      📎 {file.name}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => {
-                if (isResubmit) {
-                  handleResubmit(selectedAssignment._id);
-                } else {
-                  handleSubmitAssignment(selectedAssignment._id);
-                }
-              }}
-              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
-            >
-              {isResubmit ? 'Resubmit' : 'Submit'}
-            </button>
-            <button
-              onClick={() => {
-                setSubmitModal(false);
-                setSubmissionData({ textContent: '', links: '', files: [] });
-              }}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const isResubmit = mySubmissions.find(s => s.assignmentId._id === selectedAssignment?._id)?.status === 'resubmission_required';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -625,7 +666,14 @@ const StudentDashboard = () => {
         )}
       </div>
 
-      {submitModal && <SubmitModal />}
+      <SubmitModal
+        isOpen={submitModal}
+        onClose={() => setSubmitModal(false)}
+        selectedAssignment={selectedAssignment}
+        isResubmit={isResubmit}
+        onSubmit={handleSubmitAssignment}
+        onResubmit={handleResubmit}
+      />
     </div>
   );
 };

@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, Plus, Users, Clock, DollarSign, Calendar, Zap, Sparkles, BookOpen, Target, GraduationCap, Upload, FileText, MapPin, Award } from "lucide-react";
+import { Edit, Trash2, Plus, Users, Clock, DollarSign, Calendar, Zap, Sparkles, BookOpen, Target, GraduationCap, Upload, FileText, MapPin, Award, IndianRupee } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -546,23 +546,7 @@ const LiveCourseManagement: React.FC = () => {
     }
   };
 
-  if (fetchingData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50/50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block p-4 bg-white rounded-2xl shadow-lg mb-4">
-            <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-            </svg>
-          </div>
-          <p className="text-gray-600 font-medium">Loading live courses...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const CourseFormFields = () => (
+  const courseFormFieldsJSX = (
     <div className="space-y-5 max-h-[65vh] overflow-y-auto p-1">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
@@ -616,7 +600,7 @@ const LiveCourseManagement: React.FC = () => {
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold text-gray-700">Price</Label>
           <div className="relative">
-            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="number"
               value={formData.price}
@@ -824,6 +808,25 @@ const LiveCourseManagement: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50/50 to-gray-100 p-4 relative overflow-hidden">
+      {/* Loading Overlay - doesn't unmount content */}
+      {fetchingData && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="inline-block p-4 bg-card rounded-2xl shadow-lg mb-4">
+              <svg className="animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            </div>
+            <p className="text-muted-foreground font-medium">Loading live courses...</p>
+          </div>
+        </div>
+      )}
+
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-0 left-0 w-64 h-64 bg-gradient-to-br from-blue-200 to-transparent rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-indigo-200 to-transparent rounded-full blur-3xl"></div>
@@ -892,7 +895,7 @@ const LiveCourseManagement: React.FC = () => {
                 </div>
               </DialogHeader>
 
-              <CourseFormFields />
+              {courseFormFieldsJSX}
 
               <Button
                 onClick={handleAddLiveCourse}
@@ -1181,7 +1184,7 @@ const LiveCourseManagement: React.FC = () => {
               </div>
             </DialogHeader>
 
-            <CourseFormFields />
+            {courseFormFieldsJSX}
 
             <Button
               onClick={handleEditLiveCourse}

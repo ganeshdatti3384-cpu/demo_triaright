@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import {
   Card,
@@ -78,7 +77,194 @@ interface Coupon {
   createdBy?: string;
 }
 
-/* ================= COMPONENT ================= */
+interface FormData {
+  code: string;
+  applicableCourse: string;
+  discountType: "flat" | "percentage";
+  discountAmount: number;
+  maxDiscount: number;
+  isActive: boolean;
+  usageLimit: number;
+  expiresAt: string;
+  description: string;
+}
+
+/* ================= FORM FIELDS COMPONENT (Outside Parent) ================= */
+
+interface CouponFormFieldsProps {
+  formData: FormData;
+  setFormData: React.Dispatch<React.SetStateAction<FormData>>;
+  liveCourses: LiveCourse[];
+}
+
+const CouponFormFields: React.FC<CouponFormFieldsProps> = ({ formData, setFormData, liveCourses }) => (
+  <div className="space-y-5 max-h-[65vh] overflow-y-auto p-1">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-2.5">
+        <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <Tag className="h-3.5 w-3.5 text-gray-600" />
+          Coupon Code <span className="text-red-500">*</span>
+        </Label>
+        <div className="relative">
+          <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="E.g., LIVE50"
+            value={formData.code}
+            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+            className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        <Label className="text-sm font-semibold text-gray-700">
+          Applicable Course (Optional)
+        </Label>
+        <Select 
+          value={formData.applicableCourse} 
+          onValueChange={(value) => setFormData({ ...formData, applicableCourse: value === "ALL" ? "" : value })}
+        >
+          <SelectTrigger className="border-2 border-gray-200 focus:border-blue-500 rounded-xl bg-white/80 shadow-sm h-10">
+            <SelectValue placeholder="Select courses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Courses</SelectItem>
+            {liveCourses.map((course) => (
+              <SelectItem key={course._id} value={course._id}>
+                {course.courseName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-2.5">
+        <Label className="text-sm font-semibold text-gray-700">
+          Discount Type <span className="text-red-500">*</span>
+        </Label>
+        <Select 
+          value={formData.discountType} 
+          onValueChange={(value: "flat" | "percentage") => setFormData({ ...formData, discountType: value })}
+        >
+          <SelectTrigger className="border-2 border-gray-200 focus:border-blue-500 rounded-xl bg-white/80 shadow-sm h-10">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="flat">Flat Amount (₹)</SelectItem>
+            <SelectItem value="percentage">Percentage (%)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2.5">
+        <Label className="text-sm font-semibold text-gray-700">
+          Discount Amount <span className="text-red-500">*</span>
+        </Label>
+        <div className="relative">
+          {formData.discountType === "percentage" ? (
+            <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          ) : (
+            <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          )}
+          <Input
+            type="number"
+            value={formData.discountAmount}
+            onChange={(e) => setFormData({ ...formData, discountAmount: parseFloat(e.target.value) || 0 })}
+            className={`pl-10 border-2 ${
+              formData.discountType === "percentage" && formData.discountAmount > 100
+                ? "border-red-300 focus:border-red-500 focus:ring-red-300"
+                : "border-gray-200 focus:border-blue-500 focus:ring-blue-300"
+            } rounded-xl bg-white/80 shadow-sm h-10`}
+          />
+        </div>
+        {formData.discountType === "percentage" && formData.discountAmount > 100 && (
+          <p className="text-xs text-red-600 font-medium mt-1">Percentage cannot exceed 100%</p>
+        )}
+      </div>
+    </div>
+
+    {formData.discountType === "percentage" && (
+      <div className="space-y-2.5">
+        <Label className="text-sm font-semibold text-gray-700">
+          Maximum Discount Cap (Optional)
+        </Label>
+        <div className="relative">
+          <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="number"
+            placeholder="0 = no limit"
+            value={formData.maxDiscount}
+            onChange={(e) => setFormData({ ...formData, maxDiscount: parseFloat(e.target.value) || 0 })}
+            className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
+          />
+        </div>
+      </div>
+    )}
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="space-y-2.5">
+        <Label className="text-sm font-semibold text-gray-700">
+          Usage Limit
+        </Label>
+        <div className="relative">
+          <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="number"
+            placeholder="0 = unlimited"
+            value={formData.usageLimit}
+            onChange={(e) => setFormData({ ...formData, usageLimit: parseInt(e.target.value) || 0 })}
+            className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        <Label className="text-sm font-semibold text-gray-700">
+          Expiration Date
+        </Label>
+        <div className="relative">
+          <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="date"
+            value={formData.expiresAt}
+            onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+            className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="flex items-center space-x-3 p-3.5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-xl border-2 border-gray-100">
+      <input
+        id="isActive"
+        type="checkbox"
+        checked={formData.isActive}
+        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+        className="h-4 w-4 text-blue-600 rounded-lg focus:ring-2 focus:ring-blue-500 border-2 border-gray-300"
+      />
+      <Label htmlFor="isActive" className="text-sm font-semibold text-gray-900 cursor-pointer">
+        Activate Coupon Immediately
+      </Label>
+    </div>
+
+    <div className="space-y-2.5">
+      <Label className="text-sm font-semibold text-gray-700">
+        Description
+      </Label>
+      <Textarea
+        rows={3}
+        value={formData.description}
+        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl resize-none bg-white/80 shadow-sm p-3"
+        placeholder="Describe the purpose of this coupon..."
+      />
+    </div>
+  </div>
+);
+
+/* ================= MAIN COMPONENT ================= */
 
 const LiveCourseCouponsManagement: React.FC = () => {
   const { toast } = useToast();
@@ -95,10 +281,10 @@ const LiveCourseCouponsManagement: React.FC = () => {
 
   /* ================= FORM STATE ================= */
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     code: "",
     applicableCourse: "",
-    discountType: "flat" as "flat" | "percentage",
+    discountType: "flat",
     discountAmount: 0,
     maxDiscount: 0,
     isActive: true,
@@ -398,197 +584,25 @@ const LiveCourseCouponsManagement: React.FC = () => {
     return coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit;
   };
 
-  /* ================= FORM FIELDS COMPONENT ================= */
-
-  const CouponFormFields = () => (
-    <div className="space-y-5 max-h-[65vh] overflow-y-auto p-1">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <Tag className="h-3.5 w-3.5 text-gray-600" />
-            Coupon Code <span className="text-red-500">*</span>
-          </Label>
-          <div className="relative">
-            <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="E.g., LIVE50"
-              value={formData.code}
-              onChange={(e) => setFormData((prev) => ({ ...prev, code: e.target.value }))}
-              className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold text-gray-700">
-            Applicable Course (Optional)
-          </Label>
-          <Select 
-            value={formData.applicableCourse} 
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, applicableCourse: value === "ALL" ? "" : value }))}
-          >
-            <SelectTrigger className="border-2 border-gray-200 focus:border-blue-500 rounded-xl bg-white/80 shadow-sm h-10">
-              <SelectValue placeholder="Select courses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Courses</SelectItem>
-              {liveCourses.map((course) => (
-                <SelectItem key={course._id} value={course._id}>
-                  {course.courseName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold text-gray-700">
-            Discount Type <span className="text-red-500">*</span>
-          </Label>
-          <Select 
-            value={formData.discountType} 
-            onValueChange={(value: "flat" | "percentage") => setFormData((prev) => ({ ...prev, discountType: value }))}
-          >
-            <SelectTrigger className="border-2 border-gray-200 focus:border-blue-500 rounded-xl bg-white/80 shadow-sm h-10">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="flat">Flat Amount (₹)</SelectItem>
-              <SelectItem value="percentage">Percentage (%)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold text-gray-700">
-            Discount Amount <span className="text-red-500">*</span>
-          </Label>
-          <div className="relative">
-            {formData.discountType === "percentage" ? (
-              <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            ) : (
-              <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            )}
-            <Input
-              type="number"
-              value={formData.discountAmount}
-              onChange={(e) => setFormData((prev) => ({ ...prev, discountAmount: parseFloat(e.target.value) || 0 }))}
-              className={`pl-10 border-2 ${
-                formData.discountType === "percentage" && formData.discountAmount > 100
-                  ? "border-red-300 focus:border-red-500 focus:ring-red-300"
-                  : "border-gray-200 focus:border-blue-500 focus:ring-blue-300"
-              } rounded-xl bg-white/80 shadow-sm h-10`}
-            />
-          </div>
-          {formData.discountType === "percentage" && formData.discountAmount > 100 && (
-            <p className="text-xs text-red-600 font-medium mt-1">Percentage cannot exceed 100%</p>
-          )}
-        </div>
-      </div>
-
-      {formData.discountType === "percentage" && (
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold text-gray-700">
-            Maximum Discount Cap (Optional)
-          </Label>
-          <div className="relative">
-            <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="number"
-              placeholder="0 = no limit"
-              value={formData.maxDiscount}
-              onChange={(e) => setFormData((prev) => ({ ...prev, maxDiscount: parseFloat(e.target.value) || 0 }))}
-              className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold text-gray-700">
-            Usage Limit
-          </Label>
-          <div className="relative">
-            <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="number"
-              placeholder="0 = unlimited"
-              value={formData.usageLimit}
-              onChange={(e) => setFormData((prev) => ({ ...prev, usageLimit: parseInt(e.target.value) || 0 }))}
-              className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2.5">
-          <Label className="text-sm font-semibold text-gray-700">
-            Expiration Date
-          </Label>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="date"
-              value={formData.expiresAt}
-              onChange={(e) => setFormData((prev) => ({ ...prev, expiresAt: e.target.value }))}
-              className="pl-10 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl bg-white/80 shadow-sm h-10"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center space-x-3 p-3.5 bg-gradient-to-r from-gray-50 to-gray-50 rounded-xl border-2 border-gray-100">
-        <input
-          id="isActive"
-          type="checkbox"
-          checked={formData.isActive}
-          onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))}
-          className="h-4 w-4 text-blue-600 rounded-lg focus:ring-2 focus:ring-blue-500 border-2 border-gray-300"
-        />
-        <Label htmlFor="isActive" className="text-sm font-semibold text-gray-900 cursor-pointer">
-          Activate Coupon Immediately
-        </Label>
-      </div>
-
-      <div className="space-y-2.5">
-        <Label className="text-sm font-semibold text-gray-700">
-          Description
-        </Label>
-        <Textarea
-          rows={3}
-          value={formData.description}
-          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-          className="border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 rounded-xl resize-none bg-white/80 shadow-sm p-3"
-          placeholder="Describe the purpose of this coupon..."
-        />
-      </div>
-    </div>
-  );
-
-  /* ================= LOADING STATE ================= */
-
-  if (fetchingData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50/50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block p-4 bg-white rounded-2xl shadow-lg mb-4">
-            <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-            </svg>
-          </div>
-          <p className="text-gray-600 font-medium">Loading coupons...</p>
-        </div>
-      </div>
-    );
-  }
-
   /* ================= UI ================= */
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50/50 to-gray-100 p-4 relative overflow-hidden">
+      {/* Loading Overlay - shown on top, doesn't unmount content */}
+      {fetchingData && (
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="inline-block p-4 bg-white rounded-2xl shadow-lg mb-4">
+              <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+              </svg>
+            </div>
+            <p className="text-gray-600 font-medium">Loading coupons...</p>
+          </div>
+        </div>
+      )}
+
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-0 left-0 w-64 h-64 bg-gradient-to-br from-blue-200 to-transparent rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-indigo-200 to-transparent rounded-full blur-3xl"></div>
@@ -657,7 +671,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
                 </div>
               </DialogHeader>
 
-              <CouponFormFields />
+              <CouponFormFields formData={formData} setFormData={setFormData} liveCourses={liveCourses} />
 
               <Button
                 onClick={handleCreateCoupon}
@@ -684,7 +698,8 @@ const LiveCourseCouponsManagement: React.FC = () => {
           </Dialog>
         </div>
 
-        {/* Stats Cards */}
+       
+       {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card className="group bg-gradient-to-br from-white to-gray-50/80 backdrop-blur-sm border-2 border-white/50 shadow-lg hover:shadow-xl hover:border-gray-200/70 transition-all duration-300 hover:scale-[1.02]">
             <CardContent className="p-4">
@@ -975,7 +990,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
           </Card>
         )}
 
-        {/* Edit Dialog */}
+        {/* Edit Dialog - FIXED: Now passing all required props */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-xl bg-gradient-to-b from-white to-gray-50/50 backdrop-blur-sm border border-white/50 shadow-2xl shadow-blue-200/30 rounded-2xl">
             <DialogHeader className="pb-4 border-b border-gray-100/50">
@@ -994,7 +1009,7 @@ const LiveCourseCouponsManagement: React.FC = () => {
               </div>
             </DialogHeader>
 
-            <CouponFormFields />
+            <CouponFormFields formData={formData} setFormData={setFormData} liveCourses={liveCourses} />
 
             <Button
               onClick={handleUpdateCoupon}
@@ -1072,464 +1087,3 @@ const LiveCourseCouponsManagement: React.FC = () => {
 };
 
 export default LiveCourseCouponsManagement;
-
-// import React, { useEffect, useState } from "react";
-// import {
-//   Card,
-//   CardContent,
-//   CardHeader,
-//   CardTitle,
-// } from "@/components/ui/card";
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import { Label } from "@/components/ui/label";
-// import { Textarea } from "@/components/ui/textarea";
-// import {
-//   Dialog,
-//   DialogContent,
-//   DialogHeader,
-//   DialogTitle,
-// } from "@/components/ui/dialog";
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue,
-// } from "@/components/ui/select";
-// import { useToast } from "@/hooks/use-toast";
-
-// /* ================= CONFIG ================= */
-
-// const API_BASE_URL = "http://localhost:5007";
-// const getAuthToken = () => localStorage.getItem("token");
-
-// /* ================= TYPES ================= */
-
-// interface LiveCourse {
-//   _id: string;
-//   courseName: string;
-// }
-
-// interface Coupon {
-//   _id: string;
-//   code: string;
-//   applicableCourse: LiveCourse | null;
-//   discountType: "flat" | "percentage";
-//   discountAmount: number;
-//   maxDiscount: number | null;
-//   isActive: boolean;
-//   usageLimit: number | null;
-//   usedCount: number;
-//   expiresAt: string | null;
-//   description: string;
-// }
-
-// /* ================= COMPONENT ================= */
-
-// const LiveCourseCouponsManagement: React.FC = () => {
-//   const { toast } = useToast();
-
-//   const [liveCourses, setLiveCourses] = useState<LiveCourse[]>([]);
-//   const [coupons, setCoupons] = useState<Coupon[]>([]);
-//   const [fetchingData, setFetchingData] = useState(false);
-//   const [loading, setLoading] = useState(false);
-
-//   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-//   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-//   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
-
-//   /* ================= FORM STATE ================= */
-
-//   const [formData, setFormData] = useState({
-//     code: "",
-//     applicableCourse: "",
-//     discountType: "flat" as "flat" | "percentage",
-//     discountAmount: 0,
-//     maxDiscount: 0,
-//     isActive: true,
-//     usageLimit: 0,
-//     expiresAt: "",
-//     description: "",
-//   });
-
-//   /* ================= FETCH LIVE COURSES ================= */
-
-//   const fetchLiveCourses = async () => {
-//     const res = await fetch(`${API_BASE_URL}/api/livecourses/live-courses`);
-//     const data = await res.json();
-//     setLiveCourses(data.courses || []);
-//   };
-
-//   /* ================= FETCH COUPONS ================= */
-
-//   const fetchCoupons = async () => {
-//     try {
-//       setFetchingData(true);
-//       const token = getAuthToken();
-
-//       const res = await fetch(
-//         `${API_BASE_URL}/api/livecourses/admin/coupons`,
-//         {
-//           headers: { Authorization: `Bearer ${token}` },
-//         }
-//       );
-
-//       const data = await res.json();
-//       setCoupons(data.coupons || []);
-//     } catch {
-//       toast({
-//         title: "Error",
-//         description: "Failed to fetch coupons",
-//         variant: "destructive",
-//       });
-//     } finally {
-//       setFetchingData(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchLiveCourses();
-//     fetchCoupons();
-//   }, []);
-
-//   /* ================= RESET FORM ================= */
-
-//   const resetForm = () => {
-//     setFormData({
-//       code: "",
-//       applicableCourse: "",
-//       discountType: "flat",
-//       discountAmount: 0,
-//       maxDiscount: 0,
-//       isActive: true,
-//       usageLimit: 0,
-//       expiresAt: "",
-//       description: "",
-//     });
-//   };
-
-//   /* ================= CREATE COUPON ================= */
-
-//   const handleCreateCoupon = async () => {
-//     try {
-//       setLoading(true);
-//       const token = getAuthToken();
-
-//       const payload = {
-//         code: formData.code.toUpperCase().trim(),
-//         applicableCourse: formData.applicableCourse || null,
-//         discountType: formData.discountType,
-//         discountAmount: formData.discountAmount,
-//         maxDiscount:
-//           formData.discountType === "percentage"
-//             ? formData.maxDiscount || null
-//             : null,
-//         isActive: formData.isActive,
-//         usageLimit: formData.usageLimit || null,
-//         expiresAt: formData.expiresAt
-//           ? new Date(formData.expiresAt)
-//           : null,
-//         description: formData.description,
-//       };
-
-//       await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons`, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `Bearer ${token}`,
-//         },
-//         body: JSON.stringify(payload),
-//       });
-
-//       toast({ title: "Success", description: "Coupon created" });
-
-//       setIsAddDialogOpen(false);
-//       resetForm();
-//       fetchCoupons();
-//     } catch {
-//       toast({
-//         title: "Error",
-//         description: "Coupon creation failed",
-//         variant: "destructive",
-//       });
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   /* ================= OPEN EDIT ================= */
-
-//   const openEditDialog = (coupon: Coupon) => {
-//     setEditingCoupon(coupon);
-
-//     setFormData({
-//       code: coupon.code,
-//       applicableCourse: coupon.applicableCourse?._id || "",
-//       discountType: coupon.discountType,
-//       discountAmount: coupon.discountAmount,
-//       maxDiscount: coupon.maxDiscount || 0,
-//       isActive: coupon.isActive,
-//       usageLimit: coupon.usageLimit || 0,
-//       expiresAt: coupon.expiresAt
-//         ? coupon.expiresAt.split("T")[0]
-//         : "",
-//       description: coupon.description || "",
-//     });
-
-//     setIsEditDialogOpen(true);
-//   };
-
-//   /* ================= UPDATE COUPON ================= */
-
-//   const handleUpdateCoupon = async () => {
-//     if (!editingCoupon) return;
-
-//     try {
-//       setLoading(true);
-//       const token = getAuthToken();
-
-//       const payload = {
-//         code: formData.code.toUpperCase().trim(),
-//         applicableCourse: formData.applicableCourse || null,
-//         discountType: formData.discountType,
-//         discountAmount: formData.discountAmount,
-//         maxDiscount:
-//           formData.discountType === "percentage" && formData.maxDiscount > 0
-//             ? formData.maxDiscount
-//             : null,
-//         isActive: formData.isActive,
-//         usageLimit: formData.usageLimit > 0 ? formData.usageLimit : null,
-//         expiresAt: formData.expiresAt
-//           ? new Date(formData.expiresAt).toISOString()
-//           : null,
-//         description: formData.description,
-//       };
-
-//       await fetch(
-//         `${API_BASE_URL}/api/livecourses/admin/coupons/${editingCoupon._id}`,
-//         {
-//           method: "PUT",
-//           headers: {
-//             "Content-Type": "application/json",
-//             Authorization: `Bearer ${token}`,
-//           },
-//           body: JSON.stringify(payload),
-//         }
-//       );
-
-//       toast({ title: "Success", description: "Coupon updated" });
-
-//       setIsEditDialogOpen(false);
-//       setEditingCoupon(null);
-//       resetForm();
-//       fetchCoupons();
-//     } catch {
-//       toast({
-//         title: "Error",
-//         description: "Failed to update coupon",
-//         variant: "destructive",
-//       });
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   /* ================= DELETE ================= */
-
-//   const handleDeleteCoupon = async (id: string) => {
-//     const token = getAuthToken();
-//     await fetch(`${API_BASE_URL}/api/livecourses/admin/coupons/${id}`, {
-//       method: "DELETE",
-//       headers: { Authorization: `Bearer ${token}` },
-//     });
-
-//     toast({ title: "Deleted", description: "Coupon deleted" });
-//     fetchCoupons();
-//   };
-
-//   /* ================= UI ================= */
-
-//   return (
-//     <Card>
-//       <CardHeader className="flex flex-row justify-between">
-//         <CardTitle>Live Course Coupons</CardTitle>
-//         <Button onClick={() => setIsAddDialogOpen(true)}>
-//           + Add Coupon
-//         </Button>
-//       </CardHeader>
-
-//       <CardContent>
-//         {/* ADD & EDIT DIALOGS SHARE SAME FORM */}
-//         {[isAddDialogOpen, isEditDialogOpen].map((open, idx) => (
-//           <Dialog
-//             key={idx}
-//             open={open}
-//             onOpenChange={
-//               idx === 0 ? setIsAddDialogOpen : setIsEditDialogOpen
-//             }
-//           >
-//             <DialogContent className="max-w-xl">
-//               <DialogHeader>
-//                 <DialogTitle>
-//                   {idx === 0 ? "Create Coupon" : "Edit Coupon"}
-//                 </DialogTitle>
-//               </DialogHeader>
-
-//               <div className="space-y-3">
-//                 <Input
-//                   placeholder="Coupon Code"
-//                   value={formData.code}
-//                   onChange={(e) =>
-//                     setFormData({ ...formData, code: e.target.value })
-//                   }
-//                 />
-
-//                 <Select
-//                   value={formData.applicableCourse}
-//                   onValueChange={(v) =>
-//                     setFormData({
-//                       ...formData,
-//                       applicableCourse: v === "ALL" ? "" : v,
-//                     })
-//                   }
-//                 >
-//                   <SelectTrigger>
-//                     <SelectValue placeholder="Select Course" />
-//                   </SelectTrigger>
-//                   <SelectContent>
-//                     <SelectItem value="ALL">All Courses</SelectItem>
-//                     {liveCourses.map((c) => (
-//                       <SelectItem key={c._id} value={c._id}>
-//                         {c.courseName}
-//                       </SelectItem>
-//                     ))}
-//                   </SelectContent>
-//                 </Select>
-
-//                 <Select
-//                   value={formData.discountType}
-//                   onValueChange={(v) =>
-//                     setFormData({
-//                       ...formData,
-//                       discountType: v as any,
-//                     })
-//                   }
-//                 >
-//                   <SelectTrigger>
-//                     <SelectValue />
-//                   </SelectTrigger>
-//                   <SelectContent>
-//                     <SelectItem value="flat">Flat</SelectItem>
-//                     <SelectItem value="percentage">Percentage</SelectItem>
-//                   </SelectContent>
-//                 </Select>
-
-//                 <Input
-//                   type="number"
-//                   placeholder="Discount Amount"
-//                   value={formData.discountAmount}
-//                   onChange={(e) =>
-//                     setFormData({
-//                       ...formData,
-//                       discountAmount: Number(e.target.value),
-//                     })
-//                   }
-//                 />
-
-//                 {formData.discountType === "percentage" && (
-//                   <Input
-//                     type="number"
-//                     placeholder="Max Discount"
-//                     value={formData.maxDiscount}
-//                     onChange={(e) =>
-//                       setFormData({
-//                         ...formData,
-//                         maxDiscount: Number(e.target.value),
-//                       })
-//                     }
-//                   />
-//                 )}
-
-//                 <Input
-//                   type="date"
-//                   value={formData.expiresAt}
-//                   onChange={(e) =>
-//                     setFormData({
-//                       ...formData,
-//                       expiresAt: e.target.value,
-//                     })
-//                   }
-//                 />
-
-//                 <Textarea
-//                   placeholder="Description"
-//                   value={formData.description}
-//                   onChange={(e) =>
-//                     setFormData({
-//                       ...formData,
-//                       description: e.target.value,
-//                     })
-//                   }
-//                 />
-
-//                 <Button
-//                   onClick={idx === 0 ? handleCreateCoupon : handleUpdateCoupon}
-//                   disabled={loading}
-//                 >
-//                   {loading
-//                     ? "Saving..."
-//                     : idx === 0
-//                     ? "Create Coupon"
-//                     : "Update Coupon"}
-//                 </Button>
-//               </div>
-//             </DialogContent>
-//           </Dialog>
-//         ))}
-
-//         {/* LIST */}
-//         <div className="mt-4 space-y-2">
-//           {fetchingData ? (
-//             <p>Loading...</p>
-//           ) : (
-//             coupons.map((c) => (
-//               <div
-//                 key={c._id}
-//                 className="border p-3 rounded flex justify-between"
-//               >
-//                 <div>
-//                   <p className="font-semibold">{c.code}</p>
-//                   <p className="text-sm text-gray-500">
-//                     {c.applicableCourse
-//                       ? c.applicableCourse.courseName
-//                       : "All Courses"}
-//                   </p>
-//                 </div>
-
-//                 <div className="flex gap-2">
-//                   <Button
-//                     size="icon"
-//                     variant="outline"
-//                     onClick={() => openEditDialog(c)}
-//                   >
-//                     ✏️
-//                   </Button>
-//                   <Button
-//                     size="icon"
-//                     variant="destructive"
-//                     onClick={() => handleDeleteCoupon(c._id)}
-//                   >
-//                     🗑️
-//                   </Button>
-//                 </div>
-//               </div>
-//             ))
-//           )}
-//         </div>
-//       </CardContent>
-//     </Card>
-//   );
-// };
-
-// export default LiveCourseCouponsManagement;

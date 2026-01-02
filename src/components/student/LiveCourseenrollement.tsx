@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, FileText, Upload, CheckCircle, XCircle, AlertCircle, Video, Download, Trash2, RefreshCw, Award, Link2, CreditCard, Tag, X, Check, Users, BookOpen } from 'lucide-react';
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 const API_BASE_URL = 'http://localhost:5007/api/livecourses';
 
 const LiveCourseEnrollment = () => {
@@ -29,11 +35,6 @@ const LiveCourseEnrollment = () => {
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [mySubmissions, setMySubmissions] = useState([]);
   const [submitModal, setSubmitModal] = useState(false);
-  const [submissionData, setSubmissionData] = useState({
-    textContent: '',
-    links: '',
-    files: []
-  });
 
   // Detail View States
   const [sessionDetail, setSessionDetail] = useState(null);
@@ -111,7 +112,7 @@ const LiveCourseEnrollment = () => {
     }
   };
 
-  const fetchSessions = async (batchId) => {
+  const fetchSessions = async (batchId?: string) => {
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/student/live-sessions`, {
@@ -148,7 +149,7 @@ const LiveCourseEnrollment = () => {
     }
   };
 
-  const fetchAssignments = async (batchId, courseId) => {
+  const fetchAssignments = async (batchId?: string, courseId?: string) => {
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/assignments/student/batch-assignments`, {
@@ -254,15 +255,15 @@ const LiveCourseEnrollment = () => {
     }
   };
 
-  const handleSubmitAssignment = async (assignmentId) => {
+  const handleSubmitAssignment = async (assignmentId: string, data: { textContent: string; links: string; files: File[] }) => {
     try {
       const formData = new FormData();
-      formData.append('textContent', submissionData.textContent);
+      formData.append('textContent', data.textContent);
       
-      const linksArray = submissionData.links.split('\n').filter(link => link.trim());
+      const linksArray = data.links.split('\n').filter(link => link.trim());
       linksArray.forEach(link => formData.append('links[]', link.trim()));
       
-      submissionData.files.forEach(file => formData.append('files', file));
+      data.files.forEach(file => formData.append('files', file));
 
       const response = await fetch(`${API_BASE_URL}/assignments/${assignmentId}/submit`, {
         method: 'POST',
@@ -275,22 +276,21 @@ const LiveCourseEnrollment = () => {
       if (response.ok) {
         alert('Assignment submitted successfully!');
         setSubmitModal(false);
-        setSubmissionData({ textContent: '', links: '', files: [] });
         fetchMySubmissions();
         fetchAssignments();
       } else {
-        const data = await response.json();
-        alert(data.message || 'Submission failed');
+        const res = await response.json();
+        alert(res.message || 'Submission failed');
       }
     } catch (err) {
       alert('Error submitting assignment');
     }
   };
 
-  const handleResubmit = async (assignmentId) => {
+  const handleResubmit = async (assignmentId: string, data: { textContent: string; links: string; files: File[] }) => {
     try {
       const formData = new FormData();
-      submissionData.files.forEach(file => formData.append('files', file));
+      data.files.forEach(file => formData.append('files', file));
 
       const response = await fetch(`${API_BASE_URL}/assignments/${assignmentId}/resubmit`, {
         method: 'POST',
@@ -303,7 +303,6 @@ const LiveCourseEnrollment = () => {
       if (response.ok) {
         alert('Assignment resubmitted successfully!');
         setSubmitModal(false);
-        setSubmissionData({ textContent: '', links: '', files: [] });
         fetchMySubmissions();
       }
     } catch (err) {
@@ -810,11 +809,41 @@ const LiveCourseEnrollment = () => {
     );
   };
 
-  
+
 
   
   const SubmitModal = () => {
+    const [localData, setLocalData] = useState({
+      textContent: '',
+      links: '',
+      files: [] as File[]
+    });
+    
     const isResubmit = mySubmissions.find(s => s.assignmentId._id === selectedAssignment?._id)?.status === 'resubmission_required';
+    
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setLocalData(prev => ({...prev, textContent: e.target.value}));
+    };
+    
+    const handleLinksChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setLocalData(prev => ({...prev, links: e.target.value}));
+    };
+    
+    const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setLocalData(prev => ({...prev, files: Array.from(e.target.files || [])}));
+    };
+    
+    const handleSubmit = () => {
+      if (isResubmit) {
+        handleResubmit(selectedAssignment._id, localData);
+      } else {
+        handleSubmitAssignment(selectedAssignment._id, localData);
+      }
+    };
+    
+    const handleClose = () => {
+      setSubmitModal(false);
+    };
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -832,8 +861,8 @@ const LiveCourseEnrollment = () => {
                     Text Content
                   </label>
                   <textarea
-                    value={submissionData.textContent}
-                    onChange={(e) => setSubmissionData({...submissionData, textContent: e.target.value})}
+                    value={localData.textContent}
+                    onChange={handleTextChange}
                     className="w-full border border-gray-300 rounded-lg p-3 min-h-[120px]"
                     placeholder="Enter your submission text..."
                   />
@@ -844,11 +873,11 @@ const LiveCourseEnrollment = () => {
                     Links (one per line)
                   </label>
                   <textarea
-                    value={submissionData.links}
-                    onChange={(e) => setSubmissionData({...submissionData, links: e.target.value})}
+                    value={localData.links}
+                    onChange={handleLinksChange}
                     className="w-full border border-gray-300 rounded-lg p-3"
                     placeholder="https://example.com"
-                    rows="3"
+                    rows={3}
                   />
                 </div>
               </>
@@ -861,12 +890,12 @@ const LiveCourseEnrollment = () => {
               <input
                 type="file"
                 multiple
-                onChange={(e) => setSubmissionData({...submissionData, files: Array.from(e.target.files)})}
+                onChange={handleFilesChange}
                 className="w-full border border-gray-300 rounded-lg p-3"
               />
-              {submissionData.files.length > 0 && (
+              {localData.files.length > 0 && (
                 <div className="mt-2 space-y-1">
-                  {Array.from(submissionData.files).map((file, idx) => (
+                  {localData.files.map((file, idx) => (
                     <p key={idx} className="text-sm text-gray-600">
                       📎 {file.name}
                     </p>
@@ -878,23 +907,13 @@ const LiveCourseEnrollment = () => {
 
           <div className="flex gap-3 mt-6">
             <button
-              onClick={() => {
-                if (isResubmit) {
-                  handleResubmit(selectedAssignment._id);
-                } else {
-                  handleSubmitAssignment(selectedAssignment._id);
-                  console.log(selectedAssignment._id);
-                }
-              }}
+              onClick={handleSubmit}
               className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
             >
               {isResubmit ? 'Resubmit' : 'Submit'}
             </button>
             <button
-              onClick={() => {
-                setSubmitModal(false);
-                setSubmissionData({ textContent: '', links: '', files: [] });
-              }}
+              onClick={handleClose}
               className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
             >
               Cancel
