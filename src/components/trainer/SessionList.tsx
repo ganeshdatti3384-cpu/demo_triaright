@@ -29,7 +29,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-const API_BASE = "http://localhost:5007/api/livecourses";
+const API_BASE = "https://triaright.com/api/livecourses";
 
 const SessionList = () => {
   const { toast } = useToast();

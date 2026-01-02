@@ -7,7 +7,7 @@ declare global {
   }
 }
 
-const API_BASE_URL = 'http://localhost:5007/api/livecourses';
+const API_BASE_URL = 'https://triaright.com/api/livecourses';
 
 const LiveCourseEnrollment = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -207,7 +207,7 @@ const LiveCourseEnrollment = () => {
 
   const fetchTrainerInfo = async (trainerUserId) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/users/${trainerUserId}`);
+      const response = await fetch(`https://triaright.com/api/users/${trainerUserId}`);
       const data = await response.json();
       if (data.success) {
         setTrainerInfo(data.data);

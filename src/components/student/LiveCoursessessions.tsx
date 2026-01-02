@@ -1,7 +1,7 @@
 import React, { useState, useEffect, memo, useCallback } from 'react';
 import { Calendar, Clock, FileText, Upload, CheckCircle, XCircle, AlertCircle, Video, Download, Trash2, RefreshCw, Award, Link2 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:5007/api/livecourses';
+const API_BASE_URL = 'https://triaright.com/api/livecourses';
 
 // Memoized Submit Modal to prevent re-renders on parent state changes
 const SubmitModal = memo(({ 
@@ -180,7 +180,7 @@ const StudentDashboard = () => {
   const fetchEnrollments = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5007/api/livecourses/enrollments/my-enrollments`, {
+      const response = await fetch(`${API_BASE_URL}/enrollments/my-enrollments`, {
         headers: getAuthHeaders()
       });
       const data = await response.json();

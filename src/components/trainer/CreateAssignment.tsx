@@ -187,7 +187,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Upload, X, Calendar, BookOpen, Users } from "lucide-react";
 
-const API_BASE_URL = "http://localhost:5007/api/livecourses"; // Replace with your actual API base URL
+const API_BASE_URL = "https://triaright.com/api/livecourses"; // Replace with your actual API base URL
 
 interface Course {
   _id: string;
