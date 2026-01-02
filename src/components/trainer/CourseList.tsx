@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { IndianRupee } from "lucide-react";
+
 import { 
   Edit, 
   Trash2, 
@@ -50,7 +52,7 @@ interface Course {
   topics: any[];
   createdAt: string;
   students: number;
-  rating: number;
+  // rating: number;
   status: "draft" | "published" | "archived";
 }
 
@@ -365,19 +367,18 @@ const CoursesList: React.FC<CoursesListProps> = ({
                       <BookOpen className="h-16 w-16 text-white/80" />
                     </div>
                   )}
-                  <div className="absolute top-3 right-3">
+                  {/* <div className="absolute top-3 right-3">
                     {getStatusBadge(course.status)}
-                  </div>
+                  </div> */}
                   <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center">
                     <Badge className="bg-white/90 backdrop-blur-sm text-gray-800">
                       {course.stream}
                     </Badge>
-                    {course.isPaid && (
-                      <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-                        <DollarSign className="h-3 w-3 mr-1" />
-                        Paid
-                      </Badge>
-                    )}
+                    {/* {course.isPaid && (
+  <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+    <IndianRupee className="h-3 w-3 mr-1" />
+    Paid
+  </Badge>                    )} */}
                   </div>
                 </div>
 
@@ -392,8 +393,7 @@ const CoursesList: React.FC<CoursesListProps> = ({
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium">{course.rating}</span>
+                        <span className="font-medium">  {getStatusBadge(course.status)}</span>
                       </div>
                     </div>
 
