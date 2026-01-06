@@ -47,7 +47,7 @@ export const authApi = {
     return res.data;
   },
  deleteUser: async (userId: string) => {
-    const response = await axios.delete(`/user/${userId}`, {
+    const response = await axios.delete(`${API_BASE_URL}/users/user/${userId}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}` // or however you store token
       }
