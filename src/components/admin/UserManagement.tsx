@@ -216,31 +216,29 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+  if (!confirm('Are you sure you want to delete this user?')) return;
 
-    try {
-      // Remove from local state immediately for better UX
-      setUsers(prevUsers => prevUsers.filter(user => user._id !== userId));
-      
-      toast({
-        title: "Success",
-        description: "User deleted successfully!",
-      });
-      
-      // Here you would typically make an API call to delete from backend
-      // await authApi.deleteUser(userId);
-      
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete user",
-        variant: "destructive",
-      });
-      // Refresh to restore state on error
-      fetchUsers();
-    }
-  };
+  try {
+    // API call to delete user from backend
+    await authApi.deleteUser(userId);
+    
+    // Remove from local state after successful deletion
+    setUsers(prevUsers => prevUsers.filter(user => user._id !== userId));
+    
+    toast({
+      title: "Success",
+      description: "User deleted successfully!",
+    });
+    
+  } catch (error: any) {
+    console.error('Error deleting user:', error);
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Failed to delete user",
+      variant: "destructive",
+    });
+  }
+};
   const userList = users;
   // Fixed filtered users logic
 const filteredUsers = userList.filter(user => {
