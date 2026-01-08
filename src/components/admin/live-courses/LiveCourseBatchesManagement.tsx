@@ -22,13 +22,142 @@ import {
 import { 
   Edit, Trash2, Plus, Users, Calendar,
   GraduationCap, User, BookOpen, Zap, Star, CalendarDays, Sparkles,
-  Search, LayoutGrid, List, Copy, Loader2, RefreshCw
+  Search, LayoutGrid, List, Copy, Loader2, RefreshCw, AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 
 const API_BASE_URL = "https://triaright.com/api/livecourses";
 const getAuthToken = () => localStorage.getItem("token") || "";
+
+/* ================= VALIDATION ================= */
+
+interface BatchFormData {
+  batchName: string;
+  courseId: string;
+  trainerUserId: string;
+  days: string[];
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  startDate: string;
+  endDate: string;
+  maxStudents: number;
+  currentStudents: number;
+  status: string;
+  isActive: boolean;
+}
+
+interface ValidationErrors {
+  batchName?: string;
+  courseId?: string;
+  trainerUserId?: string;
+  days?: string;
+  startTime?: string;
+  endTime?: string;
+  startDate?: string;
+  endDate?: string;
+  maxStudents?: string;
+  currentStudents?: string;
+}
+
+const validateBatchForm = (formData: BatchFormData, isEdit: boolean = false): { success: boolean; errors: ValidationErrors } => {
+  const errors: ValidationErrors = {};
+
+  // Batch name validation
+  const batchName = formData.batchName.trim();
+  if (!batchName) {
+    errors.batchName = "Batch name is required";
+  } else if (batchName.length < 3) {
+    errors.batchName = "Batch name must be at least 3 characters";
+  } else if (batchName.length > 100) {
+    errors.batchName = "Batch name must be less than 100 characters";
+  }
+
+  // Course validation
+  if (!formData.courseId) {
+    errors.courseId = "Course is required";
+  }
+
+  // Trainer validation
+  if (!formData.trainerUserId) {
+    errors.trainerUserId = "Trainer is required";
+  }
+
+  // Days validation
+  if (!formData.days || formData.days.length === 0) {
+    errors.days = "Please select at least one day";
+  }
+
+  // Time validation
+  if (!formData.startTime) {
+    errors.startTime = "Start time is required";
+  }
+
+  if (!formData.endTime) {
+    errors.endTime = "End time is required";
+  }
+
+  // Validate end time is after start time
+  if (formData.startTime && formData.endTime) {
+    const [startHour, startMin] = formData.startTime.split(':').map(Number);
+    const [endHour, endMin] = formData.endTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    
+    if (endMinutes <= startMinutes) {
+      errors.endTime = "End time must be after start time";
+    }
+  }
+
+  // Start date validation
+  if (!formData.startDate) {
+    errors.startDate = "Start date is required";
+  } else if (!isEdit) {
+    const startDate = new Date(formData.startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (startDate < today) {
+      errors.startDate = "Start date cannot be in the past";
+    }
+  }
+
+  // End date validation
+  if (formData.endDate && formData.startDate) {
+    const startDate = new Date(formData.startDate);
+    const endDate = new Date(formData.endDate);
+    if (endDate < startDate) {
+      errors.endDate = "End date must be after start date";
+    }
+  }
+
+  // Max students validation
+  if (formData.maxStudents !== undefined && formData.maxStudents !== null) {
+    if (formData.maxStudents < 0) {
+      errors.maxStudents = "Max students cannot be negative";
+    } else if (!Number.isInteger(formData.maxStudents)) {
+      errors.maxStudents = "Max students must be a whole number";
+    } else if (formData.maxStudents > 10000) {
+      errors.maxStudents = "Max students limit is too high";
+    }
+  }
+
+  // Current students validation (for edit)
+  if (isEdit && formData.currentStudents !== undefined) {
+    if (formData.currentStudents < 0) {
+      errors.currentStudents = "Current students cannot be negative";
+    } else if (!Number.isInteger(formData.currentStudents)) {
+      errors.currentStudents = "Current students must be a whole number";
+    } else if (formData.maxStudents > 0 && formData.currentStudents > formData.maxStudents) {
+      errors.currentStudents = "Current students cannot exceed max students";
+    }
+  }
+
+  return {
+    success: Object.keys(errors).length === 0,
+    errors
+  };
+};
 
 export default function LiveCourseBatchesManagement() {
   const [batches, setBatches] = useState([]);
@@ -44,8 +173,10 @@ export default function LiveCourseBatchesManagement() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<BatchFormData>({
     batchName: "", courseId: "", trainerUserId: "", days: [], startTime: "",
     endTime: "", timezone: "IST (UTC+5:30)", startDate: "", endDate: "",
     maxStudents: 0, currentStudents: 0,
@@ -53,6 +184,16 @@ export default function LiveCourseBatchesManagement() {
   });
 
   const { toast } = useToast();
+
+  const handleFieldBlur = (fieldName: string) => {
+    setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
+    const { errors } = validateBatchForm(formData, !!editingBatch);
+    setValidationErrors(errors);
+  };
+
+  const getFieldError = (fieldName: keyof ValidationErrors) => {
+    return touchedFields[fieldName] ? validationErrors[fieldName] : undefined;
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -163,11 +304,23 @@ export default function LiveCourseBatchesManagement() {
       status: "published", isActive: true,
     });
     setTrainers([]);
+    setValidationErrors({});
+    setTouchedFields({});
   };
 
   const handleAddBatch = async () => {
-    if (!formData.batchName || !formData.courseId || !formData.trainerUserId || !formData.startDate) {
-      toast({ title: "Error", description: "Required fields missing", variant: "destructive" });
+    // Validate all fields
+    const { success, errors } = validateBatchForm(formData, false);
+    setValidationErrors(errors);
+    
+    // Mark all fields as touched to show errors
+    const allTouched: Record<string, boolean> = {};
+    Object.keys(errors).forEach(key => { allTouched[key] = true; });
+    setTouchedFields(prev => ({ ...prev, ...allTouched }));
+
+    if (!success) {
+      const firstError = Object.values(errors)[0];
+      toast({ title: "Validation Error", description: firstError || "Please fix the errors", variant: "destructive" });
       return;
     }
 
@@ -184,7 +337,7 @@ export default function LiveCourseBatchesManagement() {
       }));
       
       const payload = {
-        batchName: formData.batchName,
+        batchName: formData.batchName.trim(),
         courseId: formData.courseId,
         trainerUserId: formData.trainerUserId,
         schedule: schedule,
@@ -211,7 +364,7 @@ export default function LiveCourseBatchesManagement() {
       setIsAddDialogOpen(false);
       resetForm();
       toast({ title: "Success", description: "Batch created successfully" });
-    } catch (error) {
+    } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
@@ -246,8 +399,20 @@ export default function LiveCourseBatchesManagement() {
   };
 
   const handleEditBatch = async () => {
-    if (!editingBatch || !formData.batchName || !formData.courseId || !formData.trainerUserId) {
-      toast({ title: "Error", description: "Required fields missing", variant: "destructive" });
+    if (!editingBatch) return;
+
+    // Validate all fields
+    const { success, errors } = validateBatchForm(formData, true);
+    setValidationErrors(errors);
+    
+    // Mark all fields as touched to show errors
+    const allTouched: Record<string, boolean> = {};
+    Object.keys(errors).forEach(key => { allTouched[key] = true; });
+    setTouchedFields(prev => ({ ...prev, ...allTouched }));
+
+    if (!success) {
+      const firstError = Object.values(errors)[0];
+      toast({ title: "Validation Error", description: firstError || "Please fix the errors", variant: "destructive" });
       return;
     }
 
@@ -264,7 +429,7 @@ export default function LiveCourseBatchesManagement() {
       }));
       
       const payload = {
-        batchName: formData.batchName,
+        batchName: formData.batchName.trim(),
         courseId: formData.courseId,
         trainerUserId: formData.trainerUserId,
         schedule: schedule,
@@ -292,7 +457,7 @@ export default function LiveCourseBatchesManagement() {
       setEditingBatch(null);
       resetForm();
       toast({ title: "Success", description: "Batch updated successfully" });
-    } catch (error) {
+    } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
@@ -347,31 +512,46 @@ export default function LiveCourseBatchesManagement() {
           placeholder="e.g., Full Stack Development - Cohort 5"
           value={formData.batchName}
           onChange={(e) => setFormData(prev => ({ ...prev, batchName: e.target.value }))}
-          className="border-2 rounded-xl h-10"
+          onBlur={() => handleFieldBlur('batchName')}
+          className={`border-2 rounded-xl h-10 ${getFieldError('batchName') ? 'border-red-500' : ''}`}
         />
+        {getFieldError('batchName') && (
+          <p className="text-xs text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {getFieldError('batchName')}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold">Course <span className="text-red-500">*</span></Label>
           <select
-            className="w-full border-2 rounded-xl px-3 py-2 text-sm h-10"
+            className={`w-full border-2 rounded-xl px-3 py-2 text-sm h-10 ${getFieldError('courseId') ? 'border-red-500' : ''}`}
             value={formData.courseId}
             onChange={(e) => setFormData(prev => ({ ...prev, courseId: e.target.value }))}
+            onBlur={() => handleFieldBlur('courseId')}
           >
             <option value="">Select Course</option>
-            {courses.map(course => (
+            {courses.map((course: any) => (
               <option key={course._id} value={course._id}>{course.courseName}</option>
             ))}
           </select>
+          {getFieldError('courseId') && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {getFieldError('courseId')}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold">Trainer <span className="text-red-500">*</span></Label>
           <select
-            className="w-full border-2 rounded-xl px-3 py-2 text-sm h-10 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className={`w-full border-2 rounded-xl px-3 py-2 text-sm h-10 disabled:bg-gray-100 disabled:cursor-not-allowed ${getFieldError('trainerUserId') ? 'border-red-500' : ''}`}
             value={formData.trainerUserId}
             onChange={(e) => setFormData(prev => ({ ...prev, trainerUserId: e.target.value }))}
+            onBlur={() => handleFieldBlur('trainerUserId')}
             disabled={!formData.courseId || trainersLoading}
           >
             <option value="">
@@ -383,7 +563,7 @@ export default function LiveCourseBatchesManagement() {
                 ? "No trainer assigned" 
                 : "Select Trainer"}
             </option>
-            {Array.isArray(trainers) && trainers.map((trainer, index) => {
+            {Array.isArray(trainers) && trainers.map((trainer: any, index) => {
               if (!trainer || !trainer.userId) {
                 console.warn(`Invalid trainer at index ${index}:`, trainer);
                 return null;
@@ -395,17 +575,23 @@ export default function LiveCourseBatchesManagement() {
               );
             })}
           </select>
-          {trainers.length > 0 && trainers[0]?.firstName && (
+          {getFieldError('trainerUserId') && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {getFieldError('trainerUserId')}
+            </p>
+          )}
+          {trainers.length > 0 && (trainers[0] as any)?.firstName && (
             <p className="text-xs text-gray-500 mt-1">
-              Trainer auto-selected: {trainers[0].firstName} {trainers[0].lastName}
+              Trainer auto-selected: {(trainers[0] as any).firstName} {(trainers[0] as any).lastName}
             </p>
           )}
         </div>
       </div>
 
       <div className="space-y-2.5">
-        <Label className="text-sm font-semibold">Days</Label>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-2 rounded-xl">
+        <Label className="text-sm font-semibold">Days <span className="text-red-500">*</span></Label>
+        <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-2 rounded-xl ${getFieldError('days') ? 'border-red-500' : ''}`}>
           {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(day => (
             <div key={day} className="flex items-center space-x-2">
               <input
@@ -418,6 +604,7 @@ export default function LiveCourseBatchesManagement() {
                   } else {
                     setFormData(prev => ({ ...prev, days: prev.days.filter(d => d !== day) }));
                   }
+                  handleFieldBlur('days');
                 }}
                 className="h-4 w-4 rounded border-gray-300"
               />
@@ -425,6 +612,12 @@ export default function LiveCourseBatchesManagement() {
             </div>
           ))}
         </div>
+        {getFieldError('days') && (
+          <p className="text-xs text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {getFieldError('days')}
+          </p>
+        )}
         {formData.days.length > 0 && (
           <p className="text-xs text-gray-500">Selected: {formData.days.join(", ")}</p>
         )}
@@ -436,31 +629,93 @@ export default function LiveCourseBatchesManagement() {
           <Input value={formData.timezone} onChange={(e) => setFormData(prev => ({ ...prev, timezone: e.target.value }))} className="rounded-xl h-10" />
         </div>
         <div className="space-y-2.5">
-          <Label className="text-sm font-semibold">Start Time</Label>
-          <Input type="time" value={formData.startTime} onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))} className="rounded-xl h-10" />
+          <Label className="text-sm font-semibold">Start Time <span className="text-red-500">*</span></Label>
+          <Input 
+            type="time" 
+            value={formData.startTime} 
+            onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))} 
+            onBlur={() => handleFieldBlur('startTime')}
+            className={`rounded-xl h-10 ${getFieldError('startTime') ? 'border-red-500' : ''}`}
+          />
+          {getFieldError('startTime') && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {getFieldError('startTime')}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
-          <Label className="text-sm font-semibold">End Time</Label>
-          <Input type="time" value={formData.endTime} onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))} className="rounded-xl h-10" />
+          <Label className="text-sm font-semibold">End Time <span className="text-red-500">*</span></Label>
+          <Input 
+            type="time" 
+            value={formData.endTime} 
+            onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))} 
+            onBlur={() => handleFieldBlur('endTime')}
+            className={`rounded-xl h-10 ${getFieldError('endTime') ? 'border-red-500' : ''}`}
+          />
+          {getFieldError('endTime') && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {getFieldError('endTime')}
+            </p>
+          )}
         </div>
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold">Start Date <span className="text-red-500">*</span></Label>
-          <Input type="date" value={formData.startDate} onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))} className="rounded-xl h-10" />
+          <Input 
+            type="date" 
+            value={formData.startDate} 
+            onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))} 
+            onBlur={() => handleFieldBlur('startDate')}
+            className={`rounded-xl h-10 ${getFieldError('startDate') ? 'border-red-500' : ''}`}
+          />
+          {getFieldError('startDate') && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {getFieldError('startDate')}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="space-y-2.5">
         <Label className="text-sm font-semibold">End Date</Label>
-        <Input type="date" value={formData.endDate} onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))} className="rounded-xl h-10" />
+        <Input 
+          type="date" 
+          value={formData.endDate} 
+          onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))} 
+          onBlur={() => handleFieldBlur('endDate')}
+          className={`rounded-xl h-10 ${getFieldError('endDate') ? 'border-red-500' : ''}`}
+        />
+        {getFieldError('endDate') && (
+          <p className="text-xs text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {getFieldError('endDate')}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold">Max Students</Label>
-          <Input type="number" placeholder="50" value={formData.maxStudents} onChange={(e) => setFormData(prev => ({ ...prev, maxStudents: parseInt(e.target.value) || 0 }))} className="rounded-xl h-10" />
+          <Input 
+            type="number" 
+            placeholder="50" 
+            value={formData.maxStudents} 
+            onChange={(e) => setFormData(prev => ({ ...prev, maxStudents: parseInt(e.target.value) || 0 }))} 
+            onBlur={() => handleFieldBlur('maxStudents')}
+            min="0"
+            className={`rounded-xl h-10 ${getFieldError('maxStudents') ? 'border-red-500' : ''}`}
+          />
+          {getFieldError('maxStudents') && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {getFieldError('maxStudents')}
+            </p>
+          )}
         </div>
         <div className="space-y-2.5">
           <Label className="text-sm font-semibold">Status</Label>
