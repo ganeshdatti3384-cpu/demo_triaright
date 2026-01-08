@@ -46,7 +46,14 @@ export const authApi = {
     const res = await axios.post(`${API_BASE_URL}/users/register`, payload, config);
     return res.data;
   },
-
+ deleteUser: async (userId: string) => {
+    const response = await axios.delete(`${API_BASE_URL}/users/user/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}` // or however you store token
+      }
+    });
+    return response.data;
+  },
   // FIXED: Use the correct profile endpoint that exists in backend
   getUserDetails: async (token: string): Promise<any> => {
     const res = await axios.get(`${API_BASE_URL}/users/profile`, {
