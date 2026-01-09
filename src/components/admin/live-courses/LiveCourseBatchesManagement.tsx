@@ -933,5 +933,6 @@ export default function LiveCourseBatchesManagement() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      </div>
-  )}
+    </div>
+  );
+}
