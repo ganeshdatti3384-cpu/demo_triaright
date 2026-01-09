@@ -6,7 +6,7 @@ import { Loader2, Upload, X, Calendar, BookOpen, Users, AlertCircle } from "luci
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
 
-const API_BASE_URL = "http://localhost:5007/api/livecourses";
+const API_BASE_URL = "https://triaright.com/api/livecourses";
 
 interface Course {
   _id: string;
