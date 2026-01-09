@@ -53,7 +53,7 @@ interface Course {
   createdAt: string;
   students: number;
   // rating: number;
-  status: "draft" | "published" | "archived";
+  status: "draft" | "published";
 }
 
 interface CoursesListProps {
@@ -231,10 +231,10 @@ const CoursesList: React.FC<CoursesListProps> = ({
                 </option>
               ))}
             </select>
-            <Button variant="outline" className="gap-2">
+            {/* <Button variant="outline" className="gap-2">
               <Filter className="h-4 w-4" />
               More Filters
-            </Button>
+            </Button> */}
           </div>
         </div>
       </motion.div>

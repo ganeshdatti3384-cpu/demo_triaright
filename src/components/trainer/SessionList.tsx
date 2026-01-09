@@ -510,7 +510,7 @@ const SessionList = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-xl">
+        {/* <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-xl">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -522,7 +522,7 @@ const SessionList = () => {
               </div>
             </div>
           </CardHeader>
-        </Card>
+        </Card> */}
 
         {/* Course Selection */}
         <Card className="shadow-lg">

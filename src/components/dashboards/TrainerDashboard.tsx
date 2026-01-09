@@ -183,12 +183,10 @@ const TrainerDashboard: React.FC<TrainerDashboardProps> = ({
   const calculateStats = () => {
     const activeBatches = batches.filter(b => b.status === 'ongoing' && b.isActive).length;
     const upcomingSessions = sessions.filter(s => {
-      const sessionDate = new Date(s.scheduledDate);
-      const today = new Date();
-      return sessionDate >= today && s.status !== 'completed';
-    }).length;
+  return s.status === 'scheduled' && new Date(s.scheduledDate) >= new Date();
+}).length;
     
-    const pendingAssignments = assignments.filter(a => a.status === 'pending').length;
+    const pendingAssignments = assignments.filter(a => a.status === 'closed').length;
     
     const totalStudents = batches.reduce((sum, batch) => sum + batch.currentStudents, 0);
     
@@ -1003,7 +1001,7 @@ const removeExperience = (index: number) => {
               description: "Live classes"
             },
             { 
-              label: "Pending Assignments", 
+              label: "Closed Assignments", 
               value: stats.pendingAssignments, 
               icon: FileCode,
               change: `${stats.totalAssignments} total`,

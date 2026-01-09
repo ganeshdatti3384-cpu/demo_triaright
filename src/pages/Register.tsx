@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect  } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { fetchColleges } from '@/services/collegeApi';
+
 import {
   Select,
   SelectContent,
@@ -80,6 +82,11 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [collegeSearch, setCollegeSearch] = useState("");
+const [colleges, setColleges] = useState<any[]>([]);
+const [selectedCollege, setSelectedCollege] = useState("");
+
+
   // File states
   const [collegeLogo, setCollegeLogo] = useState<File | null>(null);
   const [companyLogo, setCompanyLogo] = useState<File | null>(null);
@@ -108,6 +115,31 @@ const Register = () => {
   });
 
   const selectedRole = watch('role');
+
+
+
+
+
+  useEffect(() => {
+  if (collegeSearch.trim() === "") {
+    setColleges([]);
+    return;
+  }
+
+  const delayDebounce = setTimeout(async () => {
+    try {
+      const data = await fetchColleges(collegeSearch);
+      setColleges(data);
+    } catch (error) {
+      console.error("Failed to fetch colleges", error);
+    }
+  }, 400); // debounce
+
+  return () => clearTimeout(delayDebounce);
+}, [collegeSearch]);
+
+
+
 
   const handleRegister = async (formData: RegistrationFormData) => {
     try {
@@ -624,20 +656,42 @@ const Register = () => {
 
                       {/* Student-specific fields */}
                       {selectedRole === 'student' && (
-                        <div className="md:col-span-2">
-                          <Label htmlFor="collegeName" className="text-gray-700 font-medium">College/Institute Name (Optional)</Label>
-                          <div className="relative mt-1">
-                            <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input
-                              id="collegeName"
-                              value={collegeName}
-                              onChange={(e) => setCollegeName(e.target.value)}
-                              placeholder="Enter your college or institute name"
-                              className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
-                            />
-                          </div>
-                        </div>
-                      )}
+  <div className="md:col-span-2 relative">
+    <Label className="text-gray-700 font-medium">
+      College / Institute Name (Optional)
+    </Label>
+
+    <Input
+      value={collegeSearch}
+      onChange={(e) => {
+        setCollegeSearch(e.target.value);
+        setCollegeName(e.target.value);
+      }}
+      placeholder="Type your college name"
+      className="pl-10 h-11 border-gray-200 focus:border-blue-500"
+    />
+
+    {colleges.length > 0 && (
+      <ul className="absolute z-50 bg-white border w-full mt-1 rounded shadow max-h-48 overflow-y-auto">
+        {colleges.map((college) => (
+          <li
+            key={college._id}
+            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+            onClick={() => {
+              setCollegeName(college.collegeName);
+              setCollegeSearch(college.collegeName);
+              setSelectedCollege(college.collegeCode);
+              setColleges([]);
+            }}
+          >
+            {college.collegeName} ({college.collegeCode})
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+)}
+
 
                       {/* College-specific fields */}
                       {selectedRole === 'college' && (
