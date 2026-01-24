@@ -1,12 +1,11 @@
-import React, { useState, useEffect  } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { fetchColleges } from '@/services/collegeApi';
-
 import {
   Select,
   SelectContent,
@@ -43,21 +42,15 @@ import { useNavigate } from 'react-router-dom';
 
 // Base schema for all roles
 const baseSchema = z.object({
-  firstName: z.string().min(1, 'First name is required').trim(),
-  lastName: z.string().min(1, 'Last name is required').trim(),
-  email: z.string().email('Invalid email address').trim().toLowerCase(),
-  phoneNumber: z.string()
-    .min(10, 'Phone number must be at least 10 digits')
-    .regex(/^[0-9+\-\s()]*$/, 'Invalid phone number format')
-    .trim(),
-  whatsappNumber: z.string()
-    .min(10, 'WhatsApp number must be at least 10 digits')
-    .regex(/^[0-9+\-\s()]*$/, 'Invalid WhatsApp number format')
-    .trim(),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
+  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
+  whatsappNumber: z.string().min(10, 'WhatsApp number must be at least 10 digits'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  address: z.string().min(1, 'Address is required').trim(),
-  role: z.enum(['student', 'college', 'jobseeker', 'employer', 'Trainer']),
+  address: z.string().min(1, 'Address is required'),
+  role: z.enum(['student', 'college', 'jobseeker', 'employer']),
   acceptTerms: z.boolean().refine((val) => val === true, {
     message: 'You must accept terms and conditions'
   })
@@ -74,6 +67,14 @@ const registrationSchema = baseSchema.refine(
 
 type RegistrationFormData = z.infer<typeof registrationSchema>;
 
+// Interface for college data
+interface College {
+  _id: string;
+  collegeName: string;
+  collegeCode?: string;
+  collegeLogo?: string;
+}
+
 const Register = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -81,23 +82,15 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const [collegeSearch, setCollegeSearch] = useState("");
-const [colleges, setColleges] = useState<any[]>([]);
-const [selectedCollege, setSelectedCollege] = useState("");
-
-
-  // File states
   const [collegeLogo, setCollegeLogo] = useState<File | null>(null);
   const [companyLogo, setCompanyLogo] = useState<File | null>(null);
-
-  // College fields
   const [collegeName, setCollegeName] = useState('');
   const [collegeCode, setCollegeCode] = useState('');
-
-  // Employer fields
   const [companyName, setCompanyName] = useState('');
   const [companyType, setCompanyType] = useState('');
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [isLoadingColleges, setIsLoadingColleges] = useState(false);
+  const [selectedCollegeId, setSelectedCollegeId] = useState<string>('');
 
   const {
     register,
@@ -116,63 +109,102 @@ const [selectedCollege, setSelectedCollege] = useState("");
 
   const selectedRole = watch('role');
 
-
-
-
-
+  // Fetch colleges when component mounts and when role is student
   useEffect(() => {
-  if (collegeSearch.trim() === "") {
-    setColleges([]);
-    return;
-  }
+    const fetchColleges = async () => {
+      if (selectedRole === 'student') {
+        setIsLoadingColleges(true);
+        try {
+          // Using the endpoint from collegeRoutes.js: router.get("/collegedata",getAllColleges)
+          const response = await fetch('/api/colleges/collegedata');
+          if (response.ok) {
+            const data = await response.json();
+            setColleges(data.colleges || data);
+          } else {
+            console.error('Failed to fetch colleges');
+            toast({
+              title: 'Error',
+              description: 'Failed to load college list',
+              variant: 'destructive'
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching colleges:', error);
+          toast({
+            title: 'Error',
+            description: 'Unable to load college list',
+            variant: 'destructive'
+          });
+        } finally {
+          setIsLoadingColleges(false);
+        }
+      }
+    };
 
-  const delayDebounce = setTimeout(async () => {
-    try {
-      const data = await fetchColleges(collegeSearch);
-      setColleges(data);
-    } catch (error) {
-      console.error("Failed to fetch colleges", error);
+    fetchColleges();
+  }, [selectedRole, toast]);
+
+  // Handle college selection
+  useEffect(() => {
+    if (selectedCollegeId) {
+      const selectedCollege = colleges.find(college => college._id === selectedCollegeId);
+      if (selectedCollege) {
+        setCollegeName(selectedCollege.collegeName);
+      }
+    } else {
+      setCollegeName('');
     }
-  }, 400); // debounce
-
-  return () => clearTimeout(delayDebounce);
-}, [collegeSearch]);
-
-
-
+  }, [selectedCollegeId, colleges]);
 
   const handleRegister = async (formData: RegistrationFormData) => {
     try {
       setIsLoading(true);
 
-      // Validate role-specific required fields before submission
+      // Create FormData for file uploads
+      const formDataToSend = new FormData();
+
+      // Add common fields
+      formDataToSend.append('firstName', formData.firstName);
+      formDataToSend.append('lastName', formData.lastName);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('phoneNumber', formData.phoneNumber);
+      formDataToSend.append('whatsappNumber', formData.whatsappNumber);
+      formDataToSend.append('address', formData.address);
+      formDataToSend.append('password', formData.password);
+      formDataToSend.append('role', formData.role);
+
+      // Add role-specific fields - FIXED FOR ALL ROLES
       if (formData.role === 'college') {
-        if (!collegeName.trim()) {
+        if (!collegeName) {
           toast({
             title: 'Validation Error',
             description: 'College name is required',
             variant: 'destructive'
           });
-          setIsLoading(false);
           return;
         }
-        if (!collegeCode.trim()) {
+        if (!collegeCode) {
           toast({
             title: 'Validation Error',
             description: 'College code is required',
             variant: 'destructive'
           });
-          setIsLoading(false);
           return;
         }
+        
+        formDataToSend.append('collegeName', collegeName);
+        formDataToSend.append('collegeCode', collegeCode);
+        if (collegeLogo) {
+          formDataToSend.append('collegeLogo', collegeLogo);
+        }
       } else if (formData.role === 'employer') {
-        if (!companyName.trim()) {
+        // FIX: Send required fields for employer
+        if (!companyName) {
           toast({
             title: 'Validation Error',
             description: 'Company name is required',
             variant: 'destructive'
           });
-          setIsLoading(false);
           return;
         }
         if (!companyType) {
@@ -181,72 +213,42 @@ const [selectedCollege, setSelectedCollege] = useState("");
             description: 'Company type is required',
             variant: 'destructive'
           });
-          setIsLoading(false);
           return;
         }
-      }
-
-      // Create FormData for file uploads
-      const formDataToSend = new FormData();
-
-      // Add common fields with trimming
-      formDataToSend.append('firstName', formData.firstName.trim());
-      formDataToSend.append('lastName', formData.lastName.trim());
-      formDataToSend.append('email', formData.email.trim().toLowerCase());
-      formDataToSend.append('phoneNumber', formData.phoneNumber.trim());
-      formDataToSend.append('whatsappNumber', formData.whatsappNumber.trim());
-      formDataToSend.append('address', formData.address.trim());
-      formDataToSend.append('password', formData.password);
-      formDataToSend.append('role', formData.role);
-
-      // Add role-specific fields
-      if (formData.role === 'college') {
-        formDataToSend.append('collegeName', collegeName.trim());
-        formDataToSend.append('collegeCode', collegeCode.trim());
-        if (collegeLogo) {
-          formDataToSend.append('collegeLogo', collegeLogo);
-        }
-      } else if (formData.role === 'employer') {
-        formDataToSend.append('companyName', companyName.trim());
+        
+        formDataToSend.append('companyName', companyName);
         formDataToSend.append('companyType', companyType);
         if (companyLogo) {
           formDataToSend.append('companyLogo', companyLogo);
         }
       } else if (formData.role === 'student') {
-        if (collegeName.trim()) {
-          formDataToSend.append('collegeName', collegeName.trim());
+        // FIX: Send collegeName for student (optional)
+        if (collegeName) {
+          formDataToSend.append('collegeName', collegeName);
         }
+      } else if (formData.role === 'jobseeker') {
+        // FIX: Jobseeker doesn't need additional fields for registration
+        // The backend will create the profile with default values
+        console.log('Jobseeker registration - no additional fields needed');
       }
 
-      // Log FormData contents for debugging
-      console.log('Form data being sent:');
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log(`${key}:`, value);
-      }
-
-      // Call the register API with FormData
-      const response = await authApi.register(formDataToSend as any);
-
-      toast({
-        title: 'Success',
-        description: `Registration successful! Please login.`
-      });
+      console.log('Sending registration data for role:', formData.role);
       
+      // Call the register API with FormData
+      await authApi.register(formDataToSend);
+
+      toast({ 
+        title: 'Success', 
+        description: 'Registration successful! Please login.' 
+      });
       navigate('/login');
     } catch (error: any) {
       console.error('Registration error:', error);
-      console.error('Error response:', error?.response);
-
-      const errorMessage = error?.response?.data?.error || 
-                          error?.response?.data?.message || 
-                          error?.message ||
-                          'Something went wrong';
-
+      
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'Something went wrong';
+      
       // Handle specific error cases
-      if (errorMessage.toLowerCase().includes('email') && 
-          (errorMessage.toLowerCase().includes('duplicate') || 
-           errorMessage.toLowerCase().includes('exists') ||
-           errorMessage.toLowerCase().includes('already'))) {
+      if (errorMessage.includes('duplicate key') && errorMessage.includes('email')) {
         setError('email', {
           type: 'manual',
           message: 'This email is already registered. Please use a different email or login.'
@@ -256,10 +258,7 @@ const [selectedCollege, setSelectedCollege] = useState("");
           description: 'This email address is already registered. Please use a different email or try logging in.',
           variant: 'destructive'
         });
-      } else if (errorMessage.toLowerCase().includes('phone') && 
-                 (errorMessage.toLowerCase().includes('duplicate') || 
-                  errorMessage.toLowerCase().includes('exists') ||
-                  errorMessage.toLowerCase().includes('already'))) {
+      } else if (errorMessage.includes('duplicate key') && errorMessage.includes('phoneNumber')) {
         setError('phoneNumber', {
           type: 'manual',
           message: 'This phone number is already registered.'
@@ -283,51 +282,13 @@ const [selectedCollege, setSelectedCollege] = useState("");
 
   const handleCollegeLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: 'File Too Large',
-          description: 'Logo must be less than 5MB',
-          variant: 'destructive'
-        });
-        return;
-      }
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: 'Invalid File Type',
-          description: 'Please upload an image file',
-          variant: 'destructive'
-        });
-        return;
-      }
-      setCollegeLogo(file);
+      setCollegeLogo(e.target.files[0]);
     }
   };
 
   const handleCompanyLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: 'File Too Large',
-          description: 'Logo must be less than 5MB',
-          variant: 'destructive'
-        });
-        return;
-      }
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: 'Invalid File Type',
-          description: 'Please upload an image file',
-          variant: 'destructive'
-        });
-        return;
-      }
-      setCompanyLogo(file);
+      setCompanyLogo(e.target.files[0]);
     }
   };
 
@@ -513,7 +474,6 @@ const [selectedCollege, setSelectedCollege] = useState("");
                               <SelectItem value="college">College</SelectItem>
                               <SelectItem value="jobseeker">Job Seeker</SelectItem>
                               <SelectItem value="employer">Employer</SelectItem>
-                              <SelectItem value="Trainer">Trainer</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
@@ -654,44 +614,39 @@ const [selectedCollege, setSelectedCollege] = useState("");
                         {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
                       </div>
 
-                      {/* Student-specific fields */}
+                      {/* Student-specific fields - UPDATED: Changed from input to dropdown */}
                       {selectedRole === 'student' && (
-  <div className="md:col-span-2 relative">
-    <Label className="text-gray-700 font-medium">
-      College / Institute Name (Optional)
-    </Label>
-
-    <Input
-      value={collegeSearch}
-      onChange={(e) => {
-        setCollegeSearch(e.target.value);
-        setCollegeName(e.target.value);
-      }}
-      placeholder="Type your college name"
-      className="pl-10 h-11 border-gray-200 focus:border-blue-500"
-    />
-
-    {colleges.length > 0 && (
-      <ul className="absolute z-50 bg-white border w-full mt-1 rounded shadow max-h-48 overflow-y-auto">
-        {colleges.map((college) => (
-          <li
-            key={college._id}
-            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-            onClick={() => {
-              setCollegeName(college.collegeName);
-              setCollegeSearch(college.collegeName);
-              setSelectedCollege(college.collegeCode);
-              setColleges([]);
-            }}
-          >
-            {college.collegeName} ({college.collegeCode})
-          </li>
-        ))}
-      </ul>
-    )}
-  </div>
-)}
-
+                        <div className="md:col-span-2">
+                          <Label htmlFor="collegeName" className="text-gray-700 font-medium">College/Institute Name (Optional)</Label>
+                          <div className="relative mt-1">
+                            <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Select onValueChange={setSelectedCollegeId} value={selectedCollegeId}>
+                              <SelectTrigger className="h-11 mt-1 pl-10 border-gray-200 focus:border-blue-500">
+                                <SelectValue placeholder={isLoadingColleges ? "Loading colleges..." : "Select your college"} />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60">
+                                <SelectItem value="">Not specified</SelectItem>
+                                {colleges.map((college) => (
+                                  <SelectItem key={college._id} value={college._id}>
+                                    {college.collegeName}
+                                    {college.collegeCode && ` (${college.collegeCode})`}
+                                  </SelectItem>
+                                ))}
+                                {colleges.length === 0 && !isLoadingColleges && (
+                                  <SelectItem value="" disabled>
+                                    No colleges found
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {collegeName && (
+                            <p className="text-sm text-gray-600 mt-2">
+                              Selected: <span className="font-medium">{collegeName}</span>
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       {/* College-specific fields */}
                       {selectedRole === 'college' && (
@@ -736,11 +691,6 @@ const [selectedCollege, setSelectedCollege] = useState("");
                                 className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                               />
                             </div>
-                            {collegeLogo && (
-                              <p className="text-sm text-green-600 mt-1">
-                                Selected: {collegeLogo.name}
-                              </p>
-                            )}
                           </div>
                         </>
                       )}
@@ -792,11 +742,6 @@ const [selectedCollege, setSelectedCollege] = useState("");
                                 className="pl-10 h-11 border-gray-200 focus:border-blue-500 transition-colors"
                               />
                             </div>
-                            {companyLogo && (
-                              <p className="text-sm text-green-600 mt-1">
-                                Selected: {companyLogo.name}
-                              </p>
-                            )}
                           </div>
                         </>
                       )}
@@ -810,26 +755,8 @@ const [selectedCollege, setSelectedCollege] = useState("");
                               <div>
                                 <h4 className="font-medium text-blue-800">Job Seeker Account</h4>
                                 <p className="text-sm text-blue-700 mt-1">
-                                  Your basic profile will be created. You can add your qualifications,
+                                  Your basic profile will be created. You can add your qualifications, 
                                   work experience, skills, and upload your resume after registration.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Trainer-specific info */}
-                      {selectedRole === 'Trainer' && (
-                        <div className="md:col-span-2">
-                          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                            <div className="flex items-start space-x-3">
-                              <GraduationCap className="h-5 w-5 text-purple-600 mt-0.5" />
-                              <div>
-                                <h4 className="font-medium text-purple-800">Trainer Account</h4>
-                                <p className="text-sm text-purple-700 mt-1">
-                                  Your basic profile will be created. You can add your specialization,
-                                  experience, qualifications, and other details after registration.
                                 </p>
                               </div>
                             </div>
@@ -843,10 +770,10 @@ const [selectedCollege, setSelectedCollege] = useState("");
                         name="acceptTerms"
                         control={control}
                         render={({ field }) => (
-                          <Checkbox
-                            id="acceptTerms"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
+                          <Checkbox 
+                            id="acceptTerms" 
+                            checked={field.value} 
+                            onCheckedChange={field.onChange} 
                           />
                         )}
                       />
