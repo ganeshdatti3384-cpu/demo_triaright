@@ -112,36 +112,38 @@ const Register = () => {
   // Fetch colleges when component mounts and when role is student
   useEffect(() => {
     const fetchColleges = async () => {
-      if (selectedRole === 'student') {
-        setIsLoadingColleges(true);
-        try {
-          const response = await fetch('/api/colleges/collegedata');
-          if (response.ok) {
-            const data = await response.json();
-            setColleges(data.colleges || data);
+      setIsLoadingColleges(true);
+      try {
+    
+        const response = await fetch('/api/colleges/collegedata');
+        if (response.ok) {
+          const data = await response.json();
+          // Handle different response formats
+          if (Array.isArray(data)) {
+            setColleges(data);
+          } else if (data.colleges && Array.isArray(data.colleges)) {
+            setColleges(data.colleges);
           } else {
-            console.error('Failed to fetch colleges');
-            toast({
-              title: 'Error',
-              description: 'Failed to load college list',
-              variant: 'destructive'
-            });
+            setColleges([]);
           }
-        } catch (error) {
-          console.error('Error fetching colleges:', error);
+        } else {
+          console.error('Failed to fetch colleges');
           toast({
             title: 'Error',
-            description: 'Unable to load college list',
+            description: 'Failed to load college list',
             variant: 'destructive'
           });
-        } finally {
-          setIsLoadingColleges(false);
         }
+      } catch (error) {
+        console.error('Error fetching colleges:', error);
+        // Don't show toast for network errors during initial load
+      } finally {
+        setIsLoadingColleges(false);
       }
     };
 
     fetchColleges();
-  }, [selectedRole, toast]);
+  }, [toast]);
 
   // Handle college selection
   useEffect(() => {
@@ -618,9 +620,11 @@ const Register = () => {
                         <div className="md:col-span-2">
                           <Label htmlFor="collegeName" className="text-gray-700 font-medium">College/Institute Name (Optional)</Label>
                           <div className="relative mt-1">
-                            <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">
+                              <GraduationCap className="h-4 w-4 text-gray-400" />
+                            </div>
                             <Select onValueChange={setSelectedCollegeId} value={selectedCollegeId}>
-                              <SelectTrigger className="h-11 mt-1 pl-10 border-gray-200 focus:border-blue-500">
+                              <SelectTrigger className="h-11 pl-10 border-gray-200 focus:border-blue-500">
                                 <SelectValue placeholder={isLoadingColleges ? "Loading colleges..." : "Select your college"} />
                               </SelectTrigger>
                               <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60">
