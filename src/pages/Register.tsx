@@ -90,7 +90,7 @@ const Register = () => {
   const [companyType, setCompanyType] = useState('');
   const [colleges, setColleges] = useState<College[]>([]);
   const [isLoadingColleges, setIsLoadingColleges] = useState(false);
-  const [selectedCollegeId, setSelectedCollegeId] = useState<string>('');
+  const [selectedCollegeId, setSelectedCollegeId] = useState<string>('not-selected');
 
   const {
     register,
@@ -109,12 +109,12 @@ const Register = () => {
 
   const selectedRole = watch('role');
 
-  // Fetch colleges when component mounts and when role is student
+  // Fetch colleges when component mounts
   useEffect(() => {
     const fetchColleges = async () => {
       setIsLoadingColleges(true);
       try {
-    
+        // Try the endpoint from your routes
         const response = await fetch('/api/colleges/collegedata');
         if (response.ok) {
           const data = await response.json();
@@ -123,31 +123,29 @@ const Register = () => {
             setColleges(data);
           } else if (data.colleges && Array.isArray(data.colleges)) {
             setColleges(data.colleges);
+          } else if (data.data && Array.isArray(data.data)) {
+            setColleges(data.data);
           } else {
             setColleges([]);
           }
         } else {
-          console.error('Failed to fetch colleges');
-          toast({
-            title: 'Error',
-            description: 'Failed to load college list',
-            variant: 'destructive'
-          });
+          console.error('Failed to fetch colleges, status:', response.status);
+          setColleges([]);
         }
       } catch (error) {
         console.error('Error fetching colleges:', error);
-        // Don't show toast for network errors during initial load
+        setColleges([]);
       } finally {
         setIsLoadingColleges(false);
       }
     };
 
     fetchColleges();
-  }, [toast]);
+  }, []);
 
   // Handle college selection
   useEffect(() => {
-    if (selectedCollegeId) {
+    if (selectedCollegeId && selectedCollegeId !== 'not-selected') {
       const selectedCollege = colleges.find(college => college._id === selectedCollegeId);
       if (selectedCollege) {
         setCollegeName(selectedCollege.collegeName);
@@ -224,7 +222,7 @@ const Register = () => {
         }
       } else if (formData.role === 'student') {
         // FIX: Send collegeName for student (optional)
-        if (collegeName) {
+        if (collegeName && selectedCollegeId !== 'not-selected') {
           formDataToSend.append('collegeName', collegeName);
         }
       } else if (formData.role === 'jobseeker') {
@@ -628,22 +626,17 @@ const Register = () => {
                                 <SelectValue placeholder={isLoadingColleges ? "Loading colleges..." : "Select your college"} />
                               </SelectTrigger>
                               <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60">
-                                <SelectItem value="">Not specified</SelectItem>
+                                <SelectItem value="not-selected">Not specified</SelectItem>
                                 {colleges.map((college) => (
                                   <SelectItem key={college._id} value={college._id}>
                                     {college.collegeName}
                                     {college.collegeCode && ` (${college.collegeCode})`}
                                   </SelectItem>
                                 ))}
-                                {colleges.length === 0 && !isLoadingColleges && (
-                                  <SelectItem value="" disabled>
-                                    No colleges found
-                                  </SelectItem>
-                                )}
                               </SelectContent>
                             </Select>
                           </div>
-                          {collegeName && (
+                          {collegeName && selectedCollegeId !== 'not-selected' && (
                             <p className="text-sm text-gray-600 mt-2">
                               Selected: <span className="font-medium">{collegeName}</span>
                             </p>
