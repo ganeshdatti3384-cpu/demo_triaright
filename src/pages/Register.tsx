@@ -115,7 +115,6 @@ const Register = () => {
       if (selectedRole === 'student') {
         setIsLoadingColleges(true);
         try {
-          // Using the endpoint from collegeRoutes.js: router.get("/collegedata",getAllColleges)
           const response = await fetch('/api/colleges/collegedata');
           if (response.ok) {
             const data = await response.json();
