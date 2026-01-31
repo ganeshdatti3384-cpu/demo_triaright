@@ -1,4 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, Clock, FileText, Upload, CheckCircle, XCircle, AlertCircle, Video, Download, Trash2, RefreshCw, Award, Link2, CreditCard, Tag, X, Check, Users, BookOpen } from 'lucide-react';
 
 declare global {
@@ -13,6 +15,7 @@ const LiveCourseEnrollment = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [allCourses, setAllCourses] = useState([]);
   const [myCourses, setMyCourses] = useState([]);
+  const [completedCourses, setCompletedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -41,6 +44,7 @@ const LiveCourseEnrollment = () => {
   const [assignmentDetail, setAssignmentDetail] = useState(null);
   const [assignmentSubmission, setAssignmentSubmission] = useState(null);
   const [trainerInfo, setTrainerInfo] = useState(null);
+    const navigate = useNavigate();
 
   useEffect(() => {
     const userStr = localStorage.getItem('currentUser');
@@ -111,6 +115,46 @@ const LiveCourseEnrollment = () => {
       console.error('Error fetching my courses:', error);
     }
   };
+
+    const fetchCompletedCourses = async () => {
+  try {
+    // const token = localStorage.getItem('token');
+    const currentUserStr = localStorage.getItem('currentUser');
+
+    if (!currentUserStr) {
+      console.error('currentUser not found in localStorage');
+      return;
+    }
+
+    const currentUser = JSON.parse(currentUserStr);
+    const userId = currentUser.id; // ✅ ACTUAL MongoDB ObjectId
+
+    if (!userId) {
+      console.error('User ID missing in currentUser');
+      return;
+    }
+
+    const response = await fetch(
+      `https://triaright.com/api/livecourses/user/${userId}`, // 👈 dynamic userId
+     
+    );
+
+    const result = await response.json();
+    // setCompletedCourses(result.enrollments || []);
+     setCompletedCourses(result.data || []);
+    console.log(result);
+  } catch (error) {
+    console.error('Error fetching completed courses:', error);
+  }
+};
+
+
+  const handleDownloadCertificate = (enrollmentId: string) => {
+  if (enrollmentId) {
+    navigate(`/livecertificate/${enrollmentId}`);
+  }
+};
+
 
   const fetchSessions = async (batchId?: string) => {
     setLoading(true);
@@ -640,6 +684,61 @@ const LiveCourseEnrollment = () => {
       </div>
     </div>
   );
+
+ const CompletedCourseCard = ({ enrollment }) => (
+  <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+    <div className="relative">
+      <img 
+        src={enrollment.courseImage || 'https://via.placeholder.com/400x200'} 
+        alt={enrollment.courseName}
+        className="w-full h-40 object-cover rounded-lg mb-4"
+      />
+      <div className="absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
+        <CheckCircle size={16} />
+        Completed
+      </div>
+    </div>
+
+    <h3 className="text-xl font-bold text-gray-800 mb-2">
+      {enrollment.courseName}
+    </h3>
+
+    <div className="space-y-2 text-sm text-gray-600 mb-4">
+      <p><strong>Course Code:</strong> {enrollment.courseCode}</p>
+
+      {enrollment.duration && (
+        <p>
+          <strong>Duration:</strong>{" "}
+          {typeof enrollment.duration === "object"
+            ? `${enrollment.duration.value} ${enrollment.duration.unit}`
+            : enrollment.duration}
+        </p>
+      )}
+
+      <p><strong>Category:</strong> {enrollment.category}</p>
+
+      {enrollment.completedDate && (
+        <p>
+          <strong>Completed:</strong>{" "}
+          {new Date(enrollment.completedDate).toLocaleDateString()}
+        </p>
+      )}
+
+      {enrollment.location && (
+        <p><strong>Mode:</strong> {enrollment.location.type}</p>
+      )}
+    </div>
+
+    {/* ✅ ALWAYS SHOW BUTTON */}
+    <button
+      onClick={() => handleDownloadCertificate(enrollment.enrollmentId)}
+      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+    >
+      <Award size={18} />
+      Download Certificate
+    </button>
+  </div>
+);
 
   const SessionCard = ({ session }) => {
     const canJoin = isSessionJoinable(session);
@@ -1402,7 +1501,7 @@ const LiveCourseEnrollment = () => {
     );
   };
 
-  if (loading && activeTab !== 'my') {
+  if (loading && activeTab !== 'my' && activeTab !== 'completed') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-lg">Loading courses...</div>
@@ -1460,6 +1559,22 @@ const LiveCourseEnrollment = () => {
               }`}
             >
               My Courses ({myCourses.length})
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('completed');
+                setDashboardTab('courses');
+                setSelectedEnrollment(null);
+                fetchCompletedCourses();
+              }}
+              className={`py-4 px-6 font-semibold transition-colors whitespace-nowrap ${
+                activeTab === 'completed' 
+                  ? 'border-b-2 border-blue-600 text-blue-600' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Completed Courses
             </button>
 
             {activeTab === 'my' && selectedEnrollment && (
@@ -1546,6 +1661,19 @@ const LiveCourseEnrollment = () => {
             {allCourses.length === 0 && (
               <div className="col-span-full text-center py-12 text-gray-500">
                 No courses available
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'completed' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {completedCourses.map(enrollment => (
+              <CompletedCourseCard key={enrollment._id} enrollment={enrollment} />
+            ))}
+            {completedCourses.length === 0 && (
+              <div className="col-span-full text-center py-12 text-gray-500">
+                No completed courses yet
               </div>
             )}
           </div>

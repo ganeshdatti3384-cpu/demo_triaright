@@ -58,6 +58,7 @@ import APExclusiveInternshipsPage from '@/components/internships/APExclusiveInte
 import JobsPage from '@/pages/JobsPage';
 import CommunityPage from '@/components/community/CommunityPage';
 
+
 import APStudentDashboard from '@/components/student/APStudentDashboard';
 import APInternshipLearningPage from '@/components/student/APInternshipLearningPage';
 import APTopicExamPage from './components/student/APTopicExamPage';
@@ -73,6 +74,7 @@ import LiveCourseDetail from './pages/LiveCourseDetail';
 
 import LiveCourseEnrollment from './components/student/LiveCourseenrollement';
 import LiveCoursesessions from './components/student/LiveCoursessessions';
+import LiveCertificatePage from './components/student/liveCertificatePage';
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -143,7 +145,18 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          
+
+{/* Live Course Certificate Route */}
+   <Route
+     path="/livecertificate/:enrollmentId"
+     element={
+       <ProtectedRoute allowedRoles={['student', 'jobseeker']}>
+         <LiveCertificatePage />
+       </ProtectedRoute>
+     }
+   />
+
+
           {/* Pack365 Certificate Route */}
           <Route
             path="/pack365-certificate/:enrollmentId?"
