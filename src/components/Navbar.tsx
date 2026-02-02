@@ -10,6 +10,7 @@ import {
 import { ChevronDown, Menu, X, User, LogOut, LayoutDashboard, Settings, Briefcase, Users, Star, MapPin, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/components/ui/sonner';
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -91,6 +92,9 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
+    toast.success('Logged Out Successfully!', {
+      description: 'See you soon!',
+    });
     navigate('/');
   };
 

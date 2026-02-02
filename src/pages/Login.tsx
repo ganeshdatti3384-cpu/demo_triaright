@@ -10,8 +10,8 @@ import { Eye, EyeOff, Sparkles, Zap, Shield, Lock, Mail } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { authApi } from '@/services/api';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/components/ui/sonner';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -19,7 +19,6 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -31,8 +30,7 @@ const Login = () => {
 
       login(response.user, response.token);
 
-      toast({
-        title: 'Login successful!',
+      toast.success('Login Successful!', {
         description: 'Welcome back!',
       });
 
@@ -70,10 +68,8 @@ const Login = () => {
       }
 
     } catch (error: any) {
-      toast({
-        title: 'Login failed',
+      toast.error('Login Failed', {
         description: error.response?.data?.message || 'Invalid credentials',
-        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);

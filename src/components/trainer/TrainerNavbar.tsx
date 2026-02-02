@@ -3,6 +3,7 @@ import React from "react";
 import { Bell, LogOut, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/components/ui/sonner";
 
 const TrainerNavbar = () => {
   const { user, logout } = useAuth();
@@ -10,6 +11,9 @@ const TrainerNavbar = () => {
 
   const handleLogout = () => {
     logout();
+    toast.success('Logged Out Successfully!', {
+      description: 'See you soon!',
+    });
     navigate("/");
   };
 
