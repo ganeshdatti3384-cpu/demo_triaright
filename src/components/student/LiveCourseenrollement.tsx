@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-const API_BASE_URL = 'https://triaright.com/api/livecourses';
+const API_BASE_URL = "https://triaright.com/api/livecourses";
 
 const LiveCourseEnrollment = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -44,6 +44,21 @@ const LiveCourseEnrollment = () => {
   const [assignmentDetail, setAssignmentDetail] = useState(null);
   const [assignmentSubmission, setAssignmentSubmission] = useState(null);
   const [trainerInfo, setTrainerInfo] = useState(null);
+  
+  // Pagination states
+  const [sessionsPagination, setSessionsPagination] = useState({
+    totalSessions: 0,
+    currentPage: 1,
+    totalPages: 0,
+    limit: 10
+  });
+  
+  const [assignmentsPagination, setAssignmentsPagination] = useState({
+    totalAssignments: 0,
+    currentPage: 1,
+    totalPages: 0,
+    limit: 10
+  });
     const navigate = useNavigate();
 
   useEffect(() => {
@@ -156,23 +171,32 @@ const LiveCourseEnrollment = () => {
 };
 
 
-  const fetchSessions = async (batchId?: string) => {
+  const fetchSessions = async (batchId?: string, page = 1) => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/student/live-sessions`, {
+      // Build query params - pass batchId to backend if available
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', '10');
+      if (batchId) {
+        params.append('batchId', batchId);
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/student/live-sessions?${params.toString()}`, {
         headers: getAuthHeaders()
       });
       const data = await response.json();
       
-      setAllSessions(data.sessions || []);
+      setSessions(data.sessions || []);
       
-      if (batchId) {
-        const filteredSessions = (data.sessions || []).filter(
-          session => session.batchId === batchId || session.batchId?._id === batchId
-        );
-        setSessions(filteredSessions);
-      } else {
-        setSessions(data.sessions || []);
+      // Update pagination state from backend response
+      if (data.pagination) {
+        setSessionsPagination({
+          totalSessions: data.pagination.totalSessions,
+          currentPage: data.pagination.currentPage,
+          totalPages: data.pagination.totalPages,
+          limit: data.pagination.limit
+        });
       }
     } catch (err) {
       console.error('Failed to fetch sessions');
@@ -193,25 +217,35 @@ const LiveCourseEnrollment = () => {
     }
   };
 
-  const fetchAssignments = async (batchId?: string, courseId?: string) => {
+  const fetchAssignments = async (batchId?: string, courseId?: string, page = 1) => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/assignments/student/batch-assignments`, {
+      // Build query params - pass batchId and courseId to backend if available
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', '10');
+      if (batchId) {
+        params.append('batchId', batchId);
+      }
+      if (courseId) {
+        params.append('courseId', courseId);
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/assignments/student/batch-assignments?${params.toString()}`, {
         headers: getAuthHeaders()
       });
       const data = await response.json();
       
-      setAllAssignments(data.assignments || []);
+      setAssignments(data.assignments || []);
       
-      if (batchId && courseId) {
-        const filteredAssignments = (data.assignments || []).filter(assignment => {
-          const assignmentBatchId = assignment.batchId?._id || assignment.batchId;
-          const assignmentCourseId = assignment.courseId?._id || assignment.courseId;
-          return assignmentBatchId === batchId && assignmentCourseId === courseId;
+      // Update pagination state from backend response
+      if (data.pagination) {
+        setAssignmentsPagination({
+          totalAssignments: data.pagination.totalSessions,
+          currentPage: data.pagination.currentPage,
+          totalPages: data.pagination.totalPages,
+          limit: data.pagination.limit
         });
-        setAssignments(filteredAssignments);
-      } else {
-        setAssignments(data.assignments || []);
       }
     } catch (err) {
       console.error('Failed to fetch assignments');
@@ -229,6 +263,20 @@ const LiveCourseEnrollment = () => {
       setMySubmissions(data.submissions || []);
     } catch (err) {
       console.error('Failed to fetch submissions');
+    }
+  };
+
+  // Pagination handlers for sessions
+  const handleSessionPageChange = (newPage) => {
+    if (newPage !== sessionsPagination.currentPage && newPage >= 1 && newPage <= sessionsPagination.totalPages) {
+      fetchSessions(selectedEnrollment?.batchId, newPage);
+    }
+  };
+
+  // Pagination handlers for assignments
+  const handleAssignmentPageChange = (newPage) => {
+    if (newPage !== assignmentsPagination.currentPage && newPage >= 1 && newPage <= assignmentsPagination.totalPages) {
+      fetchAssignments(selectedEnrollment?.batchId, selectedEnrollment?.courseId, newPage);
     }
   };
 
@@ -1716,6 +1764,64 @@ const LiveCourseEnrollment = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* Sessions Pagination */}
+                {sessions.length > 0 && sessionsPagination.totalPages > 1 && (
+                  <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                      <div className="text-sm text-gray-600">
+                        Page <span className="font-semibold">{sessionsPagination.currentPage}</span> of <span className="font-semibold">{sessionsPagination.totalPages}</span> 
+                        ({sessionsPagination.totalSessions} total sessions)
+                      </div>
+                      <div className="flex gap-2 flex-wrap justify-center">
+                        <button
+                          onClick={() => handleSessionPageChange(sessionsPagination.currentPage - 1)}
+                          disabled={sessionsPagination.currentPage === 1}
+                          className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          ← Previous
+                        </button>
+                        
+                        {/* Page number buttons */}
+                        <div className="flex gap-1 flex-wrap justify-center">
+                          {Array.from({ length: sessionsPagination.totalPages }, (_, i) => i + 1)
+                            .filter(pageNum => {
+                              return (
+                                pageNum === 1 ||
+                                pageNum === sessionsPagination.totalPages ||
+                                Math.abs(pageNum - sessionsPagination.currentPage) <= 1
+                              );
+                            })
+                            .map((pageNum, index, array) => (
+                              <React.Fragment key={pageNum}>
+                                {index > 0 && array[index - 1] !== pageNum - 1 && (
+                                  <span className="px-2 py-1 text-gray-500">...</span>
+                                )}
+                                <button
+                                  onClick={() => handleSessionPageChange(pageNum)}
+                                  className={`px-3 py-2 rounded-lg transition-colors ${
+                                    sessionsPagination.currentPage === pageNum
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              </React.Fragment>
+                            ))}
+                        </div>
+
+                        <button
+                          onClick={() => handleSessionPageChange(sessionsPagination.currentPage + 1)}
+                          disabled={sessionsPagination.currentPage === sessionsPagination.totalPages}
+                          className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1737,6 +1843,64 @@ const LiveCourseEnrollment = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* Assignments Pagination */}
+                {assignments.length > 0 && assignmentsPagination.totalPages > 1 && (
+                  <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                      <div className="text-sm text-gray-600">
+                        Page <span className="font-semibold">{assignmentsPagination.currentPage}</span> of <span className="font-semibold">{assignmentsPagination.totalPages}</span> 
+                        ({assignmentsPagination.totalAssignments} total assignments)
+                      </div>
+                      <div className="flex gap-2 flex-wrap justify-center">
+                        <button
+                          onClick={() => handleAssignmentPageChange(assignmentsPagination.currentPage - 1)}
+                          disabled={assignmentsPagination.currentPage === 1}
+                          className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          ← Previous
+                        </button>
+                        
+                        {/* Page number buttons */}
+                        <div className="flex gap-1 flex-wrap justify-center">
+                          {Array.from({ length: assignmentsPagination.totalPages }, (_, i) => i + 1)
+                            .filter(pageNum => {
+                              return (
+                                pageNum === 1 ||
+                                pageNum === assignmentsPagination.totalPages ||
+                                Math.abs(pageNum - assignmentsPagination.currentPage) <= 1
+                              );
+                            })
+                            .map((pageNum, index, array) => (
+                              <React.Fragment key={pageNum}>
+                                {index > 0 && array[index - 1] !== pageNum - 1 && (
+                                  <span className="px-2 py-1 text-gray-500">...</span>
+                                )}
+                                <button
+                                  onClick={() => handleAssignmentPageChange(pageNum)}
+                                  className={`px-3 py-2 rounded-lg transition-colors ${
+                                    assignmentsPagination.currentPage === pageNum
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              </React.Fragment>
+                            ))}
+                        </div>
+
+                        <button
+                          onClick={() => handleAssignmentPageChange(assignmentsPagination.currentPage + 1)}
+                          disabled={assignmentsPagination.currentPage === assignmentsPagination.totalPages}
+                          className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

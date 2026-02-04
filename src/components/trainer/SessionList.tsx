@@ -40,6 +40,14 @@ const SessionList = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   
+  // Pagination states
+  const [pagination, setPagination] = useState({
+    totalSessions: 0,
+    currentPage: 1,
+    totalPages: 0,
+    limit: 10
+  });
+  
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
@@ -124,17 +132,26 @@ const SessionList = () => {
     }
   };
 
-  const fetchSessions = async (courseId) => {
+  const fetchSessions = async (courseId, page = 1) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE}/trainer/live-sessions?courseId=${courseId}`, {
+      const response = await fetch(`${API_BASE}/trainer/live-sessions?courseId=${courseId}&page=${page}&limit=10`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
       const data = await response.json();
       setSessions(data.sessions || []);
+      // Update pagination state from backend response
+      if (data.pagination) {
+        setPagination({
+          totalSessions: data.pagination.totalSessions,
+          currentPage: data.pagination.currentPage,
+          totalPages: data.pagination.totalPages,
+          limit: data.pagination.limit
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -249,7 +266,7 @@ const SessionList = () => {
             : "Attendance marked successfully"
         });
         setShowAttendanceModal(false);
-        fetchSessions(selectedCourse._id);
+        fetchSessions(selectedCourse._id, pagination.currentPage);
       } else {
         throw new Error("Failed to submit attendance");
       }
@@ -266,8 +283,15 @@ const SessionList = () => {
 
   const handleCourseSelect = (course) => {
     setSelectedCourse(course);
+    setPagination({ ...pagination, currentPage: 1 }); // Reset to page 1
     fetchBatchesByCourse(course._id);
-    fetchSessions(course._id);
+    fetchSessions(course._id, 1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (selectedCourse && newPage !== pagination.currentPage && newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchSessions(selectedCourse._id, newPage);
+    }
   };
 
   const handleEditClick = (session) => {
@@ -382,7 +406,7 @@ const SessionList = () => {
         });
         setShowEditModal(false);
         setPendingFiles({});
-        fetchSessions(selectedCourse._id);
+        fetchSessions(selectedCourse._id, pagination.currentPage);
       } else {
         throw new Error("Failed to update session");
       }
@@ -413,7 +437,12 @@ const SessionList = () => {
           description: "Session deleted successfully"
         });
         setShowDeleteModal(false);
-        fetchSessions(selectedCourse._id);
+        // If we're on the last page and it was the only item, go to previous page
+        if (sessions.length === 1 && pagination.currentPage > 1) {
+          fetchSessions(selectedCourse._id, pagination.currentPage - 1);
+        } else {
+          fetchSessions(selectedCourse._id, pagination.currentPage);
+        }
       }
     } catch (error) {
       toast({
@@ -733,6 +762,65 @@ const SessionList = () => {
                         </div>
                       )}
                     </CardContent>
+                    
+                    {/* Pagination Controls */}
+                    {sessions.length > 0 && pagination.totalPages > 1 && (
+                      <CardContent className="p-6 border-t bg-gray-50">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-gray-600">
+                            Page <span className="font-semibold">{pagination.currentPage}</span> of <span className="font-semibold">{pagination.totalPages}</span> 
+                            ({pagination.totalSessions} total sessions)
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(pagination.currentPage - 1)}
+                              disabled={pagination.currentPage === 1}
+                            >
+                              ← Previous
+                            </Button>
+                            
+                            {/* Page number buttons */}
+                            <div className="flex gap-1">
+                              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                                .filter(pageNum => {
+                                  // Show current page, first page, last page, and pages adjacent to current
+                                  return (
+                                    pageNum === 1 ||
+                                    pageNum === pagination.totalPages ||
+                                    Math.abs(pageNum - pagination.currentPage) <= 1
+                                  );
+                                })
+                                .map((pageNum, index, array) => (
+                                  <React.Fragment key={pageNum}>
+                                    {index > 0 && array[index - 1] !== pageNum - 1 && (
+                                      <span className="px-2 py-1 text-gray-500">...</span>
+                                    )}
+                                    <Button
+                                      variant={pagination.currentPage === pageNum ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => handlePageChange(pageNum)}
+                                      className="w-10"
+                                    >
+                                      {pageNum}
+                                    </Button>
+                                  </React.Fragment>
+                                ))}
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(pagination.currentPage + 1)}
+                              disabled={pagination.currentPage === pagination.totalPages}
+                            >
+                              Next →
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    )}
                   </Card>
                 );
               })
