@@ -20,10 +20,10 @@ import Navbar from '@/components/Navbar';
 
 const AboutUs = () => {
   const stats = [
-    { icon: Users, label: "Students Trained", value: "10,000+", color: "text-blue-600" },
-    { icon: Briefcase, label: "Job Placements", value: "5,000+", color: "text-green-600" },
-    { icon: BookOpen, label: "Courses Offered", value: "200+", color: "text-purple-600" },
-    { icon: Award, label: "Years of Excellence", value: "15+", color: "text-orange-600" },
+    { icon: Users, label: "Students Trained", value: "20,000+", color: "text-blue-600" },
+    { icon: Briefcase, label: "Job Placements", value: "70+", color: "text-green-600" },
+    { icon: BookOpen, label: "Courses Offered", value: "22+", color: "text-purple-600" },
+    { icon: Award, label: "Years of Excellence", value: "13+", color: "text-orange-600" },
   ];
 
   const values = [
@@ -54,36 +54,61 @@ const AboutUs = () => {
   ];
 
   const milestones = [
-    { year: "2010", event: "TriaRight Founded", description: "Started with a vision to bridge the gap between education and employment" },
-    { year: "2015", event: "First 1000 Placements", description: "Achieved our first major milestone in job placements" },
-    { year: "2018", event: "Pack365 Launch", description: "Introduced comprehensive learning packages for various domains" },
-    { year: "2020", event: "Digital Transformation", description: "Successfully transitioned to online learning during the pandemic" },
-    { year: "2023", event: "10,000+ Alumni", description: "Celebrated reaching 10,000 successful graduates" },
-    { year: "2025", event: "Industry Leadership", description: "Recognized as a leading education and placement provider" }
-  ];
+  {
+    year: "2013",
+    event: "Nandana Academy Founded",
+    description: "Launched Nandana Academy with a focus on strong academic foundations and career guidance",
+  },
+  {
+    year: "2018",
+    event: "Lakshya Career Engravers",
+    description: "Expanded into professional training and career-focused skill development",
+  },
+  {
+    year: "2023",
+    event: "TriaRight Solutions Established",
+    description: "Founded TriaRight Solutions to bridge education, technology, and employability",
+  },
+  {
+    year: "2024",
+    event: "First 50 Placements",
+    description: "Successfully achieved the first 50 student placements through focused training programs",
+  },
+  {
+    year: "2025",
+    event: "Pack365 Launch",
+    description: "Introduced Pack365, a structured learning and career preparation platform",
+  },
+  {
+    year: "2026",
+    event: "AI Agent Learning Model",
+    description: "Initiated development of an AI-driven agent-based learning and mentoring system",
+  },
+];
+
 
   const team = [
     {
-      name: "Rajesh Kumar",
+      name: "Kishore Kumar",
       role: "Founder & CEO",
       description: "15+ years in education technology and career development",
       expertise: "Strategic Leadership, Ed-Tech Innovation"
     },
     {
-      name: "Priya Sharma",
-      role: "Head of Academics",
+      name: "Sandhyaprabhakar",
+      role: "PartnerShip",
       description: "PhD in Computer Science, former industry expert",
       expertise: "Curriculum Design, Faculty Development"
     },
     {
-      name: "Amit Verma",
-      role: "Placement Director",
+      name: "Baskar",
+      role: "Chief Operating Officer",
       description: "10+ years in corporate recruitment and talent acquisition",
       expertise: "Industry Relations, Career Guidance"
     },
     {
-      name: "Sneha Patel",
-      role: "Student Success Manager",
+      name: "Bharath",
+      role: "Executive Operations",
       description: "Dedicated to ensuring every student achieves their goals",
       expertise: "Student Mentoring, Success Tracking"
     }

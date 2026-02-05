@@ -57,9 +57,10 @@ const Footer = () => {
   ];
 
   const services = [
-    { name: 'Courses', href: '#courses' },
+    { name: 'Learning', href: '#courses' },
     { name: 'Internships', href: '#internships' },
-    { name: 'Job Placement', href: '#jobs' },
+    { name: 'Jobs', href: '#jobs' },
+    {name:'Academic Projects',href:'#academic-projects'}
   ];
 
   const socialLinks = [
