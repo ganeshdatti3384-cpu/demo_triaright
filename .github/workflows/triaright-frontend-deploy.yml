@@ -9,7 +9,7 @@ on:
 
 env:
   IMAGE: triaright-frontend
-  REGISTRY_HOSTNAME: docker.io
+  REGISTRY_HOSTNAME: docker.io 
 
 jobs:
   build-and-push:
