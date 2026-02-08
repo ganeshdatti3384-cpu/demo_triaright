@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - '**'
-      - '.github/workflows/demo-triaright-deploy.yml'
+      - '.github/workflows/triaright-frontend-deploy.yml'
 
 env:
   IMAGE: triaright-frontend
