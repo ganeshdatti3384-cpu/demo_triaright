@@ -1,16 +1,17 @@
 name: Triaright Frontend CI/CD
 
-
 on:
   push:
     branches: [ main ]
-    paths:
-      - '**'
-      - '.github/workflows/triaright-frontend-deploy.yml'
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
   IMAGE: triaright-frontend
-  REGISTRY_HOSTNAME: docker.io 
+  REGISTRY_HOSTNAME: docker.io
+  AWS_REGION: ap-south-1
 
 jobs:
   build-and-push:
@@ -21,27 +22,26 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Docker metadata
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_HOSTNAME }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE }}
-          tags: |
-            type=sha
+          tags: type=sha
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Build & push Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
@@ -52,14 +52,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
+          role-to-assume: arn:aws:iam::074122282902:role/sts_odic_role
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActionsSession
 
-      - name: Deploy Triaright Frontend to EC2 via AWS SSM
+      - name: Deploy to EC2 via SSM
         run: |
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
@@ -73,9 +73,6 @@ jobs:
               "docker stop triaright-frontend-container || true",
               "docker rm triaright-frontend-container || true",
               "docker run -d --name triaright-frontend-container -p 8080:8080 docker.io/$DOCKER_USERNAME/triaright-frontend:$TAG || exit 1",
-              "docker image prune -af || true",
-              "docker system prune -af --volumes || true"
+              "docker image prune -af || true"
             ]' \
-            --comment "Deploying Triaright Frontend via GitHub Actions (SHA tag)" \
-            --region ap-south-1
-
+            --region ${{ env.AWS_REGION }}
