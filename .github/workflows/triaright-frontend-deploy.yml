@@ -1,5 +1,6 @@
 name: Triaright Frontend CI/CD
 
+
 on:
   push:
     branches: [ main ]
